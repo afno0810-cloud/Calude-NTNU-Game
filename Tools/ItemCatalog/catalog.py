@@ -339,8 +339,7 @@ gun("UMP", "UMP45", "Uncommon", "SMG", 24, 0.1, True, 25, 75, 2.2, 60, 2.6, 0.6,
     dict(arch="rifle", rx=(-0.08, 0.18), rh=0.07, barrel=0.06, hg=(0.12, "poly", "round"), stock="retract", mag="straight",
          magx=0.08, sight="iron", furn="poly", muzzle="none"))
 gun("P90", "P90", "Epic", "SMG", 18, 0.055, True, 50, 100, 2.6, 60, 2.6, 0.6, 0.5, 70,
-    dict(arch="rifle", rx=(-0.15, 0.15), rh=0.09, barrel=0.08, hg=(0.0, "poly", "none"), stock="fixed", mag="none",
-         sight="reddot", furn="poly", muzzle="none"), "50 skudd på toppen av våpenet.")
+    dict(arch="p90"), "50 skudd på toppen av våpenet.")
 gun("Vector", "Kriss Vector", "Legendary", "SMG", 22, 0.05, True, 25, 75, 2.0, 55, 2.4, 0.5, 0.35, 70,
     dict(arch="rifle", rx=(-0.08, 0.16), rh=0.09, barrel=0.07, hg=(0.08, "poly", "rail"), stock="retract", mag="straight",
          magx=0.03, sight="reddot", furn="poly", muzzle="none"), "Nesten ingen rekyl.")

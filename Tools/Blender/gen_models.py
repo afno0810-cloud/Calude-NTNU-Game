@@ -218,17 +218,88 @@ def build_pistol(p, m):
 
 
 def build_revolver(p, m):
+    """Stainless double-action revolver: fluted cylinder, full-lug barrel with ejector shroud,
+    top strap with rear sight, hammer spur, wooden grip with medallion."""
     b = p["barrel"]
-    cyl("Barrel", 0.011, b, (0.06 + b / 2, 0, 0.035), m["chrome"])
-    box("Rib", (b, 0.008, 0.008), (0.06 + b / 2, 0, 0.047), m["chrome"])
-    cyl("Ejector", 0.006, b * 0.7, (0.06 + b * 0.35, 0, 0.018), m["chrome"])
-    box("Frame", (0.12, 0.03, 0.05), (0.0, 0, 0.022), m["chrome"])
-    cyl("Cylinder", 0.021, 0.045, (0.03, 0, 0.028), m["chrome"], verts=6, bevel=0.003)
-    box("Hammer", (0.02, 0.008, 0.02), (-0.06, 0, 0.05), m["steel"], rot=(0, 30, 0))
-    prism("Grip", [(-0.06, 0.0), (-0.01, 0.0), (-0.03, -0.11), (-0.09, -0.1)], 0.032, m["wood"])
-    box("TriggerGuard", (0.045, 0.01, 0.005), (0.01, 0, -0.015), m["chrome"])
-    box("FrontSight", (0.01, 0.004, 0.012), (0.05 + b, 0, 0.052), m["steel"])
-    return dict(muzzle=0.06 + b, sight=0.058)
+    st = m["chrome"]
+    x0 = 0.058  # front of frame / start of barrel
+    o = lathe("Barrel", [(0.0, 0.0), (0.0095, 0.0), (0.0095, b - 0.004), (0.0085, b), (0.004, b), (0.004, b - 0.01), (0.0, b - 0.01)], st, segs=28)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (x0, 0, 0.036)
+    box("Rib", (b, 0.012, 0.009), (x0 + b / 2, 0, 0.046), st, bevel=0.002)
+    for k in range(int(b / 0.008)):
+        box(f"RibVent{k}", (0.004, 0.0122, 0.002), (x0 + 0.006 + k * 0.008, 0, 0.0505), m["dark"], bevel=0)
+    box("Lug", (b * 0.92, 0.017, 0.02), (x0 + b * 0.46, 0, 0.02), st, bevel=0.004)
+    box("Ramp", (0.016, 0.004, 0.014), (x0 + b - 0.01, 0, 0.056), st, rot=(0, -10, 0), bevel=0.001)
+    box("RampInsert", (0.006, 0.0042, 0.004), (x0 + b - 0.012, 0, 0.06), m["red"], bevel=0)
+    # frame: lower frame, top strap over the cylinder window, recoil shield
+    prism("Frame", [(-0.045, -0.002), (0.06, -0.002), (0.06, 0.012), (0.035, 0.012), (0.035, 0.008), (-0.03, 0.008), (-0.04, 0.03), (-0.048, 0.04), (-0.06, 0.038), (-0.065, 0.02)], 0.03, st, bevel=0.002)
+    box("TopStrap", (0.08, 0.022, 0.009), (0.022, 0, 0.0545), st, bevel=0.003)
+    box("RearSight", (0.012, 0.016, 0.007), (-0.02, 0, 0.061), m["dark"], bevel=0.001)
+    box("RecoilShield", (0.008, 0.032, 0.05), (-0.014, 0, 0.033), st, bevel=0.003)
+    box("Yoke", (0.008, 0.03, 0.045), (0.054, 0, 0.033), st, bevel=0.002)
+    # fluted cylinder with chamber mouths and a latch
+    cx, cz = 0.02, 0.032
+    o = lathe("Cylinder", [(0.0, -0.022), (0.019, -0.022), (0.021, -0.02), (0.021, 0.02), (0.019, 0.022), (0.0, 0.022)], st, segs=36)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (cx, 0, cz)
+    for k in range(6):
+        a = k * math.pi / 3 + math.pi / 6
+        box(f"Flute{k}", (0.026, 0.006, 0.004), (cx - 0.002, math.cos(a) * 0.0205, cz + math.sin(a) * 0.0205), m["dark"], rot=(math.degrees(a) + 90, 0, 0), bevel=0.0015)
+        a2 = k * math.pi / 3
+        cyl(f"Chamber{k}", 0.0048, 0.002, (cx + 0.0222, math.cos(a2) * 0.0115, cz + math.sin(a2) * 0.0115), m["dark"], verts=12)
+        cyl(f"Case{k}", 0.0047, 0.001, (cx - 0.0225, math.cos(a2) * 0.0115, cz + math.sin(a2) * 0.0115), m["brass"], verts=12)
+    cyl("Ejector", 0.004, 0.02, (cx + 0.032, 0, cz), st, verts=12)
+    box("Latch", (0.012, 0.004, 0.008), (-0.006, 0.0165, 0.034), m["dark"], bevel=0.001)
+    # hammer with checkered spur, trigger and guard
+    prism("Hammer", [(-0.05, 0.036), (-0.04, 0.036), (-0.039, 0.05), (-0.046, 0.06), (-0.062, 0.062), (-0.06, 0.056), (-0.05, 0.052)], 0.008, m["steel"], bevel=0.0008)
+    prism("Trigger", [(0.008, 0.006), (0.014, 0.006), (0.01, -0.012), (0.004, -0.028), (0.0, -0.026), (0.006, -0.01)], 0.006, m["steel"], bevel=0.0006)
+    tube("Guard", [(0.032, 0, 0.0), (0.033, 0, -0.018), (0.024, 0, -0.033), (0.004, 0, -0.037), (-0.012, 0, -0.03), (-0.02, 0, -0.015)], [0.0028] * 6, st, segs=8)
+    # wooden grip with finger grooves and a medallion
+    pts = [(-0.02, 0.0), (-0.032, -0.03), (-0.03, -0.045), (-0.036, -0.06), (-0.034, -0.075), (-0.04, -0.09), (-0.05, -0.108),
+           (-0.09, -0.106), (-0.096, -0.09), (-0.088, -0.05), (-0.072, -0.012), (-0.065, 0.0), (-0.05, 0.012)]
+    prism("Grip", pts, 0.036, m["wood"], bevel=0.004)
+    for sy in (-1, 1):
+        cyl(f"Medallion{sy}", 0.006, 0.002, (-0.065, sy * 0.0185, -0.035), m["gold"], axis="Y", verts=16)
+        cyl(f"GripScrew{sy}", 0.0025, 0.002, (-0.06, sy * 0.0186, -0.065), st, axis="Y", verts=10)
+    box("ButtCap", (0.045, 0.034, 0.004), (-0.07, 0, -0.107), st, bevel=0.0012)
+    return dict(muzzle=x0 + b, sight=0.064)
+
+
+def build_p90(p, m):
+    """Bullpen PDW: rounded polymer shell, thumbhole grip, front hand loop, see-through top magazine."""
+    poly = m["poly"]
+    pts = [(-0.3, -0.035), (-0.29, -0.07), (-0.26, -0.1), (-0.21, -0.105), (-0.16, -0.075), (-0.11, -0.045), (-0.05, -0.04),
+           (0.08, -0.04), (0.14, -0.03), (0.18, -0.015), (0.2, 0.01), (0.2, 0.028), (0.175, 0.05), (0.12, 0.06), (-0.27, 0.06), (-0.3, 0.035)]
+    prism("Shell", pts, 0.055, poly, bevel=0.008)
+    # thumbhole grip and the front loop for the support hand
+    prism("Grip", [(-0.06, -0.04), (-0.02, -0.04), (-0.03, -0.12), (-0.07, -0.12), (-0.08, -0.08)], 0.04, poly, bevel=0.006)
+    prism("Loop", [(0.06, -0.04), (0.1, -0.04), (0.12, -0.1), (0.11, -0.13), (0.06, -0.13), (0.06, -0.12), (0.1, -0.115), (0.085, -0.06), (0.06, -0.06)], 0.035, poly, bevel=0.004)
+    box("Trigger", (0.006, 0.008, 0.022), (0.035, 0, -0.06), m["steel"], bevel=0.001)
+    tube("Guard", [(0.06, 0, -0.06), (0.06, 0, -0.08), (0.04, 0, -0.085), (0.005, 0, -0.08), (-0.015, 0, -0.06)], [0.003] * 5, poly, segs=8)
+    # magazine on top: smoky translucent body with the rounds visible inside
+    box("Mag", (0.32, 0.05, 0.024), (-0.07, 0, 0.073), col((0.12, 0.12, 0.1), 0, 0.15), bevel=0.004)
+    for k in range(24):
+        box(f"Round{k}", (0.006, 0.044, 0.006), (-0.215 + k * 0.012, 0, 0.073), m["brass"], rot=(0, 0, 70 if k % 2 else -70), bevel=0.001)
+    box("MagCatch", (0.02, 0.04, 0.012), (-0.25, 0, 0.068), poly, bevel=0.002)
+    # optic rail, ring sight and muzzle
+    box("Rail", (0.12, 0.022, 0.008), (0.05, 0, 0.09), m["dark"], bevel=0.001)
+    for k in range(8):
+        box(f"RailSlot{k}", (0.004, 0.0225, 0.003), (0.0 + k * 0.014, 0, 0.0945), poly, bevel=0)
+    o = lathe("Sight", [(0.012, -0.015), (0.016, -0.015), (0.016, 0.015), (0.012, 0.015)], m["dark"], segs=24)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0.06, 0, 0.115)
+    box("SightBase", (0.03, 0.02, 0.012), (0.06, 0, 0.098), m["dark"], bevel=0.002)
+    cyl("SightLens", 0.012, 0.002, (0.075, 0, 0.115), m["lens"], verts=24)
+    o = lathe("Muzzle", [(0.0, 0.0), (0.012, 0.0), (0.012, 0.03), (0.009, 0.035), (0.004, 0.035), (0.0, 0.03)], m["dark"], segs=20)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0.198, 0, 0.022)
+    box("Selector", (0.04, 0.058, 0.01), (-0.04, 0, -0.04), m["dark"], bevel=0.002)
+    for sy in (-1, 1):
+        box(f"Groove{sy}", (0.3, 0.002, 0.004), (-0.05, sy * 0.0276, 0.0), m["dark"], bevel=0)
+        box(f"Cocking{sy}", (0.02, 0.006, 0.01), (0.12, sy * 0.03, 0.03), m["dark"], bevel=0.002)
+    box("Sling", (0.01, 0.06, 0.008), (-0.28, 0, 0.0), m["steel"], bevel=0.002)
+    return dict(muzzle=0.235, sight=0.115)
 
 
 def build_pistolknife(p, m):
@@ -1627,7 +1698,7 @@ def _(p, m):
 
 WEAPON_BUILDERS = dict(overunder=build_overunder, m72=build_m72, daneaxe=build_daneaxe, spear=build_spear, bow=build_bow,
                        flare=build_flare, printed=build_printed, printknife=build_printknife,
-                       pistol=build_pistol, revolver=build_revolver, pistolknife=build_pistolknife, rifle=build_rifle,
+                       pistol=build_pistol, revolver=build_revolver, p90=build_p90, pistolknife=build_pistolknife, rifle=build_rifle,
                        bolt=build_bolt, musket=build_musket, shotgun=build_shotgun, launcher=build_launcher,
                        m79=build_m79, crossbow=build_crossbow, knife=build_knife, axe=build_axe, bat=build_bat,
                        crowbar=build_crowbar, pan=build_pan, vest=build_vest, exo=build_exo, helmet=build_helmet)

@@ -449,8 +449,8 @@
  },
  "P90": {
   "mesh": "SM_P90",
-  "muzzle": 0.22999999999999998,
-  "sight": 0.1
+  "muzzle": 0.235,
+  "sight": 0.115
  },
  "PKM": {
   "mesh": "SM_PKM",
@@ -525,8 +525,8 @@
  },
  "Revolver": {
   "mesh": "SM_Revolver",
-  "muzzle": 0.21,
-  "sight": 0.058
+  "muzzle": 0.208,
+  "sight": 0.064
  },
  "Risgrot": {
   "mesh": "SM_Risgrot"
