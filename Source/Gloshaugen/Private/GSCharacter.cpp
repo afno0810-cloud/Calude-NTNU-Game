@@ -2777,8 +2777,22 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		const float Kick = Since < 0.3f ? FMath::Exp(-Since * 14.f) : 0.f;
 		const float Bob = FMath::Sin(GetWorld()->GetTimeSeconds() * (bSprinting ? 13.f : 8.5f)) * FMath::Min(Spd / 600.f, 1.f);
 		const FVector Shoulder(5.f, 18.f, bIsCrouched ? 10.f : 48.f);
-		const FRotator Aim(FMath::Lerp(AimPitch, -35.f, TPSprint) + 8.f * Kick, FMath::Lerp(0.f, -40.f, TPSprint), 0.f);
-		TPWeaponMesh->SetRelativeLocation(Shoulder + Aim.RotateVector(FVector(30.f - 6.f * Kick, 0.f, -6.f)) + FVector(0.f, 0.f, Bob * 2.f));
+		FRotator Aim(FMath::Lerp(AimPitch, -35.f, TPSprint) + 8.f * Kick, FMath::Lerp(0.f, -40.f, TPSprint), 0.f);
+		// Melee swing seen by others: raise to the right, sweep across in front of the body
+		const float MSince = GetWorld()->GetTimeSeconds() - LastMeleeTime;
+		float Reach = 0.f;
+		if (MSince < 0.45f)
+		{
+			const float Up = FMath::Clamp(MSince / 0.08f, 0.f, 1.f);
+			const float Sweep = FMath::Clamp((MSince - 0.08f) / 0.14f, 0.f, 1.f);
+			const float Back = FMath::Clamp((MSince - 0.22f) / 0.23f, 0.f, 1.f);
+			const float W = (1.f - Back);
+			Aim.Pitch += W * (25.f * Up - 45.f * Sweep);
+			Aim.Yaw += W * (50.f * Up - 110.f * Sweep);
+			Aim.Roll += W * 30.f * Sweep;
+			Reach = W * 12.f * FMath::Sin(Sweep * PI);
+		}
+		TPWeaponMesh->SetRelativeLocation(Shoulder + Aim.RotateVector(FVector(30.f - 6.f * Kick + Reach, 0.f, -6.f)) + FVector(0.f, 0.f, Bob * 2.f));
 		TPWeaponMesh->SetRelativeRotation(Aim);
 	}
 
