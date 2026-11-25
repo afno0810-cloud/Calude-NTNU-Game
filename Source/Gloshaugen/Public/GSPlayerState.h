@@ -14,4 +14,6 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly) int32 Kills = 0;
 	UPROPERTY(Replicated, BlueprintReadOnly) int32 Deaths = 0;
+	/** Lobby: this player pressed Enter and is ready for the match. */
+	UPROPERTY(Replicated, BlueprintReadOnly) bool bReady = false;
 };

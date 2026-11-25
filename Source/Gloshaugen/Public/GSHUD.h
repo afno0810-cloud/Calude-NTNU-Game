@@ -32,6 +32,8 @@ protected:
 	void DrawCompass(AGSCharacter* C);
 	/** Always-on minimap (player-up, rotates with you): roads, buildings with their names, loot beams, you. */
 	void DrawMinimap(AGSCharacter* C);
+	/** Lobby list with ready marks, countdown, match clock and the winner screen. */
+	void DrawMatch();
 	/** Fills a convex polygon (screen space) clipped to a rectangle. */
 	void FillClipped(TArray<FVector2D> Poly, const FBox2D& Clip, const FLinearColor& Color);
 	void DrawInventory(AGSCharacter* C);

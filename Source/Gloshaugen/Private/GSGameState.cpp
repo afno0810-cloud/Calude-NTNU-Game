@@ -16,6 +16,9 @@ void AGSGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AGSGameState, StartHour);
 	DOREPLIFETIME(AGSGameState, ClockStartedAt);
 	DOREPLIFETIME(AGSGameState, KillFeed);
+	DOREPLIFETIME(AGSGameState, Phase);
+	DOREPLIFETIME(AGSGameState, PhaseEndsAt);
+	DOREPLIFETIME(AGSGameState, Winner);
 }
 
 EGSWeather AGSGameState::RollWeather(EGSWeather Avoid) const

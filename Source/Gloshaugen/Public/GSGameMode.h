@@ -20,7 +20,18 @@ public:
 
 	static constexpr float RespawnDelay = 4.f;
 
+	virtual void Tick(float DeltaSeconds) override;
+	/** Lobby: a player toggles ready. */
+	void SetReady(AController* Who, bool bReady);
+	/** Damage only counts while a match is running (the lobby is warm-up). */
+	bool DamageEnabled() const;
+
 protected:
+	void StartCountdown();
+	void StartMatch();
+	void EndMatch();
+	void BackToLobby();
+	float LobbyStartedAt = 0.f;
 	FTransform PickSpawnTransform() const;
 	void SpawnPickups();
 	/** PCs, 3D printers and security cameras in the buildings and around campus. */

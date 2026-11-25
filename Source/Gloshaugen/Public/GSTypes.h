@@ -14,6 +14,15 @@ enum class EGSWeather : uint8
 	MAX UMETA(Hidden)
 };
 
+UENUM()
+enum class EGSMatchPhase : uint8
+{
+	Lobby,
+	Countdown,
+	Playing,
+	Ended,
+};
+
 /** Attachment bits stored on a weapon slot. */
 namespace GSAttach
 {

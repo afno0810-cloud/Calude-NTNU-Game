@@ -20,6 +20,125 @@ AGSGameMode::AGSGameMode()
 	GameStateClass = AGSGameState::StaticClass();
 	HUDClass = AGSHUD::StaticClass();
 	bUseSeamlessTravel = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickInterval = 0.25f;
+}
+
+bool AGSGameMode::DamageEnabled() const
+{
+	const AGSGameState* GS = GetGameState<AGSGameState>();
+	return !GS || GS->Phase == EGSMatchPhase::Playing;
+}
+
+void AGSGameMode::SetReady(AController* Who, bool bReady)
+{
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	AGSPlayerState* PS = Who ? Who->GetPlayerState<AGSPlayerState>() : nullptr;
+	if (!GS || !PS || (GS->Phase != EGSMatchPhase::Lobby && GS->Phase != EGSMatchPhase::Countdown)) return;
+	PS->bReady = bReady;
+	if (!bReady && GS->Phase == EGSMatchPhase::Countdown)
+	{
+		GS->Phase = EGSMatchPhase::Lobby; // someone changed their mind
+	}
+}
+
+void AGSGameMode::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	if (!GS) return;
+	const float Now = GS->GetServerWorldTimeSeconds();
+	switch (GS->Phase)
+	{
+	case EGSMatchPhase::Lobby:
+	{
+		// Start when everyone is ready, or automatically after 90 s with at least two players.
+		int32 Total = 0, Ready = 0;
+		for (APlayerState* P : GS->PlayerArray)
+		{
+			if (const AGSPlayerState* PS = Cast<AGSPlayerState>(P)) { ++Total; Ready += PS->bReady ? 1 : 0; }
+		}
+		if (Total > 0 && Ready == Total) StartCountdown();
+		else if (Total >= 2 && Now - LobbyStartedAt > 90.f) StartCountdown();
+		break;
+	}
+	case EGSMatchPhase::Countdown:
+		if (Now >= GS->PhaseEndsAt) StartMatch();
+		break;
+	case EGSMatchPhase::Playing:
+	{
+		bool bLimit = false;
+		for (APlayerState* P : GS->PlayerArray)
+		{
+			if (const AGSPlayerState* PS = Cast<AGSPlayerState>(P)) bLimit |= PS->Kills >= AGSGameState::KillLimit;
+		}
+		if (bLimit || Now >= GS->PhaseEndsAt) EndMatch();
+		break;
+	}
+	case EGSMatchPhase::Ended:
+		if (Now >= GS->PhaseEndsAt) BackToLobby();
+		break;
+	}
+}
+
+void AGSGameMode::StartCountdown()
+{
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	GS->Phase = EGSMatchPhase::Countdown;
+	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + AGSGameState::CountdownSeconds;
+}
+
+void AGSGameMode::StartMatch()
+{
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	GS->Phase = EGSMatchPhase::Playing;
+	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + AGSGameState::MatchMinutes * 60.f;
+	GS->Winner.Empty();
+	GS->KillFeed.Reset();
+	// Everyone starts fresh: scores to zero, new body at a random spawn with empty pockets.
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		if (AGSPlayerState* PS = Cast<AGSPlayerState>(P)) { PS->Kills = 0; PS->Deaths = 0; PS->SetScore(0.f); }
+	}
+	TArray<AController*> Players;
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		if (AController* C = P ? P->GetOwningController() : nullptr) Players.Add(C);
+	}
+	for (AController* C : Players)
+	{
+		if (APawn* Old = C->GetPawn())
+		{
+			C->UnPossess();
+			Old->Destroy();
+		}
+		RestartPlayer(C);
+	}
+}
+
+void AGSGameMode::EndMatch()
+{
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	const AGSPlayerState* Best = nullptr;
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		const AGSPlayerState* PS = Cast<AGSPlayerState>(P);
+		if (PS && (!Best || PS->Kills > Best->Kills || (PS->Kills == Best->Kills && PS->Deaths < Best->Deaths))) Best = PS;
+	}
+	GS->Winner = Best ? Best->GetPlayerName() : FString();
+	GS->Phase = EGSMatchPhase::Ended;
+	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + AGSGameState::ResultsSeconds;
+}
+
+void AGSGameMode::BackToLobby()
+{
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	GS->Phase = EGSMatchPhase::Lobby;
+	LobbyStartedAt = GS->GetServerWorldTimeSeconds();
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		if (AGSPlayerState* PS = Cast<AGSPlayerState>(P)) PS->bReady = false;
+	}
 }
 
 void AGSGameMode::BeginPlay()

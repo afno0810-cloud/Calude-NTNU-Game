@@ -25,6 +25,7 @@
 #include "EngineUtils.h"
 #include "TimerManager.h"
 #include "GSAudio.h"
+#include "GSGameMode.h"
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
@@ -2085,6 +2086,11 @@ void AGSCharacter::ClientToast_Implementation(const FString& Message)
 float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	if (!HasAuthority() || bDead) return 0.f;
+	// Lobby / countdown / results: warm-up, nobody gets hurt.
+	if (const AGSGameMode* GM = GetWorld()->GetAuthGameMode<AGSGameMode>())
+	{
+		if (!GM->DamageEnabled()) return 0.f;
+	}
 
 	bool bHeadshot = false;
 	float Damage = DamageAmount;

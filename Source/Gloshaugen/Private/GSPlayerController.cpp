@@ -1,6 +1,8 @@
 #include "GSPlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "GSHUD.h"
+#include "GSGameMode.h"
+#include "GSPlayerState.h"
 #include "GSCharacter.h"
 #include "GSTerminal.h"
 #include "EngineUtils.h"
@@ -57,6 +59,7 @@ void AGSPlayerController::EnsureInputCreated()
 	NextWeaponAction = MakeAction(this, TEXT("IA_NextWeapon"), EInputActionValueType::Boolean);
 	ScoreboardAction = MakeAction(this, TEXT("IA_Scoreboard"), EInputActionValueType::Boolean);
 	InspectAction = MakeAction(this, TEXT("IA_Inspect"), EInputActionValueType::Boolean);
+	ReadyAction = MakeAction(this, TEXT("IA_Ready"), EInputActionValueType::Boolean);
 
 	MappingContext = NewObject<UInputMappingContext>(this, TEXT("IMC_Gloshaugen"));
 	UInputMappingContext* C = MappingContext;
@@ -102,6 +105,7 @@ void AGSPlayerController::EnsureInputCreated()
 	C->MapKey(NextWeaponAction, EKeys::MouseScrollUp);
 	C->MapKey(ScoreboardAction, EKeys::Tab);
 	C->MapKey(InspectAction, EKeys::T);
+	C->MapKey(ReadyAction, EKeys::Enter);
 }
 
 void AGSPlayerController::SetupInputComponent()
@@ -123,7 +127,19 @@ void AGSPlayerController::SetupInputComponent()
 		EIC->BindAction(ScoreboardAction, ETriggerEvent::Started, this, &AGSPlayerController::ShowScoreboard);
 		EIC->BindAction(ScoreboardAction, ETriggerEvent::Completed, this, &AGSPlayerController::HideScoreboard);
 		EIC->BindAction(InventoryAction, ETriggerEvent::Started, this, &AGSPlayerController::ToggleInventory);
+		EIC->BindAction(ReadyAction, ETriggerEvent::Started, this, &AGSPlayerController::ToggleReady);
 	}
+}
+
+void AGSPlayerController::ToggleReady()
+{
+	const AGSPlayerState* PS = GetPlayerState<AGSPlayerState>();
+	ServerSetReady(!(PS && PS->bReady));
+}
+
+void AGSPlayerController::ServerSetReady_Implementation(bool bReady)
+{
+	if (AGSGameMode* GM = GetWorld()->GetAuthGameMode<AGSGameMode>()) GM->SetReady(this, bReady);
 }
 
 void AGSPlayerController::Host()

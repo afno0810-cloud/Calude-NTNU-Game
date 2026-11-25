@@ -46,6 +46,10 @@ public:
 	UPROPERTY() TObjectPtr<UInputAction> NextWeaponAction;
 	UPROPERTY() TObjectPtr<UInputAction> ScoreboardAction;
 	UPROPERTY() TObjectPtr<UInputAction> InspectAction;
+	UPROPERTY() TObjectPtr<UInputAction> ReadyAction;
+	/** Lobby: Enter toggles ready. */
+	void ToggleReady();
+	UFUNCTION(Server, Reliable) void ServerSetReady(bool bReady);
 
 	// --- PCs and 3D printers ---
 	bool IsOnTerminal() const { return ActiveTerminal.IsValid(); }

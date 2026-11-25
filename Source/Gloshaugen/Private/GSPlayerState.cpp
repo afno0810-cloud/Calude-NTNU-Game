@@ -6,4 +6,5 @@ void AGSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AGSPlayerState, Kills);
 	DOREPLIFETIME(AGSPlayerState, Deaths);
+	DOREPLIFETIME(AGSPlayerState, bReady);
 }

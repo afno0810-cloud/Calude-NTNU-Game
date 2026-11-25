@@ -118,6 +118,7 @@ void AGSHUD::DrawHUD()
 	}
 
 	DrawTopRight();
+	DrawMatch();
 	DrawKillFeed();
 	DrawHelp();
 
@@ -503,6 +504,69 @@ void AGSHUD::DrawMinimap(AGSCharacter* C)
 	{
 		const FString Where = HereDist < 2.f ? FString::Printf(TEXT("I %s"), Here->Name) : FString::Printf(TEXT("Ved %s"), Here->Name);
 		Text(Where.Replace(TEXT("_"), TEXT(" ")), X0 + Size * 0.5f, Y0 + Size + 8.f, FLinearColor(0.9f, 0.95f, 1.f, 0.9f), 0.75f, true);
+	}
+}
+
+void AGSHUD::DrawMatch()
+{
+	const AGSGameState* GS = GetWorld()->GetGameState<AGSGameState>();
+	if (!GS) return;
+	const float CX = Canvas->SizeX * 0.5f;
+	const float Left = GS->PhaseSecondsLeft();
+	const int32 Sec = FMath::CeilToInt(Left);
+	switch (GS->Phase)
+	{
+	case EGSMatchPhase::Lobby:
+	case EGSMatchPhase::Countdown:
+	{
+		const int32 N = GS->PlayerArray.Num();
+		const float W = 420.f, H = 90.f + N * 24.f;
+		const float X = CX - W * 0.5f, Y = 60.f;
+		Box(X, Y, W, H, FLinearColor(0.02f, 0.03f, 0.06f, 0.7f));
+		Frame(X, Y, W, H, FLinearColor(0.4f, 0.6f, 1.f, 0.6f), 2.f);
+		Text(TEXT("LOBBY  -  oppvarming, ingen skade"), CX, Y + 10.f, FLinearColor(0.7f, 0.85f, 1.f), 1.1f, true);
+		float RY = Y + 44.f;
+		const AGSPlayerState* Mine = PlayerOwner ? PlayerOwner->GetPlayerState<AGSPlayerState>() : nullptr;
+		for (APlayerState* P : GS->PlayerArray)
+		{
+			const AGSPlayerState* PS = Cast<AGSPlayerState>(P);
+			if (!PS) continue;
+			const bool bMe = PS == Mine;
+			Text(PS->GetPlayerName() + (bMe ? TEXT("  (deg)") : TEXT("")), X + 24.f, RY, bMe ? FLinearColor(0.5f, 0.85f, 1.f) : FLinearColor::White, 0.9f);
+			Text(PS->bReady ? TEXT("KLAR") : TEXT("venter"), X + W - 24.f, RY, PS->bReady ? FLinearColor(0.3f, 1.f, 0.4f) : FLinearColor(1.f, 0.7f, 0.3f), 0.9f, false, true);
+			RY += 24.f;
+		}
+		if (GS->Phase == EGSMatchPhase::Countdown)
+		{
+			Text(FString::Printf(TEXT("Kampen starter om %d"), Sec), CX, Y + H + 14.f, FLinearColor(1.f, 0.85f, 0.3f), 2.2f, true);
+		}
+		else
+		{
+			const bool bReady = Mine && Mine->bReady;
+			Text(bReady ? TEXT("Du er klar. Trykk Enter for \u00E5 angre.") : TEXT("Trykk Enter n\u00E5r du er klar"),
+				CX, Y + H - 26.f, FLinearColor(1.f, 1.f, 1.f, 0.85f), 0.85f, true);
+			Text(FString::Printf(TEXT("F\u00F8rst til %d drap eller %d minutter"), AGSGameState::KillLimit, int32(AGSGameState::MatchMinutes)),
+				CX, Y + H + 8.f, FLinearColor(0.8f, 0.8f, 0.8f, 0.8f), 0.75f, true);
+		}
+		break;
+	}
+	case EGSMatchPhase::Playing:
+	{
+		const FString Clock = FString::Printf(TEXT("%d:%02d"), Sec / 60, Sec % 60);
+		Box(CX - 70.f, 46.f, 140.f, 30.f, FLinearColor(0.f, 0.f, 0.f, 0.45f));
+		Text(Clock, CX, 50.f, Sec < 60 ? FLinearColor(1.f, 0.4f, 0.3f) : FLinearColor::White, 1.2f, true);
+		break;
+	}
+	case EGSMatchPhase::Ended:
+	{
+		Box(0.f, Canvas->SizeY * 0.3f, Canvas->SizeX, 130.f, FLinearColor(0.f, 0.f, 0.f, 0.6f));
+		Text(TEXT("KAMPEN ER OVER"), CX, Canvas->SizeY * 0.3f + 14.f, FLinearColor(1.f, 0.85f, 0.3f), 2.2f, true);
+		Text(GS->Winner.IsEmpty() ? FString(TEXT("Ingen vinner")) : FString::Printf(TEXT("Vinner: %s"), *GS->Winner),
+			CX, Canvas->SizeY * 0.3f + 66.f, FLinearColor::White, 1.4f, true);
+		Text(FString::Printf(TEXT("Tilbake til lobbyen om %d"), Sec), CX, Canvas->SizeY * 0.3f + 100.f, FLinearColor(0.8f, 0.8f, 0.8f), 0.8f, true);
+		DrawScoreboard();
+		break;
+	}
 	}
 }
 
