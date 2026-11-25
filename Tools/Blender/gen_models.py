@@ -159,6 +159,50 @@ def arc_path(n, length, bend, axis_len="X"):
     return [((i / (n - 1) - 0.5) * length, 0.0, bend * (1 - (2 * i / (n - 1) - 1) ** 2)) for i in range(n)]
 
 
+def loft(name, stations, mat, segs=20, power=2.6):
+    """Rounded solid along X from (x, z_bottom, z_top, half_width) stations: each cross-section is a
+    superellipse, so stocks and forends get soft rounded edges and can taper and swell."""
+    me = bpy.data.meshes.new(name)
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    bm = bmesh.new()
+    rings = []
+    e = 2.0 / power
+    for x, zb, zt, hw in stations:
+        zc, hh = (zb + zt) / 2, (zt - zb) / 2
+        ring = []
+        for k in range(segs):
+            a = 2 * math.pi * k / segs
+            c, sn = math.cos(a), math.sin(a)
+            y = hw * math.copysign(abs(c) ** e, c)
+            z = zc + hh * math.copysign(abs(sn) ** e, sn)
+            ring.append(bm.verts.new((x, y, z)))
+        rings.append(ring)
+    for a, b in zip(rings, rings[1:]):
+        for k in range(segs):
+            j = (k + 1) % segs
+            bm.faces.new((a[k], a[j], b[j], b[k]))
+    bm.faces.new(rings[0][::-1])
+    bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(me)
+    bm.free()
+    o.data.materials.append(mat)
+    for f in me.polygons:
+        f.use_smooth = True
+    return o
+
+
+def _interp(pts, x):
+    """Piecewise linear lookup in a list of (x, v) sorted by x."""
+    if x <= pts[0][0]:
+        return pts[0][1]
+    for (xa, va), (xb, vb) in zip(pts, pts[1:]):
+        if x <= xb:
+            return va + (vb - va) * (x - xa) / max(xb - xa, 1e-9)
+    return pts[-1][1]
+
+
 def rotated(o, rot_deg):
     o.rotation_euler = [math.radians(a) for a in rot_deg]
     return o
@@ -359,11 +403,15 @@ def build_rifle(p, m):
     elif hstyle == "round":
         cyl("Handguard", 0.026, hlen, (x1 + hlen / 2, 0, bz), hmat, verts=16)
     elif hstyle == "ak":
-        box("HandguardLow", (hlen, 0.05, 0.04), (x1 + hlen / 2, 0, bz - 0.01), hmat)
+        loft("HandguardLow", [(x1 + hlen * t, bz - 0.032, bz + 0.012, 0.025 - 0.002 * math.sin(t * math.pi)) for t in [i / 8 for i in range(9)]], hmat, segs=18, power=2.6)
+        for k in range(3):
+            box(f"HgGroove{k}", (hlen * 0.6, 0.0505, 0.003), (x1 + hlen * 0.5, 0, bz - 0.022 + k * 0.01), m["dark"], bevel=0)
         cyl("HandguardTop", 0.016, hlen * 0.7, (x1 + hlen * 0.35, 0, bz + 0.028), hmat)
     elif hstyle == "full":
-        box("Forend", (hlen, 0.042, 0.035), (x1 + hlen / 2, 0, bz - 0.012), hmat)
-        box("UpperGuard", (hlen * 0.6, 0.03, 0.015), (x1 + hlen * 0.3, 0, bz + 0.015), hmat)
+        loft("Forend", [(x1 + hlen * t, bz - 0.03 + 0.006 * t * t, bz + 0.006 - 0.002 * t, 0.021 - 0.003 * t) for t in [i / 10 for i in range(11)]], hmat, segs=18, power=2.6)
+        loft("UpperGuard", [(x1 + hlen * 0.6 * t, bz + 0.004, bz + 0.022 - 0.003 * t, 0.015 - 0.002 * t) for t in [i / 6 for i in range(7)]], hmat, segs=16, power=2.2)
+        for k in range(2):
+            box(f"Band{k}", (0.01, 0.046, 0.06), (x1 + hlen * (0.35 + 0.55 * k), 0, bz - 0.004), m["steel"], bevel=0.003)
     elif hstyle == "jacket":
         cyl("Jacket", 0.02, hlen, (x1 + hlen / 2, 0, bz), hmat, verts=20)
         for i in range(int(hlen / 0.03)):
@@ -402,15 +450,24 @@ def build_rifle(p, m):
     if stock in ("wood", "fixed"):
         smat = m["wood"] if stock == "wood" else furn
         if p.get("wrist"):
-            prism("Stock", [(x0 - 0.34, -0.15), (x0 - 0.1, -0.1), (0.02, -0.06), (0.02, -0.03), (x0, top - 0.005),
-                            (x0 - 0.34, top - 0.02)], 0.044, smat, bevel=0.006)
+            # classic rifle stock: rounded, slimmer at the wrist, comb up to the receiver
+            bot = [(x0 - 0.34, -0.15), (x0 - 0.1, -0.1), (0.02, -0.06)]
+            topl = [(x0 - 0.34, top - 0.02), (x0, top - 0.005), (0.02, -0.03)]
+            wid = [(x0 - 0.34, 0.021), (x0 - 0.12, 0.02), (x0 - 0.02, 0.016), (0.02, 0.02)]
+            xs = [x0 - 0.34 + (0.02 - x0 + 0.34) * i / 16 for i in range(17)]
+            loft("Stock", [(x, _interp(bot, x), _interp(topl, x), _interp(wid, x)) for x in xs], smat, segs=20, power=3.0)
         else:
             # comb, heel, slightly curved butt, toe, and a belly that sweeps up into the grip
             L = 0.32
-            belly = [(x0 - L + L * t, -0.13 + 0.095 * (t ** 1.6)) for t in (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)]
-            prism("Stock", belly + [(x0 + 0.005, -0.035), (x0 + 0.005, top - 0.005), (x0 - 0.08, top - 0.008),
-                                    (x0 - 0.2, top - 0.016), (x0 - L, top - 0.018), (x0 - L - 0.004, (top - 0.13) / 2)],
-                  0.044, smat, bevel=0.007)
+            st = []
+            for i in range(15):
+                t = i / 14
+                x = x0 - L + (L + 0.005) * t
+                zb = -0.13 + 0.095 * (t ** 1.6)
+                zt = top - 0.018 + 0.013 * t
+                hw = 0.021 - 0.003 * math.sin(t * math.pi) + 0.001 * t
+                st.append((x, zb, zt, hw))
+            loft("Stock", st, smat, segs=20, power=3.0)
             box("SlingStud", (0.01, 0.008, 0.012), (x0 - L + 0.07, 0, -0.118 + 0.007), m["steel"], bevel=0.002)
         box("ButtPad", (0.015, 0.046, top + 0.12), (x0 - 0.327, 0, (top - 0.13) / 2 - 0.005), m["rubber"])
     elif stock == "thumbhole":
@@ -424,8 +481,12 @@ def build_rifle(p, m):
         o.location = (x0, 0, top - 0.03)
         cyl("CastleNut", 0.018, 0.012, (x0 - 0.01, 0, top - 0.03), m["steel"], verts=8)
         box("EndPlate", (0.004, 0.03, 0.036), (x0 - 0.002, 0, top - 0.035), m["steel"], bevel=0.001)
-        prism("Butt", [(x0 - 0.25, -0.095), (x0 - 0.2, -0.09), (x0 - 0.16, -0.05), (x0 - 0.14, top - 0.045),
-                       (x0 - 0.14, top - 0.01), (x0 - 0.2, top + 0.002), (x0 - 0.25, top + 0.002)], 0.042, m["poly"], bevel=0.005)
+        bot = [(x0 - 0.25, -0.095), (x0 - 0.2, -0.09), (x0 - 0.16, -0.05), (x0 - 0.14, top - 0.045)]
+        topl = [(x0 - 0.25, top + 0.002), (x0 - 0.2, top + 0.002), (x0 - 0.14, top - 0.01)]
+        loft("Butt", [(x0 - 0.25 + 0.11 * i / 10, _interp(bot, x0 - 0.25 + 0.11 * i / 10), _interp(topl, x0 - 0.25 + 0.11 * i / 10),
+                       0.021 - 0.004 * i / 10) for i in range(11)], m["poly"], segs=18, power=3.2)
+        for k in range(3):
+            box(f"ButtSlot{k}", (0.03, 0.0425, 0.006), (x0 - 0.2, 0, -0.07 + k * 0.012), m["dark"], bevel=0.002)
         box("Cheek", (0.1, 0.044, 0.012), (x0 - 0.2, 0, top - 0.003), m["poly"], bevel=0.004)
         box("ButtPad", (0.012, 0.045, top + 0.1), (x0 - 0.254, 0, (top - 0.095) / 2), m["rubber"], bevel=0.003)
         box("Latch", (0.04, 0.012, 0.008), (x0 - 0.17, 0, -0.035), m["dark"], bevel=0.002)
