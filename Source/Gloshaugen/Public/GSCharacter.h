@@ -55,6 +55,8 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentSlot, BlueprintReadOnly) int32 CurrentSlot = 0;
 	UPROPERTY(Replicated, BlueprintReadOnly) TArray<FGSInvStack> Backpack;
 	UPROPERTY(Replicated, BlueprintReadOnly) int32 BackpackBonus = 0;
+	/** The backpack item you wear (others see it on your back). */
+	UPROPERTY(ReplicatedUsing = OnRep_Gear, BlueprintReadOnly) FName WornBackpack;
 	UPROPERTY(ReplicatedUsing = OnRep_Gear, BlueprintReadOnly) FName BodyArmor;
 	UPROPERTY(Replicated, BlueprintReadOnly) float ArmorPoints = 0.f;
 	UPROPERTY(ReplicatedUsing = OnRep_Gear, BlueprintReadOnly) FName Helmet;
@@ -123,6 +125,7 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> TPWeaponMesh;   // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> VestMesh;       // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> HelmetMesh;     // seen by others
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> BackpackMesh;   // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USpotLightComponent> Flashlight;
 
 	// Input handlers

@@ -204,6 +204,14 @@ AGSCharacter::AGSCharacter()
 	VestMesh->SetVisibility(false);
 	SetupVisual(VestMesh);
 
+	BackpackMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BackpackWorn"));
+	BackpackMesh->SetupAttachment(GetCapsuleComponent());
+	BackpackMesh->SetRelativeLocation(FVector(-24.f, 0.f, -2.f));
+	BackpackMesh->SetRelativeRotation(FRotator(0.f, 180.f, 0.f));
+	BackpackMesh->SetOwnerNoSee(true);
+	BackpackMesh->SetVisibility(false);
+	SetupVisual(BackpackMesh);
+
 	HelmetMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Helmet"));
 	HelmetMesh->SetupAttachment(GetCapsuleComponent());
 	HelmetMesh->SetRelativeLocation(FVector(0.f, 0.f, 82.f));
@@ -244,6 +252,7 @@ void AGSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AGSCharacter, CurrentSlot);
 	DOREPLIFETIME_CONDITION(AGSCharacter, Backpack, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AGSCharacter, BackpackBonus, COND_OwnerOnly);
+	DOREPLIFETIME(AGSCharacter, WornBackpack);
 	DOREPLIFETIME(AGSCharacter, BodyArmor);
 	DOREPLIFETIME_CONDITION(AGSCharacter, ArmorPoints, COND_OwnerOnly);
 	DOREPLIFETIME(AGSCharacter, Helmet);
@@ -1688,6 +1697,12 @@ void AGSCharacter::ApplyGearVisuals()
 	if (!BodyArmor.IsNone()) ShowItemOn(VestMesh, BodyArmor, FVector(0.68f, 0.68f, 0.5f), 1.6f);
 	HelmetMesh->SetVisibility(!Helmet.IsNone() && !bDead);
 	if (!Helmet.IsNone()) ShowItemOn(HelmetMesh, Helmet, FVector(0.32f, 0.32f, 0.18f), 1.15f);
+	BackpackMesh->SetVisibility(!WornBackpack.IsNone() && !bDead);
+	if (!WornBackpack.IsNone())
+	{
+		ShowItemOn(BackpackMesh, WornBackpack, FVector(0.2f, 0.32f, 0.45f), 1.f);
+		BackpackMesh->SetRelativeRotation(FRotator(0.f, 180.f, 0.f));
+	}
 	Flashlight->SetVisibility(bFlashlightOn && !bDead);
 }
 
@@ -1812,6 +1827,8 @@ int32 AGSCharacter::TakeFromPickup(AGSPickup* Pickup)
 			return 0;
 		}
 		BackpackBonus = Def->Slots;
+		WornBackpack = Def->Id;
+		ApplyGearVisuals();
 		ClientToast(FString::Printf(TEXT("%s: %d plasser i sekken"), *Def->Name, GetBackpackSlots()));
 		return 1;
 	}
@@ -2697,6 +2714,7 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		TPWeaponMesh->SetVisibility(bVisible && GetCurrentWeapon() != nullptr);
 		VestMesh->SetVisibility(bVisible && !BodyArmor.IsNone());
 		HelmetMesh->SetVisibility(bVisible && !Helmet.IsNone());
+		BackpackMesh->SetVisibility(bVisible && !WornBackpack.IsNone());
 	}
 
 	// Other players' weapons: held at the shoulder, pointing where they aim (up/down), lowered when
