@@ -729,19 +729,43 @@ def build_vest(p, m):
 
 def build_exo(p, m):
     metal = col((0.15, 0.16, 0.18), 0.8, 0.35)
+    carbon = col((0.03, 0.03, 0.035), 0.2, 0.45)
     glow = col((0.1, 0.8, 1.0), 0, 0.2)
-    cyl("Spine", 0.025, 0.6, (-0.15, 0, 0.0), metal, axis="Z")
-    box("ShoulderBar", (0.06, 0.5, 0.04), (-0.1, 0, 0.28), metal)
-    box("ChestPlate", (0.04, 0.3, 0.3), (0.14, 0, 0.08), metal, bevel=0.015)
-    box("Battery", (0.08, 0.18, 0.22), (-0.22, 0, 0.05), metal, bevel=0.01)
-    box("Glow", (0.005, 0.12, 0.02), (-0.262, 0, 0.1), glow)
-    box("ChestGlow", (0.005, 0.2, 0.012), (0.162, 0, 0.12), glow)
+    # segmented spine and backpack power unit
+    for i in range(9):
+        z = -0.24 + i * 0.062
+        box(f"Vert{i}", (0.04, 0.07 - abs(i - 4) * 0.004, 0.045), (-0.16, 0, z), metal, bevel=0.008)
+    box("Battery", (0.08, 0.2, 0.24), (-0.23, 0, 0.04), carbon, bevel=0.015)
+    for i in range(3):
+        box(f"Glow{i}", (0.004, 0.14, 0.008), (-0.271, 0, -0.02 + i * 0.04), glow, bevel=0)
+    box("NTNU", (0.004, 0.1, 0.02), (-0.271, 0, 0.13), m["white"], bevel=0)
+    # shoulder yoke and chest frame
+    yoke = [(0.12 * math.cos(math.radians(a)) - 0.05, 0.24 * math.sin(math.radians(a)), 0.3 - 0.03 * abs(math.sin(math.radians(a)))) for a in range(-110, 111, 20)]
+    yoke = [(-0.15, -0.24, 0.27)] + [(x, y, z) for (x, y, z) in yoke] + [(-0.15, 0.24, 0.27)]
+    tube("Yoke", [(y[0] if y[0] < 0.08 else 0.08, y[1], y[2]) for y in yoke], [0.022] * len(yoke), metal, segs=10)
+    box("ChestPlate", (0.03, 0.26, 0.26), (0.13, 0, 0.1), carbon, bevel=0.03)
+    box("ChestGlow", (0.004, 0.18, 0.01), (0.146, 0, 0.16), glow, bevel=0)
+    belt = [(0.17 * math.cos(math.radians(a)) - 0.02, 0.23 * math.sin(math.radians(a)), -0.25) for a in range(-150, 151, 15)]
+    tube("Belt", belt, [0.025] * len(belt), metal, segs=8, squash=(0.5, 1.4))
     for s in (-1, 1):
-        cyl(f"Thigh{s}", 0.02, 0.4, (0, s * 0.13, -0.5), metal, axis="Z")
-        cyl(f"Shin{s}", 0.02, 0.42, (0, s * 0.13, -0.95), metal, axis="Z")
-        sph(f"Knee{s}", 0.035, (0, s * 0.13, -0.72), metal)
-        box(f"Hip{s}", (0.2, 0.04, 0.06), (-0.05, s * 0.13, -0.28), metal)
-        cyl(f"Arm{s}", 0.018, 0.3, (-0.05, s * 0.25, 0.12), metal, axis="Z")
+        y = s * 0.13
+        # hip, thigh, knee actuator, shin, ankle and foot plate
+        cyl(f"HipMotor{s}", 0.045, 0.05, (-0.02, s * 0.215, -0.3), carbon, axis="Y", verts=24)
+        cyl(f"HipRing{s}", 0.03, 0.054, (-0.02, s * 0.215, -0.3), glow, axis="Y", verts=24)
+        tube(f"Thigh{s}", [(-0.02, s * 0.2, -0.32), (0.0, s * 0.17, -0.5), (0.01, y, -0.68)], [0.026, 0.022, 0.02], metal, segs=12)
+        box(f"ThighCuff{s}", (0.06, 0.09, 0.07), (0.03, y, -0.52), carbon, bevel=0.02)
+        cyl(f"Knee{s}", 0.04, 0.05, (0.01, y, -0.72), carbon, axis="Y", verts=24)
+        cyl(f"KneeCap{s}", 0.024, 0.056, (0.01, y, -0.72), glow, axis="Y", verts=20)
+        tube(f"Piston{s}", [(-0.045, y, -0.5), (-0.03, y, -0.68)], [0.012, 0.012], m["chrome"], segs=10)
+        tube(f"Shin{s}", [(0.01, y, -0.76), (0.0, y, -0.95), (-0.01, y, -1.1)], [0.02, 0.02, 0.018], metal, segs=12)
+        box(f"ShinCuff{s}", (0.06, 0.08, 0.06), (0.025, y, -0.9), carbon, bevel=0.018)
+        cyl(f"Ankle{s}", 0.025, 0.045, (-0.01, y, -1.11), carbon, axis="Y", verts=20)
+        box(f"Foot{s}", (0.24, 0.09, 0.02), (0.05, y, -1.15), carbon, bevel=0.008)
+        # cables from the battery to the hip motors
+        tube(f"Cable{s}", [(-0.24, s * 0.08, -0.08), (-0.2, s * 0.17, -0.2), (-0.06, s * 0.22, -0.28)], [0.007] * 3, m["dark"], segs=8)
+        # arm supports along the upper arms
+        tube(f"Arm{s}", [(-0.1, s * 0.25, 0.28), (-0.08, s * 0.27, 0.12), (-0.04, s * 0.27, -0.0)], [0.016, 0.014, 0.014], metal, segs=10)
+        cyl(f"Elbow{s}", 0.022, 0.03, (-0.04, s * 0.27, -0.0), carbon, axis="Y", verts=16)
     return None
 
 
@@ -1410,37 +1434,105 @@ def _(p, m):
 
 @item("grapple")
 def _(p, m):
-    box("Body", (0.2, 0.05, 0.06), (0.05, 0, 0.0), col((0.85, 0.4, 0.05)), bevel=0.01)
-    prism("Grip", [(-0.04, -0.03), (0.0, -0.03), (-0.02, -0.12), (-0.06, -0.11)], 0.032, m["poly"])
-    cyl("Barrel", 0.016, 0.1, (0.2, 0, 0.01), m["dark"])
-    cyl("Shaft", 0.006, 0.08, (0.28, 0, 0.01), m["steel"])
+    o = col((0.85, 0.4, 0.05), 0, 0.4)
+    box("Body", (0.2, 0.055, 0.065), (0.04, 0, 0.0), o, bevel=0.012)
+    box("TopRail", (0.12, 0.022, 0.01), (0.05, 0, 0.037), m["poly"], bevel=0.002)
+    prism("Grip", [(-0.035, -0.03), (0.005, -0.03), (-0.012, -0.125), (-0.058, -0.118)], 0.034, m["poly"], bevel=0.006)
+    tube("Guard", [(0.008, 0, -0.032), (0.035, 0, -0.04), (0.036, 0, -0.07), (0.0, 0, -0.075)], [0.004] * 4, m["poly"], segs=8)
+    box("Trigger", (0.006, 0.008, 0.022), (0.018, 0, -0.048), m["dark"], rot=(0, -15, 0), bevel=0.001)
+    b = lathe("Barrel", [(0.021, 0.0), (0.021, 0.02), (0.018, 0.025), (0.018, 0.11), (0.023, 0.115), (0.023, 0.13), (0.0, 0.13)], m["dark"], segs=24)
+    b.location = (0.14, 0, 0.005)
+    b.rotation_euler = (0, math.radians(90), 0)
+    # rope spool on the side and the rope running to the hook
+    cyl("Spool", 0.034, 0.03, (-0.02, -0.045, 0.01), m["dark"], axis="Y", verts=24)
+    cyl("Rope", 0.029, 0.026, (-0.02, -0.045, 0.01), col((0.9, 0.85, 0.7), 0, 0.95), axis="Y", verts=24)
+    cyl("SpoolCap", 0.036, 0.004, (-0.02, -0.062, 0.01), o, axis="Y", verts=24)
+    # three-prong hook in the muzzle
+    s = lathe("Shaft", [(0.007, 0.0), (0.007, 0.06), (0.011, 0.065), (0.0, 0.09)], m["steel"], segs=16)
+    s.location = (0.27, 0, 0.005)
+    s.rotation_euler = (0, math.radians(90), 0)
     for i in range(3):
-        a = i * 120
-        rotated(box(f"Prong{i}", (0.008, 0.006, 0.05), (0.3, 0, 0.01), m["steel"]), (a, -35, 0))
-    cyl("Spool", 0.025, 0.04, (0.0, 0, 0.05), m["dark"], axis="Y")
+        a = math.radians(i * 120 + 90)
+        dy, dz = math.cos(a), math.sin(a)
+        pts = []
+        for k in range(7):
+            t = k / 6
+            r = 0.006 + 0.05 * math.sin(t * math.pi * 0.85)
+            x = 0.33 - 0.06 * t + 0.02 * t * t
+            pts.append((x, dy * r, 0.005 + dz * r))
+        tube(f"Prong{i}", pts, [0.0055 - 0.0035 * k / 6 for k in range(7)], m["steel"], segs=8)
 
 
 @item("parachute")
 def _(p, m):
-    box("Pack", (0.12, 0.32, 0.42), (0, 0, 0.21), col((0.15, 0.2, 0.12)), bevel=0.03)
-    for s in (-1, 1):
-        box(f"Strap{s}", (0.03, 0.05, 0.45), (0.07, s * 0.11, 0.2), m["fabric"])
-    sph("Handle", 0.015, (0.08, 0.13, 0.15), m["red"])
+    c = col(p.get("color", (0.15, 0.2, 0.12)), 0, 0.85)
+    web = col((0.06, 0.06, 0.05), 0, 0.9)
+    box("Container", (0.14, 0.34, 0.4), (0, 0, 0.2), c, bevel=0.045)
+    box("Reserve", (0.13, 0.32, 0.13), (0.005, 0, 0.47), c, bevel=0.04)
+    box("FlapSeam", (0.142, 0.3, 0.006), (0, 0, 0.405), web, bevel=0.002)
+    for sy in (-1, 1):
+        box(f"SideFlap{sy}", (0.12, 0.012, 0.33), (-0.005, sy * 0.168, 0.2), col((0.12, 0.16, 0.1), 0, 0.85), bevel=0.006)
+        # shoulder straps over the front, chest strap and leg loops
+        tube(f"Shoulder{sy}", [(-0.02, sy * 0.1, 0.52), (0.06, sy * 0.1, 0.56), (0.14, sy * 0.1, 0.48), (0.15, sy * 0.11, 0.2), (0.12, sy * 0.13, 0.0)],
+             [0.022] * 5, web, segs=8, squash=(1.0, 0.25))
+        tube(f"Leg{sy}", [(0.12, sy * 0.13, 0.0), (0.1, sy * 0.13, -0.08), (0.04, sy * 0.14, -0.11), (-0.03, sy * 0.15, -0.06), (-0.06, sy * 0.15, 0.03)],
+             [0.02] * 5, web, segs=8, squash=(1.0, 0.3))
+        cyl(f"Buckle{sy}", 0.016, 0.008, (0.165, sy * 0.11, 0.28), m["chrome"], axis="X", verts=12)
+    box("ChestStrap", (0.02, 0.22, 0.03), (0.155, 0, 0.3), web, bevel=0.005)
+    # red ripcord D-handle and altimeter
+    tube("Ripcord", [(0.16, -0.12, 0.16), (0.18, -0.12, 0.13), (0.18, -0.12, 0.08), (0.16, -0.12, 0.06)], [0.008] * 4, m["red"], segs=10)
+    cyl("Altimeter", 0.032, 0.02, (0.17, 0.06, 0.38), m["dark"], axis="X", verts=24)
+    cyl("AltFace", 0.026, 0.004, (0.182, 0.06, 0.38), m["white"], axis="X", verts=24)
+    sph("PilotHandle", 0.018, (-0.06, 0, -0.01), col((0.9, 0.85, 0.1)), scale=(1, 1, 0.6))
+    box("Logo", (0.002, 0.12, 0.04), (-0.071, 0, 0.3), m["white"], bevel=0)
 
 
 @item("keycard")
 def _(p, m):
-    box("Card", (0.085, 0.054, 0.002), (0, 0, 0.001), col(p.get("color", (0.0, 0.25, 0.45))), bevel=0.0008)
-    box("Stripe", (0.085, 0.012, 0.0022), (0, 0.015, 0.001), m["white"], bevel=0)
-    box("Photo", (0.02, 0.025, 0.0024), (-0.025, -0.008, 0.001), col((0.8, 0.7, 0.6)), bevel=0)
-    box("Chip", (0.012, 0.01, 0.0025), (0.02, -0.01, 0.001), m["gold"], bevel=0)
+    blue = col(p.get("color", (0.0, 0.25, 0.45)), 0, 0.35)
+    box("Card", (0.0856, 0.054, 0.0018), (0, 0, 0.0009), m["white"], bevel=0.0007)
+    box("Band", (0.0856, 0.02, 0.0019), (0, 0.017, 0.0009), blue, bevel=0)
+    box("Photo", (0.019, 0.024, 0.002), (-0.028, -0.008, 0.0009), col((0.75, 0.62, 0.52)), bevel=0)
+    box("Head", (0.009, 0.009, 0.0021), (-0.028, -0.004, 0.0009), col((0.45, 0.32, 0.25)), bevel=0)
+    box("Chip", (0.011, 0.009, 0.0021), (0.03, -0.01, 0.0009), m["gold"], bevel=0)
+    for i, w in enumerate((0.04, 0.03, 0.035)):
+        box(f"Text{i}", (w, 0.0025, 0.002), (-0.012 + w / 2, -0.004 - i * 0.006, 0.0009), m["dark"], bevel=0)
+    box("Logo", (0.022, 0.006, 0.002), (-0.026, 0.017, 0.0009), m["white"], bevel=0)
+    box("Slot", (0.004, 0.014, 0.0022), (0.039, 0.0, 0.0009), m["dark"], bevel=0.0005)
+    # holder clip and a lanyard lying in a loose loop next to the card
+    box("Clip", (0.012, 0.012, 0.004), (0.049, 0, 0.002), m["chrome"], bevel=0.001)
+    pts = [(0.055 + 0.07 * math.sin(math.pi * t / 15) + 0.015 * math.sin(2 * math.pi * t / 15), 0.045 * math.sin(2 * math.pi * t / 15) - 0.02 * t / 15, 0.0015) for t in range(16)]
+    tube("Lanyard", pts, [0.004] * 16, col((0.0, 0.2, 0.4), 0, 0.9), segs=6, squash=(1.0, 0.25))
 
 
 @item("lockpick")
 def _(p, m):
-    box("Wallet", (0.12, 0.07, 0.01), (0, 0, 0.005), col((0.2, 0.12, 0.06)), bevel=0.004)
-    for i in range(5):
-        box(f"Pick{i}", (0.1, 0.004, 0.001), (0.03, -0.024 + i * 0.012, 0.012), m["chrome"], bevel=0)
+    leather = col((0.22, 0.12, 0.06), 0, 0.6)
+    box("Wallet", (0.13, 0.075, 0.008), (-0.04, 0, 0.004), leather, bevel=0.003)
+    box("Flap", (0.13, 0.075, 0.004), (0.095, 0, 0.002), leather, bevel=0.002)
+    box("Pocket", (0.13, 0.04, 0.003), (0.095, -0.012, 0.0045), col((0.16, 0.08, 0.04), 0, 0.6), bevel=0.0015)
+    for i in range(6):
+        box(f"Stitch{i}", (0.012, 0.0015, 0.0006), (0.04 + i * 0.022, 0.009, 0.0058), m["white"], bevel=0)
+    tips = ("hook", "rake", "diamond", "hook", "ball", "rake")
+    for i, t in enumerate(tips):
+        y = -0.026 + i * 0.0105
+        box(f"Handle{i}", (0.045, 0.007, 0.003), (0.04, y, 0.0075), m["poly"], bevel=0.001)
+        box(f"Shaft{i}", (0.07, 0.0016, 0.0008), (0.096, y, 0.0075), m["chrome"], bevel=0)
+        x = 0.131
+        if t == "hook":
+            box(f"Tip{i}", (0.0016, 0.004, 0.0008), (x, y + 0.002, 0.0075), m["chrome"], bevel=0)
+        elif t == "rake":
+            pts = [(x - 0.016 + k * 0.004, y + (0.0018 if k % 2 else 0), 0.0075) for k in range(5)]
+            tube(f"Tip{i}", pts, [0.0008] * 5, m["chrome"], segs=6)
+        elif t == "diamond":
+            box(f"Tip{i}", (0.004, 0.003, 0.0008), (x - 0.002, y + 0.001, 0.0075), m["chrome"], rot=(0, 0, 45), bevel=0)
+        else:
+            sph(f"Tip{i}", 0.0018, (x, y + 0.001, 0.0075), m["chrome"], segs=8)
+    # tension wrenches
+    for k in range(2):
+        y = 0.03 + k * 0.007
+        tube(f"Wrench{k}", [(0.06, y, 0.006), (0.12, y, 0.006), (0.12, y - 0.012, 0.006)], [0.001] * 3, m["chrome"], segs=6, squash=(1.0, 0.5))
+    box("Snap", (0.012, 0.012, 0.004), (-0.1, 0, 0.009), m["chrome"], bevel=0.002)
 
 
 @item("flashlight")
@@ -1493,8 +1585,35 @@ def _(p, m):
 
 @item("plate")
 def _(p, m):
-    box("Plate", (0.25, 0.3, 0.025), (0, 0, 0.0125), col((0.3, 0.3, 0.28)), bevel=0.02)
-    box("Label", (0.1, 0.06, 0.026), (0, 0.05, 0.013), m["white"], bevel=0)
+    import bmesh as _bm
+    W, H, T = 0.25, 0.32, 0.022
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, T / 2))
+    o = bpy.context.active_object
+    o.name = "Plate"
+    o.scale = (W, H, T)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    bm = _bm.new()
+    bm.from_mesh(o.data)
+    _bm.ops.subdivide_edges(bm, edges=bm.edges, cuts=10, use_grid_fill=True)
+    for v in bm.verts:
+        x, y = v.co.x, v.co.y
+        # shooter's cut on the top corners and a multi-curve (bent across both axes)
+        if y > 0.07:
+            k = (y - 0.07) / (H / 2 - 0.07)
+            lim = W / 2 - 0.055 * k
+            if abs(x) > lim:
+                v.co.x = math.copysign(lim, x)
+        v.co.z += -1.6 * x * x - 0.4 * y * y + 0.03
+    bm.to_mesh(o.data)
+    bm.free()
+    o.data.materials.append(col(p.get("color", (0.17, 0.18, 0.15)), 0, 0.85))
+    mod = o.modifiers.new("Bevel", "BEVEL")
+    mod.width = 0.006
+    mod.segments = 3
+    box("Label", (0.11, 0.07, 0.002), (0, -0.04, 0.054), m["white"], bevel=0)
+    for i in range(3):
+        box(f"LabelText{i}", (0.08 - i * 0.015, 0.006, 0.0022), (0, -0.025 - i * 0.012, 0.054), m["dark"], bevel=0)
+    box("LevelTag", (0.03, 0.02, 0.0022), (0.0, 0.08, 0.054), m["red"], bevel=0)
 
 
 @item("backpack")

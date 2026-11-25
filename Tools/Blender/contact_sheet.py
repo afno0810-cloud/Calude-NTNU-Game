@@ -23,6 +23,12 @@ for i, n in enumerate(names):
         dst.objects = [o for o in src.objects]
     obj = [o for o in dst.objects if o and o.type == "MESH"][0]
     scene.collection.objects.link(obj)
+    if os.environ.get("TILT"):
+        # optional 3/4 view for flat items: tip the top toward the camera, then turn a little
+        from mathutils import Matrix
+        obj.data = obj.data.copy()
+        obj.data.transform(Matrix.Rotation(math.radians(float(os.environ.get("YAW", "25"))), 4, "Z"))
+        obj.data.transform(Matrix.Rotation(math.radians(float(os.environ["TILT"])), 4, "X"))
     pts = [Vector(c) for c in obj.bound_box]
     lo = Vector([min(p[k] for p in pts) for k in range(3)])
     hi = Vector([max(p[k] for p in pts) for k in range(3)])
