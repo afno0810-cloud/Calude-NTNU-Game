@@ -17,6 +17,7 @@ public:
 
 	/** A gunshot was heard here (drawn on the radio radar if you carry a walkie-talkie). */
 	void AddShotMarker(const FVector& Where);
+	virtual void NotifyHitBoxClick(FName BoxName) override;
 
 protected:
 	void DrawCrosshair(AGSCharacter* C);
@@ -40,6 +41,9 @@ protected:
 	void DrawDamageDirection(AGSCharacter* C);
 	/** Fills a convex polygon (screen space) clipped to a rectangle. */
 	void FillClipped(TArray<FVector2D> Poly, const FBox2D& Clip, const FLinearColor& Color);
+	/** Game menu (Esc): clickable buttons. */
+	void DrawMenu(class AGSPlayerController* PC);
+	bool MenuButton(FName Id, const FString& Label, float X, float Y, float W, float H, const FVector2D& Mouse, bool bAccent = false);
 	void DrawInventory(AGSCharacter* C);
 	void DrawBinoculars();
 	void DrawTopRight();

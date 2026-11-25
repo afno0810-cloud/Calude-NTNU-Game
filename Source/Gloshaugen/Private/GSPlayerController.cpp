@@ -60,6 +60,7 @@ void AGSPlayerController::EnsureInputCreated()
 	ScoreboardAction = MakeAction(this, TEXT("IA_Scoreboard"), EInputActionValueType::Boolean);
 	InspectAction = MakeAction(this, TEXT("IA_Inspect"), EInputActionValueType::Boolean);
 	ReadyAction = MakeAction(this, TEXT("IA_Ready"), EInputActionValueType::Boolean);
+	MenuAction = MakeAction(this, TEXT("IA_Menu"), EInputActionValueType::Boolean);
 
 	MappingContext = NewObject<UInputMappingContext>(this, TEXT("IMC_Gloshaugen"));
 	UInputMappingContext* C = MappingContext;
@@ -106,6 +107,8 @@ void AGSPlayerController::EnsureInputCreated()
 	C->MapKey(ScoreboardAction, EKeys::Tab);
 	C->MapKey(InspectAction, EKeys::T);
 	C->MapKey(ReadyAction, EKeys::Enter);
+	C->MapKey(MenuAction, EKeys::Escape);
+	C->MapKey(MenuAction, EKeys::F10);
 }
 
 void AGSPlayerController::SetupInputComponent()
@@ -128,7 +131,80 @@ void AGSPlayerController::SetupInputComponent()
 		EIC->BindAction(ScoreboardAction, ETriggerEvent::Completed, this, &AGSPlayerController::HideScoreboard);
 		EIC->BindAction(InventoryAction, ETriggerEvent::Started, this, &AGSPlayerController::ToggleInventory);
 		EIC->BindAction(ReadyAction, ETriggerEvent::Started, this, &AGSPlayerController::ToggleReady);
+		EIC->BindAction(MenuAction, ETriggerEvent::Started, this, &AGSPlayerController::ToggleMenu);
 	}
+}
+
+void AGSPlayerController::ToggleMenu()
+{
+	if (bMenuOpen) { CloseMenu(); return; }
+	if (IsOnTerminal()) { CloseTerminal(); return; }
+	bMenuOpen = true;
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+	SetIgnoreLookInput(true);
+	SetIgnoreMoveInput(true);
+	FInputModeGameAndUI Mode;
+	Mode.SetHideCursorDuringCapture(false);
+	SetInputMode(Mode);
+}
+
+void AGSPlayerController::CloseMenu()
+{
+	bMenuOpen = false;
+	bShowMouseCursor = false;
+	bEnableClickEvents = false;
+	bEnableMouseOverEvents = false;
+	ResetIgnoreLookInput();
+	ResetIgnoreMoveInput();
+	SetInputMode(FInputModeGameOnly());
+}
+
+int32 AGSPlayerController::GetGraphicsLevel() const
+{
+	const UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr;
+	return S ? FMath::Clamp(S->GetOverallScalabilityLevel(), 0, 4) : 2;
+}
+
+int32 AGSPlayerController::GetResolutionPercent() const
+{
+	UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr;
+	if (!S) return 100;
+	float Norm = 1.f, Cur = 100.f, Min = 50.f, Max = 100.f;
+	S->GetResolutionScaleInformationEx(Norm, Cur, Min, Max);
+	return FMath::RoundToInt(Cur);
+}
+
+bool AGSPlayerController::IsRayTracingOn() const
+{
+	const IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.HardwareRayTracing"));
+	return V && V->GetInt() != 0;
+}
+
+void AGSPlayerController::MenuClick(FName Button)
+{
+	const FString B = Button.ToString();
+	if (B == TEXT("Resume")) { CloseMenu(); }
+	else if (B == TEXT("Host")) { CloseMenu(); Host(); }
+	else if (B == TEXT("Join")) { CloseMenu(); Join(LastJoinAddress); }
+	else if (B == TEXT("Graphics")) { Grafikk((GetGraphicsLevel() + 1) % 5); }
+	else if (B == TEXT("Resolution"))
+	{
+		static const int32 Steps[] = { 50, 60, 72, 85, 100 };
+		const int32 Cur = GetResolutionPercent();
+		int32 Next = Steps[0];
+		for (int32 I = 0; I < 5; ++I) { if (Steps[I] > Cur) { Next = Steps[I]; break; } }
+		Opplosning(Next);
+	}
+	else if (B == TEXT("RayTracing")) { Straaling(IsRayTracingOn() ? 0 : 1); }
+	else if (B == TEXT("SensDown") || B == TEXT("SensUp"))
+	{
+		MouseSensitivity = FMath::Clamp(MouseSensitivity + (B == TEXT("SensUp") ? 0.1f : -0.1f), 0.2f, 3.f);
+		GConfig->SetFloat(TEXT("Gloshaugen"), TEXT("MouseSensitivity"), MouseSensitivity, GGameUserSettingsIni);
+		GConfig->Flush(false, GGameUserSettingsIni);
+	}
+	else if (B == TEXT("Quit")) { ConsoleCommand(TEXT("quit")); }
 }
 
 void AGSPlayerController::ToggleReady()
@@ -153,13 +229,20 @@ void AGSPlayerController::Host()
 
 void AGSPlayerController::Join(const FString& Address)
 {
+	LastJoinAddress = Address;
+	GConfig->SetString(TEXT("Gloshaugen"), TEXT("LastJoinAddress"), *Address, GGameUserSettingsIni);
+	GConfig->Flush(false, GGameUserSettingsIni);
 	ClientTravel(Address, ETravelType::TRAVEL_Absolute);
 }
 
 void AGSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	if (!IsLocalController() || GIsEditor) return;
+	if (!IsLocalController()) return;
+	GConfig->GetFloat(TEXT("Gloshaugen"), TEXT("MouseSensitivity"), MouseSensitivity, GGameUserSettingsIni);
+	MouseSensitivity = FMath::Clamp(MouseSensitivity, 0.2f, 3.f);
+	GConfig->GetString(TEXT("Gloshaugen"), TEXT("LastJoinAddress"), LastJoinAddress, GGameUserSettingsIni);
+	if (GIsEditor) return;
 
 	// First time the game runs: settings that look good and stay smooth on a laptop RTX 3050 (6 GB).
 	UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr;

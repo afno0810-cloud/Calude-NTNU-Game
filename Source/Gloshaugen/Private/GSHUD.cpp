@@ -125,6 +125,56 @@ void AGSHUD::DrawHUD()
 	DrawHelp();
 
 	if (PC && PC->bShowScoreboard) DrawScoreboard();
+	if (PC && PC->bMenuOpen) DrawMenu(const_cast<AGSPlayerController*>(PC));
+}
+
+void AGSHUD::NotifyHitBoxClick(FName BoxName)
+{
+	Super::NotifyHitBoxClick(BoxName);
+	if (AGSPlayerController* PC = Cast<AGSPlayerController>(PlayerOwner))
+	{
+		if (PC->bMenuOpen) PC->MenuClick(BoxName);
+	}
+}
+
+bool AGSHUD::MenuButton(FName Id, const FString& Label, float X, float Y, float W, float H, const FVector2D& Mouse, bool bAccent)
+{
+	const bool bHover = Mouse.X >= X && Mouse.X <= X + W && Mouse.Y >= Y && Mouse.Y <= Y + H;
+	Box(X, Y, W, H, bHover ? FLinearColor(0.95f, 0.75f, 0.2f, 0.9f) : (bAccent ? FLinearColor(0.2f, 0.35f, 0.6f, 0.85f) : FLinearColor(0.08f, 0.09f, 0.11f, 0.85f)));
+	Frame(X, Y, W, H, FLinearColor(1.f, 1.f, 1.f, bHover ? 0.9f : 0.25f), 1.5f);
+	Text(Label, X + W * 0.5f, Y + H * 0.5f - 11.f, bHover ? FLinearColor(0.05f, 0.05f, 0.05f) : FLinearColor::White, 1.1f, true);
+	AddHitBox(FVector2D(X, Y), FVector2D(W, H), Id, true);
+	return bHover;
+}
+
+void AGSHUD::DrawMenu(AGSPlayerController* PC)
+{
+	const float SX = Canvas->SizeX, SY = Canvas->SizeY;
+	Box(0, 0, SX, SY, FLinearColor(0.f, 0.f, 0.02f, 0.62f));
+	float MX = 0.f, MY = 0.f;
+	PC->GetMousePosition(MX, MY);
+	const FVector2D Mouse(MX, MY);
+	const float W = 420.f, H = 44.f, Gap = 10.f;
+	const float X = SX * 0.5f - W * 0.5f;
+	float Y = SY * 0.5f - 290.f;
+	Text(TEXT("GL\u00D8SHAUGEN"), SX * 0.5f, Y, FLinearColor(0.95f, 0.75f, 0.2f), 2.6f, true);
+	Text(TEXT("NTNU-campus, Trondheim"), SX * 0.5f, Y + 62.f, FLinearColor(1.f, 1.f, 1.f, 0.7f), 1.0f, true);
+	Y += 110.f;
+	MenuButton(TEXT("Resume"), TEXT("Fortsett"), X, Y, W, H, Mouse, true); Y += H + Gap;
+	MenuButton(TEXT("Host"), TEXT("Start server (venner kan bli med)"), X, Y, W, H, Mouse); Y += H + Gap;
+	MenuButton(TEXT("Join"), FString::Printf(TEXT("Bli med: %s"), *PC->LastJoinAddress), X, Y, W, H, Mouse); Y += H + Gap;
+	static const TCHAR* Levels[] = { TEXT("Lav"), TEXT("Middels"), TEXT("H\u00F8y"), TEXT("Episk"), TEXT("Film") };
+	MenuButton(TEXT("Graphics"), FString::Printf(TEXT("Grafikk: %s"), Levels[PC->GetGraphicsLevel()]), X, Y, W, H, Mouse); Y += H + Gap;
+	MenuButton(TEXT("Resolution"), FString::Printf(TEXT("Oppl\u00F8sning: %d %%"), PC->GetResolutionPercent()), X, Y, W, H, Mouse); Y += H + Gap;
+	MenuButton(TEXT("RayTracing"), FString::Printf(TEXT("Str\u00E5lesporing (RTX): %s"), PC->IsRayTracingOn() ? TEXT("P\u00C5") : TEXT("AV")), X, Y, W, H, Mouse); Y += H + Gap;
+	// sensitivity row: [-] value [+]
+	MenuButton(TEXT("SensDown"), TEXT("-"), X, Y, H, H, Mouse);
+	Box(X + H + 6.f, Y, W - 2.f * H - 12.f, H, FLinearColor(0.08f, 0.09f, 0.11f, 0.85f));
+	Text(FString::Printf(TEXT("Musf\u00F8lsomhet: %.1f"), PC->MouseSensitivity), SX * 0.5f, Y + H * 0.5f - 11.f, FLinearColor::White, 1.1f, true);
+	MenuButton(TEXT("SensUp"), TEXT("+"), X + W - H, Y, H, H, Mouse); Y += H + Gap;
+	MenuButton(TEXT("Quit"), TEXT("Avslutt spillet"), X, Y, W, H, Mouse); Y += H + Gap * 2.f;
+	Text(TEXT("Annen adresse: trykk \u00A7 for konsollen og skriv  Join 192.168.1.20"), SX * 0.5f, Y, FLinearColor(1.f, 1.f, 1.f, 0.6f), 0.9f, true);
+	Text(TEXT("Esc lukker menyen"), SX * 0.5f, Y + 24.f, FLinearColor(1.f, 1.f, 1.f, 0.6f), 0.9f, true);
 }
 
 void AGSHUD::DrawCrosshair(AGSCharacter* C)

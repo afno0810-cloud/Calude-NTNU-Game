@@ -343,6 +343,11 @@ void AGSCharacter::Look(const FInputActionValue& Value)
 	const FVector2D V = Value.Get<FVector2D>();
 	float Sens = bAiming ? 0.55f : 1.f;
 	if (bBinoculars) Sens = 0.2f;
+	if (const AGSPlayerController* SPC = Cast<AGSPlayerController>(GetController()))
+	{
+		if (SPC->bMenuOpen) return;
+		Sens *= SPC->MouseSensitivity;
+	}
 	AddControllerYawInput(V.X * Sens);
 	AddControllerPitchInput(-V.Y * Sens);
 	LookSwayInput += V * Sens;
@@ -598,6 +603,7 @@ float AGSCharacter::GetCurrentSpread() const
 void AGSCharacter::StartFire()
 {
 	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("Fire")); return; }
+	if (const AGSPlayerController* MPC = Cast<AGSPlayerController>(GetController())) { if (MPC->bMenuOpen) return; }
 	if (bBinoculars) { bBinoculars = false; return; }
 	if (!UseItemId.IsNone()) ServerCancelUse();
 	bWantsFire = true;

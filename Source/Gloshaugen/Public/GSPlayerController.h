@@ -47,6 +47,21 @@ public:
 	UPROPERTY() TObjectPtr<UInputAction> ScoreboardAction;
 	UPROPERTY() TObjectPtr<UInputAction> InspectAction;
 	UPROPERTY() TObjectPtr<UInputAction> ReadyAction;
+	UPROPERTY() TObjectPtr<UInputAction> MenuAction;
+
+	/** Game menu (Esc or F10): resume, host, join, graphics, resolution, ray tracing, mouse sensitivity, quit. */
+	bool bMenuOpen = false;
+	void ToggleMenu();
+	void CloseMenu();
+	/** A button on the menu was clicked (called by the HUD). */
+	void MenuClick(FName Button);
+	/** Mouse sensitivity multiplier, saved between sessions. */
+	float MouseSensitivity = 1.f;
+	/** Address used by the menu's "Bli med" button (the last one you joined). */
+	FString LastJoinAddress = TEXT("127.0.0.1");
+	int32 GetGraphicsLevel() const;
+	int32 GetResolutionPercent() const;
+	bool IsRayTracingOn() const;
 	/** Lobby: Enter toggles ready. */
 	void ToggleReady();
 	UFUNCTION(Server, Reliable) void ServerSetReady(bool bReady);
