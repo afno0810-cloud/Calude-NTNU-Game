@@ -595,25 +595,34 @@ def p_RobotDog(k, m):
 
 @prop
 def p_RobotHumanoid(k, m):
-    """Humanoid robot, 1.75 m."""
+    """Humanoid robot, 1.75 m: white shells over dark joints, chest display, visor head, cable runs."""
     shell = k.mat("RobotWhite", (0.88, 0.88, 0.9), rough=0.35)
     for y in (-0.11, 0.11):
-        k.box((0.02, y, 0.05), (0.24, 0.1, 0.06), m.dark)
-        k.cyl((0, y, 0.08), 0.06, 0.42, shell, verts=12, r_top=0.055)
-        k.cyl((0, y, 0.5), 0.065, 0.06, m.dark, verts=12)
-        k.cyl((0, y, 0.55), 0.075, 0.38, shell, verts=12, r_top=0.08)
-    k.box((0, 0, 0.98), (0.22, 0.32, 0.12), m.dark)
-    k.box((0, 0, 1.25), (0.26, 0.42, 0.42), shell)
-    k.box((0.13, 0, 1.3), (0.01, 0.2, 0.12), m.screen_on)
-    for y in (-0.25, 0.25):
-        k.cyl((0, y, 1.38), 0.06, 0.08, m.dark, verts=12)
-        k.cyl((0, y, 1.08), 0.05, 0.3, shell, verts=12)
-        k.cyl((0, y, 0.82), 0.045, 0.26, shell, verts=12)
-        k.box((0.02, y, 0.78), (0.08, 0.05, 0.1), m.dark)
-    k.cyl((0, 0, 1.46), 0.05, 0.06, m.dark, verts=12)
-    k.box((0, 0, 1.62), (0.22, 0.2, 0.24), shell)
-    k.box((0.112, 0, 1.64), (0.005, 0.17, 0.07), m.screen)
-    k.box((0.115, 0, 1.64), (0.003, 0.12, 0.015), m.screen_on)
+        k.loft([(x, 0.0, 0.07 - 0.02 * max(x, 0) / 0.14, 0.055) for x in [-0.08 + 0.22 * i / 6 for i in range(7)]], m.dark, segs=16, power=4.0, y0=y)
+        k.sphere((0.0, y, 0.1), 0.05, m.dark)
+        k.tube([(0.0, y, 0.12), (0.01, y, 0.48)], 0.055, shell, segs=14)
+        k.loft([(x, 0.2, 0.4, 0.05) for x in (0.04, 0.06, 0.075)], m.dark, segs=12, power=3.0, y0=y)
+        k.sphere((0.0, y, 0.52), 0.065, m.dark)
+        k.tube([(0.0, y, 0.55), (0.0, y, 0.9)], 0.07, shell, segs=14)
+        k.tube([(-0.075, y, 0.58), (-0.075, y, 0.88)], 0.012, m.dark, segs=6)
+    k.sphere((0.0, 0.0, 0.98), 0.16, m.dark, scale=(0.7, 1.0, 0.5))
+    k.loft([(x, 1.04, 1.48 - 0.03 * abs(x) / 0.14, 0.2 - 0.03 * abs(x) / 0.14) for x in [-0.14 + 0.28 * i / 8 for i in range(9)]], shell, segs=24, power=3.0)
+    k.loft([(0.135, 1.24, 1.36, 0.1), (0.145, 1.24, 1.36, 0.1)], m.screen_on, segs=16, power=6.0)
+    k.loft([(-0.17, 1.1, 1.4, 0.12), (-0.14, 1.1, 1.4, 0.12)], m.dark, segs=16, power=5.0)
+    for y in (-0.26, 0.26):
+        k.sphere((0.0, y, 1.4), 0.07, m.dark)
+        k.tube([(0.0, y, 1.37), (0.02, y * 1.04, 1.1)], 0.05, shell, segs=12)
+        k.sphere((0.02, y * 1.04, 1.08), 0.045, m.dark)
+        k.tube([(0.02, y * 1.04, 1.06), (0.08, y * 1.02, 0.84)], 0.042, shell, segs=12)
+        k.loft([(x, 0.74, 0.82, 0.03) for x in (0.06, 0.09, 0.12)], m.dark, segs=12, power=3.0, y0=y)
+        for f in range(3):
+            k.tube([(0.12, y + (f - 1) * 0.018, 0.78), (0.15, y + (f - 1) * 0.018, 0.74)], 0.008, m.dark, segs=6)
+    k.tube([(0.0, 0.0, 1.47), (0.0, 0.0, 1.54)], 0.045, m.dark, segs=12)
+    k.sphere((0.0, 0.0, 1.64), 0.12, shell, scale=(1.0, 0.9, 1.0))
+    k.loft([(0.07, 1.6, 1.68, 0.085), (0.105, 1.6, 1.68, 0.075)], m.screen, segs=18, power=3.0)
+    k.loft([(0.108, 1.63, 1.645, 0.05), (0.112, 1.63, 1.645, 0.05)], m.screen_on, segs=12, power=4.0)
+    for y in (-0.105, 0.105):
+        k.cyl_axis((0.0, y, 1.64), 0.03, 0.02, m.dark, axis="Y", verts=14)
 
 
 @prop

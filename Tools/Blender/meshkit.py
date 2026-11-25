@@ -152,6 +152,16 @@ class MeshKit:
         self.bm.faces.new(rings[0][::-1]).material_index = mi
         self.bm.faces.new(rings[-1]).material_index = mi
 
+    def sphere(self, c, r, mi, n=10, segs=16, scale=(1.0, 1.0, 1.0)):
+        """Sphere/ellipsoid (joints, heads) built as a loft of circles."""
+        st = []
+        for i in range(n + 1):
+            t = -1 + 2 * i / n
+            t = math.copysign(abs(t) ** 0.8, t) * 0.999
+            w = (1 - t * t) ** 0.5 * r
+            st.append((c[0] + t * r * scale[0], c[2] - w * scale[2], c[2] + w * scale[2], max(w * scale[1], 1e-4)))
+        self.loft(st, mi, segs=segs, power=2.0, y0=c[1])
+
     def ring_y(self, c, R, r, mi, n=28, segs=8):
         """Torus standing in the XZ plane (wheel, tyre) centred on c."""
         self.tube([(c[0] + R * math.cos(2 * math.pi * i / n), c[1], c[2] + R * math.sin(2 * math.pi * i / n)) for i in range(n)], r, mi, segs, closed=True)
