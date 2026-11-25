@@ -2,6 +2,8 @@
 #include "GSUtils.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/World.h"
 
@@ -62,6 +64,18 @@ UInstancedStaticMeshComponent* AGSCampusBuilder::GetISM(UStaticMesh* Mesh, const
 	return ISM;
 }
 
+UStaticMesh* AGSCampusBuilder::MainBuildingMesh()
+{
+	static TWeakObjectPtr<UStaticMesh> Cached;
+	static bool bTried = false;
+	if (!bTried)
+	{
+		bTried = true;
+		Cached = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Models/SM_Hovedbygningen.SM_Hovedbygningen"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	}
+	return Cached.Get();
+}
+
 void AGSCampusBuilder::AddMesh(UStaticMesh* Mesh, const FTransform& T, const FLinearColor& Color, bool bCollide)
 {
 	if (!Mesh) return;
@@ -84,6 +98,11 @@ void AGSCampusBuilder::Build()
 		BuildBuilding(B);
 	}
 	BuildTreesAndProps();
+	BuildCampusProps();
+	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+	{
+		FurnishBuilding(B);
+	}
 	if (GetNetMode() != NM_DedicatedServer)
 	{
 		BuildStreetLights();
@@ -91,8 +110,9 @@ void AGSCampusBuilder::Build()
 
 	int32 Count = 0;
 	for (const auto& Pair : ISMs) Count += Pair.Value->GetInstanceCount();
-	UE_LOG(LogTemp, Log, TEXT("Gloshaugen: campus built, %d pieces in %d groups (%.2f s)"),
-		Count, ISMs.Num(), FPlatformTime::Seconds() - StartTime);
+	for (const auto& Pair : PropISMs) Count += Pair.Value->GetInstanceCount();
+	UE_LOG(LogTemp, Log, TEXT("Gloshaugen: campus built, %d pieces in %d groups, %d props (%.2f s)"),
+		Count, ISMs.Num() + PropISMs.Num(), NumProps, FPlatformTime::Seconds() - StartTime);
 }
 
 void AGSCampusBuilder::BuildGround()
@@ -122,6 +142,28 @@ void AGSCampusBuilder::BuildBuilding(const GSCampus::FBuilding& B)
 	const FRotator BRot = BT.Rotator();
 
 	Footprints.Add(FBox2D(FVector2D(B.X - B.SizeX * 0.5f, B.Y - B.SizeY * 0.5f), FVector2D(B.X + B.SizeX * 0.5f, B.Y + B.SizeY * 0.5f)));
+
+	// The hand-made Blender model replaces the block version of the main building and its tower.
+	const FString Name(B.Name);
+	if (Name == TEXT("Hovedbygningen") || Name == TEXT("Hovedbygningen taarn"))
+	{
+		if (UStaticMesh* Custom = MainBuildingMesh())
+		{
+			if (Name == TEXT("Hovedbygningen"))
+			{
+				UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+				C->SetMobility(EComponentMobility::Static);
+				C->SetStaticMesh(Custom);
+				C->SetupAttachment(RootComponent);
+				C->SetWorldTransform(BT);
+				C->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+				C->RegisterComponent();
+				// front bay with the main door and the turrets
+				Footprints.Add(FBox2D(FVector2D(B.X - 12.f, B.Y - 21.f), FVector2D(B.X + 12.f, B.Y - 14.f)));
+			}
+			return;
+		}
+	}
 
 	if (!B.bEnterable)
 	{
@@ -329,5 +371,480 @@ void AGSCampusBuilder::SetStreetLightsOn(bool bOn)
 	for (UPointLightComponent* L : StreetLights)
 	{
 		if (L) L->SetVisibility(bOn);
+	}
+}
+
+// ---------------------------------------------------------------------------------------------
+// Props and furniture (meshes from Tools/Blender/props.py, imported to /Game/Models/SM_Prop_*).
+// Everything here uses fixed random seeds, because every machine builds the campus itself and
+// all players must see the same chairs in the same places.
+// ---------------------------------------------------------------------------------------------
+
+UStaticMesh* AGSCampusBuilder::PropMesh(const TCHAR* Name)
+{
+	static TMap<FString, TWeakObjectPtr<UStaticMesh>> Cache;
+	static TSet<FString> Missing;
+	const FString Key(Name);
+	if (TWeakObjectPtr<UStaticMesh>* Found = Cache.Find(Key))
+	{
+		if (Found->IsValid()) return Found->Get();
+	}
+	if (Missing.Contains(Key)) return nullptr;
+	const FString Path = FString::Printf(TEXT("/Game/Models/SM_Prop_%s.SM_Prop_%s"), Name, Name);
+	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (!Mesh)
+	{
+		Missing.Add(Key);
+		return nullptr;
+	}
+	Cache.Add(Key, Mesh);
+	return Mesh;
+}
+
+void AGSCampusBuilder::AddProp(const TCHAR* Name, const FTransform& BT, float X, float Y, float Z, float Yaw, bool bCollide, float Scale)
+{
+	UStaticMesh* Mesh = PropMesh(Name);
+	if (!Mesh) return;
+	const FString Key = FString::Printf(TEXT("%s_%d"), Name, bCollide ? 1 : 0);
+	UInstancedStaticMeshComponent* ISM = nullptr;
+	if (TObjectPtr<UInstancedStaticMeshComponent>* Found = PropISMs.Find(Key))
+	{
+		ISM = *Found;
+	}
+	else
+	{
+		ISM = NewObject<UInstancedStaticMeshComponent>(this);
+		ISM->SetMobility(EComponentMobility::Static);
+		ISM->SetStaticMesh(Mesh);
+		ISM->SetupAttachment(RootComponent);
+		if (bCollide) ISM->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+		else ISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		// small things stop casting far shadows; saves a lot on a 6 GB card
+		ISM->SetCullDistances(0, 9000);
+		ISM->RegisterComponent();
+		PropISMs.Add(Key, ISM);
+	}
+	const FVector Loc = BT.TransformPosition(FVector(X, Y, Z) * M);
+	const FRotator Rot = (FQuat(BT.GetRotation()) * FQuat(FRotator(0.f, Yaw, 0.f))).Rotator();
+	ISM->AddInstance(FTransform(Rot, Loc, FVector(Scale)), /*bWorldSpace*/ true);
+	++NumProps;
+}
+
+void AGSCampusBuilder::FurnishRoom(const FTransform& BT, float X0, float X1, float Y0, float Y1, float Z, FRandomStream& Rand, const TArray<FVector>& Keep)
+{
+	const float W = X1 - X0, D = Y1 - Y0;
+	if (W < 3.f || D < 3.f) return;
+	auto Free = [&](float X, float Y, float R)
+	{
+		for (const FVector& K : Keep)
+		{
+			if (FMath::Abs(K.Z - Z) < 1.f && FVector2D::Distance(FVector2D(K.X, K.Y), FVector2D(X, Y)) < R + 1.6f) return false;
+		}
+		return true;
+	};
+	auto Put = [&](const TCHAR* Name, float X, float Y, float Yaw, float R = 0.8f)
+	{
+		if (X < X0 || X > X1 || Y < Y0 || Y > Y1) return;
+		if (!Free(X, Y, R)) return;
+		AddProp(Name, BT, X, Y, Z, Yaw);
+	};
+	const float CX = (X0 + X1) * 0.5f, CY = (Y0 + Y1) * 0.5f;
+
+	// Room type. Small rooms become offices, big ones classrooms, labs, cafeterias or libraries.
+	const float Area = W * D;
+	int32 Type = Rand.RandRange(0, 7);
+	if (Area < 30.f) Type = (Rand.FRand() < 0.5f) ? 1 : 6;
+
+	switch (Type)
+	{
+	case 0: // classroom: rows of desks facing -X, lectern and whiteboard at the front
+	case 7:
+	{
+		Put(TEXT("Whiteboard"), X0 + 0.05f, CY, 0.f, 0.3f);
+		Put(TEXT("Lectern"), X0 + 1.4f, CY + FMath::Min(2.5f, D * 0.3f), 180.f, 0.5f);
+		for (float X = X0 + 3.2f; X < X1 - 0.6f; X += 1.9f)
+		{
+			for (float Y = Y0 + 1.1f; Y < Y1 - 0.9f; Y += 1.6f)
+			{
+				if (FMath::Abs(Y - CY) < 0.7f) continue; // aisle
+				Put(TEXT("Desk"), X, Y, 0.f, 0.7f);
+				Put(TEXT("Chair"), X + 0.55f, Y, 180.f, 0.4f);
+			}
+		}
+		Put(TEXT("TrashBin"), X1 - 0.4f, Y0 + 0.4f, 0.f, 0.3f);
+		break;
+	}
+	case 1: // offices: desk with chair, shelves along the wall, plant
+	{
+		for (float Y = Y0 + 1.2f; Y < Y1 - 1.0f; Y += 3.2f)
+		{
+			Put(TEXT("Desk"), X1 - 1.0f, Y + 0.6f, 180.f);
+			Put(TEXT("OfficeChair"), X1 - 1.8f, Y + 0.6f, 0.f, 0.4f);
+		}
+		Put(TEXT("Bookshelf"), X0 + 0.25f, Y0 + 0.8f, 0.f);
+		Put(TEXT("FilingCabinet"), X0 + 0.35f, Y1 - 0.6f, 0.f, 0.4f);
+		Put(TEXT("Plant"), X0 + 0.5f, CY, 0.f, 0.4f);
+		Put(TEXT("TrashBin"), X1 - 0.4f, Y1 - 0.4f, 0.f, 0.3f);
+		break;
+	}
+	case 2: // chemistry lab: benches with stools, fire extinguisher by the door
+	{
+		for (float X = X0 + 1.6f; X < X1 - 1.4f; X += 3.0f)
+		{
+			for (float Y = Y0 + 1.8f; Y < Y1 - 1.6f; Y += 3.0f)
+			{
+				Put(TEXT("LabBench"), X, Y, 0.f, 1.3f);
+				Put(TEXT("Stool"), X + 0.9f, Y - 0.6f, 0.f, 0.3f);
+				Put(TEXT("Stool"), X + 0.9f, Y + 0.6f, 0.f, 0.3f);
+			}
+		}
+		Put(TEXT("FireExtinguisher"), X0 + 0.05f, Y0 + 0.6f, 0.f, 0.2f);
+		break;
+	}
+	case 3: // cafeteria / study hall: tables with chairs, vending machine, coffee
+	{
+		for (float X = X0 + 1.6f; X < X1 - 1.4f; X += 2.8f)
+		{
+			for (float Y = Y0 + 1.6f; Y < Y1 - 1.4f; Y += 3.0f)
+			{
+				Put(TEXT("CafeTable"), X, Y, 0.f, 1.0f);
+				Put(TEXT("Chair"), X - 0.75f, Y - 0.45f, 0.f, 0.3f);
+				Put(TEXT("Chair"), X - 0.75f, Y + 0.45f, 0.f, 0.3f);
+				Put(TEXT("Chair"), X + 0.75f, Y - 0.45f, 180.f, 0.3f);
+				Put(TEXT("Chair"), X + 0.75f, Y + 0.45f, 180.f, 0.3f);
+			}
+		}
+		Put(TEXT("VendingMachine"), X0 + 0.45f, Y1 - 0.7f, 0.f);
+		Put(TEXT("CoffeeMachine"), X0 + 0.35f, Y1 - 2.4f, 0.f);
+		Put(TEXT("TrashBin"), X0 + 0.4f, Y1 - 3.6f, 0.f, 0.3f);
+		break;
+	}
+	case 4: // library: rows of shelves, reading table
+	{
+		for (float X = X0 + 1.0f; X < X1 - 3.0f; X += 2.2f)
+		{
+			for (float Y = Y0 + 1.0f; Y < Y1 - 1.0f; Y += 1.05f)
+			{
+				if (FMath::Abs(Y - CY) < 0.9f) continue;
+				Put(TEXT("Bookshelf"), X, Y, (FMath::RoundToInt(X) % 2) ? 0.f : 180.f, 0.5f);
+			}
+		}
+		Put(TEXT("CafeTable"), X1 - 1.6f, CY, 0.f);
+		Put(TEXT("Chair"), X1 - 2.4f, CY, 0.f, 0.3f);
+		Put(TEXT("Chair"), X1 - 0.8f, CY, 180.f, 0.3f);
+		Put(TEXT("Plant"), X1 - 0.5f, Y0 + 0.5f, 0.f, 0.4f);
+		break;
+	}
+	case 5: // lounge: sofas around a table, coffee machine, plants
+	{
+		Put(TEXT("Sofa"), CX - 1.6f, CY, 0.f, 1.0f);
+		Put(TEXT("Sofa"), CX + 1.6f, CY, 180.f, 1.0f);
+		Put(TEXT("CafeTable"), CX, CY, 90.f, 0.8f);
+		Put(TEXT("CoffeeMachine"), X0 + 0.35f, Y0 + 1.0f, 0.f);
+		Put(TEXT("VendingMachine"), X0 + 0.45f, Y1 - 0.8f, 0.f);
+		Put(TEXT("Plant"), X1 - 0.5f, Y0 + 0.5f, 0.f, 0.4f);
+		Put(TEXT("Plant"), X1 - 0.5f, Y1 - 0.5f, 0.f, 0.4f);
+		break;
+	}
+	default: // 6: server room / storage
+	{
+		if ((Rand.FRand() < 0.5f))
+		{
+			for (float X = X0 + 1.2f; X < X1 - 1.0f; X += 2.4f)
+			{
+				for (float Y = Y0 + 0.8f; Y < Y1 - 0.6f; Y += 0.65f)
+				{
+					if (FMath::Abs(Y - CY) < 0.7f) continue;
+					Put(TEXT("ServerRack"), X, Y, 0.f, 0.4f);
+				}
+			}
+		}
+		else
+		{
+			for (float X = X0 + 0.9f; X < X1 - 0.6f; X += 1.6f)
+			{
+				Put(TEXT("Pallet"), X, Y0 + 0.9f, 0.f, 0.7f);
+				Put(TEXT("Crates"), X, Y1 - 1.0f, Rand.FRandRange(-20.f, 20.f), 0.8f);
+			}
+			Put(TEXT("FilingCabinet"), X1 - 0.4f, CY, 180.f, 0.4f);
+		}
+		Put(TEXT("FireExtinguisher"), X0 + 0.05f, CY, 0.f, 0.2f);
+		break;
+	}
+	}
+}
+
+void AGSCampusBuilder::FurnishBuilding(const GSCampus::FBuilding& B)
+{
+	const FString Name(B.Name);
+	if (!B.bEnterable) return;
+	if (MainBuildingMesh() && Name == TEXT("Hovedbygningen"))
+	{
+		FurnishMainBuilding(B);
+		return;
+	}
+	if (MainBuildingMesh() && Name == TEXT("Hovedbygningen taarn")) return;
+
+	const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * M, B.Y * M, 0.f));
+	FRandomStream Rand(static_cast<int32>(GetTypeHash(Name)));
+	const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
+	const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
+	const float FH = B.FloorHeight;
+	const float InX0 = -HX + WallT, InX1 = HX - WallT, InY0 = -HY + WallT, InY1 = HY - WallT;
+	const float RampLen = FH / FMath::Tan(FMath::DegreesToRadians(RampAngle));
+	const float OpenX0 = InX1 - RampLen, OpenY0 = InY1 - RampW;
+
+	// Spots that must stay clear: the terminals AGSGameMode::SpawnTerminals puts in every building (same formulas).
+	TArray<FVector> Keep;
+	Keep.Add(FVector(-HX + 1.0f, -HY * 0.4f, 0.f));
+	Keep.Add(FVector(-HX + 0.9f, HY * 0.4f, FH));
+
+	// Rooms: split each floor into cells of about 9 x 8 m, with a 3 m cross corridor through the middle
+	// (it lines up with the doors in the outer walls) and 1.2 m along the walls.
+	const float Corr = 1.5f, Edge = 1.2f;
+	for (int32 F = 0; F < Floors; ++F)
+	{
+		const float Z = F * FH;
+		for (int32 SX = 0; SX < 2; ++SX)
+		{
+			const float AX0 = SX == 0 ? InX0 + Edge : Corr, AX1 = SX == 0 ? -Corr : InX1 - Edge;
+			const int32 NX = FMath::Max(1, FMath::RoundToInt((AX1 - AX0) / 9.f));
+			for (int32 SY = 0; SY < 2; ++SY)
+			{
+				const float AY0 = SY == 0 ? InY0 + Edge : Corr, AY1 = SY == 0 ? -Corr : InY1 - Edge;
+				const int32 NY = FMath::Max(1, FMath::RoundToInt((AY1 - AY0) / 8.f));
+				for (int32 IX = 0; IX < NX; ++IX)
+				{
+					for (int32 IY = 0; IY < NY; ++IY)
+					{
+						float X0 = AX0 + (AX1 - AX0) * IX / NX, X1 = AX0 + (AX1 - AX0) * (IX + 1) / NX;
+						float Y0 = AY0 + (AY1 - AY0) * IY / NY, Y1 = AY0 + (AY1 - AY0) * (IY + 1) / NY;
+						// 1 m gaps between rooms so you can walk between them
+						X0 += 0.5f; X1 -= 0.5f; Y0 += 0.5f; Y1 -= 0.5f;
+						// stairwell and ramp corner: shrink the room away from it
+						if (X1 > OpenX0 - 1.f && Y1 > OpenY0 - 1.f)
+						{
+							if (OpenY0 - 1.f - Y0 > 3.f) Y1 = OpenY0 - 1.f;
+							else if (OpenX0 - 1.f - X0 > 3.f) X1 = OpenX0 - 1.f;
+							else continue;
+						}
+						FurnishRoom(BT, X0, X1, Y0, Y1, Z, Rand, Keep);
+					}
+				}
+			}
+		}
+		// fire extinguisher by the stairs on every floor
+		AddProp(TEXT("FireExtinguisher"), BT, OpenX0 - 0.6f, InY1 - 0.05f, Z, -90.f, false);
+	}
+}
+
+void AGSCampusBuilder::FurnishMainBuilding(const GSCampus::FBuilding& B)
+{
+	// Matches Tools/Blender/building_hovedbygningen.py: 4 floors of 5.5 m, corridor y in [-5, 5],
+	// cross walls at x = +-26, +-36, +-46, Lysgaarden |x| < 14, ramp rooms south of the corridor at |x| > 36.
+	const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * M, B.Y * M, 0.f));
+	FRandomStream Rand(4242);
+	const float FH = 5.5f;
+	TArray<FVector> Keep = {
+		FVector(-30.f, -4.5f, 0.f), FVector(30.f, 4.5f, 11.f), FVector(30.f, -4.5f, 5.5f), FVector(-30.f, 4.5f, 16.5f),
+	};
+	const float Segs[][2] = { { 15.f, 26.f }, { 26.f, 36.f }, { 36.f, 46.f }, { 46.f, 54.2f } };
+	for (int32 F = 0; F < 4; ++F)
+	{
+		const float Z = F * FH;
+		for (float Side : { -1.f, 1.f })
+		{
+			for (const auto& Seg : Segs)
+			{
+				const float A = Side < 0.f ? -Seg[1] : Seg[0];
+				const float Bx = Side < 0.f ? -Seg[0] : Seg[1];
+				// north rooms
+				FurnishRoom(BT, A + 0.9f, Bx - 0.9f, -13.f, -6.8f, Z, Rand, Keep);
+				// south rooms, except the ones with the ramps
+				if (Seg[0] < 36.f) FurnishRoom(BT, A + 0.9f, Bx - 0.9f, 6.8f, 13.f, Z, Rand, Keep);
+			}
+		}
+		// Lockers in the corridors, between the doors
+		for (float X : { -46.8f, -38.8f, -30.8f, -22.8f, 22.f, 30.f, 38.f, 46.f })
+		{
+			for (float Y : { -4.45f, 4.45f })
+			{
+				bool bFree = true;
+				for (const FVector& K : Keep) if (FMath::Abs(K.Z - Z) < 1.f && FVector2D::Distance(FVector2D(K.X, K.Y), FVector2D(X, Y)) < 2.6f) bFree = false;
+				if (bFree) AddProp(TEXT("Locker"), BT, X, Y, Z, Y < 0.f ? 90.f : -90.f);
+			}
+		}
+		AddProp(TEXT("FireExtinguisher"), BT, -18.f, -4.95f, Z, 90.f, false);
+		AddProp(TEXT("FireExtinguisher"), BT, 18.f, 4.95f, Z, -90.f, false);
+		AddProp(TEXT("Plant"), BT, -15.5f, 4.2f, Z, 0.f);
+		AddProp(TEXT("Plant"), BT, 15.5f, -4.2f, Z, 0.f);
+	}
+
+	// Lysgaarden: rows of chairs facing the stage (stage at y -9..-6), aisle in the middle, lectern on the stage
+	for (float Y = -4.8f; Y <= -1.0f; Y += 1.0f)
+	{
+		for (float X = -8.f; X <= 8.01f; X += 0.6f)
+		{
+			if (FMath::Abs(X) < 1.0f) continue;
+			AddProp(TEXT("Chair"), BT, X, Y, 0.f, -90.f);
+		}
+	}
+	AddProp(TEXT("Lectern"), BT, 3.f, -8.f, 0.85f, 90.f);
+	AddProp(TEXT("Plant"), BT, -6.f, -8.5f, 0.85f, 0.f);
+	AddProp(TEXT("Plant"), BT, 6.f, -8.5f, 0.85f, 0.f);
+	// cafe corner on the west side and a sofa lounge on the east side of Lysgaarden
+	for (float Y : { -6.f, -2.5f, 1.f })
+	{
+		AddProp(TEXT("CafeTable"), BT, -11.5f, Y, 0.f, 0.f);
+		AddProp(TEXT("Chair"), BT, -12.3f, Y - 0.45f, 0.f, 0.f);
+		AddProp(TEXT("Chair"), BT, -12.3f, Y + 0.45f, 0.f, 0.f);
+		AddProp(TEXT("Chair"), BT, -10.7f, Y - 0.45f, 0.f, 180.f);
+		AddProp(TEXT("Chair"), BT, -10.7f, Y + 0.45f, 0.f, 180.f);
+	}
+	AddProp(TEXT("CoffeeMachine"), BT, -13.2f, 5.f, 0.f, 0.f);
+	AddProp(TEXT("VendingMachine"), BT, -13.1f, 7.f, 0.f, 0.f);
+	AddProp(TEXT("Sofa"), BT, 11.f, -3.f, 0.f, 180.f);
+	AddProp(TEXT("Sofa"), BT, 11.f, 1.f, 0.f, 180.f);
+	AddProp(TEXT("CafeTable"), BT, 9.6f, -1.f, 0.f, 90.f);
+	AddProp(TEXT("VendingMachine"), BT, 13.1f, 7.f, 0.f, 180.f);
+	// security robot patrolling spot by the main door, robot dog in Lysgaarden
+	AddProp(TEXT("RobotGuard"), BT, 2.5f, -13.f, 0.f, -90.f);
+	AddProp(TEXT("RobotDog"), BT, -5.f, 4.f, 0.f, 30.f);
+}
+
+void AGSCampusBuilder::BuildCampusProps()
+{
+	FRandomStream Rand(777);
+	const FTransform WorldT = FTransform::Identity;
+	const TArray<GSCampus::FRoad>& Roads = GSCampus::Roads();
+	auto Inside = [&](const FVector2D& P, float Margin)
+	{
+		for (const FBox2D& Box : Footprints) if (Box.ExpandBy(Margin).IsInside(P)) return true;
+		return false;
+	};
+	auto OnRoad = [&](const FVector2D& P, float Margin)
+	{
+		for (const GSCampus::FRoad& R : Roads) if (DistToSegment(P, R.A, R.B) < R.Width * 0.5f + Margin) return true;
+		return false;
+	};
+	auto Yaw = [](const FVector2D& D) { return FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)); };
+
+	// Along every road and path: benches with a bin, scooters, bollards, signs; bus stops on car roads.
+	for (const GSCampus::FRoad& R : Roads)
+	{
+		const FVector2D D = (R.B - R.A).GetSafeNormal();
+		const FVector2D Side(-D.Y, D.X);
+		const float Len = FVector2D::Distance(R.A, R.B);
+		const float Spacing = R.bPath ? 28.f : 45.f;
+		for (float S = 12.f + Rand.FRandRange(0.f, 8.f); S < Len - 6.f; S += Spacing + Rand.FRandRange(-6.f, 6.f))
+		{
+			const float SideSign = (Rand.FRand() < 0.5f) ? 1.f : -1.f;
+			const FVector2D Edge = R.A + D * S + Side * SideSign * (R.Width * 0.5f + 1.4f);
+			if (Inside(Edge, 2.f) || OnRoad(Edge, 0.6f)) continue;
+			// benches face the road
+			const float FaceRoad = Yaw(-Side * SideSign);
+			const int32 Kind = Rand.RandRange(0, 9);
+			if (Kind <= 3)
+			{
+				AddProp(TEXT("ParkBench"), WorldT, Edge.X, Edge.Y, 0.f, FaceRoad);
+				const FVector2D BinP = Edge + D * 1.4f;
+				AddProp(TEXT("OutdoorBin"), WorldT, BinP.X, BinP.Y, 0.f, FaceRoad);
+			}
+			else if (Kind <= 5)
+			{
+				AddProp(TEXT("Scooter"), WorldT, Edge.X, Edge.Y, 0.f, Yaw(D) + Rand.FRandRange(-30.f, 30.f), false);
+				if ((Rand.FRand() < 0.5f))
+				{
+					const FVector2D P2 = Edge + D * 0.9f;
+					AddProp(TEXT("Scooter"), WorldT, P2.X, P2.Y, 0.f, Yaw(D) + Rand.FRandRange(-30.f, 30.f), false);
+				}
+			}
+			else if (Kind == 6)
+			{
+				AddProp(TEXT("Bike"), WorldT, Edge.X, Edge.Y, 0.f, Yaw(D) + Rand.FRandRange(-15.f, 15.f));
+			}
+			else if (Kind == 7)
+			{
+				AddProp(TEXT("StreetSign"), WorldT, Edge.X, Edge.Y, 0.f, FaceRoad);
+			}
+			else if (Kind == 8 && !R.bPath)
+			{
+				const FVector2D P = R.A + D * S + Side * SideSign * (R.Width * 0.5f + 2.2f);
+				if (!Inside(P, 3.f)) AddProp(TEXT("BusStop"), WorldT, P.X, P.Y, 0.f, FaceRoad + 180.f);
+			}
+			else
+			{
+				AddProp(TEXT("Planter"), WorldT, Edge.X, Edge.Y, 0.f, 0.f);
+			}
+		}
+		// a delivery robot somewhere on every path
+		if (R.bPath && Len > 30.f)
+		{
+			const FVector2D P = R.A + D * Rand.FRandRange(8.f, Len - 8.f) + Side * Rand.FRandRange(-0.8f, 0.8f);
+			if (!Inside(P, 1.f)) AddProp(TEXT("RobotDelivery"), WorldT, P.X, P.Y, 0.f, Yaw(D) + ((Rand.FRand() < 0.5f) ? 0.f : 180.f));
+		}
+	}
+
+	// Around the buildings: bike racks and bollards at the front, bins and dumpsters with pallets behind.
+	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+	{
+		if (!B.bEnterable) continue;
+		const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * M, B.Y * M, 0.f));
+		const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
+		const bool bMain = MainBuildingMesh() && FString(B.Name) == TEXT("Hovedbygningen");
+		auto Ok = [&](float LX, float LY, float Margin)
+		{
+			const FVector W = BT.TransformPosition(FVector(LX, LY, 0.f));
+			const FVector2D P(W.X, W.Y);
+			return !Inside(P, Margin) && !OnRoad(P, 0.8f);
+		};
+		const float FrontY = bMain ? -HY - 9.f : -HY - 3.5f;
+		if (Ok(HX * 0.55f, FrontY, 1.f)) AddProp(TEXT("BikeRack"), BT, HX * 0.55f, FrontY, 0.f, 90.f);
+		if (Ok(-HX * 0.55f, FrontY, 1.f)) AddProp(TEXT("BikeRack"), BT, -HX * 0.55f, FrontY, 0.f, 90.f);
+		for (float X = -6.f; X <= 6.f; X += 3.f)
+		{
+			if (Ok(X, FrontY - 2.5f, 0.5f)) AddProp(TEXT("Bollard"), BT, X, FrontY - 2.5f, 0.f, 0.f);
+		}
+		const float BackY = HY + 3.5f;
+		if (Ok(-HX + 4.f, BackY, 1.f))
+		{
+			AddProp(TEXT("Dumpster"), BT, -HX + 4.f, BackY, 0.f, 90.f);
+			if (Ok(-HX + 6.5f, BackY, 0.8f)) AddProp(TEXT("Dumpster"), BT, -HX + 6.5f, BackY, 0.f, 90.f);
+			if (Ok(-HX + 9.f, BackY, 0.8f)) AddProp(TEXT("Pallet"), BT, -HX + 9.f, BackY, 0.f, Rand.FRandRange(0.f, 30.f));
+			if (Ok(-HX + 10.8f, BackY + 0.4f, 0.8f)) AddProp(TEXT("Crates"), BT, -HX + 10.8f, BackY + 0.4f, 0.f, Rand.FRandRange(-20.f, 20.f));
+		}
+		if (Ok(HX + 2.f, 0.f, 0.5f)) AddProp(TEXT("OutdoorBin"), BT, HX + 2.f, 0.f, 0.f, 0.f);
+		if (bMain)
+		{
+			AddProp(TEXT("NTNUSign"), BT, 16.f, -HY - 8.f, 0.f, -90.f);
+			AddProp(TEXT("Planter"), BT, -9.f, -HY - 7.f, 0.f, 0.f);
+			AddProp(TEXT("Planter"), BT, 9.f, -HY - 7.f, 0.f, 0.f);
+		}
+	}
+
+	// Lawns: picnic tables, robot dogs, the odd construction barrier and fence
+	int32 Lawn = 0;
+	for (int32 Try = 0; Try < 600 && Lawn < 45; ++Try)
+	{
+		const FVector2D P(Rand.FRandRange(-300.f, 440.f), Rand.FRandRange(-95.f, 530.f));
+		if (Inside(P, 5.f) || OnRoad(P, 3.f)) continue;
+		const int32 Kind = Rand.RandRange(0, 9);
+		const float Y = Rand.FRandRange(0.f, 360.f);
+		if (Kind <= 4) AddProp(TEXT("PicnicTable"), WorldT, P.X, P.Y, 0.f, Y);
+		else if (Kind <= 6)
+		{
+			// a short construction site: fence and barriers
+			const FVector2D D(FMath::Cos(FMath::DegreesToRadians(Y)), FMath::Sin(FMath::DegreesToRadians(Y)));
+			for (int32 I = 0; I < 3; ++I)
+			{
+				const FVector2D Q = P + D * (I * 3.f);
+				if (!Inside(Q, 3.f) && !OnRoad(Q, 2.f)) AddProp(TEXT("Fence"), WorldT, Q.X, Q.Y, 0.f, Y + 90.f);
+			}
+			const FVector2D Q = P + FVector2D(-D.Y, D.X) * 2.f;
+			if (!Inside(Q, 3.f) && !OnRoad(Q, 2.f)) AddProp(TEXT("Barrier"), WorldT, Q.X, Q.Y, 0.f, Y + 90.f);
+		}
+		else if (Kind == 7) AddProp(TEXT("RobotDog"), WorldT, P.X, P.Y, 0.f, Y);
+		else AddProp(TEXT("ParkBench"), WorldT, P.X, P.Y, 0.f, Y);
+		++Lawn;
 	}
 }

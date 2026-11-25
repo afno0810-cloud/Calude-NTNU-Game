@@ -51,6 +51,11 @@ EFFECTS = {
     "Glide":        dict(name="Fallskjerm", dur=60, glide=1),
     "Avslort":      dict(name="Avslørt av drone", dur=10, wallhack=1),
     "Blendet":      dict(name="Blendet", dur=4, visual=6, spread=2.0),
+    "Brennende":    dict(name="Brennende", dur=3, drain=6.0, visual=6),
+    "Tran":         dict(name="Tran", dur=120, regen=0.4, stamina_regen=1.2),
+    "Julestemning": dict(name="Julestemning", dur=60, taken=0.92, stamina_regen=1.2, visual=6),
+    "Mett":         dict(name="Mett og god", dur=120, hunger=0.5, speed=0.97),
+    "Sjokk":        dict(name="Elektrisk sjokk", dur=3, speed=0.3, spread=3.0, visual=3),
 }
 
 ITEMS = []
@@ -308,6 +313,134 @@ gadget("Compass", "Kompass", "Common", "compass", dict(arch="compass"), "Viser k
 gadget("StudentCard", "Studentbevis", "Common", "joke", dict(arch="keycard", color=(0.1, 0.4, 0.8)), "Gir 10% rabatt i kantina. Ellers ubrukelig.", use=0.0)
 gadget("Defib", "Hjertestarter", "Legendary", "defib", dict(arch="defib"), "Gir deg Føniks-effekten: stå opp igjen hvis du dør.", use=4.0, effect="Foniks")
 gadget("Trophy", "NTNU-pokal", "Mythic", "joke", dict(arch="trophy"), "Helt ubrukelig. Men du er den eneste som har den.", use=0.0)
+
+
+# ================================================================== ROUND 3: more of everything
+# --- more guns
+gun("OverUnder", "Over/under-hagle (konkurranse)", "Epic", "Shotgun", 16, 0.22, False, 2, 20, 2.2, 45, 4.5, 2.8, 3.8, 70,
+    dict(arch="overunder"), "Gravert stålkasse og valnøttskjefte. To skudd, så pent du kan.", mode="pellets", pellets=10)
+gun("M72", "M72 LAW", "Epic", "Launcher", 130, 1.0, False, 1, 0, 2.0, 300, 3.0, 0.6, 7.0, 55,
+    dict(arch="m72"), "Engangs rakettgevær fra Forsvaret. Ett skudd, så kaster du det.", mode="projectile",
+    proj_speed=110, proj_gravity=0.15, radius=5.0, max_reserve=0)
+gun("Mosin", "Mosin-Nagant", "Uncommon", "Rifle", 74, 1.15, False, 5, 25, 3.2, 400, 2.2, 0.15, 3.0, 45,
+    dict(arch="bolt", length=1.23, furn="wood", scope=False), headshot=2.5)
+gun("Rem700", "Jaktrifle med kikkert", "Rare", "Sniper", 82, 1.2, False, 4, 20, 3.0, 600, 4.0, 0.08, 3.2, 22,
+    dict(arch="bolt", length=1.08, furn="wood", scope=True), "Elgjakt-favoritten. Treffer det du sikter på.", headshot=2.5)
+gun("M14", "M14", "Rare", "Rifle", 44, 0.12, True, 20, 60, 2.6, 350, 3.0, 0.2, 1.4, 50,
+    dict(arch="rifle", rx=(-0.1, 0.2), rh=0.06, barrel=0.38, hg=(0.3, "wood", "full"), stock="wood", mag="straight",
+         magx=0.08, sight="iron", furn="wood", muzzle="flash", wrist=True))
+gun("G36", "G36", "Rare", "Rifle", 30, 0.085, True, 30, 90, 2.3, 300, 3.0, 0.25, 0.85, 56,
+    dict(arch="rifle", rx=(-0.1, 0.2), rh=0.075, barrel=0.22, hg=(0.22, "poly", "round"), stock="fixed", mag="straight",
+         magx=0.08, sight="carry", furn="poly", muzzle="flash", carryhandle=True))
+gun("SCAR", "SCAR-H", "Legendary", "Rifle", 40, 0.095, True, 20, 80, 2.4, 350, 2.8, 0.2, 1.1, 52,
+    dict(arch="rifle", rx=(-0.1, 0.2), rh=0.075, barrel=0.26, hg=(0.28, "tan", "rail"), stock="retract", mag="straight",
+         magx=0.08, sight="reddot", furn="tan", muzzle="flash"), "Tung 7,62 med rødpunkt fra fabrikken.")
+gun("UMP", "UMP45", "Uncommon", "SMG", 24, 0.1, True, 25, 75, 2.2, 60, 2.6, 0.6, 0.8, 70,
+    dict(arch="rifle", rx=(-0.08, 0.18), rh=0.07, barrel=0.06, hg=(0.12, "poly", "round"), stock="retract", mag="straight",
+         magx=0.08, sight="iron", furn="poly", muzzle="none"))
+gun("P90", "P90", "Epic", "SMG", 18, 0.055, True, 50, 100, 2.6, 60, 2.6, 0.6, 0.5, 70,
+    dict(arch="rifle", rx=(-0.15, 0.15), rh=0.09, barrel=0.08, hg=(0.0, "poly", "none"), stock="fixed", mag="none",
+         sight="reddot", furn="poly", muzzle="none"), "50 skudd på toppen av våpenet.")
+gun("Vector", "Kriss Vector", "Legendary", "SMG", 22, 0.05, True, 25, 75, 2.0, 55, 2.4, 0.5, 0.35, 70,
+    dict(arch="rifle", rx=(-0.08, 0.16), rh=0.09, barrel=0.07, hg=(0.08, "poly", "rail"), stock="retract", mag="straight",
+         magx=0.03, sight="reddot", furn="poly", muzzle="none"), "Nesten ingen rekyl.")
+gun("FlareGun", "Signalpistol", "Uncommon", "Launcher", 25, 1.0, False, 1, 4, 2.0, 120, 2.0, 1.0, 2.0, 70,
+    dict(arch="flare"), "Lyser opp himmelen. Og setter fyr på folk.", mode="projectile", proj_speed=45, proj_gravity=0.6,
+    radius=2.0, max_reserve=8)
+gun("Longbow", "Langbue", "Rare", "Bow", 70, 0.9, False, 1, 20, 1.2, 150, 2.5, 0.4, 1.2, 60,
+    dict(arch="bow"), "Lydløs og rask å lade.", mode="projectile", proj_speed=65, proj_gravity=0.7, radius=0.0,
+    max_reserve=40, silent=True, headshot=2.5)
+gun("PrintPistol", "3D-printet pistol", "Uncommon", "Pistol", 30, 0.5, False, 2, 6, 3.0, 25, 3.5, 1.2, 2.5, 78,
+    dict(arch="printed"), "Laget på en 3D-printer på NTNU. Holder kanskje.")
+melee("DaneAxe", "Tobladet stridsøks", "Legendary", 110, 0.95, 2.2, dict(arch="daneaxe", handle=0.9),
+      "Dobbelt så mange blader. Dobbelt så mye vikinger.")
+melee("Spear", "Spyd", "Rare", 70, 0.7, 2.8, dict(arch="spear"), "Lengst rekkevidde av alt.")
+melee("PrintKnife", "3D-printet kniv", "Common", 30, 0.45, 1.5, dict(arch="printknife"))
+
+# --- armor
+armor("PrintHelmet", "3D-printet hjelm", "Uncommon", 35, 0.3, 1.0, dict(arch="helmet", kind="bike"), slot="Helmet")
+
+# --- ammo per caliber. Picking it up fills every gun you carry that uses it; the rest waits in the sack for later.
+CALIBERS = {
+    # id: (name, rounds per box, colour, model params)
+    "9mm":   ("9 mm", 30, (0.2, 0.5, 0.95), dict(len=0.02, r=0.0045)),
+    "45acp": (".45 ACP", 21, (0.95, 0.75, 0.1), dict(len=0.022, r=0.0057)),
+    "357":   (".357 / .50 AE magnum", 12, (0.75, 0.1, 0.1), dict(len=0.03, r=0.0058)),
+    "556":   ("5,56 mm", 30, (0.2, 0.75, 0.25), dict(len=0.045, r=0.0045, tip=(0.15, 0.5, 0.2))),
+    "762x39": ("7,62 x 39 mm", 30, (0.85, 0.45, 0.1), dict(len=0.04, r=0.0055)),
+    "762nato": ("7,62 x 51 mm NATO", 20, (0.55, 0.55, 0.15), dict(len=0.05, r=0.006)),
+    "762x54": ("7,62 x 54R", 20, (0.6, 0.3, 0.6), dict(len=0.053, r=0.006)),
+    "57":    ("5,7 mm", 50, (0.1, 0.8, 0.8), dict(len=0.04, r=0.0038)),
+    "12g":   ("12-gauge hagl", 10, (0.85, 0.1, 0.08), dict(len=0.06, r=0.0095, shell=True, n=4)),
+    "50bmg": (".50 BMG", 10, (0.1, 0.1, 0.1), dict(len=0.1, r=0.01, n=3)),
+    "40mm":  ("40 mm granater", 3, (0.5, 0.55, 0.3), dict(len=0.08, r=0.02, n=2)),
+    "rocket": ("84 mm raketter", 1, (0.3, 0.35, 0.2), dict(len=0.2, r=0.04, n=1)),
+    "arrow": ("Piler og bolter", 10, (0.5, 0.35, 0.2), dict(len=0.3, r=0.004, n=6)),
+    "flare": ("Signalpatroner", 4, (0.95, 0.4, 0.05), dict(len=0.04, r=0.012, shell=True, n=3)),
+    "ball":  ("Kruttkuler", 6, (0.3, 0.3, 0.3), dict(len=0.012, r=0.008, n=6)),
+}
+# which caliber each gun uses
+GUN_CALIBER = {
+    "M1911": "45acp", "Glock17": "9mm", "Makarov": "9mm", "Luger": "9mm", "Revolver": "357", "DesertEagle": "357",
+    "PistolKnife": "9mm", "MP40": "9mm", "Uzi": "9mm", "Suomi": "9mm", "MP5": "9mm", "Thompson": "45acp",
+    "PPSh": "9mm", "AG3": "762nato", "AK47": "762x39", "HK416": "556", "Garand": "762nato", "FAL": "762nato",
+    "Kar98k": "762x54", "Krag": "762x54", "Musket": "ball", "SVD": "762x54", "L96": "762nato", "Barrett": "50bmg",
+    "Pump": "12g", "DoubleBarrel": "12g", "Saiga": "12g", "MG3": "762nato", "Bren": "762nato", "PKM": "762x54",
+    "Minimi": "556", "CarlGustaf": "rocket", "M79": "40mm", "Crossbow": "arrow", "OverUnder": "12g", "M72": "",
+    "Mosin": "762x54", "Rem700": "762nato", "M14": "762nato", "G36": "556", "SCAR": "762nato", "UMP": "45acp",
+    "P90": "57", "Vector": "45acp", "FlareGun": "flare", "Longbow": "arrow", "PrintPistol": "9mm",
+}
+for _it in ITEMS:
+    if _it["cat"] == "Weapon" and _it["mode"] != "melee":
+        _it["caliber"] = GUN_CALIBER.get(_it["id"], "")
+
+for _cal, (_name, _rounds, _color, _mp) in CALIBERS.items():
+    _rar = "Uncommon" if _cal in ("50bmg", "40mm", "rocket") else "Common"
+    _id = "Ammo_" + _cal
+    _users = ", ".join(i["name"].split(" (")[0] for i in ITEMS if i.get("caliber") == _cal)
+    gadget(_id, f"Ammo: {_name}", _rar, "caliber", dict(arch="cal", color=_color, **_mp),
+           f"{_rounds} skudd. Passer i: {_users}.", use=0.0, caliber=_cal, rounds=_rounds)
+
+# --- special ammo: loads the gun you hold with a special kind of round
+gadget("AmmoAP", "Panserbrytende ammo", "Rare", "ammotype_ap", dict(arch="specialammo", color=(0.2, 0.3, 0.9)),
+       "Går gjennom vester og hjelmer. Bruk med F på våpenet du holder.", use=2.0)
+gadget("AmmoHP", "Hulspissammo", "Uncommon", "ammotype_hp", dict(arch="specialammo", color=(0.9, 0.2, 0.2)),
+       "+30% skade mot folk uten vest, mindre mot vest.", use=2.0)
+gadget("AmmoFire", "Brannammo", "Epic", "ammotype_fire", dict(arch="specialammo", color=(1.0, 0.5, 0.05)),
+       "Treff setter fyr på folk i 3 sekunder.", use=2.0)
+gadget("AmmoTracer", "Lysspor", "Common", "ammotype_tracer", dict(arch="specialammo", color=(0.95, 0.95, 0.2)),
+       "Ser hvor kulene går. Litt bedre treff, men alle ser deg.", use=2.0)
+gadget("AmmoShock", "Elektrosjokk-ammo", "Legendary", "ammotype_shock", dict(arch="specialammo", color=(0.4, 0.9, 1.0)),
+       "Treff lammer i 3 sekunder.", use=2.0)
+
+# --- more attachments
+gadget("Holo", "Holografisk sikte", "Rare", "att_holo", dict(arch="holo"), "Raskt sikte med litt zoom.", use=2.0)
+gadget("Scope8x", "8x kikkertsikte", "Epic", "att_scope8x", dict(arch="scope8"), "For snikskyttere. Kraftig zoom.", use=2.0)
+gadget("Drum", "Trommelmagasin", "Epic", "att_drum", dict(arch="drum"), "Dobbelt så stort magasin, litt tregere lading.", use=2.0)
+gadget("Compensator", "Kompensator", "Uncommon", "att_comp", dict(arch="comp"), "-30% rekyl. Bråker mer.", use=2.0)
+gadget("Grip", "Fremre håndtak", "Uncommon", "att_grip", dict(arch="vgrip"), "-15% rekyl og bedre treff fra hofta.", use=2.0)
+
+# --- 3D printing
+gadget("Filament", "Filament-spole", "Common", "filament", dict(arch="spool"),
+       "Bruk den i en 3D-printer for å lage ting.", use=0.0)
+gadget("PrintDrone", "3D-printet drone", "Epic", "drone", dict(arch="drone"), "Hjemmelaget speiderdrone. Ser 40 m i 10 sek.", use=1.5)
+
+# --- more food
+food("Lefse", "Lefse med smør og sukker", "Common", 2.0, 25, 0, stamina=20, model=dict(arch="lefse"))
+food("Farikal", "Fårikål på boks", "Uncommon", 4.0, 65, 5, heal=10, effect="Mett",
+     model=dict(arch="can", color=(0.85, 0.85, 0.8), band=(0.2, 0.45, 0.15), h=0.11, r=0.05), desc="Nasjonalretten (den andre).")
+food("Pinnekjott", "Pinnekjøtt", "Rare", 4.0, 70, -10, heal=20, effect="Mett", model=dict(arch="lunchbox"))
+food("Julebrus", "Julebrus", "Uncommon", 1.5, 0, 35, stamina=25, effect="Julestemning",
+     model=dict(arch="bottle", color=(0.8, 0.1, 0.1), cap=(0.9, 0.8, 0.2)))
+food("Risgrot", "Risengrynsgrøt", "Common", 3.0, 45, 0, heal=5, model=dict(arch="noodlecup"))
+food("Tran", "Tran", "Uncommon", 1.0, 0, 0, heal=10, effect="Tran", model=dict(arch="bottle", color=(0.9, 0.75, 0.2), cap=(0.1, 0.3, 0.7)),
+     desc="Vond, men sunn.")
+food("Kvikklunsj", "Turkjeks", "Common", 1.5, 15, 0, stamina=45, effect="Sukkerrush", model=dict(arch="bar", color=(0.95, 0.85, 0.1)))
+food("Solbaer", "Solbærtoddy", "Common", 2.0, 0, 25, heal=5, model=dict(arch="cup"))
+food("Rakfisk", "Rakfisk", "Rare", 3.0, 50, 0, heal=15, effect="Matforgiftning", poison=0.5, model=dict(arch="salmon"),
+     desc="Halvparten blir syke. Den andre halvparten blir sterke.")
+food("Sodd", "Trøndersodd", "Rare", 4.0, 60, 20, heal=20, effect="Mett", model=dict(arch="noodlecup"),
+     desc="Trondheims stolthet.")
 
 
 def items(cat=None):

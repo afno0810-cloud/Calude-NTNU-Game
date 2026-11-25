@@ -1025,7 +1025,214 @@ def _(p, m):
         cyl(f"Handle{s}", 0.025, 0.008, (0, s * 0.075, 0.18), g, axis="Y")
 
 
-WEAPON_BUILDERS = dict(pistol=build_pistol, revolver=build_revolver, pistolknife=build_pistolknife, rifle=build_rifle,
+
+
+# ------------------------------------------------------------------ new weapons (round 3)
+def build_overunder(p, m):
+    """Over/under competition shotgun: engraved silver receiver, walnut stock with palm swell, vented rib."""
+    walnut = col((0.32, 0.14, 0.05), 0, 0.35)
+    for z in (0.012, 0.037):
+        cyl(f"Barrel{z}", 0.0115, 0.72, (0.42, 0, z), m["dark"], verts=24)
+    box("Rib", (0.72, 0.008, 0.004), (0.42, 0, 0.051), m["dark"], bevel=0)
+    for i in range(24):
+        box(f"RibPost{i}", (0.004, 0.006, 0.006), (0.08 + i * 0.03, 0, 0.0485), m["dark"], bevel=0)
+    box("Receiver", (0.11, 0.046, 0.07), (0.0, 0, 0.02), m["chrome"], bevel=0.008)
+    for i in range(7):  # engraving scrolls
+        cyl(f"Scroll{i}", 0.006 + (i % 3) * 0.002, 0.0485, (-0.035 + i * 0.012, 0, 0.012 + (i % 2) * 0.02), col((0.45, 0.45, 0.47), 1, 0.4), axis="Y", verts=12)
+    box("TopLever", (0.04, 0.012, 0.006), (-0.06, 0, 0.057), m["steel"], rot=(0, 0, 18))
+    prism("Forend", [(0.06, -0.012), (0.33, -0.006), (0.34, 0.002), (0.06, 0.002)], 0.05, walnut, bevel=0.008)
+    for i in range(10):
+        box(f"Checker{i}", (0.012, 0.0505, 0.002), (0.12 + i * 0.018, 0, -0.008), col((0.22, 0.1, 0.04)), bevel=0)
+    prism("Stock", [(-0.42, -0.16), (-0.25, -0.1), (-0.12, -0.075), (-0.07, -0.085), (-0.03, -0.04), (-0.055, -0.01),
+                    (-0.055, 0.045), (-0.2, 0.035), (-0.42, 0.02)], 0.042, walnut, bevel=0.01)
+    box("ButtPad", (0.016, 0.045, 0.19), (-0.428, 0, -0.07), m["rubber"], rot=(0, -8, 0))
+    box("TriggerGuard", (0.065, 0.01, 0.006), (-0.005, 0, -0.03), m["chrome"])
+    box("Trigger", (0.006, 0.006, 0.022), (-0.01, 0, -0.02), col((0.7, 0.55, 0.2), 1, 0.3))
+    sph("Bead", 0.0035, (0.775, 0, 0.056), m["white"])
+    return dict(muzzle=0.78, sight=0.055)
+
+
+def build_m72(p, m):
+    """M72 LAW: thin telescoping olive tube with flip-up sights."""
+    cyl("Tube", 0.035, 0.66, (0.06, 0, 0.06), m["green"], verts=24)
+    cyl("Inner", 0.031, 0.24, (0.48, 0, 0.06), col((0.12, 0.14, 0.08), 0, 0.7), verts=24)
+    for x in (-0.25, 0.37):
+        cyl(f"Cap{x}", 0.037, 0.03, (x, 0, 0.06), m["poly"], verts=24)
+    box("Trigger", (0.05, 0.03, 0.035), (0.1, 0, 0.11), m["poly"])
+    box("FrontSight", (0.008, 0.04, 0.04), (0.34, 0, 0.115), m["poly"])
+    box("RearSight", (0.008, 0.035, 0.05), (-0.05, 0, 0.12), m["poly"])
+    box("Sling", (0.6, 0.004, 0.02), (0.05, -0.04, 0.03), m["fabric"], bevel=0)
+    box("Label", (0.12, 0.0705, 0.03), (0.15, 0, 0.06), col((0.85, 0.8, 0.3)), bevel=0)
+    return dict(muzzle=0.6, sight=0.14)
+
+
+def build_daneaxe(p, m):
+    """Double-bladed battle axe with leather wrapped handle."""
+    h = p.get("handle", 0.85)
+    cyl("Handle", 0.017, h, (h / 2 - 0.15, 0, 0), col((0.25, 0.14, 0.07), 0, 0.6), verts=12)
+    for i in range(8):
+        rotated(cyl(f"Leather{i}", 0.0195, 0.025, (-0.13 + i * 0.026, 0, 0), col((0.18, 0.09, 0.04), 0, 0.9), verts=12), (0, 0, 0))
+    end = h - 0.15
+    steel = col((0.55, 0.56, 0.58), 1, 0.25)
+    for s in (1, -1):
+        prism(f"Blade{s}", [(end - 0.03, 0.0), (end + 0.03, 0.0), (end + 0.09, s * 0.19), (end - 0.1, s * 0.19), (end - 0.05, s * 0.04)][::s],
+              0.01, steel, bevel=0.002)
+    box("Socket", (0.08, 0.04, 0.05), (end, 0, 0.0), m["dark"])
+    cone("Spike", 0.016, 0.0, 0.08, (end + 0.08, 0, 0.0), m["dark"], axis="X")
+    sph("Pommel", 0.022, (-0.16, 0, 0), m["dark"])
+    return dict(muzzle=end + 0.1, sight=0.0)
+
+
+def build_spear(p, m):
+    cyl("Shaft", 0.014, 1.7, (0.55, 0, 0), m["lwood"], verts=12)
+    prism("Head", [(1.38, -0.025), (1.6, 0.0), (1.38, 0.025), (1.36, 0.0)], 0.006, m["blade"], bevel=0.001)
+    cyl("Socket", 0.017, 0.08, (1.35, 0, 0), m["dark"], verts=12)
+    cyl("Wrap", 0.016, 0.2, (0.0, 0, 0), m["fabric"], verts=12)
+    return dict(muzzle=1.6, sight=0.0)
+
+
+def build_bow(p, m):
+    """Recurve longbow lying along X with the string towards -X."""
+    wood = col((0.4, 0.22, 0.1), 0, 0.5)
+    for s in (-1, 1):
+        rotated(box(f"Limb{s}", (0.022, 0.03, 0.62), (0.03, 0, s * 0.36), wood, bevel=0.006), (0, s * -10, 0))
+        rotated(box(f"Tip{s}", (0.03, 0.02, 0.08), (0.1, 0, s * 0.69), wood, bevel=0.004), (0, s * 35, 0))
+    box("Grip", (0.04, 0.035, 0.14), (0.0, 0, 0.0), m["fabric"], bevel=0.008)
+    box("String", (0.002, 0.002, 1.36), (-0.03, 0, 0.0), m["white"], bevel=0)
+    cyl("Arrow", 0.004, 0.75, (0.3, 0, 0.02), m["lwood"])
+    cone("ArrowTip", 0.008, 0.0, 0.04, (0.69, 0, 0.02), m["steel"], axis="X")
+    return dict(muzzle=0.7, sight=0.03)
+
+
+def build_flare(p, m):
+    """Orange signal pistol with a fat barrel."""
+    org = col((0.95, 0.35, 0.05), 0, 0.4)
+    cyl("Barrel", 0.02, 0.18, (0.08, 0, 0.03), org, verts=20)
+    cyl("Bore", 0.015, 0.182, (0.08, 0, 0.03), m["dark"], verts=20)
+    box("Frame", (0.08, 0.035, 0.05), (-0.03, 0, 0.02), org, bevel=0.006)
+    prism("Grip", [(-0.06, 0.0), (0.0, 0.0), (-0.02, -0.11), (-0.08, -0.1)], 0.032, org)
+    box("Hammer", (0.02, 0.01, 0.02), (-0.07, 0, 0.05), m["dark"], rot=(0, 30, 0))
+    box("TriggerGuard", (0.05, 0.01, 0.005), (0.0, 0, -0.02), org)
+    return dict(muzzle=0.17, sight=0.055)
+
+
+def build_printed(p, m):
+    """3D-printed pistol: chunky white and orange plastic, visible print layers."""
+    white = col((0.92, 0.92, 0.9), 0, 0.55)
+    orange = col((1.0, 0.45, 0.08), 0, 0.5)
+    box("Body", (0.17, 0.03, 0.05), (0.02, 0, 0.03), white, bevel=0.004)
+    for i in range(9):
+        box(f"Layer{i}", (0.172, 0.031, 0.0015), (0.02, 0, 0.007 + i * 0.005), col((0.85, 0.85, 0.83)), bevel=0)
+    cyl("Barrel", 0.01, 0.06, (0.12, 0, 0.04), orange)
+    prism("Grip", [(-0.05, 0.005), (0.0, 0.005), (-0.02, -0.1), (-0.07, -0.095)], 0.03, orange)
+    box("Trigger", (0.006, 0.006, 0.02), (0.01, 0, -0.008), white)
+    return dict(muzzle=0.15, sight=0.06)
+
+
+def build_printknife(p, m):
+    orange = col((1.0, 0.45, 0.08), 0, 0.5)
+    prism("Blade", [(0.02, -0.015), (0.15, -0.012), (0.18, 0.004), (0.15, 0.016), (0.02, 0.016)], 0.006, col((0.92, 0.92, 0.9), 0, 0.5))
+    box("Handle", (0.11, 0.025, 0.03), (-0.04, 0, 0.0), orange, bevel=0.006)
+    return dict(muzzle=0.18, sight=0.0)
+
+
+# ------------------------------------------------------------------ ammo, attachments, filament, new food (round 3)
+@item("cal")
+def _(p, m):
+    """Ammo box for one caliber: cardboard box with a coloured band and a few rounds on top."""
+    c = col(p["color"], 0, 0.7)
+    box("Box", (0.12, 0.08, 0.06), (0, 0, 0.03), col((0.75, 0.65, 0.45), 0, 0.85), bevel=0.003)
+    box("Band", (0.122, 0.082, 0.02), (0, 0, 0.035), c, bevel=0)
+    L, r = p.get("len", 0.03), p.get("r", 0.005)
+    for i in range(p.get("n", 5)):
+        y = -0.03 + i * 0.015
+        if p.get("shell"):
+            cyl(f"Hull{i}", r, L * 0.8, (0.0, y, 0.066), col((0.8, 0.1, 0.08), 0, 0.5))
+            cyl(f"Base{i}", r * 1.05, L * 0.2, (-L * 0.5, y, 0.066), m["brass"])
+        else:
+            cyl(f"Case{i}", r, L, (0.0, y, 0.066), m["brass"])
+            cone(f"Tip{i}", r * 0.95, r * 0.2, L * 0.5, (L * 0.75, y, 0.066), col(p.get("tip", (0.6, 0.35, 0.15)), 0.9, 0.3), axis="X")
+
+
+@item("specialammo")
+def _(p, m):
+    """Special ammo: dark tin with a bright stripe and an icon."""
+    c = col(p["color"], 0, 0.4)
+    cyl("Tin", 0.045, 0.07, (0, 0, 0.035), m["dark"], axis="Z", verts=24)
+    cyl("Stripe", 0.0455, 0.018, (0, 0, 0.04), c, axis="Z", verts=24)
+    cyl("Lid", 0.047, 0.008, (0, 0, 0.072), m["steel"], axis="Z", verts=24)
+    for i in range(3):
+        cyl(f"Round{i}", 0.005, 0.045, (0.0, -0.012 + i * 0.012, 0.09), m["brass"])
+        cone(f"RoundTip{i}", 0.0048, 0.001, 0.02, (0.032, -0.012 + i * 0.012, 0.09), c, axis="X")
+
+
+@item("holo")
+def _(p, m):
+    box("Base", (0.07, 0.035, 0.012), (0, 0, 0.006), m["dark"])
+    box("Body", (0.045, 0.04, 0.03), (-0.012, 0, 0.027), m["poly"], bevel=0.004)
+    box("Hood", (0.012, 0.046, 0.045), (0.028, 0, 0.035), m["poly"], bevel=0.003)
+    box("Window", (0.003, 0.034, 0.03), (0.028, 0, 0.037), m["lens"], bevel=0)
+    box("Reticle", (0.0035, 0.004, 0.004), (0.028, 0, 0.04), col((1, 0.1, 0.1)), bevel=0)
+
+
+@item("scope8")
+def _(p, m):
+    cyl("Tube", 0.016, 0.36, (0, 0, 0.05), m["poly"])
+    cone("Objective", 0.016, 0.03, 0.09, (0.22, 0, 0.05), m["poly"], axis="X")
+    cyl("Ocular", 0.02, 0.06, (-0.2, 0, 0.05), m["poly"])
+    cyl("Turret", 0.01, 0.03, (0.0, 0, 0.072), m["dark"], axis="Z")
+    cyl("TurretSide", 0.01, 0.03, (0.0, 0.026, 0.05), m["dark"], axis="Y")
+    for x in (-0.08, 0.08):
+        box(f"Ring{x}", (0.02, 0.04, 0.045), (x, 0, 0.03), m["dark"])
+    cyl("Lens", 0.028, 0.002, (0.266, 0, 0.05), m["lens"])
+
+
+@item("drum")
+def _(p, m):
+    cyl("Drum", 0.075, 0.05, (0, 0, 0.0), m["dark"], axis="Y", verts=32)
+    cyl("Cap", 0.03, 0.054, (0, 0, 0.0), m["steel"], axis="Y", verts=24)
+    box("Neck", (0.04, 0.026, 0.08), (0.02, 0, 0.09), m["dark"])
+
+
+@item("comp")
+def _(p, m):
+    cyl("Body", 0.013, 0.06, (0, 0, 0.013), m["dark"], verts=16)
+    for i in range(3):
+        box(f"Port{i}", (0.006, 0.02, 0.006), (-0.012 + i * 0.012, 0, 0.026), m["steel"], bevel=0)
+
+
+@item("vgrip")
+def _(p, m):
+    box("Clamp", (0.05, 0.03, 0.015), (0, 0, 0.1), m["dark"])
+    cyl("Grip", 0.015, 0.1, (0, 0, 0.045), m["poly"], axis="Z", verts=16)
+    for i in range(4):
+        cyl(f"Ridge{i}", 0.0155, 0.004, (0, 0, 0.015 + i * 0.02), m["rubber"], axis="Z", verts=16)
+
+
+@item("spool")
+def _(p, m):
+    c = col(p.get("color", (1.0, 0.45, 0.08)), 0, 0.45)
+    cyl("Core", 0.03, 0.06, (0, 0, 0), m["white"], axis="Y", verts=24)
+    cyl("Filament", 0.08, 0.055, (0, 0, 0), c, axis="Y", verts=32)
+    for y in (-0.031, 0.031):
+        cyl(f"Flange{y}", 0.1, 0.006, (0, y, 0), col((0.1, 0.1, 0.1)), axis="Y", verts=32)
+    cyl("Hole", 0.026, 0.07, (0, 0, 0), m["dark"], axis="Y", verts=16)
+
+
+@item("lefse")
+def _(p, m):
+    cyl("Lefse", 0.12, 0.004, (0, 0, 0.002), col((0.92, 0.85, 0.65), 0, 0.9), axis="Z", verts=32)
+    for i in range(9):
+        a = i * 0.7
+        cyl(f"Spot{i}", 0.012, 0.0045, (math.cos(a) * 0.06 * (i % 3 + 1) / 2, math.sin(a) * 0.06 * (i % 3 + 1) / 2, 0.0025),
+            col((0.55, 0.38, 0.2)), axis="Z", verts=10)
+    box("Fold", (0.12, 0.24, 0.004), (0.06, 0, 0.008), col((0.9, 0.83, 0.62), 0, 0.9), rot=(0, -8, 0))
+    box("Butter", (0.08, 0.15, 0.002), (0.05, 0, 0.0055), col((0.95, 0.85, 0.4), 0, 0.4))
+
+
+WEAPON_BUILDERS = dict(overunder=build_overunder, m72=build_m72, daneaxe=build_daneaxe, spear=build_spear, bow=build_bow,
+                       flare=build_flare, printed=build_printed, printknife=build_printknife,
+                       pistol=build_pistol, revolver=build_revolver, pistolknife=build_pistolknife, rifle=build_rifle,
                        bolt=build_bolt, musket=build_musket, shotgun=build_shotgun, launcher=build_launcher,
                        m79=build_m79, crossbow=build_crossbow, knife=build_knife, axe=build_axe, bat=build_bat,
                        crowbar=build_crowbar, pan=build_pan, vest=build_vest, exo=build_exo, helmet=build_helmet)

@@ -2,9 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "GSTypes.h"
 #include "GSPlayerController.generated.h"
 
 class UInputAction;
+class AGSTerminal;
+class AGSSecurityCamera;
 class UInputMappingContext;
 
 /** Input actions are created in code so the project needs no input assets. */
@@ -17,6 +20,7 @@ public:
 	AGSPlayerController();
 
 	virtual void SetupInputComponent() override;
+	virtual void BeginPlay() override;
 
 	void EnsureInputCreated();
 
@@ -41,6 +45,34 @@ public:
 	UPROPERTY() TObjectPtr<UInputAction> InventoryAction;
 	UPROPERTY() TObjectPtr<UInputAction> NextWeaponAction;
 	UPROPERTY() TObjectPtr<UInputAction> ScoreboardAction;
+	UPROPERTY() TObjectPtr<UInputAction> InspectAction;
+
+	// --- PCs and 3D printers ---
+	bool IsOnTerminal() const { return ActiveTerminal.IsValid(); }
+	AGSTerminal* GetActiveTerminal() const { return ActiveTerminal.Get(); }
+	void OpenTerminal(AGSTerminal* T);
+	void CloseTerminal();
+	/** A key pressed while a terminal is open ("1".."4", "Q", "F", "E", "Fire"). */
+	void TerminalInput(const FString& Key);
+	/** All security cameras, sorted by name. */
+	TArray<AGSSecurityCamera*> GetCameras() const;
+	bool IsLoggingIn() const;
+
+	int32 TerminalMode = 0;   // PC: 0 menu, 1 cameras, 2 tracker
+	int32 CameraIndex = 0;
+	int32 RecipeIndex = 0;
+	float TerminalOpenTime = -100.f;
+	TArray<FGSTrackedPlayer> Tracked;
+	float TrackedTime = -100.f;   // when the last positions came in (local time)
+	float TrackUntil = -100.f;    // local time when tracking stops
+
+	virtual void PlayerTick(float DeltaTime) override;
+
+	UFUNCTION(Server, Reliable) void ServerViewCamera(AGSTerminal* T, AGSSecurityCamera* Cam);
+	UFUNCTION(Server, Reliable) void ServerTrack(AGSTerminal* T);
+	UFUNCTION(Server, Reliable) void ServerPrint(AGSTerminal* T, int32 Recipe);
+	UFUNCTION(Client, Reliable) void ClientTrackData(const TArray<FGSTrackedPlayer>& Data, float SecondsLeft);
+	UFUNCTION(Client, Reliable) void ClientTerminalMessage(const FString& Message);
 
 	bool bShowScoreboard = false;
 	bool bShowInventory = false;
@@ -49,8 +81,19 @@ public:
 	UFUNCTION(Exec) void Host();
 	/** Console: "Join 192.168.1.20" joins a friend's game. */
 	UFUNCTION(Exec) void Join(const FString& Address);
+	/** Console: "Grafikk 0".."Grafikk 4" = lav, middels, hoy, episk, film. */
+	UFUNCTION(Exec) void Grafikk(int32 Level);
+	/** Console: "Opplosning 50".."Opplosning 100" = how much of the screen resolution is rendered before TSR upscales it. */
+	UFUNCTION(Exec) void Opplosning(int32 Percent);
 
 protected:
+	bool ServerCanUse(const AGSTerminal* T) const;
+	void SendTrackPulse();
+	TWeakObjectPtr<AGSTerminal> ActiveTerminal;
+	float ServerNextTrackTime = 0.f;
+	int32 TrackPulsesLeft = 0;
+	FTimerHandle TrackTimer;
+
 	void ShowScoreboard() { bShowScoreboard = true; }
 	void HideScoreboard() { bShowScoreboard = false; }
 	void ToggleInventory() { bShowInventory = !bShowInventory; }

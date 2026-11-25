@@ -86,6 +86,8 @@ for it in catalog.ITEMS:
             L.append(f"W.ProjSpeed = {f(it['proj_speed'] * 100)}; W.ProjGravity = {f(it['proj_gravity'])}; W.Radius = {f(it['radius'] * 100)};")
         if it.get("silent"):
             L.append("W.bSilent = true;")
+        if it.get("caliber"):
+            L.append(f"W.Caliber = FName(TEXT(\"{it['caliber']}\"));")
         aimz = -sight if cls != "Melee" else -20
         aimy = 0 if cls != "Melee" else 14
         L.append(f"W.MuzzleX = {f(muzzle)}; W.FPHip = FVector({hip[0]}.f, {hip[1]}.f, {hip[2]}.f); W.FPAim = FVector({aimx}.f, {aimy}.f, {f(aimz)});")
@@ -100,8 +102,12 @@ for it in catalog.ITEMS:
         L.append(f"D.Kind = FName(TEXT(\"{it['kind']}\")); D.UseTime = {f(it['use'])}; D.Slots = {it.get('slots', 0)}; D.Charges = {it.get('charges', 1)};")
         if it.get("effect"):
             L.append(f"D.Effect = FName(TEXT(\"{it['effect']}\"));")
-        if it["kind"] in ("ammo", "plate", "grapple"):
+        if it["kind"] in ("ammo", "plate", "grapple") or it["kind"].startswith("ammotype_"):
             L.append("D.MaxStack = 3;")
+        if it["kind"] in ("caliber", "filament"):
+            L.append("D.MaxStack = 10;")
+        if it.get("caliber"):
+            L.append(f"D.Caliber = FName(TEXT(\"{it['caliber']}\")); D.Rounds = {it.get('rounds', 0)};")
     lines.append("\n\t\t".join(L) + " }")
 lines.append("}")
 open(OUT, "w", newline="\n").write("\n".join(lines) + "\n")

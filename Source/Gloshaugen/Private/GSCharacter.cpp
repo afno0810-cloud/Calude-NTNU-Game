@@ -1,8 +1,10 @@
 #include "GSCharacter.h"
+#include "Engine/StaticMeshActor.h"
 #include "GSPlayerController.h"
 #include "GSGameMode.h"
 #include "GSHUD.h"
 #include "GSPickup.h"
+#include "GSTerminal.h"
 #include "GSProjectile.h"
 #include "GSEffects.h"
 #include "GSUtils.h"
@@ -44,6 +46,34 @@ namespace
 	const FName AttScope(TEXT("att_scope"));
 	const FName AttExtMag(TEXT("att_extmag"));
 	const FName AttLaser(TEXT("att_laser"));
+	const FName AttHolo(TEXT("att_holo"));
+	const FName AttScope8x(TEXT("att_scope8x"));
+	const FName AttDrum(TEXT("att_drum"));
+	const FName AttComp(TEXT("att_comp"));
+	const FName AttGrip(TEXT("att_grip"));
+	const FName KindCaliber(TEXT("caliber"));
+	const FName KindFilament(TEXT("filament"));
+
+	/** Item that gives each attachment bit (so a replaced attachment goes back in the sack). */
+	FName AttachmentItem(uint16 Bit)
+	{
+		switch (Bit)
+		{
+		case GSAttach::Suppressor: return TEXT("Suppressor");
+		case GSAttach::RedDot: return TEXT("RedDot");
+		case GSAttach::Scope: return TEXT("Scope");
+		case GSAttach::ExtMag: return TEXT("ExtMag");
+		case GSAttach::Laser: return TEXT("Laser");
+		case GSAttach::Holo: return TEXT("Holo");
+		case GSAttach::Scope8x: return TEXT("Scope8x");
+		case GSAttach::Drum: return TEXT("Drum");
+		case GSAttach::Compensator: return TEXT("Compensator");
+		case GSAttach::Grip: return TEXT("Grip");
+		default: return NAME_None;
+		}
+	}
+
+	FName AmmoBoxFor(FName Caliber) { return Caliber.IsNone() ? FName() : FName(*(FString(TEXT("Ammo_")) + Caliber.ToString())); }
 	const FName FxFoniks(TEXT("Foniks"));
 	const FName FxGlide(TEXT("Glide"));
 	const FName FxDrone(TEXT("Avslort"));
@@ -53,7 +83,8 @@ namespace
 	bool IsLocalOnlyGadget(const FGSItemDef& D)
 	{
 		return D.Cat == EGSItemCat::Gadget && (D.Kind == KindZoom || D.Kind == KindNightVision || D.Kind == KindRadio
-			|| D.Kind == KindCompass || D.Kind == KindJoke || D.Kind == KindKey || D.Kind == KindLockpick);
+			|| D.Kind == KindCompass || D.Kind == KindJoke || D.Kind == KindKey || D.Kind == KindLockpick
+			|| D.Kind == KindCaliber || D.Kind == KindFilament);
 	}
 }
 
@@ -260,10 +291,12 @@ void AGSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	EIC->BindAction(PC->NextItemAction, ETriggerEvent::Started, this, &AGSCharacter::NextItem);
 	EIC->BindAction(PC->DropItemAction, ETriggerEvent::Started, this, &AGSCharacter::DropSelectedItem);
 	EIC->BindAction(PC->MeleeAction, ETriggerEvent::Started, this, &AGSCharacter::QuickMelee);
+	EIC->BindAction(PC->InspectAction, ETriggerEvent::Started, this, &AGSCharacter::Inspect);
 }
 
 void AGSCharacter::Move(const FInputActionValue& Value)
 {
+	if (TerminalPC()) return;
 	if (bDead) return;
 	const FVector2D V = Value.Get<FVector2D>();
 	AddMovementInput(GetActorForwardVector(), V.Y);
@@ -276,15 +309,18 @@ void AGSCharacter::Move(const FInputActionValue& Value)
 
 void AGSCharacter::Look(const FInputActionValue& Value)
 {
+	if (TerminalPC()) return;
 	const FVector2D V = Value.Get<FVector2D>();
 	float Sens = bAiming ? 0.55f : 1.f;
 	if (bBinoculars) Sens = 0.2f;
 	AddControllerYawInput(V.X * Sens);
 	AddControllerPitchInput(-V.Y * Sens);
+	LookSwayInput += V * Sens;
 }
 
 void AGSCharacter::StartJump()
 {
+	if (TerminalPC()) return;
 	if (bDead) return;
 	if (bSliding) EndSlide();
 	if (!TryMantle()) Jump();
@@ -401,6 +437,7 @@ void AGSCharacter::ServerSetSprinting_Implementation(bool bNew)
 
 void AGSCharacter::ToggleCrouch()
 {
+	if (TerminalPC()) return;
 	if (bDead) return;
 	// Crouch while sprinting = slide
 	if (bSprinting && GetVelocity().Size2D() > WalkSpeed + 50.f)
@@ -415,6 +452,7 @@ void AGSCharacter::ToggleCrouch()
 
 void AGSCharacter::StartAim()
 {
+	if (TerminalPC()) return;
 	bAiming = true;
 	SetSprinting(false);
 }
@@ -427,6 +465,7 @@ void AGSCharacter::StopAim()
 
 void AGSCharacter::SelectSlot(int32 Slot)
 {
+	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(*FString::FromInt(Slot + 1)); return; }
 	if (!Weapons.IsValidIndex(Slot) || bDead) return;
 	StopFire();
 	CurrentSlot = Slot;
@@ -437,6 +476,7 @@ void AGSCharacter::SelectSlot(int32 Slot)
 
 void AGSCharacter::NextWeapon()
 {
+	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("Q")); return; }
 	if (Weapons.Num() < 2) return;
 	SelectSlot((CurrentSlot + 1) % Weapons.Num());
 }
@@ -456,15 +496,22 @@ void AGSCharacter::ServerSelectSlot_Implementation(int32 Slot)
 FGSWeaponStats AGSCharacter::GetStats(const FGSWeaponSlot& Slot) const
 {
 	FGSWeaponStats S = GSItems::Weapon(Slot.Id);
-	if (Slot.Attachments & GSAttach::ExtMag) S.MagSize = FMath::CeilToInt(S.MagSize * 1.5f);
-	if (Slot.Attachments & GSAttach::RedDot) S.AimSpread *= 0.7f;
-	if (Slot.Attachments & GSAttach::Laser) S.HipSpread *= 0.7f;
-	if (Slot.Attachments & GSAttach::Scope) S.AimFOV = FMath::Min(S.AimFOV, 25.f);
-	if (Slot.Attachments & GSAttach::Suppressor) { S.bSilent = true; S.Damage *= 0.92f; }
+	const uint16 A = Slot.Attachments;
+	if (A & GSAttach::ExtMag) S.MagSize = FMath::CeilToInt(S.MagSize * 1.5f);
+	if (A & GSAttach::Drum) { S.MagSize *= 2; S.ReloadTime *= 1.25f; }
+	if (A & GSAttach::RedDot) S.AimSpread *= 0.7f;
+	if (A & GSAttach::Holo) { S.AimSpread *= 0.65f; S.AimFOV = FMath::Min(S.AimFOV, 50.f); }
+	if (A & GSAttach::Laser) S.HipSpread *= 0.7f;
+	if (A & GSAttach::Scope) { S.AimFOV = FMath::Min(S.AimFOV, 25.f); S.AimSpread *= 0.6f; }
+	if (A & GSAttach::Scope8x) { S.AimFOV = FMath::Min(S.AimFOV, 11.f); S.AimSpread *= 0.4f; }
+	if (A & GSAttach::Suppressor) { S.bSilent = true; S.Damage *= 0.92f; }
+	if (A & GSAttach::Compensator) S.RecoilPitch *= 0.7f;
+	if (A & GSAttach::Grip) { S.RecoilPitch *= 0.85f; S.HipSpread *= 0.8f; }
+	if (Slot.AmmoType == GSAmmoType::Tracer) { S.HipSpread *= 0.85f; S.AimSpread *= 0.85f; }
 	return S;
 }
 
-bool AGSCharacter::GiveWeapon(FName Id, int32 Ammo, int32 Reserve, uint8 Attachments)
+bool AGSCharacter::GiveWeapon(FName Id, int32 Ammo, int32 Reserve, uint16 Attachments)
 {
 	const FGSItemDef* Def = GSItems::Find(Id);
 	if (!HasAuthority() || !Def || !Def->IsWeapon()) return false;
@@ -520,6 +567,7 @@ float AGSCharacter::GetCurrentSpread() const
 
 void AGSCharacter::StartFire()
 {
+	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("Fire")); return; }
 	if (bBinoculars) { bBinoculars = false; return; }
 	if (!UseItemId.IsNone()) ServerCancelUse();
 	bWantsFire = true;
@@ -599,6 +647,7 @@ void AGSCharacter::FireOnce()
 	// Recoil
 	const float Recoil = S.RecoilPitch * Mods.Recoil;
 	CurrentRecoil += Recoil;
+	AddWeaponKick(Recoil, S.Class);
 	const float AimFactor = bAiming ? 0.6f : 1.f;
 	AddControllerPitchInput(-Recoil * AimFactor);
 	AddControllerYawInput(FMath::FRandRange(-0.25f, 0.25f) * Recoil * AimFactor);
@@ -646,6 +695,15 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 		AGSProjectile::Launch(GetWorld(), this, Kind, W.Id, FVector(Start) + D * 80.f, D * S.ProjSpeed, S.ProjGravity,
 			S.Damage * Mods.Damage, S.Radius, 0.f);
 		if (!S.bSilent) MulticastShotFX(Start, FVector(Start) + D * 200.f, true);
+		if (W.Ammo <= 0 && W.Reserve <= 0 && S.MaxReserve <= 0 && S.Caliber.IsNone())
+		{
+			// Single-use launcher: the empty tube is thrown away.
+			const FName Spent = W.Id;
+			Weapons.RemoveAt(CurrentSlot);
+			CurrentSlot = FMath::Clamp(CurrentSlot, 0, FMath::Max(0, Weapons.Num() - 1));
+			ApplyWeaponVisuals();
+			ClientToast(FString::Printf(TEXT("%s er tomt og kastet"), *GSItems::Name(Spent)));
+		}
 		return;
 	}
 
@@ -663,7 +721,9 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 				if (AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor()))
 				{
 					FPointDamageEvent Event(S.Damage, Hit, PD, nullptr);
+					Victim->IncomingAmmoType = W.AmmoType;
 					Victim->TakeDamage(S.Damage * Mods.Damage, Event, GetController(), this);
+					Victim->IncomingAmmoType = GSAmmoType::Normal;
 				}
 			}
 		}
@@ -680,7 +740,9 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 		if (AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor()))
 		{
 			FPointDamageEvent Event(S.Damage, Hit, D, nullptr);
+			Victim->IncomingAmmoType = W.AmmoType;
 			Victim->TakeDamage(S.Damage * Mods.Damage, Event, GetController(), this);
+			Victim->IncomingAmmoType = GSAmmoType::Normal;
 		}
 	}
 	MulticastShotFX(Start, bHit ? FVector(Hit.ImpactPoint) : End, S.bSilent || Mods.bSilent);
@@ -688,6 +750,7 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 
 void AGSCharacter::QuickMelee()
 {
+	if (TerminalPC()) return;
 	if (bDead || bBinoculars) return;
 	const float Now = GetWorld()->GetTimeSeconds();
 	if (Now - LastMeleeTime < 0.8f) return;
@@ -779,10 +842,12 @@ void AGSCharacter::NoteShotForRadio(const FVector& Where)
 
 void AGSCharacter::Reload()
 {
+	if (TerminalPC()) return;
 	const FGSWeaponSlot* W = GetCurrentWeapon();
 	if (!W || bReloading || bDead) return;
 	const FGSWeaponStats S = GetStats(*W);
-	if (!S.UsesAmmo() || W->Ammo >= S.MagSize || W->Reserve <= 0) return;
+	const bool bHaveBox = W->Reserve <= 0 && CountItem(AmmoBoxFor(S.Caliber)) > 0;
+	if (!S.UsesAmmo() || W->Ammo >= S.MagSize || (W->Reserve <= 0 && !bHaveBox)) return;
 	StopFire();
 	ServerReload();
 }
@@ -790,8 +855,15 @@ void AGSCharacter::Reload()
 void AGSCharacter::ServerReload_Implementation()
 {
 	if (!Weapons.IsValidIndex(CurrentSlot) || bReloading || bDead) return;
-	const FGSWeaponSlot& W = Weapons[CurrentSlot];
+	FGSWeaponSlot& W = Weapons[CurrentSlot];
 	const FGSWeaponStats S = GetStats(W);
+	if (W.Reserve <= 0)
+	{
+		// Open an ammo box from the sack
+		const FName Box = AmmoBoxFor(S.Caliber);
+		const FGSItemDef* BoxDef = GSItems::Find(Box);
+		if (BoxDef && BoxDef->Rounds > 0 && RemoveItem(Box, 1)) W.Reserve += BoxDef->Rounds;
+	}
 	if (!S.UsesAmmo() || W.Ammo >= S.MagSize || W.Reserve <= 0) return;
 	bReloading = true;
 	CancelUse();
@@ -820,13 +892,14 @@ FString AGSCharacter::CurrentWeaponName() const
 	return W ? GSItems::Name(W->Id) : FString(TEXT("Knyttneve"));
 }
 
-static void ShowItemOn(UStaticMeshComponent* C, FName Id, const FVector& FallbackScale, float ModelScale)
+static void ShowItemOn(UStaticMeshComponent* C, FName Id, const FVector& FallbackScale, float ModelScale, bool bApplyRotation = false)
 {
 	const FGSItemDef* Def = GSItems::Find(Id);
 	if (UStaticMesh* Model = GSItems::GetMesh(Id))
 	{
 		C->SetStaticMesh(Model);
-		C->SetRelativeScale3D(FVector(ModelScale));
+		C->SetRelativeScale3D(FVector(ModelScale * GSItems::MeshScale(Id)));
+		if (bApplyRotation) C->SetRelativeRotation(GSItems::MeshRotation(Id));
 		C->EmptyOverrideMaterials();
 	}
 	else
@@ -835,6 +908,198 @@ static void ShowItemOn(UStaticMeshComponent* C, FName Id, const FVector& Fallbac
 		C->SetRelativeScale3D(FallbackScale);
 		GSUtils::SetColor(C, Def ? GSItems::RarityColor(Def->Rarity) * 0.5f : FLinearColor::Gray);
 	}
+}
+
+// ---------------------------------------------------------------- First-person weapon animation (procedural)
+// Works for every weapon without animation assets: equip, idle breathing, walk/sprint bob, mouse sway,
+// recoil kick with spring, landing dip, reload in phases (mag out, mag in, charge), inspect and melee swings.
+
+void AGSCharacter::AddWeaponKick(float Strength, EGSWeaponClass Class)
+{
+	const float Big = Class == EGSWeaponClass::Sniper || Class == EGSWeaponClass::Shotgun || Class == EGSWeaponClass::Launcher ? 1.8f : 1.f;
+	const float K = FMath::Clamp(Strength, 0.2f, 4.f) * Big * (bAiming ? 0.55f : 1.f);
+	KickVel += FVector(-120.f * K, FMath::FRandRange(-12.f, 12.f) * K, 18.f * K);
+	KickRotVel += FRotator(140.f * K, FMath::FRandRange(-30.f, 30.f) * K, FMath::FRandRange(-60.f, 60.f) * K);
+}
+
+void AGSCharacter::Inspect()
+{
+	if (bDead || bReloading || bAiming || !GetCurrentWeapon()) return;
+	InspectStart = GetWorld()->GetTimeSeconds();
+}
+
+static float Phase01(float T, float A, float B) { return FMath::Clamp((T - A) / FMath::Max(B - A, 0.001f), 0.f, 1.f); }
+static float Ease(float X) { return X * X * (3.f - 2.f * X); }
+static float Bump(float T, float A, float B) { const float P = Phase01(T, A, B); return FMath::Sin(P * PI); }
+
+void AGSCharacter::UpdateWeaponAnimation(float Dt)
+{
+	const float Now = GetWorld()->GetTimeSeconds();
+	float TargetFOV = DefaultFOV;
+	FVector Pos(38.f, 16.f, -16.f);
+	FRotator Rot = FRotator::ZeroRotator;
+	const FGSWeaponSlot* W = GetCurrentWeapon();
+	FGSWeaponStats S;
+	if (W) S = GetStats(*W);
+	const bool bMeleeWeapon = W && S.Mode == EGSFireMode::Melee;
+
+	// Weapon changed -> equip animation (comes up from below, rotated)
+	const FName CurId = W ? W->Id : NAME_None;
+	if (CurId != AnimWeaponId) { AnimWeaponId = CurId; EquipStart = Now; InspectStart = -100.f; }
+	// Reload started -> remember when, and drop the old magazine
+	if (bReloading && !bWasReloading)
+	{
+		ReloadStart = Now;
+		ReloadLength = W ? S.ReloadTime * GetMods().Reload : 2.f;
+		bMagDropped = false;
+	}
+	bWasReloading = bReloading;
+	// Landing dip
+	const bool bFalling = GetCharacterMovement() && GetCharacterMovement()->IsFalling();
+	if (bWasFalling && !bFalling) { KickVel += FVector(0.f, 0.f, -260.f); KickRotVel += FRotator(-90.f, 0.f, 0.f); }
+	bWasFalling = bFalling;
+
+	if (W)
+	{
+		Pos = S.FPHip;
+		const float AimAlpha = FMath::FInterpTo(AimBlend, (bAiming && !bMeleeWeapon) ? 1.f : 0.f, Dt, 14.f);
+		AimBlend = AimAlpha;
+		Pos = FMath::Lerp(S.FPHip, S.FPAim, AimAlpha);
+		TargetFOV = FMath::Lerp(DefaultFOV, S.AimFOV, AimAlpha);
+
+		// Idle breathing
+		const float Breath = (1.f - AimAlpha * 0.85f);
+		Pos.Z += FMath::Sin(Now * 1.6f) * 0.35f * Breath;
+		Rot.Pitch += FMath::Sin(Now * 1.6f + 0.6f) * 0.4f * Breath;
+
+		// Walk / sprint bob (figure eight)
+		const float Speed01 = FMath::Min(float(GetVelocity().Size2D()) / 600.f, 1.f) * (bFalling ? 0.f : 1.f);
+		const float Freq = bSprinting ? 13.f : 8.5f;
+		BobTime += Dt * Freq * FMath::Max(Speed01, 0.05f);
+		const float BobAmt = Speed01 * (bSprinting ? 2.4f : 1.1f) * (1.f - AimAlpha * 0.8f);
+		Pos.Y += FMath::Sin(BobTime) * BobAmt;
+		Pos.Z += FMath::Abs(FMath::Cos(BobTime)) * BobAmt * 0.8f - BobAmt * 0.4f;
+		Rot.Roll += FMath::Sin(BobTime) * BobAmt * 1.2f;
+
+		// Sprint pose: weapon tilted down and across the chest
+		SprintBlend = FMath::FInterpTo(SprintBlend, (bSprinting && !bReloading) ? 1.f : 0.f, Dt, 9.f);
+		Pos += FVector(-6.f, -6.f, -6.f) * SprintBlend;
+		Rot += FRotator(-18.f, 32.f, -12.f) * SprintBlend;
+		TargetFOV += 6.f * SprintBlend;
+
+		// Equip
+		const float E = Ease(Phase01(Now - EquipStart, 0.f, 0.35f));
+		Pos += FVector(-10.f, 4.f, -32.f) * (1.f - E);
+		Rot += FRotator(-45.f, 10.f, 40.f) * (1.f - E);
+
+		// Reload in phases
+		if (bReloading && ReloadLength > 0.f)
+		{
+			const float T = (Now - ReloadStart) / ReloadLength; // 0..1
+			const bool bShell = S.Class == EGSWeaponClass::Shotgun || (S.Class == EGSWeaponClass::Sniper && S.MagSize <= 5);
+			const float In = Ease(Phase01(T, 0.f, 0.15f)) * (1.f - Ease(Phase01(T, 0.88f, 1.f)));
+			Pos += FVector(-6.f, -2.f, -6.f) * In;
+			Rot += FRotator(8.f, -12.f, 38.f) * In;
+			if (bShell)
+			{
+				// one shell at a time: rhythmic pushes
+				const float Push = FMath::Max(0.f, FMath::Sin(T * PI * 2.f * FMath::Max(2, S.MagSize / 2)));
+				Pos.Z += Push * 2.5f * In;
+				Rot.Pitch += Push * 4.f * In;
+			}
+			else
+			{
+				Pos.Z -= Bump(T, 0.15f, 0.42f) * 5.f;                         // mag out
+				Rot.Roll += Bump(T, 0.15f, 0.42f) * 10.f;
+				Pos.Z += Bump(T, 0.52f, 0.66f) * 4.f;                         // mag slammed in
+				Rot.Pitch += Bump(T, 0.55f, 0.66f) * 6.f;
+				Pos.X -= Bump(T, 0.72f, 0.86f) * 7.f;                         // charging handle
+				Rot.Yaw += Bump(T, 0.72f, 0.86f) * 14.f;
+				if (!bMagDropped && T > 0.25f)
+				{
+					bMagDropped = true;
+					DropMagazineFX();
+				}
+			}
+		}
+
+		// Inspect: turn the weapon to look at the side, then the top
+		const float IT = Now - InspectStart;
+		if (IT >= 0.f && IT < 3.2f)
+		{
+			if (bAiming || bWantsFire || bReloading) InspectStart = -100.f;
+			const float A = Ease(Phase01(IT, 0.f, 0.5f)) * (1.f - Ease(Phase01(IT, 2.6f, 3.2f)));
+			const float Mid = Ease(Phase01(IT, 1.2f, 1.8f));
+			Pos += FVector(-4.f, -10.f, 4.f) * A;
+			Rot += FRotator(10.f * Mid, 55.f * (1.f - Mid) * A + 20.f * Mid * A, -35.f * (1.f - Mid) * A + 60.f * Mid * A);
+		}
+
+		// Melee: wind-up, fast swing, follow-through
+		const float SW = Now - LastMeleeTime;
+		if (SW < 0.45f)
+		{
+			const float Wind = Ease(Phase01(SW, 0.f, 0.08f)) * (1.f - Phase01(SW, 0.08f, 0.16f));
+			const float Swing = Ease(Phase01(SW, 0.08f, 0.2f)) * (1.f - Ease(Phase01(SW, 0.22f, 0.45f)));
+			Rot += FRotator(25.f * Wind - 40.f * Swing, 25.f * Wind - 70.f * Swing, -15.f * Wind + 30.f * Swing);
+			Pos += FVector(-6.f * Wind + 30.f * Swing, 10.f * Wind - 25.f * Swing, 8.f * Wind - 4.f * Swing);
+		}
+	}
+	else
+	{
+		AimBlend = 0.f;
+	}
+
+	// Mouse sway: weapon lags behind where you look
+	SwayRot = FMath::RInterpTo(SwayRot, FRotator(LookSwayInput.Y * 1.2f, -LookSwayInput.X * 1.4f, -LookSwayInput.X * 2.f) * (1.f - AimBlend * 0.75f), Dt, 10.f);
+	SwayRot.Pitch = FMath::Clamp(SwayRot.Pitch, -6.f, 6.f);
+	SwayRot.Yaw = FMath::Clamp(SwayRot.Yaw, -7.f, 7.f);
+	SwayRot.Roll = FMath::Clamp(SwayRot.Roll, -8.f, 8.f);
+	LookSwayInput = FVector2D::ZeroVector;
+	Rot += SwayRot;
+
+	// Recoil spring (critically damped-ish)
+	const float K = 260.f, D = 24.f;
+	KickVel += (-KickPos * K - KickVel * D) * Dt;
+	KickPos += KickVel * Dt;
+	KickRotVel += (KickRot * -K - KickRotVel * D) * Dt;
+	KickRot += KickRotVel * Dt;
+	Pos += KickPos * 0.06f;
+	Rot += KickRot * 0.06f;
+
+	if (bBinoculars) TargetFOV = 15.f;
+	if (bSliding) { TargetFOV += 10.f; Rot.Roll -= 12.f; }
+	if (!UseItemId.IsNone()) Pos += FVector(-10.f, 0.f, -30.f);
+
+	// Fab / Megascans replacement models can need a fixed turn and offset (Config/GSMeshOverrides.ini)
+	if (W)
+	{
+		Rot = (FQuat(Rot) * FQuat(GSItems::MeshRotation(W->Id))).Rotator();
+		Pos += GSItems::MeshOffset(W->Id);
+	}
+
+	Camera->SetFieldOfView(FMath::FInterpTo(Camera->FieldOfView, TargetFOV, Dt, 12.f));
+	FPWeaponMesh->SetRelativeLocation(FMath::VInterpTo(FPWeaponMesh->GetRelativeLocation(), Pos, Dt, 22.f));
+	FPWeaponMesh->SetRelativeRotation(FMath::RInterpTo(FPWeaponMesh->GetRelativeRotation(), Rot, Dt, 22.f));
+}
+
+void AGSCharacter::DropMagazineFX()
+{
+	// A small magazine falls out and bounces on the floor (client-only, cosmetic).
+	UWorld* World = GetWorld();
+	if (!World || GetNetMode() == NM_DedicatedServer) return;
+	AStaticMeshActor* Mag = World->SpawnActor<AStaticMeshActor>(FPWeaponMesh->GetComponentLocation() + FVector(0.f, 0.f, -12.f), FPWeaponMesh->GetComponentRotation());
+	if (!Mag) return;
+	Mag->SetMobility(EComponentMobility::Movable);
+	UStaticMeshComponent* C = Mag->GetStaticMeshComponent();
+	C->SetStaticMesh(GSUtils::Cube());
+	C->SetWorldScale3D(FVector(0.03f, 0.07f, 0.16f));
+	GSUtils::SetColor(C, FLinearColor(0.04f, 0.04f, 0.045f));
+	C->SetCollisionProfileName(TEXT("PhysicsActor"));
+	C->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	C->SetSimulatePhysics(true);
+	C->SetPhysicsLinearVelocity(GetVelocity() + Camera->GetRightVector() * 60.f + FVector(0.f, 0.f, -100.f));
+	C->SetPhysicsAngularVelocityInDegrees(FVector(FMath::FRandRange(-300.f, 300.f), 200.f, 0.f));
+	Mag->SetLifeSpan(8.f);
 }
 
 void AGSCharacter::ApplyWeaponVisuals()
@@ -848,7 +1113,7 @@ void AGSCharacter::ApplyWeaponVisuals()
 	const FVector Fallback = S.Class == EGSWeaponClass::Pistol ? FVector(0.22f, 0.04f, 0.12f)
 		: S.Class == EGSWeaponClass::Melee ? FVector(0.7f, 0.03f, 0.05f) : FVector(0.95f, 0.05f, 0.11f);
 	ShowItemOn(FPWeaponMesh, W->Id, Fallback, 1.f);
-	ShowItemOn(TPWeaponMesh, W->Id, Fallback, 1.f);
+	ShowItemOn(TPWeaponMesh, W->Id, Fallback, 1.f, true);
 }
 
 void AGSCharacter::ApplyGearVisuals()
@@ -950,6 +1215,29 @@ int32 AGSCharacter::TakeFromPickup(AGSPickup* Pickup)
 		break;
 	}
 
+	if (Def->Kind == KindCaliber && Def->Rounds > 0)
+	{
+		// Ammo boxes go straight into the guns that use them; whole boxes that do not fit wait in the sack.
+		int32 Rounds = Def->Rounds * Pickup->Count;
+		const int32 Before = Rounds;
+		for (FGSWeaponSlot& W : Weapons)
+		{
+			const FGSWeaponStats S = GetStats(W);
+			if (S.Caliber != Def->Caliber || S.MaxReserve <= 0) continue;
+			const int32 Add = FMath::Clamp(S.MaxReserve - W.Reserve, 0, Rounds);
+			W.Reserve += Add;
+			Rounds -= Add;
+		}
+		const int32 UsedBoxes = (Before - Rounds) / Def->Rounds;
+		const int32 LeftBoxes = Pickup->Count - UsedBoxes;
+		const int32 Stored = LeftBoxes > 0 ? AddToBackpack(Def->Id, LeftBoxes) : 0;
+		const int32 Taken = UsedBoxes + Stored;
+		if (Before - Rounds > 0) ClientToast(FString::Printf(TEXT("+%d skudd %s"), Before - Rounds, *Def->Name));
+		else if (Stored > 0) ClientToast(FString::Printf(TEXT("%s lagt i sekken"), *Def->Name));
+		else ClientToast(TEXT("Sekken er full"));
+		return FMath::Max(Taken, (Before - Rounds) > 0 ? 1 : 0);
+	}
+
 	if (Def->Kind == KindBackpack)
 	{
 		if (Def->Slots <= BackpackBonus)
@@ -970,9 +1258,25 @@ int32 AGSCharacter::TakeFromPickup(AGSPickup* Pickup)
 void AGSCharacter::UpdateFocusPickup()
 {
 	FocusPickup = nullptr;
+	FocusTerminal = nullptr;
 	const FVector Eye = Camera->GetComponentLocation();
 	const FVector Fwd = Camera->GetForwardVector();
 	float Best = -1.f;
+	for (TActorIterator<AGSTerminal> It(GetWorld()); It; ++It)
+	{
+		AGSTerminal* T = *It;
+		const FVector To = T->GetActorLocation() + FVector(0.f, 0.f, 40.f) - Eye;
+		const float Dist = To.Size();
+		if (Dist > 240.f) continue;
+		const float Dot = FVector::DotProduct(To / FMath::Max(Dist, 1.f), Fwd);
+		const float Score = Dot - Dist / 1000.f;
+		if (Dot > 0.8f && Score > Best)
+		{
+			Best = Score;
+			FocusTerminal = T;
+		}
+	}
+	if (FocusTerminal.IsValid()) return;
 	for (TActorIterator<AGSPickup> It(GetWorld()); It; ++It)
 	{
 		AGSPickup* P = *It;
@@ -993,7 +1297,26 @@ void AGSCharacter::UpdateFocusPickup()
 void AGSCharacter::Interact()
 {
 	if (bDead) return;
+	AGSPlayerController* PC = Cast<AGSPlayerController>(GetController());
+	if (PC && PC->IsOnTerminal()) { PC->TerminalInput(TEXT("E")); return; }
+	if (AGSTerminal* T = FocusTerminal.Get())
+	{
+		if (PC) PC->OpenTerminal(T);
+		return;
+	}
 	if (AGSPickup* P = FocusPickup.Get()) ServerInteract(P);
+}
+
+AGSPlayerController* AGSCharacter::TerminalPC() const
+{
+	AGSPlayerController* PC = Cast<AGSPlayerController>(GetController());
+	return PC && PC->IsOnTerminal() ? PC : nullptr;
+}
+
+bool AGSCharacter::ConsumeItem(FName Id, int32 Count)
+{
+	if (!HasAuthority() || CountItem(Id) < Count) return false;
+	return Count <= 0 || RemoveItem(Id, Count);
 }
 
 void AGSCharacter::ServerInteract_Implementation(AGSPickup* Pickup)
@@ -1040,12 +1363,14 @@ void AGSCharacter::ServerInteract_Implementation(AGSPickup* Pickup)
 
 void AGSCharacter::NextItem()
 {
+	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("Q")); return; }
 	if (Backpack.Num() == 0) { SelectedItem = 0; return; }
 	SelectedItem = (SelectedItem + 1) % Backpack.Num();
 }
 
 void AGSCharacter::UseSelectedItem()
 {
+	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("F")); return; }
 	if (bDead || !Backpack.IsValidIndex(SelectedItem)) return;
 	if (!UseItemId.IsNone()) { ServerCancelUse(); return; }
 	const FGSItemDef* Def = GSItems::Find(Backpack[SelectedItem].Id);
@@ -1196,23 +1521,68 @@ void AGSCharacter::CompleteUse()
 			FGSWeaponSlot* W = Weapons.IsValidIndex(CurrentSlot) ? &Weapons[CurrentSlot] : nullptr;
 			const FGSWeaponStats* S = W ? &GSItems::Weapon(W->Id) : nullptr;
 			const bool bGun = S && S->Mode != EGSFireMode::Melee && S->Class != EGSWeaponClass::Launcher;
-			uint8 Bit = 0;
+			uint16 Bit = 0;
 			if (K == AttSuppressor) Bit = GSAttach::Suppressor;
 			else if (K == AttRedDot) Bit = GSAttach::RedDot;
 			else if (K == AttScope) Bit = GSAttach::Scope;
 			else if (K == AttExtMag) Bit = GSAttach::ExtMag;
 			else if (K == AttLaser) Bit = GSAttach::Laser;
-			const bool bScopeOk = K != AttScope || (S && (S->Class == EGSWeaponClass::Rifle || S->Class == EGSWeaponClass::Sniper || S->Class == EGSWeaponClass::LMG || S->Class == EGSWeaponClass::Bow));
-			if (!bGun || !bScopeOk || (W->Attachments & Bit))
+			else if (K == AttHolo) Bit = GSAttach::Holo;
+			else if (K == AttScope8x) Bit = GSAttach::Scope8x;
+			else if (K == AttDrum) Bit = GSAttach::Drum;
+			else if (K == AttComp) Bit = GSAttach::Compensator;
+			else if (K == AttGrip) Bit = GSAttach::Grip;
+			const bool bLongGun = S && (S->Class == EGSWeaponClass::Rifle || S->Class == EGSWeaponClass::Sniper || S->Class == EGSWeaponClass::LMG || S->Class == EGSWeaponClass::Bow);
+			const bool bScopeOk = (Bit != GSAttach::Scope && Bit != GSAttach::Scope8x) || bLongGun;
+			const bool bMagOk = (Bit != GSAttach::ExtMag && Bit != GSAttach::Drum) || (S && S->MagSize > 1 && S->Mode != EGSFireMode::Projectile);
+			if (!bGun || Bit == 0 || !bScopeOk || !bMagOk || (W->Attachments & Bit))
 			{
 				ClientToast(TEXT("Passer ikke p\u00E5 v\u00E5penet du holder"));
 				bConsume = false;
 			}
 			else
 			{
+				// Only one sight, one magazine and one muzzle device at a time: the old one goes back in the sack.
+				for (const uint16 Group : { GSAttach::SightGroup, GSAttach::MagGroup, GSAttach::MuzzleGroup })
+				{
+					if (!(Group & Bit)) continue;
+					const uint16 Old = W->Attachments & Group;
+					for (uint16 B = 1; B != 0 && B <= Old; B <<= 1)
+					{
+						if (Old & B)
+						{
+							W->Attachments &= ~B;
+							const FName OldItem = AttachmentItem(B);
+							if (!OldItem.IsNone() && AddToBackpack(OldItem, 1) == 0)
+							{
+								AGSPickup::SpawnDropped(GetWorld(), GetActorLocation() + GetActorForwardVector() * 60.f, OldItem, 1);
+							}
+						}
+					}
+				}
 				W->Attachments |= Bit;
+				W->Ammo = FMath::Min(W->Ammo, GetStats(*W).MagSize);
 				ClientToast(FString::Printf(TEXT("%s satt p\u00E5 %s"), *Def->Name, *GSItems::Name(W->Id)));
 			}
+		}
+		else if (K.ToString().StartsWith(TEXT("ammotype_")))
+		{
+			FGSWeaponSlot* W = Weapons.IsValidIndex(CurrentSlot) ? &Weapons[CurrentSlot] : nullptr;
+			const FGSWeaponStats* S = W ? &GSItems::Weapon(W->Id) : nullptr;
+			if (!S || S->Mode == EGSFireMode::Melee || S->Mode == EGSFireMode::Projectile)
+			{
+				ClientToast(TEXT("Hold en pistol, et gev\u00E6r eller en hagle f\u00F8rst"));
+				bConsume = false;
+			}
+			else
+			{
+				const FString T = K.ToString();
+				W->AmmoType = T.EndsWith(TEXT("_ap")) ? GSAmmoType::ArmorPiercing : T.EndsWith(TEXT("_hp")) ? GSAmmoType::HollowPoint
+					: T.EndsWith(TEXT("_fire")) ? GSAmmoType::Incendiary : T.EndsWith(TEXT("_tracer")) ? GSAmmoType::Tracer : GSAmmoType::Shock;
+				W->Ammo = GetStats(*W).MagSize; // a fresh magazine of the special rounds
+				ClientToast(FString::Printf(TEXT("%s ladet med %s"), *GSItems::Name(W->Id), *Def->Name));
+			}
+		}
 		}
 		else bConsume = false;
 		break;
@@ -1235,6 +1605,7 @@ void AGSCharacter::ThrowItem(const FGSItemDef& Def)
 
 void AGSCharacter::DropSelectedItem()
 {
+	if (TerminalPC()) return;
 	if (bDead || !Backpack.IsValidIndex(SelectedItem)) return;
 	ServerDropItem(SelectedItem);
 }
@@ -1380,11 +1751,20 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 
 	Damage *= GetMods().Taken;
 
+	// Special rounds
+	const uint8 Ammo = IncomingAmmoType;
+	const bool bArmored = bHeadshot ? !Helmet.IsNone() : !BodyArmor.IsNone();
+	float AbsorbMul = 1.f;
+	if (Ammo == GSAmmoType::ArmorPiercing) { AbsorbMul = 0.35f; Damage *= 0.95f; }
+	else if (Ammo == GSAmmoType::HollowPoint) Damage *= bArmored ? 0.75f : 1.3f;
+	else if (Ammo == GSAmmoType::Incendiary) AddEffect(TEXT("Brennende"));
+	else if (Ammo == GSAmmoType::Shock) AddEffect(TEXT("Sjokk"));
+
 	// Armor soaks up part of the damage until it breaks.
 	if (bHeadshot && !Helmet.IsNone())
 	{
 		const FGSItemDef* H = GSItems::Find(Helmet);
-		const float Soak = FMath::Min(Damage * (H ? H->Absorb : 0.3f), HelmetPoints);
+		const float Soak = FMath::Min(Damage * (H ? H->Absorb : 0.3f) * AbsorbMul, HelmetPoints);
 		HelmetPoints -= Soak;
 		Damage -= Soak;
 		if (HelmetPoints <= 0.5f) { Helmet = NAME_None; HelmetPoints = 0.f; ApplyGearVisuals(); ClientToast(TEXT("Hjelmen gikk i stykker!")); }
@@ -1392,7 +1772,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	else if (!bHeadshot && !BodyArmor.IsNone())
 	{
 		const FGSItemDef* A = GSItems::Find(BodyArmor);
-		const float Soak = FMath::Min(Damage * (A ? A->Absorb : 0.3f), ArmorPoints);
+		const float Soak = FMath::Min(Damage * (A ? A->Absorb : 0.3f) * AbsorbMul, ArmorPoints);
 		ArmorPoints -= Soak;
 		Damage -= Soak;
 		if (ArmorPoints <= 0.5f) { BodyArmor = NAME_None; ArmorPoints = 0.f; ApplyGearVisuals(); ClientToast(TEXT("Vesten er \u00F8delagt!")); }
@@ -1606,37 +1986,6 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		if (bBinoculars && !HasItemKind(KindZoom)) bBinoculars = false;
 		if (bNightVisionGoggles && !HasItemKind(KindNightVision)) bNightVisionGoggles = false;
 
-		float TargetFOV = DefaultFOV;
-		FVector WeaponPos(38.f, 16.f, -16.f);
-		FRotator WeaponRot = FRotator::ZeroRotator;
-		if (const FGSWeaponSlot* W = GetCurrentWeapon())
-		{
-			const FGSWeaponStats S = GetStats(*W);
-			WeaponPos = S.FPHip;
-			if (bAiming && S.Mode != EGSFireMode::Melee)
-			{
-				TargetFOV = S.AimFOV;
-				WeaponPos = S.FPAim;
-			}
-			// Melee swing
-			const float SinceSwing = GetWorld()->GetTimeSeconds() - LastMeleeTime;
-			if (SinceSwing < 0.3f)
-			{
-				const float A = FMath::Sin(SinceSwing / 0.3f * PI);
-				WeaponRot = FRotator(-35.f * A, -50.f * A, 20.f * A);
-				WeaponPos += FVector(25.f * A, -20.f * A, 6.f * A);
-			}
-		}
-		if (bBinoculars) TargetFOV = 15.f;
-		// Weapon sway and kick
-		WeaponPos.X -= CurrentRecoil * 1.5f;
-		WeaponPos.Z += FMath::Sin(GetWorld()->GetTimeSeconds() * (bSprinting ? 12.f : 7.f)) * FMath::Min(float(GetVelocity().Size2D()) / 600.f, 1.f) * (bAiming ? 0.2f : 1.2f);
-		if (bSprinting) { TargetFOV += 6.f; WeaponRot += FRotator(-10.f, 25.f, 0.f); }
-		if (bSliding) TargetFOV += 10.f;
-		if (bReloading) { WeaponPos += FVector(-8.f, 0.f, -14.f); WeaponRot += FRotator(-20.f, 0.f, 35.f); }
-		if (!UseItemId.IsNone()) WeaponPos += FVector(-10.f, 0.f, -30.f);
-		Camera->SetFieldOfView(FMath::FInterpTo(Camera->FieldOfView, TargetFOV, DeltaSeconds, 12.f));
-		FPWeaponMesh->SetRelativeLocation(FMath::VInterpTo(FPWeaponMesh->GetRelativeLocation(), WeaponPos, DeltaSeconds, 14.f));
-		FPWeaponMesh->SetRelativeRotation(FMath::RInterpTo(FPWeaponMesh->GetRelativeRotation(), WeaponRot, DeltaSeconds, 16.f));
+		UpdateWeaponAnimation(DeltaSeconds);
 	}
 }

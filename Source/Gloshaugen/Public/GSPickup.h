@@ -26,7 +26,7 @@ public:
 
 	/** Spawns a pickup that does not respawn (dropped items, loot from dead players). */
 	static AGSPickup* SpawnDropped(UWorld* World, const FVector& Location, FName ItemId, int32 Count,
-		int32 Ammo = -1, int32 Reserve = -1, uint8 Attachments = 0);
+		int32 Ammo = -1, int32 Reserve = -1, uint16 Attachments = 0);
 
 	/** Server: fill this spot with something random. */
 	void Roll();
@@ -41,7 +41,7 @@ public:
 	// Dropped weapons keep their ammo and attachments
 	int32 Ammo = -1;
 	int32 Reserve = -1;
-	uint8 Attachments = 0;
+	uint16 Attachments = 0;
 
 	bool bRespawns = true;
 	bool bIsCrate = false;          // locked loot crate, relocks with new loot

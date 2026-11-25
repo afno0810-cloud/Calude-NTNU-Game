@@ -12,3 +12,7 @@ Saved/
 
 # Model import markers (local only)
 *.imported
+
+# Blender backups and Python caches
+*.blend1
+__pycache__/

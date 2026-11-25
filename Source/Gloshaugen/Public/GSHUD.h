@@ -37,6 +37,10 @@ protected:
 	void DrawScoreboard();
 	void DrawDeathScreen();
 	void DrawHelp();
+	void DrawTerminal(AGSCharacter* C, class AGSPlayerController* PC);
+	void DrawPrinter(AGSCharacter* C, class AGSPlayerController* PC, class AGSTerminal* T);
+	void DrawComputer(AGSCharacter* C, class AGSPlayerController* PC, class AGSTerminal* T);
+	void DrawTrackerMap(class AGSPlayerController* PC, float X, float Y, float W, float H);
 
 	void Text(const FString& S, float X, float Y, const FLinearColor& Color, float Scale = 1.f, bool bCenter = false, bool bRight = false);
 	void Box(float X, float Y, float W, float H, const FLinearColor& Color);

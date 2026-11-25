@@ -57,7 +57,7 @@ void AGSPickup::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(AGSPickup, bLocked);
 }
 
-AGSPickup* AGSPickup::SpawnDropped(UWorld* World, const FVector& Location, FName ItemId, int32 Count, int32 Ammo, int32 Reserve, uint8 Attachments)
+AGSPickup* AGSPickup::SpawnDropped(UWorld* World, const FVector& Location, FName ItemId, int32 Count, int32 Ammo, int32 Reserve, uint16 Attachments)
 {
 	if (!World || !GSItems::Find(ItemId) || Count <= 0) return nullptr;
 	// Put it on the floor

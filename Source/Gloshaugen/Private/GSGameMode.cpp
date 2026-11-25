@@ -1,10 +1,12 @@
 #include "GSGameMode.h"
+#include "GSCampusBuilder.h"
 #include "GSCharacter.h"
 #include "GSPlayerController.h"
 #include "GSPlayerState.h"
 #include "GSGameState.h"
 #include "GSHUD.h"
 #include "GSPickup.h"
+#include "GSTerminal.h"
 #include "GSCampus.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
@@ -24,6 +26,7 @@ void AGSGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	SpawnPickups();
+	SpawnTerminals();
 }
 
 void AGSGameMode::SpawnPickups()
@@ -47,9 +50,11 @@ void AGSGameMode::SpawnPickups()
 
 	// Loot inside every building, on every floor. Stay away from walls and the stairwell corner (+X +Y).
 	const TArray<GSCampus::FBuilding>& Buildings = GSCampus::Buildings();
+	const bool bCustomMain = AGSCampusBuilder::MainBuildingMesh() != nullptr;
 	for (const GSCampus::FBuilding& B : Buildings)
 	{
 		if (!B.bEnterable) continue;
+		const bool bMain = bCustomMain && FString(B.Name) == TEXT("Hovedbygningen");
 		const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
 		const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X, B.Y, 0.f));
 		const float HX = B.SizeX * 0.5f - 2.f, HY = B.SizeY * 0.5f - 2.f;
@@ -63,7 +68,14 @@ void AGSGameMode::SpawnPickups()
 				{
 					X = Rng.FRandRange(-HX, HX);
 					Y = Rng.FRandRange(-HY, HY);
-					if (!(X > HX - 16.f && Y > HY - 5.f)) break;
+					if (bMain)
+					{
+						// Hovedbygningen model: no loot in the air over Lysgaarden, on the grand stair or on the ramps
+						const bool bAtrium = FMath::Abs(X) < 15.f && FMath::Abs(Y) < 10.f && (F > 0 || (FMath::Abs(X) < 4.5f && Y > -0.5f));
+						const bool bRamp = FMath::Abs(X) > 38.f && Y > 9.5f;
+						if (!bAtrium && !bRamp) break;
+					}
+					else if (!(X > HX - 16.f && Y > HY - 5.f)) break;
 				}
 				Spawn(BT.TransformPosition(FVector(X, Y, F * B.FloorHeight + 0.35f)), false, EGSRarity::Common);
 			}
@@ -76,7 +88,7 @@ void AGSGameMode::SpawnPickups()
 		}
 	}
 	// The big one: a mythic crate in the middle of Lysgaarden
-	Spawn(FVector(0.f, 4.f, 0.35f), true, EGSRarity::Mythic);
+	Spawn(bCustomMain ? FVector(0.f, -7.5f, 0.85f) : FVector(0.f, 4.f, 0.35f), true, EGSRarity::Mythic); // on the stage
 
 	// Outdoors: scattered around campus, not inside buildings
 	for (int32 I = 0; I < 60; ++I)
@@ -161,4 +173,75 @@ void AGSGameMode::OnPlayerKilled(AController* Killer, AController* Victim, const
 			}
 		}), RespawnDelay, false);
 	}
+}
+
+void AGSGameMode::SpawnTerminals()
+{
+	UWorld* World = GetWorld();
+	FActorSpawnParameters P;
+	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	int32 NumPC = 0, NumPrinters = 0, NumCams = 0;
+
+	auto Terminal = [&](EGSTerminalKind Kind, const FVector& LocM, float Yaw, const FString& Label)
+	{
+		if (AGSTerminal* T = World->SpawnActor<AGSTerminal>(LocM * 100.f, FRotator(0.f, Yaw, 0.f), P))
+		{
+			T->Kind = Kind;
+			T->Label = Label;
+			Kind == EGSTerminalKind::Computer ? ++NumPC : ++NumPrinters;
+		}
+	};
+	auto Camera = [&](const FVector& LocM, float Yaw, const FString& Label, float Sweep = 35.f)
+	{
+		if (AGSSecurityCamera* C = World->SpawnActor<AGSSecurityCamera>(LocM * 100.f, FRotator(0.f, Yaw, 0.f), P))
+		{
+			C->Label = Label;
+			C->SweepDeg = Sweep;
+			++NumCams;
+		}
+	};
+
+	const bool bCustomMain = AGSCampusBuilder::MainBuildingMesh() != nullptr;
+	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+	{
+		const FString Name(B.Name);
+		const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X, B.Y, 0.f));
+		const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
+
+		if (bCustomMain && Name == TEXT("Hovedbygningen"))
+		{
+			// Hand-made model: corridors at y = +-5, Lysgaarden in the middle, tower behind.
+			Terminal(EGSTerminalKind::Computer, FVector(-30.f, -4.5f, 0.f), 90.f, TEXT("Hovedbygningen, vaktrommet"));
+			Terminal(EGSTerminalKind::Computer, FVector(30.f, 4.5f, 11.f), -90.f, TEXT("Hovedbygningen, 3. etasje"));
+			Terminal(EGSTerminalKind::Printer, FVector(30.f, -4.5f, 5.5f), 90.f, TEXT("Hovedbygningen, verkstedet"));
+			Terminal(EGSTerminalKind::Printer, FVector(-30.f, 4.5f, 16.5f), -90.f, TEXT("Hovedbygningen, 4. etasje"));
+			Camera(FVector(-13.3f, -8.3f, 4.6f), 35.f, TEXT("Lysg\u00E5rden, scenen"));
+			Camera(FVector(13.3f, 8.3f, 4.6f), -145.f, TEXT("Lysg\u00E5rden, trappa"));
+			Camera(FVector(0.f, -19.f, 6.5f), -90.f, TEXT("Hovedinngangen"), 50.f);
+			Camera(FVector(0.f, 13.f, 3.6f), -90.f, TEXT("Korridoren mot t\u00E5rnet"));
+			Camera(FVector(-50.f, -4.f, 4.6f), 0.f, TEXT("Hovedbygningen vest, korridor"));
+			Camera(FVector(50.f, 4.f, 4.6f), 180.f, TEXT("Hovedbygningen \u00F8st, korridor"));
+			Camera(FVector(4.f, 24.f, 35.f), 90.f, TEXT("T\u00E5rnet, utsikt s\u00F8r"), 70.f);
+			Camera(FVector(-4.f, 16.f, 35.f), -90.f, TEXT("T\u00E5rnet, utsikt nord"), 70.f);
+			continue;
+		}
+		if (bCustomMain && Name == TEXT("Hovedbygningen taarn")) continue;
+		if (!B.bEnterable) continue;
+
+		const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
+		// PC against the -X wall on the ground floor, facing into the room.
+		Terminal(EGSTerminalKind::Computer, BT.TransformPosition(FVector(-HX + 1.0f, -HY * 0.4f, 0.f)), B.Yaw, Name);
+		// 3D printer on the first floor of the bigger buildings
+		if (Floors >= 2 && B.SizeX * B.SizeY > 1200.f)
+		{
+			Terminal(EGSTerminalKind::Printer, BT.TransformPosition(FVector(-HX + 0.9f, HY * 0.4f, B.FloorHeight)), B.Yaw,
+				FString::Printf(TEXT("%s, 2. etasje"), *Name));
+		}
+		// One camera inside (high in the -X -Y corner looking across the room) and one outside the front
+		Camera(BT.TransformPosition(FVector(-HX + 0.7f, -HY + 0.7f, FMath::Min(B.FloorHeight - 0.6f, 3.6f))), B.Yaw + 40.f,
+			FString::Printf(TEXT("%s, inne"), *Name));
+		Camera(BT.TransformPosition(FVector(0.f, -HY - 0.4f, FMath::Min(B.Height - 1.f, 6.f))), B.Yaw - 90.f,
+			FString::Printf(TEXT("%s, utenfor"), *Name), 45.f);
+	}
+	UE_LOG(LogTemp, Log, TEXT("Gloshaugen: %d PC-er, %d 3D-printere, %d kameraer"), NumPC, NumPrinters, NumCams);
 }

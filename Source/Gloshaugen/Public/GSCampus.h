@@ -34,11 +34,11 @@ namespace GSCampus
 		static const FLinearColor Glass(0.40f, 0.50f, 0.55f);
 
 		static const TArray<FBuilding> List = {
-			// Hovedbygningen (U shape) + tower. Lysgaarden is the big hall on the ground floor.
+			// Hovedbygningen (U shape) + tower behind it. Replaced by SM_Hovedbygningen (Blender) when imported. Lysgaarden is the big hall on the ground floor.
 			{ TEXT("Hovedbygningen"),          0.f,    0.f, 110.f, 28.f,  0.f, 22.f, 5.5f, Stone, true },
 			{ TEXT("Hovedbygningen vest"),   -48.f,   34.f,  14.f, 40.f,  0.f, 18.f, 4.5f, Stone, true },
 			{ TEXT("Hovedbygningen oest"),    48.f,   34.f,  14.f, 40.f,  0.f, 18.f, 4.5f, Stone, true },
-			{ TEXT("Hovedbygningen taarn"),    0.f,  -20.f,  12.f, 12.f,  0.f, 42.f, 4.f,  Stone, false },
+			{ TEXT("Hovedbygningen taarn"),    0.f,   20.f,  12.f, 12.f,  0.f, 42.f, 4.f,  Stone, false },
 			{ TEXT("Gamle fysikk"),         -125.f,   10.f,  46.f, 22.f,  0.f, 16.f, 4.f,  Brick, true },
 			{ TEXT("Gamle kjemi"),           125.f,   10.f,  56.f, 22.f,  0.f, 16.f, 4.f,  Brick, true },
 			{ TEXT("Kjelhuset"),             -62.f,  105.f,  22.f, 18.f,  0.f, 12.f, 4.f,  Brick, true },

@@ -5,6 +5,8 @@
 #include "GSPickup.h"
 #include "GSPlayerState.h"
 #include "GSPlayerController.h"
+#include "GSTerminal.h"
+#include "GSCampus.h"
 #include "Engine/Canvas.h"
 #include "CanvasItem.h"
 #include "Engine/Engine.h"
@@ -60,6 +62,12 @@ void AGSHUD::DrawHUD()
 
 	AGSCharacter* C = Cast<AGSCharacter>(GetOwningPawn());
 	const AGSPlayerController* PC = Cast<AGSPlayerController>(PlayerOwner);
+	if (C && !C->bDead && PC && PC->IsOnTerminal())
+	{
+		DrawTerminal(C, const_cast<AGSPlayerController*>(PC));
+		DrawToast(C);
+		return;
+	}
 	if (C && !C->bDead)
 	{
 		const FGSEffectMods Mods = C->GetMods();
@@ -207,11 +215,27 @@ void AGSHUD::DrawAmmo(AGSCharacter* C)
 			Text(TEXT("Trykk R for \u00E5 lade"), X, Y + 56.f, FLinearColor(1.f, 0.4f, 0.4f), 1.f, false, true);
 		}
 		FString Att;
-		if (W->Attachments & GSAttach::Suppressor) Att += TEXT("Demper ");
-		if (W->Attachments & GSAttach::RedDot) Att += TEXT("R\u00F8dpunkt ");
-		if (W->Attachments & GSAttach::Scope) Att += TEXT("Kikkert ");
-		if (W->Attachments & GSAttach::ExtMag) Att += TEXT("Stort mag ");
-		if (W->Attachments & GSAttach::Laser) Att += TEXT("Laser");
+		static const TPair<uint16, const TCHAR*> AttNames[] = {
+			{ GSAttach::Suppressor, TEXT("Demper") }, { GSAttach::Compensator, TEXT("Kompensator") },
+			{ GSAttach::RedDot, TEXT("R\u00F8dpunkt") }, { GSAttach::Holo, TEXT("Holo") }, { GSAttach::Scope, TEXT("4x") },
+			{ GSAttach::Scope8x, TEXT("8x") }, { GSAttach::ExtMag, TEXT("Stort mag") }, { GSAttach::Drum, TEXT("Trommel") },
+			{ GSAttach::Laser, TEXT("Laser") }, { GSAttach::Grip, TEXT("H\u00E5ndtak") } };
+		for (const TPair<uint16, const TCHAR*>& A : AttNames)
+		{
+			if (W->Attachments & A.Key) { Att += A.Value; Att += TEXT("  "); }
+		}
+		static const TCHAR* AmmoNames[] = { TEXT(""), TEXT("PANSERBRYTENDE"), TEXT("HULSPISS"), TEXT("BRANN"), TEXT("LYSSPOR"), TEXT("SJOKK") };
+		if (W->AmmoType > 0 && W->AmmoType < UE_ARRAY_COUNT(AmmoNames))
+		{
+			Text(AmmoNames[W->AmmoType], X, Y + 78.f, FLinearColor(1.f, 0.6f, 0.2f), 0.8f, false, true);
+		}
+		// Rounds in the sack for this gun
+		const FGSWeaponStats Stats = C->GetStats(*W);
+		if (!Stats.Caliber.IsNone())
+		{
+			const int32 Boxes = C->CountItem(FName(*(FString(TEXT("Ammo_")) + Stats.Caliber.ToString())));
+			if (Boxes > 0) Text(FString::Printf(TEXT("+%d esker i sekken"), Boxes), X, Y + 96.f, FLinearColor(0.7f, 0.8f, 0.9f), 0.75f, false, true);
+		}
 		if (!Att.IsEmpty()) Text(Att, X - 270.f, Y + 56.f, FLinearColor(0.7f, 0.9f, 0.7f), 0.75f, false, true);
 	}
 
@@ -275,6 +299,15 @@ void AGSHUD::DrawEffects(AGSCharacter* C)
 
 void AGSHUD::DrawPrompt(AGSCharacter* C)
 {
+	if (const AGSTerminal* T = C->GetFocusTerminal())
+	{
+		const float CX = Canvas->SizeX * 0.5f, Y = Canvas->SizeY * 0.5f + 60.f;
+		const bool bPC = T->Kind == EGSTerminalKind::Computer;
+		Text(bPC ? TEXT("[E]  Logg inn p\u00E5 PC-en") : TEXT("[E]  Bruk 3D-printeren"), CX, Y, FLinearColor(0.5f, 0.8f, 1.f), 1.1f, true);
+		Text(bPC ? TEXT("Overv\u00E5kningskameraer og sporing av spillere") : TEXT("Lag ting av filament-spoler"), CX, Y + 24.f, FLinearColor(0.85f, 0.85f, 0.85f), 0.8f, true);
+		if (!T->Label.IsEmpty()) Text(T->Label, CX, Y + 44.f, FLinearColor(0.7f, 0.7f, 0.7f), 0.75f, true);
+		return;
+	}
 	AGSPickup* P = C->GetFocusPickup();
 	if (!P) return;
 	const FGSItemDef* D = GSItems::Find(P->ItemId);
@@ -515,4 +548,163 @@ void AGSHUD::DrawHelp()
 		CX, Y + 44.f, FLinearColor(0.8f, 0.9f, 1.f, A), 0.85f, true);
 	Text(TEXT("Spis og drikk, ellers mister du helse. L\u00E5ste kasser trenger adgangskort eller dirkesett. Mytisk kasse i Lysg\u00E5rden!"),
 		CX, Y + 66.f, FLinearColor(0.8f, 0.9f, 1.f, A), 0.85f, true);
+}
+
+// ---------------------------------------------------------------- PCs and 3D printers
+
+void AGSHUD::DrawTerminal(AGSCharacter* C, AGSPlayerController* PC)
+{
+	AGSTerminal* T = PC->GetActiveTerminal();
+	if (!T) return;
+	if (T->Kind == EGSTerminalKind::Printer) DrawPrinter(C, PC, T);
+	else DrawComputer(C, PC, T);
+}
+
+void AGSHUD::DrawPrinter(AGSCharacter* C, AGSPlayerController* PC, AGSTerminal* T)
+{
+	const float W = 560.f, X = Canvas->SizeX * 0.5f - W * 0.5f;
+	const TArray<FGSPrintRecipe>& R = AGSTerminal::Recipes();
+	const float H = 150.f + R.Num() * 26.f;
+	const float Y = Canvas->SizeY * 0.5f - H * 0.5f;
+	const FLinearColor Panel(0.03f, 0.04f, 0.05f, 0.88f), Accent(1.f, 0.55f, 0.15f);
+	Box(X, Y, W, H, Panel);
+	Frame(X, Y, W, H, Accent);
+	Text(TEXT("3D-PRINTER"), X + 18.f, Y + 12.f, Accent, 1.3f);
+	if (!T->Label.IsEmpty()) Text(T->Label, X + W - 18.f, Y + 18.f, FLinearColor(0.7f, 0.7f, 0.7f), 0.8f, false, true);
+	static const FName Filament(TEXT("Filament"));
+	const int32 Have = C->CountItem(Filament);
+	Text(FString::Printf(TEXT("Filament i sekken: %d spoler"), Have), X + 18.f, Y + 46.f, FLinearColor(0.9f, 0.9f, 0.9f), 0.9f);
+
+	float RY = Y + 80.f;
+	for (int32 I = 0; I < R.Num(); ++I)
+	{
+		const FGSItemDef* D = GSItems::Find(R[I].ItemId);
+		const bool bSel = I == PC->RecipeIndex;
+		const bool bAfford = Have >= R[I].Filament;
+		if (bSel) Box(X + 10.f, RY - 2.f, W - 20.f, 24.f, FLinearColor(1.f, 0.55f, 0.15f, 0.25f));
+		const FLinearColor Col = D ? GSItems::RarityColor(D->Rarity) : FLinearColor::White;
+		Text(FString::Printf(TEXT("%s %s"), bSel ? TEXT(">") : TEXT(" "), D ? *D->Name : *R[I].ItemId.ToString()), X + 20.f, RY, bAfford ? Col : Col * 0.5f, 0.9f);
+		Text(FString::Printf(TEXT("%d spoler  \u00B7  %.0f sek"), R[I].Filament, R[I].Seconds), X + W - 20.f, RY, bAfford ? FLinearColor(0.9f, 0.9f, 0.9f) : FLinearColor(1.f, 0.4f, 0.35f), 0.85f, false, true);
+		RY += 26.f;
+	}
+	if (T->IsBusy())
+	{
+		const float Now = C->GetServerTime();
+		const float F = FMath::Clamp((Now - T->PrintStart) / FMath::Max(T->PrintEnd - T->PrintStart, 0.1f), 0.f, 1.f);
+		Text(FString::Printf(TEXT("Printer: %s  %d %%"), *GSItems::Name(T->PrintingId), FMath::RoundToInt(F * 100.f)), X + 18.f, RY + 8.f, Accent, 0.9f);
+		Bar(X + 18.f, RY + 32.f, W - 36.f, 10.f, F, Accent);
+	}
+	else
+	{
+		Text(TEXT("Printeren er ledig"), X + 18.f, RY + 8.f, FLinearColor(0.6f, 0.9f, 0.6f), 0.9f);
+	}
+	Text(TEXT("[Q] / [1] [2] velg     [F] eller venstre mus: print     [E] g\u00E5 vekk"), X + W * 0.5f, Y + H - 26.f, FLinearColor(0.8f, 0.8f, 0.8f), 0.8f, true);
+}
+
+void AGSHUD::DrawComputer(AGSCharacter* C, AGSPlayerController* PC, AGSTerminal* T)
+{
+	const float Now = GetWorld()->GetTimeSeconds();
+	const float SX = Canvas->SizeX, SY = Canvas->SizeY;
+	const FLinearColor Blue(0.35f, 0.65f, 1.f), Dim(0.75f, 0.8f, 0.85f);
+
+	if (PC->IsLoggingIn())
+	{
+		Box(0, 0, SX, SY, FLinearColor(0.02f, 0.05f, 0.12f, 0.95f));
+		Text(TEXT("NTNU  \u00B7  Sikkerhetssentralen"), SX * 0.5f, SY * 0.4f, Blue, 1.6f, true);
+		Text(TEXT("Logger inn ..."), SX * 0.5f, SY * 0.4f + 50.f, Dim, 1.f, true);
+		Bar(SX * 0.5f - 200.f, SY * 0.4f + 90.f, 400.f, 8.f, FMath::Clamp((Now - PC->TerminalOpenTime) / 1.4f, 0.f, 1.f), Blue);
+		return;
+	}
+
+	if (PC->TerminalMode == 1)
+	{
+		// Looking through a security camera: grainy monitor look
+		const TArray<AGSSecurityCamera*> Cams = PC->GetCameras();
+		Box(0, 0, SX, SY, FLinearColor(0.05f, 0.12f, 0.08f, 0.18f));
+		for (float LY = 0.f; LY < SY; LY += 5.f) Box(0, LY, SX, 1.f, FLinearColor(0.f, 0.f, 0.f, 0.22f));
+		const float Band = FMath::Fmod(Now * 140.f, SY + 80.f) - 40.f;
+		Box(0, Band, SX, 30.f, FLinearColor(1.f, 1.f, 1.f, 0.04f));
+		const float V = 120.f;
+		Box(0, 0, SX, V * 0.5f, FLinearColor(0.f, 0.f, 0.f, 0.35f));
+		Box(0, SY - V * 0.5f, SX, V * 0.5f, FLinearColor(0.f, 0.f, 0.f, 0.35f));
+		const AGSSecurityCamera* Cam = Cams.IsValidIndex(PC->CameraIndex) ? Cams[PC->CameraIndex] : nullptr;
+		Text(FString::Printf(TEXT("CAM %02d / %02d   %s"), PC->CameraIndex + 1, Cams.Num(), Cam ? *Cam->Label : TEXT("")), 40.f, 22.f, FLinearColor::White, 1.2f);
+		if (FMath::Fmod(Now, 1.2f) < 0.6f) Text(TEXT("\u25CF REC"), SX - 40.f, 22.f, FLinearColor(1.f, 0.15f, 0.1f), 1.2f, false, true);
+		if (const AGSGameState* GS = GetWorld()->GetGameState<AGSGameState>())
+		{
+			const float Hours = GS->GetTimeOfDayHours();
+			const int32 HH = FMath::FloorToInt(Hours), MM = FMath::FloorToInt((Hours - HH) * 60.f);
+			Text(FString::Printf(TEXT("%02d:%02d:%02d"), HH, MM, FMath::FloorToInt(FMath::Fmod(Now, 60.f))), SX - 40.f, 52.f, FLinearColor::White, 0.9f, false, true);
+		}
+		// Corner brackets
+		const float L = 40.f, M = 30.f;
+		for (int32 I = 0; I < 4; ++I)
+		{
+			const float CX = (I & 1) ? SX - M : M, CY = (I & 2) ? SY - M : M;
+			const float DX = (I & 1) ? -L : 0.f, DY = (I & 2) ? -L : 0.f;
+			Box(CX + DX, CY + ((I & 2) ? -2.f : 0.f), L, 2.f, FLinearColor(1.f, 1.f, 1.f, 0.7f));
+			Box(CX + ((I & 1) ? -2.f : 0.f), CY + DY, 2.f, L, FLinearColor(1.f, 1.f, 1.f, 0.7f));
+		}
+		Text(TEXT("[Q] neste kamera    [F] forrige    [2] spor spillere    [3] meny    [E] logg ut"), SX * 0.5f, SY - 40.f, FLinearColor::White, 0.85f, true);
+		return;
+	}
+
+	// Menu and tracker: a desktop window
+	const float W = FMath::Min(SX - 80.f, 900.f), H = FMath::Min(SY - 80.f, 620.f);
+	const float X = SX * 0.5f - W * 0.5f, Y = SY * 0.5f - H * 0.5f;
+	Box(X, Y, W, H, FLinearColor(0.02f, 0.04f, 0.09f, 0.94f));
+	Box(X, Y, W, 34.f, FLinearColor(0.08f, 0.2f, 0.45f, 1.f));
+	Text(TEXT("NTNU Sikkerhetssentral"), X + 14.f, Y + 7.f, FLinearColor::White, 0.95f);
+	if (!T->Label.IsEmpty()) Text(T->Label, X + W - 14.f, Y + 7.f, Dim, 0.85f, false, true);
+	Frame(X, Y, W, H, Blue, 1.f);
+
+	if (PC->TerminalMode == 2)
+	{
+		DrawTrackerMap(PC, X + 14.f, Y + 48.f, W - 28.f, H - 100.f);
+		const float Left = PC->TrackUntil - Now;
+		const FString Status = PC->Tracked.Num() == 0 ? FString(TEXT("Henter posisjoner ..."))
+			: Left > 0.f ? FString::Printf(TEXT("Sporer %d spillere  \u00B7  %d sek igjen  \u00B7  oppdatert for %.0f sek siden"), PC->Tracked.Num(), FMath::CeilToInt(Left), Now - PC->TrackedTime)
+			: FString(TEXT("Sporingen er ferdig. Siste kjente posisjoner vises."));
+		Text(Status, X + 14.f, Y + H - 44.f, Dim, 0.85f);
+		Text(TEXT("[1] kameraer    [2] spor p\u00E5 nytt    [3] meny    [E] logg ut"), X + W - 14.f, Y + H - 44.f, Dim, 0.85f, false, true);
+		return;
+	}
+
+	const int32 NumCams = PC->GetCameras().Num();
+	float RY = Y + 70.f;
+	Text(TEXT("Velkommen. Hva vil du gj\u00F8re?"), X + 30.f, RY, FLinearColor::White, 1.1f); RY += 50.f;
+	Text(FString::Printf(TEXT("[1]  Overv\u00E5kningskameraer  (%d kameraer)"), NumCams), X + 40.f, RY, Blue, 1.f); RY += 34.f;
+	Text(TEXT("[2]  Spor alle spillere p\u00E5 campus i 20 sekunder"), X + 40.f, RY, Blue, 1.f); RY += 34.f;
+	Text(TEXT("[E]  Logg ut"), X + 40.f, RY, Blue, 1.f); RY += 60.f;
+	Text(TEXT("Pass p\u00E5: mens du sitter ved PC-en ser du ikke hva som skjer bak deg."), X + 30.f, RY, FLinearColor(1.f, 0.75f, 0.4f), 0.85f);
+}
+
+void AGSHUD::DrawTrackerMap(AGSPlayerController* PC, float X, float Y, float W, float H)
+{
+	// Campus in meters: X east (-280..430), Y south (-110..520). Keep the aspect ratio.
+	const float MinX = -290.f, MaxX = 440.f, MinY = -120.f, MaxY = 530.f;
+	const float S = FMath::Min(W / (MaxX - MinX), H / (MaxY - MinY));
+	const float OX = X + (W - (MaxX - MinX) * S) * 0.5f, OY = Y + (H - (MaxY - MinY) * S) * 0.5f;
+	auto ToScreen = [&](float MX, float MY) { return FVector2D(OX + (MX - MinX) * S, OY + (MY - MinY) * S); };
+	Box(OX, OY, (MaxX - MinX) * S, (MaxY - MinY) * S, FLinearColor(0.05f, 0.1f, 0.08f, 1.f));
+	for (const GSCampus::FRoad& R : GSCampus::Roads())
+	{
+		const FVector2D A = ToScreen(R.A.X, R.A.Y), B = ToScreen(R.B.X, R.B.Y);
+		Canvas->K2_DrawLine(A, B, FMath::Max(1.f, R.Width * S), FLinearColor(0.25f, 0.27f, 0.3f));
+	}
+	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+	{
+		const FVector2D P = ToScreen(B.X - B.SizeX * 0.5f, B.Y - B.SizeY * 0.5f);
+		Box(P.X, P.Y, B.SizeX * S, B.SizeY * S, FLinearColor(0.35f, 0.4f, 0.48f, 0.9f));
+	}
+	const float Now = GetWorld()->GetTimeSeconds();
+	const float Pulse = 0.5f + 0.5f * FMath::Sin(Now * 6.f);
+	for (const FGSTrackedPlayer& P : PC->Tracked)
+	{
+		const FVector2D D = ToScreen(P.Location.X / 100.f, P.Location.Y / 100.f);
+		const FLinearColor Col = P.bSelf ? FLinearColor(0.3f, 0.7f, 1.f) : FLinearColor(1.f, 0.2f, 0.15f);
+		const float R = 5.f + (P.bSelf ? 0.f : 3.f * Pulse);
+		Box(D.X - R, D.Y - R, R * 2.f, R * 2.f, Col);
+		Text(P.bSelf ? FString(TEXT("Deg")) : P.Name, D.X + 10.f, D.Y - 8.f, Col, 0.7f);
+	}
 }

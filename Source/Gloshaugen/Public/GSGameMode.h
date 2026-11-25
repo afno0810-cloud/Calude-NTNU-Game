@@ -23,4 +23,6 @@ public:
 protected:
 	FTransform PickSpawnTransform() const;
 	void SpawnPickups();
+	/** PCs, 3D printers and security cameras in the buildings and around campus. */
+	void SpawnTerminals();
 };

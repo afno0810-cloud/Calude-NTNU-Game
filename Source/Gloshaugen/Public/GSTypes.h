@@ -17,11 +17,31 @@ enum class EGSWeather : uint8
 /** Attachment bits stored on a weapon slot. */
 namespace GSAttach
 {
-	constexpr uint8 Suppressor = 1 << 0;
-	constexpr uint8 RedDot = 1 << 1;
-	constexpr uint8 Scope = 1 << 2;
-	constexpr uint8 ExtMag = 1 << 3;
-	constexpr uint8 Laser = 1 << 4;
+	constexpr uint16 Suppressor = 1 << 0;
+	constexpr uint16 RedDot = 1 << 1;
+	constexpr uint16 Scope = 1 << 2;      // 4x
+	constexpr uint16 ExtMag = 1 << 3;
+	constexpr uint16 Laser = 1 << 4;
+	constexpr uint16 Holo = 1 << 5;
+	constexpr uint16 Scope8x = 1 << 6;
+	constexpr uint16 Drum = 1 << 7;
+	constexpr uint16 Compensator = 1 << 8;
+	constexpr uint16 Grip = 1 << 9;
+	// Only one of each group fits on a gun at a time
+	constexpr uint16 SightGroup = RedDot | Scope | Holo | Scope8x;
+	constexpr uint16 MagGroup = ExtMag | Drum;
+	constexpr uint16 MuzzleGroup = Suppressor | Compensator;
+}
+
+/** Special rounds loaded in a gun. */
+namespace GSAmmoType
+{
+	constexpr uint8 Normal = 0;
+	constexpr uint8 ArmorPiercing = 1;
+	constexpr uint8 HollowPoint = 2;
+	constexpr uint8 Incendiary = 3;
+	constexpr uint8 Tracer = 4;
+	constexpr uint8 Shock = 5;
 }
 
 /** A weapon the player carries. Id is a row in the item catalog (GSItems). */
@@ -33,7 +53,8 @@ struct FGSWeaponSlot
 	UPROPERTY(BlueprintReadOnly) FName Id;
 	UPROPERTY(BlueprintReadOnly) int32 Ammo = 0;     // in magazine
 	UPROPERTY(BlueprintReadOnly) int32 Reserve = 0;
-	UPROPERTY(BlueprintReadOnly) uint8 Attachments = 0;
+	UPROPERTY() uint16 Attachments = 0; // GSAttach bits (uint16 is not Blueprint-visible)
+	UPROPERTY(BlueprintReadOnly) uint8 AmmoType = 0;   // GSAmmoType
 };
 
 /** A stack of items in the backpack. */
@@ -54,6 +75,16 @@ struct FGSActiveEffect
 
 	UPROPERTY(BlueprintReadOnly) FName Id;
 	UPROPERTY(BlueprintReadOnly) float EndTime = 0.f;
+};
+
+/** A player position sent to someone using the tracker on a PC. */
+USTRUCT()
+struct FGSTrackedPlayer
+{
+	GENERATED_BODY()
+	UPROPERTY() FString Name;
+	UPROPERTY() FVector_NetQuantize Location = FVector::ZeroVector;
+	UPROPERTY() bool bSelf = false;
 };
 
 USTRUCT(BlueprintType)

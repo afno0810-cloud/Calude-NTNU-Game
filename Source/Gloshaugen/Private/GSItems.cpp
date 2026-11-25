@@ -1,4 +1,6 @@
 #include "GSItems.h"
+#include "Misc/Paths.h"
+#include "Misc/FileHelper.h"
 #include "Engine/StaticMesh.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -64,8 +66,90 @@ const FString& GSItems::Name(FName Id)
 	return D ? D->Name : Unknown;
 }
 
+namespace
+{
+	/** A Fab / Megascans model that replaces the item's own Blender model. */
+	struct FMeshOverride
+	{
+		FString Path;
+		FRotator Rot = FRotator::ZeroRotator;
+		FVector Offset = FVector::ZeroVector;
+		float Scale = 1.f;
+		bool bLoaded = false;
+		TWeakObjectPtr<UStaticMesh> Mesh;
+	};
+
+	/**
+	 * Config/GSMeshOverrides.ini, one line per item:
+	 *   AK47=/Game/Fab/AK/SM_AK47.SM_AK47 | yaw=90 pitch=0 roll=0 | scale=1.0 | offset=0,0,0
+	 * Lines starting with ; are comments. Written by Content/Python/init_unreal.py, can be edited by hand.
+	 */
+	TMap<FName, FMeshOverride>& Overrides()
+	{
+		static TMap<FName, FMeshOverride> Map;
+		static bool bRead = false;
+		if (bRead) return Map;
+		bRead = true;
+		TArray<FString> Lines;
+		FFileHelper::LoadFileToStringArray(Lines, *FPaths::Combine(FPaths::ProjectConfigDir(), TEXT("GSMeshOverrides.ini")));
+		for (FString Line : Lines)
+		{
+			Line.TrimStartAndEndInline();
+			if (Line.IsEmpty() || Line.StartsWith(TEXT(";")) || Line.StartsWith(TEXT("["))) continue;
+			FString Key, Rest;
+			if (!Line.Split(TEXT("="), &Key, &Rest)) continue;
+			TArray<FString> Parts;
+			Rest.ParseIntoArray(Parts, TEXT("|"));
+			if (Parts.Num() == 0) continue;
+			FMeshOverride O;
+			O.Path = Parts[0].TrimStartAndEnd();
+			for (int32 I = 1; I < Parts.Num(); ++I)
+			{
+				TArray<FString> Tokens;
+				Parts[I].ParseIntoArrayWS(Tokens);
+				for (const FString& T : Tokens)
+				{
+					FString K, V;
+					if (!T.Split(TEXT("="), &K, &V)) continue;
+					K = K.ToLower();
+					if (K == TEXT("yaw")) O.Rot.Yaw = FCString::Atof(*V);
+					else if (K == TEXT("pitch")) O.Rot.Pitch = FCString::Atof(*V);
+					else if (K == TEXT("roll")) O.Rot.Roll = FCString::Atof(*V);
+					else if (K == TEXT("scale")) O.Scale = FMath::Max(0.001f, FCString::Atof(*V));
+					else if (K == TEXT("offset"))
+					{
+						TArray<FString> XYZ;
+						V.ParseIntoArray(XYZ, TEXT(","));
+						if (XYZ.Num() == 3) O.Offset = FVector(FCString::Atof(*XYZ[0]), FCString::Atof(*XYZ[1]), FCString::Atof(*XYZ[2]));
+					}
+				}
+			}
+			if (!O.Path.IsEmpty()) Map.Add(FName(*Key.TrimStartAndEnd()), O);
+		}
+		return Map;
+	}
+
+	/** The override for Id if its model actually loads. */
+	FMeshOverride* ActiveOverride(FName Id)
+	{
+		FMeshOverride* O = Overrides().Find(Id);
+		if (!O) return nullptr;
+		if (!O->bLoaded)
+		{
+			O->bLoaded = true;
+			O->Mesh = LoadObject<UStaticMesh>(nullptr, *O->Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+		}
+		return O->Mesh.IsValid() ? O : nullptr;
+	}
+}
+
+FRotator GSItems::MeshRotation(FName Id) { const FMeshOverride* O = ActiveOverride(Id); return O ? O->Rot : FRotator::ZeroRotator; }
+FVector GSItems::MeshOffset(FName Id) { const FMeshOverride* O = ActiveOverride(Id); return O ? O->Offset : FVector::ZeroVector; }
+float GSItems::MeshScale(FName Id) { const FMeshOverride* O = ActiveOverride(Id); return O ? O->Scale : 1.f; }
+
 UStaticMesh* GSItems::GetMesh(FName Id)
 {
+	if (FMeshOverride* O = ActiveOverride(Id)) return O->Mesh.Get();
 	static TMap<FName, TWeakObjectPtr<UStaticMesh>> Cache;
 	static TSet<FName> Missing;
 	const FGSItemDef* D = Find(Id);

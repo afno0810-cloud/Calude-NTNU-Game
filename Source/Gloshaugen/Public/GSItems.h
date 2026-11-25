@@ -67,6 +67,7 @@ struct FGSWeaponStats
 	float ProjGravity = 0.f;        // gravity scale
 	float Radius = 0.f;             // explosion radius cm
 	bool bSilent = false;
+	FName Caliber;                  // ammo type it uses ("556", "12g" ...). None = no reloads from boxes
 	float MuzzleX = 50.f;           // cm from model origin to muzzle
 	FVector FPHip = FVector(30.f, 12.f, -18.f);  // first person position relative to camera
 	FVector FPAim = FVector(20.f, 0.f, -6.f);
@@ -92,6 +93,8 @@ struct FGSItemDef
 	FName Kind;                           // throwable / gadget behaviour
 	float ThrowDamage = 0.f, ThrowRadius = 0.f, Fuse = 0.f;
 	int32 Slots = 0, Charges = 1;
+	FName Caliber;                        // ammo boxes: which caliber
+	int32 Rounds = 0;                     // ammo boxes: rounds in one box
 
 	bool IsWeapon() const { return Cat == EGSItemCat::Weapon; }
 	bool IsWearable() const { return Cat == EGSItemCat::Armor || Cat == EGSItemCat::Helmet || Kind == FName(TEXT("backpack")); }
@@ -107,6 +110,10 @@ namespace GSItems
 	GLOSHAUGEN_API const FString& Name(FName Id);
 	/** Blender model, or nullptr if it has not been imported (then a colored block is used). */
 	GLOSHAUGEN_API UStaticMesh* GetMesh(FName Id);
+	/** Fixes for replacement models from Fab (Config/GSMeshOverrides.ini). Identity when the item uses its own model. */
+	GLOSHAUGEN_API FRotator MeshRotation(FName Id);
+	GLOSHAUGEN_API FVector MeshOffset(FName Id);
+	GLOSHAUGEN_API float MeshScale(FName Id);
 
 	GLOSHAUGEN_API FLinearColor RarityColor(EGSRarity R);
 	GLOSHAUGEN_API const TCHAR* RarityName(EGSRarity R);

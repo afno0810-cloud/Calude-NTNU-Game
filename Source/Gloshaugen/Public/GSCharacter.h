@@ -31,7 +31,7 @@ public:
 
 	// --- Inventory (server) ---
 	/** Gives a weapon, or ammo for it if you already have one. Returns true if anything was taken. */
-	bool GiveWeapon(FName Id, int32 Ammo = -1, int32 Reserve = -1, uint8 Attachments = 0);
+	bool GiveWeapon(FName Id, int32 Ammo = -1, int32 Reserve = -1, uint16 Attachments = 0);
 	/** Puts items in the backpack. Returns how many fit. */
 	int32 AddToBackpack(FName Id, int32 Count);
 	/** Server: take what a pickup holds. Returns how many items were taken. */
@@ -40,6 +40,8 @@ public:
 	void AddEffect(FName EffectId);
 	/** Server: flashbang went off at Location. */
 	void ApplyFlash(const FVector& Location, float Radius);
+	/** Server: special rounds of the shot that is hitting us right now (GSAmmoType). */
+	uint8 IncomingAmmoType = 0;
 	/** Owner gets a short text message on screen. */
 	UFUNCTION(Client, Reliable) void ClientToast(const FString& Message);
 
@@ -85,6 +87,9 @@ public:
 	// Local (owner) state for the HUD
 	int32 SelectedItem = 0;
 	AGSPickup* GetFocusPickup() const { return FocusPickup.Get(); }
+	class AGSTerminal* GetFocusTerminal() const { return FocusTerminal.Get(); }
+	/** Server: remove Count of Id from the backpack if there are enough. */
+	bool ConsumeItem(FName Id, int32 Count);
 	bool IsUsingBinoculars() const { return bBinoculars; }
 	bool HasNightVisionOn() const { return bNightVisionGoggles; }
 	FString ToastText;
@@ -131,6 +136,10 @@ protected:
 	void ApplyGearVisuals();
 	void UpdateFocusPickup();
 	void UpdateLocalVisuals(float DeltaSeconds);
+	void UpdateWeaponAnimation(float DeltaSeconds);
+	void AddWeaponKick(float Strength, EGSWeaponClass Class);
+	void DropMagazineFX();
+	void Inspect();
 	void TickSurvival(float DeltaSeconds);
 	void TickEffects();
 	void CompleteUse();
@@ -194,6 +203,28 @@ protected:
 	float StarveAccumulator = 0.f;
 	float GlideStartTime = -100.f;
 	TWeakObjectPtr<AGSPickup> FocusPickup;
+	TWeakObjectPtr<class AGSTerminal> FocusTerminal;
+	/** The player controller if it has a PC / 3D printer open (input goes there instead). */
+	class AGSPlayerController* TerminalPC() const;
+
+	// Procedural first-person animation state (local only)
+	FName AnimWeaponId;
+	float EquipStart = -100.f;
+	float ReloadStart = -100.f;
+	float ReloadLength = 2.f;
+	bool bWasReloading = false;
+	bool bMagDropped = false;
+	bool bWasFalling = false;
+	float InspectStart = -100.f;
+	float AimBlend = 0.f;
+	float SprintBlend = 0.f;
+	float BobTime = 0.f;
+	FVector2D LookSwayInput = FVector2D::ZeroVector;
+	FRotator SwayRot = FRotator::ZeroRotator;
+	FVector KickPos = FVector::ZeroVector;
+	FVector KickVel = FVector::ZeroVector;
+	FRotator KickRot = FRotator::ZeroRotator;
+	FRotator KickRotVel = FRotator::ZeroRotator;
 	TWeakObjectPtr<AGSPickup> UseTargetPickup;   // crate being lock-picked
 	int32 UseIndex = INDEX_NONE;
 	FTimerHandle AutoFireTimer;

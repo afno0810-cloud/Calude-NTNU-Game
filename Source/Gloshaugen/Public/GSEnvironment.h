@@ -11,6 +11,7 @@ class UExponentialHeightFogComponent;
 class USkyAtmosphereComponent;
 class UVolumetricCloudComponent;
 class UInstancedStaticMeshComponent;
+class UPostProcessComponent;
 class AGSCampusBuilder;
 
 /**
@@ -31,6 +32,7 @@ public:
 
 protected:
 	void FindOrCreateSky();
+	void UpdatePostProcess(float Elevation, EGSWeather Weather, EGSWeather Prev, float Blend);
 	void UpdateParticles(float DeltaSeconds, UInstancedStaticMeshComponent* ISM, TArray<FVector>& Points, float Amount, bool bSnow, const FVector& CamLoc);
 
 	UPROPERTY() TObjectPtr<UDirectionalLightComponent> Sun;
@@ -39,6 +41,7 @@ protected:
 	UPROPERTY() TObjectPtr<UExponentialHeightFogComponent> Fog;
 	UPROPERTY() TObjectPtr<USkyAtmosphereComponent> Atmosphere;
 	UPROPERTY() TObjectPtr<UVolumetricCloudComponent> Clouds;
+	UPROPERTY() TObjectPtr<UPostProcessComponent> PostProcess;
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> RainISM;
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> SnowISM;
 

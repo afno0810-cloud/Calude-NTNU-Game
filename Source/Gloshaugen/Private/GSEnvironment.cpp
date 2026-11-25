@@ -8,6 +8,8 @@
 #include "Components/SkyAtmosphereComponent.h"
 #include "Components/VolumetricCloudComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/PostProcessComponent.h"
+#include "Materials/MaterialInterface.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/SkyLight.h"
 #include "Engine/ExponentialHeightFog.h"
@@ -61,6 +63,12 @@ AGSEnvironment::AGSEnvironment()
 	Sun->SetAtmosphereSunLightIndex(0);
 	Sun->SetIntensity(10.f);
 	Sun->SetLightColor(FLinearColor(1.f, 0.96f, 0.9f));
+	Sun->SetLightSourceAngle(0.5357f);
+	Sun->SetEnableLightShaftBloom(true);
+	Sun->SetBloomScale(0.1f);
+	Sun->SetBloomThreshold(4.f);
+	Sun->bCastCloudShadows = true;
+	Sun->SetCastShadows(true);
 
 	Moon = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("Moon"));
 	Moon->SetupAttachment(RootComponent);
@@ -82,10 +90,38 @@ AGSEnvironment::AGSEnvironment()
 
 	Clouds = CreateDefaultSubobject<UVolumetricCloudComponent>(TEXT("Clouds"));
 	Clouds->SetupAttachment(RootComponent);
+	Clouds->SetLayerBottomAltitude(1.8f);   // km
+	Clouds->SetLayerHeight(8.f);
+
+	// Whole-world post process: realistic camera look (exposure, bloom, grain, vignette, weather colour grading)
+	PostProcess = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcess"));
+	PostProcess->SetupAttachment(RootComponent);
+	PostProcess->bUnbound = true;
+	{
+		FPostProcessSettings& S = PostProcess->Settings;
+		S.bOverride_BloomIntensity = true;            S.BloomIntensity = 0.45f;
+		S.bOverride_VignetteIntensity = true;         S.VignetteIntensity = 0.32f;
+		S.bOverride_FilmGrainIntensity = true;        S.FilmGrainIntensity = 0.06f;
+		S.bOverride_SceneFringeIntensity = true;      S.SceneFringeIntensity = 0.12f;
+		S.bOverride_MotionBlurAmount = true;          S.MotionBlurAmount = 0.25f;
+		S.bOverride_MotionBlurMax = true;             S.MotionBlurMax = 2.f;
+		S.bOverride_AutoExposureSpeedUp = true;       S.AutoExposureSpeedUp = 2.5f;
+		S.bOverride_AutoExposureSpeedDown = true;     S.AutoExposureSpeedDown = 1.2f;
+		S.bOverride_LumenSceneLightingQuality = true; S.LumenSceneLightingQuality = 1.f;
+		S.bOverride_LumenFinalGatherQuality = true;   S.LumenFinalGatherQuality = 1.f;
+		S.bOverride_LumenReflectionQuality = true;    S.LumenReflectionQuality = 1.f;
+		S.bOverride_ColorSaturation = true;
+		S.bOverride_ColorContrast = true;
+		S.bOverride_ColorGain = true;
+		S.bOverride_WhiteTemp = true;
+	}
 
 	Fog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("Fog"));
 	Fog->SetupAttachment(RootComponent);
 	Fog->SetVolumetricFog(true);
+	Fog->SetVolumetricFogScatteringDistribution(0.6f);
+	Fog->SetFogHeightFalloff(0.08f);
+	Fog->SetFogMaxOpacity(0.97f);
 
 	RainISM = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Rain"));
 	RainISM->SetupAttachment(RootComponent);
@@ -104,6 +140,13 @@ void AGSEnvironment::BeginPlay()
 {
 	Super::BeginPlay();
 	FindOrCreateSky();
+
+	// The engine's ready-made volumetric clouds (ships with every UE5 install)
+	if (UMaterialInterface* CloudMat = LoadObject<UMaterialInterface>(nullptr,
+		TEXT("/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst.m_SimpleVolumetricCloud_Inst"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+	{
+		Clouds->SetMaterial(CloudMat);
+	}
 
 	RainISM->SetStaticMesh(GSUtils::Cube());
 	SnowISM->SetStaticMesh(GSUtils::Cube());
@@ -165,6 +208,8 @@ void AGSEnvironment::Tick(float DeltaSeconds)
 	Moon->SetIntensity(0.35f * (1.f - DayFactor) * (Weather == EGSWeather::Clear ? 1.f : 0.4f));
 	SkyLight->SetIntensity(Look.SkyIntensity * FMath::Lerp(0.35f, 1.f, DayFactor));
 
+	UpdatePostProcess(Elevation, Weather, Prev, Blend);
+
 	Fog->SetFogDensity(Look.FogDensity);
 	Fog->SetFogInscatteringColor(Look.FogColor * FMath::Lerp(0.06f, 1.f, DayFactor));
 
@@ -197,6 +242,42 @@ void AGSEnvironment::Tick(float DeltaSeconds)
 	};
 	UpdateParticles(DeltaSeconds, RainISM, RainDrops, Amount(EGSWeather::Rain) * IndoorFactor, false, CamLoc);
 	UpdateParticles(DeltaSeconds, SnowISM, SnowFlakes, Amount(EGSWeather::Snow) * IndoorFactor, true, CamLoc);
+}
+
+void AGSEnvironment::UpdatePostProcess(float Elevation, EGSWeather Weather, EGSWeather Prev, float Blend)
+{
+	// Colour grading per weather, plus warm light at sunrise/sunset ("golden hour") and blue night.
+	struct FGrade { float Saturation, Contrast, Temp; FLinearColor Gain; };
+	auto GradeFor = [](EGSWeather W) -> FGrade
+	{
+		switch (W)
+		{
+		case EGSWeather::Clear:  return { 1.08f, 1.04f, 6300.f, FLinearColor(1.02f, 1.f, 0.97f) };
+		case EGSWeather::Cloudy: return { 0.92f, 1.0f,  6800.f, FLinearColor(0.98f, 0.99f, 1.01f) };
+		case EGSWeather::Fog:    return { 0.80f, 0.94f, 7000.f, FLinearColor(0.97f, 0.99f, 1.02f) };
+		case EGSWeather::Rain:   return { 0.78f, 1.05f, 7200.f, FLinearColor(0.95f, 0.98f, 1.03f) };
+		case EGSWeather::Snow:   return { 0.85f, 1.02f, 7600.f, FLinearColor(0.97f, 1.f, 1.05f) };
+		default:                 return { 1.f, 1.f, 6500.f, FLinearColor::White };
+		}
+	};
+	const FGrade A = GradeFor(Prev), B = GradeFor(Weather);
+	float Sat = FMath::Lerp(A.Saturation, B.Saturation, Blend);
+	float Con = FMath::Lerp(A.Contrast, B.Contrast, Blend);
+	float Temp = FMath::Lerp(A.Temp, B.Temp, Blend);
+	FLinearColor Gain = FMath::Lerp(A.Gain, B.Gain, Blend);
+
+	const float Golden = 1.f - FMath::SmoothStep(2.f, 14.f, FMath::Abs(Elevation));   // near the horizon
+	const float Night = 1.f - FMath::SmoothStep(-8.f, 2.f, Elevation);
+	Temp = FMath::Lerp(Temp, 5200.f, Golden * 0.6f);
+	Temp = FMath::Lerp(Temp, 8500.f, Night * 0.7f);
+	Sat = FMath::Lerp(Sat, Sat * 0.7f, Night);
+	Gain = FMath::Lerp(Gain, FLinearColor(1.06f, 0.98f, 0.9f), Golden * 0.5f);
+
+	FPostProcessSettings& S = PostProcess->Settings;
+	S.ColorSaturation = FVector4(Sat, Sat, Sat, 1.f);
+	S.ColorContrast = FVector4(Con, Con, Con, 1.f);
+	S.ColorGain = FVector4(Gain.R, Gain.G, Gain.B, 1.f);
+	S.WhiteTemp = Temp;
 }
 
 void AGSEnvironment::UpdateParticles(float DeltaSeconds, UInstancedStaticMeshComponent* ISM, TArray<FVector>& Points,
