@@ -1391,11 +1391,27 @@ void AGSCharacter::UpdateArms(float Dt, const FGSWeaponStats* S, float ReloadT, 
 	FPMag->SetVisibility(bMag);
 	if (bMag)
 	{
-		if (FPMag->GetStaticMesh() != GSUtils::Cube()) FPMag->SetStaticMesh(GSUtils::Cube());
 		const bool bShell = bShellReload;
-		FPMag->SetRelativeLocation(bShell ? FVector(1.f, 0.f, 1.f) : FVector(0.f, 0.f, -8.f));
-		FPMag->SetRelativeScale3D(bShell ? FVector(0.065f, 0.02f, 0.02f) : FVector(0.035f, 0.025f, 0.17f));
-		GSUtils::SetColor(FPMag, bShell ? FLinearColor(0.5f, 0.04f, 0.03f) : FLinearColor(0.03f, 0.03f, 0.035f));
+		const bool bPistolMag = S && S->Class == EGSWeaponClass::Pistol;
+		UStaticMesh* Real = GSFXMesh(bShell ? (S && S->Class == EGSWeaponClass::Shotgun ? TEXT("SM_FX_ShellShotgun") : TEXT("SM_FX_CasingRifle"))
+			: bPistolMag ? TEXT("SM_FX_MagPistol") : TEXT("SM_FX_MagRifle"));
+		if (Real)
+		{
+			if (FPMag->GetStaticMesh() != Real)
+			{
+				FPMag->SetStaticMesh(Real);
+				FPMag->SetRelativeScale3D(FVector(1.f));
+				FPMag->EmptyOverrideMaterials();
+			}
+			FPMag->SetRelativeLocation(bShell ? FVector(1.f, 0.f, 1.f) : FVector(0.f, 0.f, -6.f));
+		}
+		else if (FPMag->GetStaticMesh() != GSUtils::Cube())
+		{
+			FPMag->SetStaticMesh(GSUtils::Cube());
+			FPMag->SetRelativeLocation(bShell ? FVector(1.f, 0.f, 1.f) : FVector(0.f, 0.f, -8.f));
+			FPMag->SetRelativeScale3D(bShell ? FVector(0.065f, 0.02f, 0.02f) : FVector(0.035f, 0.025f, 0.17f));
+			GSUtils::SetColor(FPMag, bShell ? FLinearColor(0.5f, 0.04f, 0.03f) : FLinearColor(0.03f, 0.03f, 0.035f));
+		}
 	}
 }
 
@@ -1518,6 +1534,18 @@ void AGSCharacter::TickRecoil(float Dt)
 	}
 }
 
+// Casing / magazine props from Tools/Blender/fx_models.py (nullptr until imported; callers fall back to shapes)
+static UStaticMesh* GSFXMesh(const TCHAR* Name)
+{
+	static TMap<FString, TWeakObjectPtr<UStaticMesh>> Cache;
+	TWeakObjectPtr<UStaticMesh>& Slot = Cache.FindOrAdd(Name);
+	if (!Slot.IsValid())
+	{
+		Slot = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Models/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	}
+	return Slot.Get();
+}
+
 void AGSCharacter::SpawnShellFX(EGSWeaponClass Class)
 {
 	UWorld* World = GetWorld();
@@ -1527,14 +1555,23 @@ void AGSCharacter::SpawnShellFX(EGSWeaponClass Class)
 	if (!Shell) return;
 	Shell->SetMobility(EComponentMobility::Movable);
 	UStaticMeshComponent* C = Shell->GetStaticMeshComponent();
-	C->SetStaticMesh(GSUtils::Cylinder());
 	const bool bShotgun = Class == EGSWeaponClass::Shotgun;
 	const bool bBig = Class == EGSWeaponClass::Sniper || Class == EGSWeaponClass::LMG;
-	const float R = bShotgun ? 0.02f : bBig ? 0.012f : 0.009f;
-	const float L = bShotgun ? 0.065f : bBig ? 0.07f : Class == EGSWeaponClass::Pistol ? 0.02f : 0.045f;
-	C->SetWorldScale3D(FVector(R, R, L));
+	const bool bPistolCase = Class == EGSWeaponClass::Pistol || Class == EGSWeaponClass::SMG;
+	if (UStaticMesh* Real = GSFXMesh(bShotgun ? TEXT("SM_FX_ShellShotgun") : bPistolCase ? TEXT("SM_FX_CasingPistol") : TEXT("SM_FX_CasingRifle")))
+	{
+		C->SetStaticMesh(Real);
+		C->SetWorldScale3D(FVector(bBig ? 1.35f : 1.f));
+	}
+	else
+	{
+		C->SetStaticMesh(GSUtils::Cylinder());
+		const float R = bShotgun ? 0.02f : bBig ? 0.012f : 0.009f;
+		const float L = bShotgun ? 0.065f : bBig ? 0.07f : Class == EGSWeaponClass::Pistol ? 0.02f : 0.045f;
+		C->SetWorldScale3D(FVector(R, R, L));
+		GSUtils::SetColor(C, bShotgun ? FLinearColor(0.5f, 0.04f, 0.03f) : FLinearColor(0.75f, 0.52f, 0.18f));
+	}
 	C->SetCastShadow(false);
-	GSUtils::SetColor(C, bShotgun ? FLinearColor(0.5f, 0.04f, 0.03f) : FLinearColor(0.75f, 0.52f, 0.18f));
 	C->SetCollisionProfileName(TEXT("PhysicsActor"));
 	C->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 	C->SetSimulatePhysics(true);
@@ -1560,9 +1597,18 @@ void AGSCharacter::DropMagazineFX()
 	if (!Mag) return;
 	Mag->SetMobility(EComponentMobility::Movable);
 	UStaticMeshComponent* C = Mag->GetStaticMeshComponent();
-	C->SetStaticMesh(GSUtils::Cube());
-	C->SetWorldScale3D(FVector(0.03f, 0.07f, 0.16f));
-	GSUtils::SetColor(C, FLinearColor(0.04f, 0.04f, 0.045f));
+	const FGSWeaponSlot* MW = GetCurrentWeapon();
+	const bool bPistolMag = MW && GSItems::Weapon(MW->Id).Class == EGSWeaponClass::Pistol;
+	if (UStaticMesh* Real = GSFXMesh(bPistolMag ? TEXT("SM_FX_MagPistol") : TEXT("SM_FX_MagRifle")))
+	{
+		C->SetStaticMesh(Real);
+	}
+	else
+	{
+		C->SetStaticMesh(GSUtils::Cube());
+		C->SetWorldScale3D(FVector(0.03f, 0.07f, 0.16f));
+		GSUtils::SetColor(C, FLinearColor(0.04f, 0.04f, 0.045f));
+	}
 	C->SetCollisionProfileName(TEXT("PhysicsActor"));
 	C->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 	C->SetSimulatePhysics(true);
