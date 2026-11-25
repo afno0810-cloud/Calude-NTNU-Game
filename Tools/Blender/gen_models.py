@@ -203,6 +203,14 @@ def _interp(pts, x):
     return pts[-1][1]
 
 
+def loft_profile(name, bottom, topl, widths, mat, n=18, power=3.0):
+    """loft() from a side outline given as bottom and top polylines (x, z) and half widths (x, w)."""
+    xa = max(bottom[0][0], topl[0][0])
+    xb = min(bottom[-1][0], topl[-1][0])
+    xs = [xa + (xb - xa) * i / n for i in range(n + 1)]
+    return loft(name, [(x, _interp(bottom, x), _interp(topl, x), _interp(widths, x)) for x in xs], mat, segs=20, power=power)
+
+
 def rotated(o, rot_deg):
     o.rotation_euler = [math.radians(a) for a in rot_deg]
     return o
@@ -573,8 +581,10 @@ def build_bolt(p, m):
     cyl("BoltHandle", 0.004, 0.05, (-0.03, 0.035, 0.02), m["steel"], axis="Y")
     sph("BoltKnob", 0.009, (-0.03, 0.06, 0.015), m["steel"])
     fe = mx - 0.12 if p.get("furn") == "wood" else 0.45
-    prism("Stock", [(-0.36, -0.14), (-0.1, -0.09), (0.02, -0.06), (0.06, -0.03), (fe, -0.0), (fe, 0.02),
-                    (0.15, 0.02), (0.15, 0.01), (-0.08, 0.01), (-0.36, 0.0)], 0.045, furn, bevel=0.006)
+    loft_profile("Stock", [(-0.36, -0.14), (-0.1, -0.09), (0.02, -0.06), (0.06, -0.03), (fe, -0.0)],
+                 [(-0.36, 0.0), (-0.08, 0.01), (0.15, 0.015), (fe, 0.02)],
+                 [(-0.36, 0.022), (-0.12, 0.021), (0.0, 0.017), (0.1, 0.022), (fe, 0.018)], furn, n=24)
+    box("Bedding", (0.03, 0.046, 0.006), (fe - 0.03, 0, 0.018), m["steel"], bevel=0.002)
     box("ButtPad", (0.015, 0.047, 0.15), (-0.367, 0, -0.07), m["rubber"])
     box("Magwell", (0.08, 0.04, 0.03), (0.06, 0, -0.03), m["steel"])
     box("TriggerGuard", (0.07, 0.01, 0.006), (0.015, 0, -0.07), m["steel"])
@@ -602,8 +612,9 @@ def build_bolt(p, m):
 def build_musket(p, m):
     cyl("Barrel", 0.012, 1.0, (0.55, 0, 0.025), m["steel"])
     cyl("Ramrod", 0.004, 0.85, (0.5, 0, -0.005), m["wood"])
-    prism("Stock", [(-0.42, -0.15), (-0.12, -0.08), (0.02, -0.06), (0.06, -0.02), (0.95, 0.005), (0.95, 0.02),
-                    (0.08, 0.02), (-0.08, 0.005), (-0.42, 0.0)], 0.048, m["lwood"], bevel=0.008)
+    loft_profile("Stock", [(-0.42, -0.15), (-0.12, -0.08), (0.02, -0.06), (0.06, -0.02), (0.95, 0.005)],
+                 [(-0.42, 0.0), (-0.08, 0.005), (0.08, 0.02), (0.95, 0.02)],
+                 [(-0.42, 0.024), (-0.12, 0.022), (0.0, 0.018), (0.1, 0.021), (0.95, 0.017)], m["lwood"], n=30)
     box("LockPlate", (0.12, 0.006, 0.03), (0.04, 0.026, 0.01), m["steel"])
     box("Frizzen", (0.012, 0.012, 0.03), (0.07, 0.03, 0.035), m["steel"], rot=(0, 15, 0))
     box("Hammer", (0.035, 0.008, 0.012), (0.01, 0.03, 0.04), m["steel"], rot=(0, -35, 0))
@@ -623,7 +634,9 @@ def build_shotgun(p, m):
         cyl("Pump", 0.021, 0.16, (0.3, 0, -0.005), m["wood"], verts=16)
         for i in range(5):
             cyl(f"PumpRib{i}", 0.022, 0.006, (0.24 + i * 0.03, 0, -0.005), m["bake"], verts=16)
-        prism("Stock", [(-0.38, -0.14), (-0.07, -0.035), (-0.07, 0.03), (-0.38, 0.01)], 0.045, m["wood"], bevel=0.006)
+        loft_profile("Stock", [(-0.38, -0.14), (-0.2, -0.09), (-0.07, -0.035)], [(-0.38, 0.01), (-0.07, 0.03)],
+                     [(-0.38, 0.022), (-0.07, 0.02)], m["wood"], n=14)
+        box("ButtPad", (0.015, 0.046, 0.15), (-0.385, 0, -0.065), m["rubber"], bevel=0.004)
         grip(m, m["wood"])
         sph("Bead", 0.003, (0.6, 0, 0.035), m["brass"])
         return dict(muzzle=0.615, sight=0.04)
@@ -631,8 +644,10 @@ def build_shotgun(p, m):
         cyl(f"Barrel{y}", 0.0115, 0.6, (0.35, y, 0.025), m["steel"])
     box("Rib", (0.6, 0.006, 0.006), (0.35, 0, 0.037), m["steel"])
     box("Action", (0.12, 0.048, 0.06), (0.0, 0, 0.005), m["chrome"])
-    box("Forend", (0.2, 0.04, 0.03), (0.2, 0, 0.0), m["wood"])
-    prism("Stock", [(-0.4, -0.15), (-0.12, -0.08), (0.0, -0.06), (-0.06, -0.025), (-0.06, 0.03), (-0.4, 0.01)], 0.045, m["wood"], bevel=0.006)
+    loft("Forend", [(0.1 + 0.2 * t, -0.018 + 0.004 * t, 0.016, 0.021 - 0.002 * t) for t in [i / 8 for i in range(9)]], m["wood"], segs=18, power=2.6)
+    loft_profile("Stock", [(-0.4, -0.15), (-0.12, -0.08), (0.0, -0.065)], [(-0.4, 0.01), (-0.06, 0.03), (0.0, -0.025)],
+                 [(-0.4, 0.022), (-0.1, 0.02), (-0.03, 0.017), (0.0, 0.02)], m["wood"], n=18)
+    box("ButtPad", (0.015, 0.046, 0.16), (-0.405, 0, -0.07), m["rubber"], bevel=0.004)
     box("TriggerGuard", (0.06, 0.01, 0.006), (0.0, 0, -0.04), m["steel"])
     sph("Bead", 0.003, (0.64, 0, 0.042), m["brass"])
     return dict(muzzle=0.65, sight=0.045)
