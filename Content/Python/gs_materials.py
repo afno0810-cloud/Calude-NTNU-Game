@@ -378,6 +378,26 @@ INSTANCES = {
     "Soil": ("Gravel", (0.45, 0.32, 0.22), 2, 1, 0, "Surface"),
     "Bark": ("Bark", (1, 1, 1), 1, 1, 0, "Surface"),
     "BirchBark": ("BirchBark", (1, 1, 1), 1, 1, 0, "Surface"),
+    # weapons and items (Tools/Blender/gen_models.py and weapon_*.py use M_<name>)
+    "M_Wood": ("Wood", (1.25, 1.0, 0.8), 1.5, 0.8, 0, "Surface"),
+    "M_LightWood": ("Floor", (1.1, 1.0, 0.85), 1.5, 0.9, 0, "Surface"),
+    "M_Steel": ("Metal", (0.75, 0.76, 0.78), 3, 0.7, 1, "Surface"),
+    "M_DarkSteel": ("Metal", (0.1, 0.1, 0.11), 3, 1.1, 1, "Surface"),
+    "M_Chrome": ("Metal", (0.95, 0.95, 0.97), 3, 0.25, 1, "Surface"),
+    "M_Blade": ("Metal", (0.85, 0.86, 0.88), 4, 0.5, 1, "Surface"),
+    "M_BladeDark": ("Metal", (0.2, 0.2, 0.21), 4, 0.9, 1, "Surface"),
+    "M_Gold": ("Metal", (1.0, 0.75, 0.3), 3, 0.5, 1, "Surface"),
+    "M_Brass": ("Metal", (0.85, 0.62, 0.3), 3, 0.6, 1, "Surface"),
+    "M_BlackPolymer": ("Plastic", (0.05, 0.05, 0.055), 3, 1.3, 0, "Surface"),
+    "M_Bakelite": ("Plastic", (0.25, 0.1, 0.05), 3, 0.8, 0, "Surface"),
+    "M_OliveDrab": ("PaintedMetal", (0.22, 0.25, 0.14), 3, 1.1, 0, "Surface"),
+    "M_Tan": ("PaintedMetal", (0.55, 0.45, 0.3), 3, 1.1, 0, "Surface"),
+    "M_Leather": ("Leather", (1, 1, 1), 2, 1, 0, "Surface"),
+    "M_KatanaWrap": ("Fabric", (0.05, 0.05, 0.08), 6, 1, 0, "Surface"),
+    "M_Fabric": ("Fabric", (0.3, 0.32, 0.25), 3, 1, 0, "Surface"),
+    "M_Rubber": ("Rubber", (1, 1, 1), 3, 1, 0, "Surface"),
+    "M_Paper": ("Plastic", (1.2, 1.18, 1.1), 1, 1.5, 0, "Surface"),
+    "Leather": ("Leather", (1, 1, 1), 1, 1, 0, "Surface"),
     # lights and screens (glow; Lumen uses them to light the rooms)
     "LightPanel": ("Plastic", (1.2, 1.2, 1.2), 1, 1, 0, "Surface", 12.0),
     "ScreenOn": ("Plastic", (0.1, 0.3, 0.8), 1, 0.3, 0, "Surface", 3.0, (0.25, 0.55, 1.0)),
@@ -480,6 +500,9 @@ SCANNED_KEYWORDS = {
     "W_Asphalt": ["asphalt", "road"],
     "W_Paving": ["paving", "pavement", "cobblestone", "sidewalk"],
     "Bark": ["bark", "pine_bark", "tree_bark"],
+    "M_Wood": ["walnut", "dark_wood", "wood_table"],
+    "M_Leather": ["leather"],
+    "Leather": ["leather"],
 }
 
 

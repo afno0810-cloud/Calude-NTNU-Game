@@ -184,6 +184,22 @@ void AGSCampusBuilder::BuildGround()
 {
 	// Big lawn under everything. Top surface at Z = 0.
 	AddBoxMat(FVector(70.f * M, 220.f * M, -0.5f * M), FRotator::ZeroRotator, FVector(2400.f, 2400.f, 1.f), TEXT("W_Grass"), FLinearColor(0.16f, 0.27f, 0.11f), true);
+
+	// Horizon: town, forest hills and the fjord 1.3-4 km out, so the world does not end at a green edge.
+	// Never culled (it is meant to be seen from far away), no shadows, no collision.
+	if (UStaticMesh* Backdrop = ModelMesh(TEXT("SM_Backdrop")))
+	{
+		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this, TEXT("Backdrop"));
+		C->SetMobility(EComponentMobility::Static);
+		C->SetStaticMesh(Backdrop);
+		C->SetupAttachment(RootComponent);
+		C->SetRelativeLocation(FVector(70.f * M, 220.f * M, 0.f));
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->SetCastShadow(false);
+		C->bAffectDistanceFieldLighting = false;
+		C->RegisterComponent();
+		AddInstanceComponent(C);
+	}
 }
 
 void AGSCampusBuilder::BuildRoads()

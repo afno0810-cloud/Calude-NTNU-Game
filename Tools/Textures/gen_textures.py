@@ -437,6 +437,18 @@ def rubber(seed):
     save("Rubber", col, fine * 0.2, 0.9 + 0.05 * fine, nstrength=1.0, ao=np.ones((N, N)))
 
 
+def leather(seed):
+    rng = np.random.default_rng(seed)
+    f1, edge, cid = voronoi(rng, 80, jitter=1.0)
+    pebble = smoothstep(0.0, 0.08, edge)
+    crease = smoothstep(0.6, 0.85, fbm(rng, 1.5, 6, 40))
+    wear = smoothstep(0.55, 0.85, fbm(rng, 2.2, 3))
+    col = colorize((0.22, 0.12, 0.06), (0.04, 0.03, 0.02), fbm(rng, 1.5, 20))
+    col = col * (0.8 + 0.2 * pebble[..., None]) * (1 + 0.35 * wear[..., None])
+    h = pebble * 0.4 - crease * 0.3
+    save("Leather", col, h, 0.55 + 0.2 * (1 - pebble) - 0.15 * wear, nstrength=3.0)
+
+
 def macro(seed):
     """Large-scale variation used by every material to hide tiling (sampled at 1/9 of the tiling)."""
     rng = np.random.default_rng(seed)
@@ -531,6 +543,7 @@ JOBS = {
     "Plastic": lambda: plastic(23),
     "Rubber": lambda: rubber(24),
     "Macro": lambda: macro(25),
+    "Leather": lambda: leather(28),
     "Leaves": lambda: leaves(26),
     "Bark": lambda: bark(27),
 }

@@ -205,5 +205,16 @@ Nyeste runde øverst.
 183. Volumetriske skyer
 184. Fargekorrigering etter vær og tid på døgnet
 185. Konsollkommandoene `Grafikk` og `Opplosning`
+186. Treteksturer på kolber og skjefter
+187. Stål-, krom- og blåneringsmaterialer på løp og sleider
+188. Messing og gull på patroner og pyntevåpen
+189. Polymer, bakelitt og gummi på grep
+190. Oliven, khaki og tan på militærutstyr
+191. Ny skinntekstur for hylstre, remmer og vester
+192. Viklet håndtak på katanaen
+193. Horisont: 420 hus og blokker rundt campus
+194. Skogkledde åser i en ring 1,3 til 4 km ute
+195. Fjorden i nord
+196. Fjell og jorder som skifter etter høyde
 
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*
