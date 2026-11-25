@@ -189,7 +189,7 @@ void AGSCampusBuilder::BuildGround()
 	// Never culled (it is meant to be seen from far away), no shadows, no collision.
 	if (UStaticMesh* Backdrop = ModelMesh(TEXT("SM_Backdrop")))
 	{
-		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this, TEXT("Backdrop"));
+		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
 		C->SetMobility(EComponentMobility::Static);
 		C->SetStaticMesh(Backdrop);
 		C->SetupAttachment(RootComponent);
