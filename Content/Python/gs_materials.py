@@ -21,7 +21,7 @@ GS = "/Game/GS"
 TEX = GS + "/Textures"
 MAT = GS + "/Materials"
 MODELS = "/Game/Models"
-VERSION = 6  # bump to rebuild the master materials
+VERSION = 7  # bump to rebuild the master materials
 
 mel = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -297,17 +297,37 @@ def _foliage_master():
         pass
     ro = _expr(m, unreal.MaterialExpressionConstant, -300, 250, r=0.65)
     mel.connect_material_property(ro, "", unreal.MaterialProperty.MP_ROUGHNESS)
-    # gentle wind sway
+    # gentle wind sway: own small graph (SimpleGrassWind moved in UE 5.8 and loading the missing
+    # asset logged an error on every editor start).
     try:
-        wind = _expr(m, unreal.MaterialExpressionMaterialFunctionCall, -700, 400)
-        fn = eal.load_asset("/Engine/Functions/Engine_MaterialFunctions01/WorldPositionOffset/SimpleGrassWind")
-        if fn:
-            wind.set_editor_property("material_function", fn)
-            ws = _expr(m, unreal.MaterialExpressionConstant, -900, 400, r=0.35)
-            mel.connect_material_expressions(ws, "", wind, "WindIntensity")
-            mel.connect_material_property(wind, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
-    except Exception:
-        pass
+        t = _expr(m, unreal.MaterialExpressionTime, -1300, 400)
+        wp = _expr(m, unreal.MaterialExpressionWorldPosition, -1300, 480)
+        mask = _expr(m, unreal.MaterialExpressionComponentMask, -1150, 480, r=True, g=False, b=False, a=False)
+        mel.connect_material_expressions(wp, "", mask, "")
+        sc = _expr(m, unreal.MaterialExpressionMultiply, -1000, 480, const_b=0.004)
+        mel.connect_material_expressions(mask, "", sc, "A")
+        ts = _expr(m, unreal.MaterialExpressionMultiply, -1000, 400, const_b=1.7)
+        mel.connect_material_expressions(t, "", ts, "A")
+        ph = _expr(m, unreal.MaterialExpressionAdd, -850, 430)
+        mel.connect_material_expressions(ts, "", ph, "A")
+        mel.connect_material_expressions(sc, "", ph, "B")
+        sn = _expr(m, unreal.MaterialExpressionSine, -700, 430)
+        mel.connect_material_expressions(ph, "", sn, "")
+        uv = _expr(m, unreal.MaterialExpressionTextureCoordinate, -850, 560)
+        vm = _expr(m, unreal.MaterialExpressionComponentMask, -700, 560, r=False, g=True, b=False, a=False)
+        mel.connect_material_expressions(uv, "", vm, "")
+        om = _expr(m, unreal.MaterialExpressionOneMinus, -550, 560)
+        mel.connect_material_expressions(vm, "", om, "")
+        amp = _expr(m, unreal.MaterialExpressionMultiply, -550, 430)
+        mel.connect_material_expressions(sn, "", amp, "A")
+        mel.connect_material_expressions(om, "", amp, "B")
+        dirv = _expr(m, unreal.MaterialExpressionConstant3Vector, -550, 330, constant=unreal.LinearColor(2.0, 1.2, 0.0, 0.0))
+        wpo = _expr(m, unreal.MaterialExpressionMultiply, -400, 400)
+        mel.connect_material_expressions(amp, "", wpo, "A")
+        mel.connect_material_expressions(dirv, "", wpo, "B")
+        mel.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    except Exception as e:
+        log(f"vind i bladmateriale hoppet over: {e}")
     m.set_editor_property("used_with_instanced_static_meshes", True)
     m.set_editor_property("used_with_nanite", True)
     mel.recompile_material(m)
