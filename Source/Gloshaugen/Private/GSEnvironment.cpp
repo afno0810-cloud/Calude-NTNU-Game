@@ -2,6 +2,9 @@
 #include "GSGameState.h"
 #include "GSCampusBuilder.h"
 #include "GSUtils.h"
+#include "GSAudio.h"
+#include "Components/AudioComponent.h"
+#include "Sound/SoundBase.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
@@ -259,6 +262,45 @@ void AGSEnvironment::Tick(float DeltaSeconds)
 	{
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WeatherMPC, TEXT("Wetness"), Wetness);
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WeatherMPC, TEXT("SnowCover"), SnowCover);
+	}
+
+	const float Windy = Amount(EGSWeather::Cloudy) * 0.5f + Amount(EGSWeather::Fog) * 0.3f + Rain * 0.7f + Snow;
+	UpdateAmbience(FMath::SmoothStep(-4.f, 8.f, Elevation), Rain, Snow, Windy);
+}
+
+void AGSEnvironment::UpdateAmbience(float DayFactor, float Rain, float Snow, float Wind)
+{
+	if (GetNetMode() == NM_DedicatedServer) return;
+	static const TCHAR* Names[] = { TEXT("Amb_Wind"), TEXT("Amb_Rain"), TEXT("Amb_Birds"), TEXT("Amb_Night") };
+	if (Ambience.Num() == 0)
+	{
+		for (const TCHAR* Name : Names)
+		{
+			UAudioComponent* A = nullptr;
+			if (USoundBase* S = GSAudio::Get(Name))
+			{
+				A = UGameplayStatics::CreateSound2D(this, S, 0.f, 1.f, 0.f, nullptr, true, false);
+				if (A) A->Play(FMath::FRandRange(0.f, 5.f));
+			}
+			Ambience.Add(A);
+		}
+	}
+	// Inside: rain becomes a muffled drum on the roof, wind and birds almost gone.
+	const float Out = IndoorFactor;
+	const float Vol[] = {
+		(0.12f + 0.5f * FMath::Clamp(Wind, 0.f, 1.f)) * FMath::Lerp(0.25f, 1.f, Out),
+		Rain * FMath::Lerp(0.35f, 0.9f, Out),
+		DayFactor * FMath::Clamp(1.f - Rain - Snow, 0.f, 1.f) * 0.5f * FMath::Lerp(0.1f, 1.f, Out),
+		(1.f - DayFactor) * 0.35f * FMath::Lerp(0.3f, 1.f, Out),
+	};
+	for (int32 i = 0; i < Ambience.Num() && i < 4; ++i)
+	{
+		if (UAudioComponent* A = Ambience[i])
+		{
+			A->SetVolumeMultiplier(FMath::Max(0.001f, Vol[i]));
+			A->SetLowPassFilterEnabled(Out < 0.9f);
+			A->SetLowPassFilterFrequency(FMath::Lerp(900.f, 20000.f, Out));
+		}
 	}
 }
 

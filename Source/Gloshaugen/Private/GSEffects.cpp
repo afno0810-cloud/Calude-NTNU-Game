@@ -1,5 +1,6 @@
 #include "GSEffects.h"
 #include "GSUtils.h"
+#include "GSAudio.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 
@@ -39,6 +40,7 @@ void AGSShortFX::SpawnTracer(UWorld* World, const FVector& Start, const FVector&
 void AGSShortFX::SpawnImpact(UWorld* World, const FVector& Location, const FVector& Normal)
 {
 	if (!World || World->GetNetMode() == NM_DedicatedServer) return;
+	GSAudio::PlayAt(World, GSAudio::Variant(TEXT("Impact"), 3), Location, 0.7f, 25.f, FMath::FRandRange(0.85f, 1.15f));
 	FActorSpawnParameters P;
 	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	AGSShortFX* FX = World->SpawnActor<AGSShortFX>(Location + Normal * 2.f, Normal.Rotation(), P);

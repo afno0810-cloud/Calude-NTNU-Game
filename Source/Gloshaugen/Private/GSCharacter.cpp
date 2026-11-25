@@ -24,6 +24,8 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "TimerManager.h"
+#include "GSAudio.h"
+#include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -609,6 +611,7 @@ void AGSCharacter::FireOnce()
 	{
 		LastFireTime = Now;
 		LastMeleeTime = Now;
+		GSAudio::PlayAt(this, TEXT("Melee_Swing"), GetActorLocation(), 0.8f, 15.f, FMath::FRandRange(0.9f, 1.1f));
 		ServerMelee(false);
 		return;
 	}
@@ -645,6 +648,8 @@ void AGSCharacter::FireOnce()
 		DrawPellets(Start, Camera->GetForwardVector(), Seed, S.Pellets, bAiming ? S.AimSpread : S.HipSpread, true);
 	}
 	AGSShortFX::SpawnMuzzleFlash(GetWorld(), MuzzleStart, Camera->GetForwardVector(), S.bSilent);
+	GSAudio::Play2D(this, GSAudio::ShotName(S.Class, S.bSilent), S.bSilent ? 0.6f : 1.f, FMath::FRandRange(0.96f, 1.04f));
+	if (W->Ammo <= 1) GSAudio::Play2D(this, TEXT("Dry_Fire"), 0.5f);
 
 	if (!HasAuthority()) W->Ammo--; // prediction, corrected by replication
 
@@ -804,13 +809,19 @@ void AGSCharacter::DoMeleeHit(bool bQuick)
 
 void AGSCharacter::MulticastMeleeFX_Implementation()
 {
-	if (!IsLocallyControlled()) LastMeleeTime = GetWorld()->GetTimeSeconds();
+	if (IsLocallyControlled()) return;
+	LastMeleeTime = GetWorld()->GetTimeSeconds();
+	GSAudio::PlayAt(this, TEXT("Melee_Swing"), GetActorLocation(), 0.8f, 15.f, FMath::FRandRange(0.9f, 1.1f));
 }
 
 void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantize End, bool bSilent)
 {
 	if (!bSilent) NoteShotForRadio(Start);
 	if (IsLocallyControlled()) return; // shooter already drew it
+	{
+		const FGSWeaponSlot* W = GetCurrentWeapon();
+		GSAudio::PlayShotFor(this, W ? GetStats(*W).Class : EGSWeaponClass::Rifle, bSilent, Start);
+	}
 	const FVector From = TPWeaponMesh->GetComponentLocation();
 	if (!bSilent) AGSShortFX::SpawnTracer(GetWorld(), From, End);
 	FHitResult Hit;
@@ -826,6 +837,7 @@ void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVe
 void AGSCharacter::MulticastPelletFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed, int32 Pellets, float ConeDeg)
 {
 	if (IsLocallyControlled()) return;
+	GSAudio::PlayShotFor(this, EGSWeaponClass::Shotgun, false, Start);
 	DrawPellets(Start, Dir, Seed, Pellets, ConeDeg, false);
 }
 
@@ -888,6 +900,7 @@ void AGSCharacter::FinishReload()
 void AGSCharacter::ClientHitMarker_Implementation(bool bKill)
 {
 	LastHitMarkerTime = GetWorld()->GetTimeSeconds();
+	GSAudio::Play2D(this, TEXT("Hit_Marker"), bKill ? 0.9f : 0.6f, bKill ? 0.8f : 1.f);
 }
 
 FString AGSCharacter::CurrentWeaponName() const
@@ -956,6 +969,18 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 		ReloadStart = Now;
 		ReloadLength = W ? S.ReloadTime * GetMods().Reload : 2.f;
 		bMagDropped = false;
+		// mag out, mag in, charging handle (timed to the procedural reload animation)
+		const TCHAR* Steps[] = { TEXT("Reload_Out"), TEXT("Reload_In"), TEXT("Slide") };
+		const float At[] = { 0.25f, 0.6f, 0.8f };
+		for (int32 i = 0; i < 3; ++i)
+		{
+			FTimerHandle Handle;
+			const FString Snd(Steps[i]);
+			GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, [this, Snd]()
+			{
+				if (bReloading) GSAudio::Play2D(this, Snd, 0.7f, FMath::FRandRange(0.95f, 1.05f));
+			}), FMath::Max(0.05f, ReloadLength * At[i]), false);
+		}
 	}
 	bWasReloading = bReloading;
 	// Landing dip
@@ -1817,10 +1842,12 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 
 void AGSCharacter::OnRep_Health()
 {
-	if (IsLocallyControlled())
+	if (IsLocallyControlled() && Health < LastSeenHealth - 0.5f)
 	{
 		LastDamageTakenTime = GetWorld()->GetTimeSeconds();
+		GSAudio::Play2D(this, TEXT("Hit_Body"), 0.8f, FMath::FRandRange(0.9f, 1.1f));
 	}
+	LastSeenHealth = Health;
 }
 
 void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& WeaponName)
@@ -2003,6 +2030,7 @@ void AGSCharacter::UpdateLocalVisuals(float DeltaSeconds)
 	if (bCamWasFalling && !bFalling)
 	{
 		CamDipVel -= FMath::Clamp(CamFallSpeed * 0.25f, 40.f, 260.f);
+		GSAudio::PlayAt(this, TEXT("Land"), GetActorLocation() - FVector(0.f, 0.f, 90.f), FMath::Clamp(CamFallSpeed / 900.f, 0.3f, 1.f), 20.f);
 		CamFallSpeed = 0.f;
 	}
 	bCamWasFalling = bFalling;
@@ -2067,6 +2095,40 @@ void AGSCharacter::Tick(float DeltaSeconds)
 	}
 
 	CurrentRecoil = FMath::FInterpTo(CurrentRecoil, 0.f, DeltaSeconds, 6.f);
+
+	// Footsteps (every machine that renders): one step per stride, grass sounds soft, hard floors click.
+	if (GetNetMode() != NM_DedicatedServer && !bDead && !Move->IsFalling())
+	{
+		const float Speed2D = GetVelocity().Size2D();
+		if (Speed2D > 120.f)
+		{
+			StepDistance += Speed2D * DeltaSeconds;
+			const float Stride = bSprinting ? 230.f : bIsCrouched ? 120.f : 175.f;
+			if (StepDistance >= Stride)
+			{
+				StepDistance = 0.f;
+				const FVector Feet = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+				FHitResult Hit;
+				FCollisionQueryParams Params(SCENE_QUERY_STAT(GSStep), false, this);
+				bool bGrass = false;
+				if (GetWorld()->LineTraceSingleByChannel(Hit, Feet + FVector(0.f, 0.f, 20.f), Feet - FVector(0.f, 0.f, 60.f), ECC_Visibility, Params))
+				{
+					if (const UPrimitiveComponent* C = Hit.GetComponent())
+					{
+						const UMaterialInterface* Mat = C->GetMaterial(0);
+						bGrass = Mat && Mat->GetName().Contains(TEXT("Grass"));
+					}
+				}
+				const float Vol = bIsCrouched ? 0.25f : bSprinting ? 1.f : 0.6f;
+				GSAudio::PlayAt(this, GSAudio::Variant(bGrass ? TEXT("Step_Grass") : TEXT("Step_Hard"), 4), Feet, Vol, bSprinting ? 30.f : 18.f,
+					FMath::FRandRange(0.92f, 1.08f));
+			}
+		}
+		else
+		{
+			StepDistance = 100.f; // first step comes quickly when you start moving
+		}
+	}
 
 	// Ghost boost: others only see you flicker.
 	if (!IsLocallyControlled() && !bDead)

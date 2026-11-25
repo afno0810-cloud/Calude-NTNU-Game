@@ -232,6 +232,8 @@ protected:
 	float FlinchSeenTime = -100.f;
 	float FlinchStart = -100.f;
 	float FlinchSign = 1.f;
+	float LastSeenHealth = 100.f;
+	float StepDistance = 0.f;
 	FVector2D LookSwayInput = FVector2D::ZeroVector;
 	FRotator SwayRot = FRotator::ZeroRotator;
 	FVector KickPos = FVector::ZeroVector;

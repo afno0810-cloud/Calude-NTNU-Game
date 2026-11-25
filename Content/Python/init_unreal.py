@@ -220,6 +220,11 @@ try:
 except Exception as e:
     unreal.log_warning(f"Gloshaugen: materialer feilet: {e}")
 try:
+    import gs_sounds
+    gs_sounds.run()  # procedural sound effects; recorded sounds with the same names win
+except Exception as e:
+    unreal.log_warning(f"Gloshaugen: lyd-import feilet: {e}")
+try:
     link_fab_models()
 except Exception as e:
     unreal.log_warning(f"Gloshaugen: Fab-kobling feilet: {e}")

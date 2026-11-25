@@ -52,6 +52,9 @@ protected:
 	float Wetness = 0.f;
 	float SnowCover = 0.f;
 	UPROPERTY() TObjectPtr<class UMaterialParameterCollection> WeatherMPC;
+	/** Looping 2D ambience: wind, rain, birds (day), night hum. Volumes follow weather, time and indoor/outdoor. */
+	UPROPERTY() TArray<TObjectPtr<class UAudioComponent>> Ambience;
+	void UpdateAmbience(float DayFactor, float Rain, float Snow, float Wind);
 	float IndoorCheckTimer = 0.f;
 	float IndoorFactor = 1.f;   // 1 = outside, 0 = under a roof
 	bool bIndoorTarget = false;

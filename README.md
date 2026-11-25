@@ -112,6 +112,8 @@ Modellene lages med Python-skript i `Tools/Blender/` og ligger ferdig eksportert
 - Oversiktsbilder: `python Tools/Blender/contact_sheet.py ut.png SM_AK47 SM_Kebab ...`
 
 - Teksturer: `python3 Tools/Textures/gen_textures.py` (sømløse PBR-teksturer til `SourceArt/Textures`, blir materialer i Unreal automatisk)
+- Lyd: `python3 Tools/Audio/gen_sounds.py` (skudd, fotsteg, lading, vind, regn, fugler til `SourceArt/Sounds`; ekte opptak med samme navn i `/Game/Sounds` vinner)
+- Detaljer og horisont: `Tools/Blender/details.py` (kumlokk, sluk, hydranter, steiner, blomsterbed) og `Tools/Blender/backdrop.py` (by, åser, fjord)
 - Byggene: `python Tools/Blender/buildings.py` (alle unntatt Hovedbygningen, rett fra `GSCampus.h`). Trær: `nature.py`. Biler: `cars.py`
 - Møbler og campus-ting: `python Tools/Blender/props.py`. Hovedbygningen: `python Tools/Blender/building_hovedbygningen.py`
 

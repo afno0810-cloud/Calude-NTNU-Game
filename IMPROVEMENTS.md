@@ -229,5 +229,29 @@ Nyeste runde øverst.
 207. Kameraet dukker ned når du lander, mer etter høye fall
 208. Pusting i kameraet, tyngre når du er skadet eller sliten
 209. Roligere pust når du sikter
+210. Lyd! Ny lydmotor (GSAudio) med 3D-lyd, avstandsdemping og luftdemping
+211. Egne skuddlyder for pistol, maskinpistol, gevær, snikskytter, hagle, maskingevær og rakettkaster
+212. Lyddemper gir dempet skudd som bare høres 40 m
+213. Fjerne skudd ruller som ekko fra åsene
+214. Snikskytteren høres 450 m unna
+215. Litt tilfeldig tonehøyde på hvert skudd
+216. Klikk når magasinet er tomt
+217. Fotsteg som følger skrittlengden (gå, snike, sprinte)
+218. Myke fotsteg på gress, harde på asfalt og gulv
+219. Fire varianter av hvert fotsteg
+220. Andre spillere høres når de går
+221. Landingslyd, sterkere etter høye fall
+222. Magasin ut, magasin inn og sleide under lading
+223. Treffmarkør-lyd, dypere ved drap
+224. Lyd når du selv blir truffet
+225. Kulenedslag høres der de treffer
+226. Svisj ved nærkamp
+227. Vind som blåser i kast, sterkere i dårlig vær
+228. Regn, som blir dump tromming på taket når du er inne
+229. Fuglekvitter om dagen
+230. Stille nattsus om natten
+231. Innendørs demper vind og fugler
+232. Alle lyder kan byttes ut med ekte opptak med samme navn
+233. Kameraet rykker bare til ved skade, ikke når du heles
 
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*
