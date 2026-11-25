@@ -291,6 +291,7 @@ protected:
 	float CycleStart = -100.f;   // pump or bolt cycle after a shot
 	bool bCycleBolt = false;
 	float TPSprint = 0.f;
+	float TPReload = 0.f; // others see the gun tilted and lowered while you reload
 	float LastRemoteShotTime = -100.f;
 	float StepDistance = 0.f;
 	FVector2D LookSwayInput = FVector2D::ZeroVector;

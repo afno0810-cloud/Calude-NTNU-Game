@@ -2778,6 +2778,15 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		const float Bob = FMath::Sin(GetWorld()->GetTimeSeconds() * (bSprinting ? 13.f : 8.5f)) * FMath::Min(Spd / 600.f, 1.f);
 		const FVector Shoulder(5.f, 18.f, bIsCrouched ? 10.f : 48.f);
 		FRotator Aim(FMath::Lerp(AimPitch, -35.f, TPSprint) + 8.f * Kick, FMath::Lerp(0.f, -40.f, TPSprint), 0.f);
+		// Reloading seen by others: gun canted and lowered toward the chest, with a tug when the mag seats
+		TPReload = FMath::FInterpTo(TPReload, bReloading ? 1.f : 0.f, DeltaSeconds, 8.f);
+		if (TPReload > 0.01f)
+		{
+			const float Tug = FMath::Sin(GetWorld()->GetTimeSeconds() * 9.f);
+			Aim.Pitch -= TPReload * (18.f + 3.f * Tug);
+			Aim.Yaw -= TPReload * 25.f;
+			Aim.Roll += TPReload * 35.f;
+		}
 		// Melee swing seen by others: raise to the right, sweep across in front of the body
 		const float MSince = GetWorld()->GetTimeSeconds() - LastMeleeTime;
 		float Reach = 0.f;
