@@ -1387,15 +1387,25 @@ def _(p, m):
 
 @item("drone")
 def _(p, m):
-    box("Body", (0.1, 0.07, 0.04), (0, 0, 0.02), m["poly"], bevel=0.01)
-    cyl("Cam", 0.015, 0.02, (0.055, 0, 0.0), m["lens"])
+    lathe("Body", [(0.0, 0.0), (0.04, 0.0), (0.05, 0.012), (0.05, 0.03), (0.035, 0.045), (0.0, 0.048)], m["poly"], segs=24, scale=(1.3, 0.85, 1.0))
+    box("Battery", (0.07, 0.04, 0.018), (-0.015, 0, 0.055), m["dark"], bevel=0.004)
+    o = lathe("Gimbal", [(0.0, -0.012), (0.012, -0.012), (0.014, 0.0), (0.012, 0.012), (0.0, 0.012)], m["dark"], segs=16)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0.06, 0, 0.0)
+    cyl("Cam", 0.008, 0.004, (0.073, 0, 0.0), m["lens"], verts=16)
     for i in range(4):
         a = math.radians(45 + i * 90)
-        x, y = math.cos(a) * 0.11, math.sin(a) * 0.11
-        rotated(box(f"Arm{i}", (0.15, 0.015, 0.012), (x / 2, y / 2, 0.025), m["dark"]), (0, 0, math.degrees(a)))
-        cyl(f"Motor{i}", 0.014, 0.025, (x, y, 0.035), m["dark"], axis="Z")
-        cyl(f"Prop{i}", 0.06, 0.002, (x, y, 0.05), col((0.85, 0.3, 0.05)), axis="Z", verts=16)
-    sph("Led", 0.005, (-0.05, 0, 0.03), m["red"])
+        x, y = math.cos(a) * 0.12, math.sin(a) * 0.12
+        tube(f"Arm{i}", [(math.cos(a) * 0.04, math.sin(a) * 0.04, 0.025), (x, y, 0.03)], [0.008, 0.007], m["dark"], segs=8)
+        lathe(f"Motor{i}", [(0.0, 0.02), (0.014, 0.02), (0.015, 0.04), (0.012, 0.045), (0.0, 0.045)], m["dark"], segs=16, loc=(x, y, 0.0))
+        ring = [(x + math.cos(t) * 0.07, y + math.sin(t) * 0.07, 0.044) for t in [k * 2 * math.pi / 32 for k in range(33)]]
+        tube(f"Guard{i}", ring, [0.006] * len(ring), col((0.85, 0.3, 0.05), 0, 0.4), segs=8, squash=(0.5, 1.2), caps=False)
+        for b in range(2):
+            ang = i * 0.7 + b * math.pi
+            box(f"Blade{i}{b}", (0.06, 0.012, 0.002), (x + math.cos(ang) * 0.03, y + math.sin(ang) * 0.03, 0.048), m["poly"], rot=(8, 0, math.degrees(ang)), bevel=0.0008)
+        box(f"Leg{i}", (0.004, 0.004, 0.03), (math.cos(a) * 0.05, math.sin(a) * 0.05, -0.01), m["dark"], bevel=0)
+    sph("Led", 0.004, (-0.06, 0, 0.03), m["red"])
+    sph("LedG", 0.004, (0.055, 0.025, 0.03), col((0.1, 0.9, 0.2), 0, 0.2))
 
 
 @item("grapple")
@@ -1435,10 +1445,15 @@ def _(p, m):
 
 @item("flashlight")
 def _(p, m):
-    cyl("Body", 0.013, 0.13, (0, 0, 0), m["dark"])
-    cone("Head", 0.013, 0.02, 0.04, (0.085, 0, 0), m["dark"], axis="X")
-    cyl("Glass", 0.018, 0.003, (0.106, 0, 0), m["glass"])
-    cyl("Button", 0.005, 0.006, (-0.067, 0, 0), m["rubber"])
+    o = lathe("Body", [(0.0, -0.07), (0.011, -0.07), (0.013, -0.066), (0.013, 0.04), (0.019, 0.065), (0.02, 0.09), (0.017, 0.092)], m["dark"], segs=28)
+    o.rotation_euler = (0, math.radians(90), 0)
+    for k in range(8):
+        o = lathe(f"Knurl{k}", [(0.0134, -0.05 + k * 0.009), (0.0134, -0.046 + k * 0.009)], m["poly"], segs=28)
+        o.rotation_euler = (0, math.radians(90), 0)
+    cyl("Glass", 0.017, 0.002, (0.091, 0, 0), m["glass"], verts=28)
+    cyl("Reflector", 0.015, 0.002, (0.0895, 0, 0), m["chrome"], verts=28)
+    cyl("Button", 0.006, 0.006, (-0.072, 0, 0), m["rubber"], verts=16)
+    box("Clip", (0.06, 0.004, 0.008), (-0.03, 0.0145, 0), m["steel"], bevel=0.001)
 
 
 @item("radio")
@@ -1464,10 +1479,16 @@ def _(p, m):
 
 @item("ammobox")
 def _(p, m):
-    box("Box", (0.28, 0.14, 0.18), (0, 0, 0.09), m["green"], bevel=0.006)
-    box("Lid", (0.29, 0.15, 0.025), (0, 0, 0.19), m["green"], bevel=0.004)
-    box("Handle", (0.12, 0.02, 0.015), (0, 0, 0.21), m["dark"])
-    box("Stencil", (0.15, 0.142, 0.03), (0, 0, 0.1), col((0.85, 0.8, 0.3)), bevel=0)
+    g = m["green"]
+    box("Box", (0.28, 0.14, 0.17), (0, 0, 0.085), g, bevel=0.006)
+    box("Lid", (0.29, 0.15, 0.028), (0, 0, 0.183), g, bevel=0.005)
+    for sx in (-1, 1):
+        box(f"Rib{sx}", (0.01, 0.142, 0.15), (sx * 0.12, 0, 0.08), g, bevel=0.003)
+    box("Latch", (0.03, 0.02, 0.07), (0.15, 0, 0.15), m["dark"], rot=(0, -10, 0), bevel=0.003)
+    box("Hinge", (0.01, 0.13, 0.012), (-0.146, 0, 0.18), m["dark"], bevel=0.002)
+    tube("Handle", [(-0.05, 0, 0.198), (-0.045, 0, 0.215), (0.045, 0, 0.215), (0.05, 0, 0.198)], [0.005] * 4, m["dark"], segs=8)
+    box("Stencil", (0.15, 0.001, 0.025), (0, -0.0705, 0.12), col((0.9, 0.85, 0.4)), bevel=0)
+    box("Stencil2", (0.1, 0.001, 0.018), (0, -0.0705, 0.085), col((0.9, 0.85, 0.4)), bevel=0)
 
 
 @item("plate")
@@ -1480,12 +1501,24 @@ def _(p, m):
 def _(p, m):
     s = p["size"]
     c = col((0.15, 0.25, 0.35) if s < 1 else (0.35, 0.18, 0.08), 0, 0.95)
-    box("Main", (0.18 * s, 0.32 * s, 0.45 * s), (0, 0, 0.225 * s), c, bevel=0.04 * s)
-    box("Flap", (0.2 * s, 0.33 * s, 0.1 * s), (0.01, 0, 0.42 * s), c, bevel=0.03 * s)
-    box("Pocket", (0.06 * s, 0.24 * s, 0.18 * s), (0.11 * s, 0, 0.14 * s), c, bevel=0.02 * s)
+    dark = col((0.06, 0.06, 0.06), 0, 1.0)
+    # rounded main bag (lathe, squashed front-to-back), lid, front pocket, compression straps, zips
+    prof = [(0.0, 0.0), (0.12, 0.0), (0.15, 0.03), (0.16, 0.2), (0.15, 0.36), (0.12, 0.43), (0.0, 0.45)]
+    lathe("Main", [(r * s, z * s) for r, z in prof], c, segs=28, scale=(0.62, 1.0, 1.0))
+    lathe("Lid", [(0.0, 0.4 * s), (0.13 * s, 0.4 * s), (0.155 * s, 0.43 * s), (0.13 * s, 0.47 * s), (0.0, 0.48 * s)], c, segs=28, scale=(0.68, 1.04, 1.0))
+    box("Pocket", (0.05 * s, 0.22 * s, 0.17 * s), (0.095 * s, 0, 0.14 * s), c, bevel=0.025 * s)
+    box("PocketZip", (0.004, 0.2 * s, 0.004), (0.12 * s, 0, 0.215 * s), m["poly"], bevel=0)
+    box("ZipPull", (0.012, 0.006, 0.02), (0.122 * s, 0.08 * s, 0.205 * s), m["steel"], bevel=0.001)
     for sd in (-1, 1):
-        box(f"Strap{sd}", (0.025, 0.05, 0.4 * s), (-0.1 * s, sd * 0.1 * s, 0.22 * s), m["fabric"])
-        cyl(f"SideBottle{sd}", 0.03, 0.15, (0, sd * 0.18 * s, 0.12 * s), col((0.3, 0.6, 0.8)), axis="Z")
+        # shoulder straps on the back, padded and curved
+        path = [(-0.1 * s - 0.01 * math.sin(math.pi * t), sd * (0.08 + 0.02 * t) * s, (0.4 - 0.32 * t) * s) for t in [k / 8 for k in range(9)]]
+        tube(f"Strap{sd}", path, [0.022] * 9, dark, segs=10, squash=(1.6, 0.5))
+        for z in (0.18, 0.32):
+            box(f"Compress{sd}{z}", (0.015 * s, 0.2 * s, 0.018), (0.0, sd * 0.08 * s, z * s), dark, rot=(0, 0, sd * 90), bevel=0.002)
+        lathe(f"SideBottle{sd}", [(0.0, 0.0), (0.028, 0.0), (0.03, 0.004), (0.03, 0.13), (0.02, 0.15), (0.012, 0.16), (0.0, 0.16)], col((0.3, 0.6, 0.8), 0, 0.2), segs=20, loc=(0, sd * 0.16 * s, 0.03 * s))
+        box(f"Mesh{sd}", (0.07, 0.01, 0.08), (0, sd * 0.155 * s, 0.07 * s), dark, bevel=0.004)
+    box("Handle", (0.04 * s, 0.06 * s, 0.012), (-0.05 * s, 0, 0.475 * s), dark, bevel=0.004)
+    box("Logo", (0.002, 0.05 * s, 0.03 * s), (0.122 * s, 0, 0.1 * s), m["white"], bevel=0)
 
 
 @item("suppressor")
@@ -1595,11 +1628,17 @@ def _(p, m):
 
 @item("defib")
 def _(p, m):
-    box("Case", (0.25, 0.1, 0.25), (0, 0, 0.125), col((0.95, 0.75, 0.05)), bevel=0.02)
-    box("Panel", (0.15, 0.102, 0.1), (0, 0, 0.15), col((0.1, 0.6, 0.2)), bevel=0)
-    box("Handle", (0.12, 0.025, 0.025), (0, 0, 0.265), m["poly"])
+    yel = col((0.95, 0.75, 0.05), 0, 0.4)
+    box("Case", (0.25, 0.1, 0.24), (0, 0, 0.12), yel, bevel=0.025)
+    box("Face", (0.2, 0.004, 0.18), (0, -0.05, 0.12), col((0.15, 0.15, 0.15), 0, 0.5), bevel=0.01)
+    box("Screen", (0.08, 0.003, 0.05), (-0.04, -0.0525, 0.16), col((0.2, 0.6, 0.3), 0, 0.1), bevel=0.002)
+    cyl("Shock", 0.022, 0.006, (0.05, -0.054, 0.15), m["red"], axis="Y", verts=24)
+    cyl("Power", 0.012, 0.006, (0.05, -0.054, 0.09), col((0.1, 0.6, 0.2), 0, 0.4), axis="Y", verts=20)
+    box("Heart", (0.03, 0.003, 0.03), (-0.04, -0.054, 0.08), m["red"], rot=(0, 45, 0), bevel=0.004)
+    box("Handle", (0.12, 0.03, 0.022), (0, 0, 0.255), m["poly"], bevel=0.008)
     for s in (-1, 1):
-        box(f"Pad{s}", (0.06, 0.012, 0.09), (s * 0.08, -0.06, 0.08), m["white"], bevel=0.005)
+        box(f"Pad{s}", (0.07, 0.012, 0.1), (s * 0.075, 0.058, 0.11), m["white"], bevel=0.008)
+        tube(f"Cable{s}", [(s * 0.075, 0.065, 0.16), (s * 0.06, 0.08, 0.2), (0.0, 0.06, 0.23)], [0.003] * 3, m["poly"], segs=6)
 
 
 @item("trophy")
