@@ -631,41 +631,87 @@ def build_knife(p, m):
     return dict(muzzle=0.02 + b, sight=0.0)
 
 
+def xlathe(name, profile, mat, segs=24, x0=0.0, z0=0.0):
+    """lathe() with its axis along +X: profile is (radius, x)."""
+    o = lathe(name, profile, mat, segs=segs)
+    o.location = (x0, 0, z0)
+    o.rotation_euler = (0, math.radians(90), 0)
+    return o
+
+
 def build_axe(p, m):
     h = p["handle"]
-    cyl("Handle", 0.017, h, (h / 2 - 0.15, 0, 0), m["lwood"], verts=12)
     end = h - 0.15
+    # handle tapers toward the head and swells into a knob at the end
+    xlathe("Handle", [(0.0, -0.165), (0.02, -0.16), (0.021, -0.14), (0.016, -0.1), (0.015, end * 0.5), (0.017, end - 0.04), (0.019, end + 0.04), (0.0, end + 0.045)],
+           m["lwood"], segs=16, x0=0.0)
+    for i in range(6):
+        tube(f"Wrap{i}", [(-0.135 + i * 0.024, 0.0, -0.02), (-0.13 + i * 0.024, 0.0, 0.02)], [0.0185, 0.0185], m["fabric"], segs=12, squash=(1.0, 1.0))
     if p["head"] == "viking":
-        prism("Head", [(end - 0.04, 0.0), (end + 0.02, 0.0), (end + 0.04, 0.17), (end - 0.08, 0.15), (end - 0.04, 0.05)],
-              0.012, m["blade"], bevel=0.002)
-        box("Socket", (0.06, 0.036, 0.04), (end - 0.02, 0, 0.0), m["steel"])
+        prof = [(end - 0.025, -0.022), (end + 0.025, -0.022), (end + 0.022, 0.05), (end + 0.045, 0.11), (end + 0.058, 0.155),
+                (end + 0.03, 0.172), (end - 0.02, 0.178), (end - 0.07, 0.174), (end - 0.115, 0.158),
+                (end - 0.085, 0.125), (end - 0.05, 0.08), (end - 0.03, 0.035)]
+        prism("Head", prof, 0.012, m["blade"], bevel=0.002)
+        prism("Edge", [(end + 0.058, 0.155), (end + 0.03, 0.172), (end - 0.02, 0.178), (end - 0.07, 0.174), (end - 0.115, 0.158),
+                       (end - 0.11, 0.15), (end - 0.07, 0.163), (end - 0.02, 0.166), (end + 0.025, 0.161), (end + 0.05, 0.147)],
+              0.006, col((0.8, 0.8, 0.82), 1, 0.15), bevel=0.0008)
+        box("Socket", (0.058, 0.036, 0.05), (end, 0, 0.0), m["steel"], bevel=0.008)
+        box("Poll", (0.04, 0.03, 0.03), (end, 0, -0.035), m["steel"], bevel=0.008)
+        for k in range(3):
+            box(f"Rune{k}", (0.006, 0.0125, 0.02), (end - 0.03 + k * 0.012, 0, 0.1), m["dark"], rot=(0, 20 * (k - 1), 0), bevel=0)
     else:
-        box("Head", (0.08, 0.07, 0.18), (end - 0.02, 0, 0.0), m["dark"])
-    cyl("Wrap", 0.019, 0.15, (-0.07, 0, 0), m["fabric"], verts=12)
+        box("Head", (0.075, 0.068, 0.17), (end, 0, 0.0), m["dark"], bevel=0.012)
+        for sz in (-1, 1):
+            cyl(f"Face{sz}", 0.036, 0.016, (end, 0, sz * 0.09), m["steel"], axis="Z", verts=24)
+        box("Wedge", (0.01, 0.03, 0.006), (end, 0, 0.0), m["steel"], bevel=0.001)
     return dict(muzzle=end, sight=0.0)
 
 
+
+
 def build_bat(p, m):
-    cone("Bat", 0.017, 0.034, 0.8, (0.3, 0, 0), m["lwood"], axis="X", verts=24)
-    sph("End", 0.034, (0.7, 0, 0), m["lwood"], scale=(0.5, 1, 1))
-    cyl("Knob", 0.024, 0.02, (-0.1, 0, 0), m["lwood"])
-    cyl("Tape", 0.0185, 0.15, (-0.02, 0, 0), m["fabric"])
+    xlathe("Bat", [(0.0, -0.118), (0.02, -0.117), (0.027, -0.108), (0.024, -0.098), (0.0135, -0.09), (0.013, 0.12), (0.016, 0.25),
+                   (0.026, 0.4), (0.033, 0.52), (0.034, 0.68), (0.03, 0.71), (0.018, 0.722), (0.0, 0.724)], m["lwood"], segs=28)
+    for i in range(7):
+        tube(f"Tape{i}", [(-0.085 + i * 0.022, 0.0, -0.02), (-0.075 + i * 0.022, 0.0, 0.02)], [0.0145, 0.0145], m["fabric"], segs=12)
+    box("Brand", (0.07, 0.002, 0.012), (0.5, 0.0335, 0.0), m["dark"], bevel=0)
     return dict(muzzle=0.7, sight=0.0)
 
 
+
+
 def build_crowbar(p, m):
-    cyl("Bar", 0.012, 0.65, (0.25, 0, 0), m["red"], verts=6)
-    rotated(cyl("Hook", 0.012, 0.12, (0.6, 0, 0.04), m["red"], verts=6), (0, -40, 0))
-    rotated(box("Claw", (0.05, 0.03, 0.008), (0.63, 0, 0.09), m["steel"]), (0, -80, 0))
-    box("Chisel", (0.06, 0.025, 0.008), (-0.1, 0, -0.01), m["steel"], rot=(0, 10, 0))
+    path = [(-0.12, 0, -0.022), (-0.08, 0, -0.008), (-0.04, 0, 0.0), (0.55, 0, 0.0)]
+    for k in range(1, 9):
+        a = math.radians(k * 22.5)
+        path.append((0.55 + math.sin(a) * 0.055, 0, 0.055 - math.cos(a) * 0.055))
+    radii = [0.006, 0.01, 0.012] + [0.012] * (len(path) - 4) + [0.008]
+    tube("Bar", path, radii, m["red"], segs=6)
+    box("Chisel", (0.04, 0.026, 0.004), (-0.13, 0, -0.026), m["steel"], rot=(0, 20, 0), bevel=0.001)
+    for sy in (-1, 1):
+        box(f"Claw{sy}", (0.012, 0.009, 0.03), (0.552, sy * 0.007, 0.12), m["steel"], rot=(0, 15, 0), bevel=0.002)
+    box("Label", (0.08, 0.0005, 0.012), (0.2, 0.0105, 0.0), m["white"], bevel=0)
     return dict(muzzle=0.62, sight=0.0)
 
 
+
+
 def build_pan(p, m):
-    cyl("Handle", 0.012, 0.22, (0.0, 0, 0), m["poly"], verts=12)
-    cyl("Pan", 0.13, 0.04, (0.24, 0, 0.0), m["dark"], axis="Y", verts=32)
-    cyl("Inside", 0.12, 0.042, (0.24, 0, 0.0), m["steel"], axis="Y", verts=32)
+    o = lathe("Pan", [(0.0, -0.0), (0.1, 0.0), (0.118, 0.008), (0.13, 0.045), (0.134, 0.047), (0.131, 0.05), (0.124, 0.047),
+                      (0.112, 0.012), (0.097, 0.005), (0.0, 0.005)], m["dark"], segs=40)
+    o.location = (0.24, 0.0, 0.0)
+    o.rotation_euler = (math.radians(-90), 0, 0)
+    lathe("Coating", [(0.096, 0.0), (0.0, 0.0)], col((0.05, 0.05, 0.055), 0, 0.3), segs=40, loc=(0, 0, 0))
+    c = bpy.data.objects["Coating"]
+    c.location = (0.24, 0.0055, 0.0)
+    c.rotation_euler = (math.radians(-90), 0, 0)
+    for k in range(3):
+        cyl(f"Rivet{k}", 0.004, 0.006, (0.112, 0.006, -0.012 + k * 0.012), m["steel"], axis="X", verts=8)
+    tube("Handle", [(0.12, 0.025, 0.0), (0.08, 0.03, 0.0), (0.0, 0.035, 0.0), (-0.09, 0.04, 0.0)], [0.011, 0.012, 0.013, 0.013], m["poly"], segs=12, squash=(0.8, 1.2))
+    tube("HangLoop", [(-0.09, 0.04, -0.01), (-0.105, 0.04, -0.012), (-0.112, 0.04, 0.0), (-0.105, 0.04, 0.012), (-0.09, 0.04, 0.01)], [0.003] * 5, m["steel"], segs=6)
     return dict(muzzle=0.37, sight=0.0)
+
+
 
 
 # ------------------------------------------------------------------ armor
@@ -1836,11 +1882,16 @@ def build_daneaxe(p, m):
 
 
 def build_spear(p, m):
-    cyl("Shaft", 0.014, 1.7, (0.55, 0, 0), m["lwood"], verts=12)
-    prism("Head", [(1.38, -0.025), (1.6, 0.0), (1.38, 0.025), (1.36, 0.0)], 0.006, m["blade"], bevel=0.001)
-    cyl("Socket", 0.017, 0.08, (1.35, 0, 0), m["dark"], verts=12)
-    cyl("Wrap", 0.016, 0.2, (0.0, 0, 0), m["fabric"], verts=12)
+    xlathe("Shaft", [(0.0, -0.3), (0.013, -0.298), (0.014, 0.5), (0.0145, 1.3), (0.0, 1.32)], m["lwood"], segs=14)
+    xlathe("Socket", [(0.0145, 1.26), (0.018, 1.3), (0.012, 1.4), (0.0, 1.41)], m["dark"], segs=14)
+    prism("Head", [(1.39, -0.004), (1.43, -0.028), (1.5, -0.022), (1.6, 0.0), (1.5, 0.022), (1.43, 0.028), (1.39, 0.004)], 0.007, m["blade"], bevel=0.0015)
+    for i in range(5):
+        tube(f"Bind{i}", [(1.25 + i * 0.008, 0.0, -0.016), (1.252 + i * 0.008, 0.0, 0.016)], [0.0175, 0.0175], m["fabric"], segs=10)
+    for i in range(8):
+        tube(f"Wrap{i}", [(-0.05 + i * 0.022, 0.0, -0.016), (-0.04 + i * 0.022, 0.0, 0.016)], [0.0165, 0.0165], col((0.18, 0.09, 0.04), 0, 0.9), segs=10)
     return dict(muzzle=1.6, sight=0.0)
+
+
 
 
 def build_bow(p, m):
