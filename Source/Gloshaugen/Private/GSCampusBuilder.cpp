@@ -11,7 +11,7 @@
 
 namespace
 {
-	constexpr float M = 100.f;          // meters -> cm
+	constexpr float CmPerM = 100.f;          // meters -> cm
 	constexpr float WallT = 0.4f;       // wall thickness (m)
 	constexpr float SlabT = 0.3f;       // floor slab thickness (m)
 	constexpr float WindowW = 1.8f;
@@ -183,7 +183,7 @@ void AGSCampusBuilder::Build()
 void AGSCampusBuilder::BuildGround()
 {
 	// Big lawn under everything. Top surface at Z = 0.
-	AddBoxMat(FVector(70.f * M, 220.f * M, -0.5f * M), FRotator::ZeroRotator, FVector(2400.f, 2400.f, 1.f), TEXT("W_Grass"), FLinearColor(0.16f, 0.27f, 0.11f), true);
+	AddBoxMat(FVector(70.f * CmPerM, 220.f * CmPerM, -0.5f * CmPerM), FRotator::ZeroRotator, FVector(2400.f, 2400.f, 1.f), TEXT("W_Grass"), FLinearColor(0.16f, 0.27f, 0.11f), true);
 
 	// Horizon: town, forest hills and the fjord 1.3-4 km out, so the world does not end at a green edge.
 	// Never culled (it is meant to be seen from far away), no shadows, no collision.
@@ -193,7 +193,7 @@ void AGSCampusBuilder::BuildGround()
 		C->SetMobility(EComponentMobility::Static);
 		C->SetStaticMesh(Backdrop);
 		C->SetupAttachment(RootComponent);
-		C->SetRelativeLocation(FVector(70.f * M, 220.f * M, 0.f));
+		C->SetRelativeLocation(FVector(70.f * CmPerM, 220.f * CmPerM, 0.f));
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetCastShadow(false);
 		C->bAffectDistanceFieldLighting = false;
@@ -212,7 +212,7 @@ void AGSCampusBuilder::BuildRoads()
 		const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X));
 		const FLinearColor Col = R.bPath ? FLinearColor(0.42f, 0.41f, 0.39f) : FLinearColor(0.10f, 0.10f, 0.11f);
 		const float Z = R.bPath ? -0.01f : -0.02f; // path on top of road where they cross
-		AddBoxMat(FVector(C.X * M, C.Y * M, Z * M), FRotator(0.f, Yaw, 0.f), FVector(Len + R.Width, R.Width, 0.1f),
+		AddBoxMat(FVector(C.X * CmPerM, C.Y * CmPerM, Z * CmPerM), FRotator(0.f, Yaw, 0.f), FVector(Len + R.Width, R.Width, 0.1f),
 			R.bPath ? TEXT("W_Paving") : TEXT("W_Asphalt"), Col, true);
 	}
 }
@@ -259,16 +259,16 @@ void AGSCampusBuilder::BuildSidewalks()
 			if (!bCrossing && PieceNo % 7 == 3)
 			{
 				const FVector2D H = Mid + Side * ((PieceNo & 8) ? 1.f : -1.f) * R.Width * 0.25f;
-				AddModel(TEXT("SM_Manhole"), FTransform(Rot, FVector(H.X * M, H.Y * M, 0.025f * M)), nullptr, false);
+				AddModel(TEXT("SM_Manhole"), FTransform(Rot, FVector(H.X * CmPerM, H.Y * CmPerM, 0.025f * CmPerM)), nullptr, false);
 			}
 			// centre line: 3 m dashes, 3 m gaps; solid edge lines
 			if (!bCrossing)
 			{
-				AddBox(FVector(Mid.X * M, Mid.Y * M, 0.035f * M), Rot, FVector(L * 0.5f, 0.12f, 0.01f), Paint, false);
+				AddBox(FVector(Mid.X * CmPerM, Mid.Y * CmPerM, 0.035f * CmPerM), Rot, FVector(L * 0.5f, 0.12f, 0.01f), Paint, false);
 				for (float Sgn : { -1.f, 1.f })
 				{
 					const FVector2D E = Mid + Side * Sgn * (R.Width * 0.5f - 0.35f);
-					AddBox(FVector(E.X * M, E.Y * M, 0.035f * M), Rot, FVector(L, 0.1f, 0.01f), Paint, false);
+					AddBox(FVector(E.X * CmPerM, E.Y * CmPerM, 0.035f * CmPerM), Rot, FVector(L, 0.1f, 0.01f), Paint, false);
 				}
 			}
 			for (float Sgn : { -1.f, 1.f })
@@ -276,24 +276,24 @@ void AGSCampusBuilder::BuildSidewalks()
 				const FVector2D K = Mid + Side * Sgn * (R.Width * 0.5f + KerbW * 0.5f);
 				const FVector2D W = Mid + Side * Sgn * (R.Width * 0.5f + KerbW + WalkW * 0.5f);
 				if (OnOtherRoad(K, &R, 0.3f) || InBuilding(W, 0.3f)) continue;
-				AddBoxMat(FVector(K.X * M, K.Y * M, 0.07f * M), Rot, FVector(L, KerbW, 0.16f), TEXT("W_Concrete"), KerbCol, true);
-				AddBoxMat(FVector(W.X * M, W.Y * M, 0.06f * M), Rot, FVector(L, WalkW, 0.12f), TEXT("W_Paving"), WalkCol, true);
+				AddBoxMat(FVector(K.X * CmPerM, K.Y * CmPerM, 0.07f * CmPerM), Rot, FVector(L, KerbW, 0.16f), TEXT("W_Concrete"), KerbCol, true);
+				AddBoxMat(FVector(W.X * CmPerM, W.Y * CmPerM, 0.06f * CmPerM), Rot, FVector(L, WalkW, 0.12f), TEXT("W_Paving"), WalkCol, true);
 				// drain grates in the gutter, hydrants and utility boxes at the back of the sidewalk
 				if (L < Piece * 0.9f) continue;
 				const FRotator Facing(0.f, Rot.Yaw + (Sgn > 0.f ? 90.f : -90.f), 0.f);
 				if (PieceNo % 5 == 2)
 				{
 					const FVector2D G = Mid + Side * Sgn * (R.Width * 0.5f - 0.3f);
-					AddModel(TEXT("SM_Drain"), FTransform(Rot, FVector(G.X * M, G.Y * M, 0.035f * M)), nullptr, false);
+					AddModel(TEXT("SM_Drain"), FTransform(Rot, FVector(G.X * CmPerM, G.Y * CmPerM, 0.035f * CmPerM)), nullptr, false);
 				}
 				const FVector2D Back = Mid + Side * Sgn * (R.Width * 0.5f + KerbW + WalkW - 0.4f);
 				if (PieceNo % 16 == 9)
 				{
-					AddModel(TEXT("SM_Hydrant"), FTransform(Facing, FVector(Back.X * M, Back.Y * M, 0.12f * M)), nullptr, true);
+					AddModel(TEXT("SM_Hydrant"), FTransform(Facing, FVector(Back.X * CmPerM, Back.Y * CmPerM, 0.12f * CmPerM)), nullptr, true);
 				}
 				else if (PieceNo % 23 == 14)
 				{
-					AddModel(TEXT("SM_PowerBox"), FTransform(Facing, FVector(Back.X * M, Back.Y * M, 0.12f * M)), nullptr, true);
+					AddModel(TEXT("SM_PowerBox"), FTransform(Facing, FVector(Back.X * CmPerM, Back.Y * CmPerM, 0.12f * CmPerM)), nullptr, true);
 				}
 			}
 		}
@@ -302,8 +302,8 @@ void AGSCampusBuilder::BuildSidewalks()
 
 void AGSCampusBuilder::BuildBuilding(const GSCampus::FBuilding& B)
 {
-	const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * M, B.Y * M, 0.f));
-	auto Local = [&BT](float X, float Y, float Z) { return BT.TransformPosition(FVector(X, Y, Z) * M); };
+	const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * CmPerM, B.Y * CmPerM, 0.f));
+	auto Local = [&BT](float X, float Y, float Z) { return BT.TransformPosition(FVector(X, Y, Z) * CmPerM); };
 	const FRotator BRot = BT.Rotator();
 
 	Footprints.Add(FBox2D(FVector2D(B.X - B.SizeX * 0.5f, B.Y - B.SizeY * 0.5f), FVector2D(B.X + B.SizeX * 0.5f, B.Y + B.SizeY * 0.5f)));
@@ -438,7 +438,7 @@ void AGSCampusBuilder::BuildWallSide(const FTransform& BT, float CX, float CY, f
 		const float LX = bAlongX ? CX + S : CX;
 		const float LY = bAlongX ? CY : CY + S;
 		const FVector Size = bAlongX ? FVector(W, WallT, Z1 - Z0) : FVector(WallT, W, Z1 - Z0);
-		AddBox(BT.TransformPosition(FVector(LX, LY, (Z0 + Z1) * 0.5f) * M), BRot, Size, Color);
+		AddBox(BT.TransformPosition(FVector(LX, LY, (Z0 + Z1) * 0.5f) * CmPerM), BRot, Size, Color);
 	};
 
 	const int32 NumWindows = FMath::FloorToInt((Length - MinPier) / (WindowW + MinPier));
@@ -514,21 +514,21 @@ void AGSCampusBuilder::BuildTreesAndProps()
 			const TCHAR* Kind = Pick < 0.38f ? TEXT("SM_Tree_Maple") : Pick < 0.68f ? TEXT("SM_Tree_Birch")
 				: Pick < 0.88f ? TEXT("SM_Tree_Spruce") : TEXT("SM_Tree_SpruceSmall");
 			const float Scale = Rand.FRandRange(0.8f, 1.3f);
-			AddModel(Kind, FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * M, P.Y * M, 0.f), FVector(Scale)), nullptr, false);
+			AddModel(Kind, FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * CmPerM, P.Y * CmPerM, 0.f), FVector(Scale)), nullptr, false);
 			AddTrunkCollider(P, 0.35f * Scale, 6.f * Scale);
 			// a few bushes around some trees
 			if (Rand.FRand() < 0.35f)
 			{
 				const FVector2D Q = P + FVector2D(Rand.FRandRange(-3.f, 3.f), Rand.FRandRange(-3.f, 3.f));
-				if (IsFree(Q, 2.f)) AddModel(TEXT("SM_Bush"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(Q.X * M, Q.Y * M, 0.f), FVector(Rand.FRandRange(0.8f, 1.4f))), nullptr, false);
+				if (IsFree(Q, 2.f)) AddModel(TEXT("SM_Bush"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(Q.X * CmPerM, Q.Y * CmPerM, 0.f), FVector(Rand.FRandRange(0.8f, 1.4f))), nullptr, false);
 			}
 		}
 		else
 		{
 			const float H = Rand.FRandRange(6.f, 12.f);
-			AddMesh(GSUtils::Cylinder(), FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, H * 0.25f * M), FVector(0.45f, 0.45f, H * 0.5f)), Trunk, true);
+			AddMesh(GSUtils::Cylinder(), FTransform(FRotator::ZeroRotator, FVector(P.X * CmPerM, P.Y * CmPerM, H * 0.25f * CmPerM), FVector(0.45f, 0.45f, H * 0.5f)), Trunk, true);
 			const float R = Rand.FRandRange(3.f, 5.5f);
-			AddMesh(GSUtils::Sphere(), FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, (H * 0.5f + R * 0.6f) * M), FVector(R, R, R * 1.3f)),
+			AddMesh(GSUtils::Sphere(), FTransform(FRotator::ZeroRotator, FVector(P.X * CmPerM, P.Y * CmPerM, (H * 0.5f + R * 0.6f) * CmPerM), FVector(R, R, R * 1.3f)),
 				Leaves[Rand.RandRange(0, 2)], false);
 		}
 		++Trees;
@@ -544,7 +544,7 @@ void AGSCampusBuilder::BuildTreesAndProps()
 			if (!IsFree(P, 4.f)) continue;
 			const float Pick = Rand.FRand();
 			const TCHAR* Kind = Pick < 0.45f ? TEXT("SM_Rock_A") : Pick < 0.8f ? TEXT("SM_Rock_B") : TEXT("SM_Rock_C");
-			AddModel(Kind, FTransform(FRotator(Rand.FRandRange(-6.f, 6.f), Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * M, P.Y * M, -0.15f * M),
+			AddModel(Kind, FTransform(FRotator(Rand.FRandRange(-6.f, 6.f), Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * CmPerM, P.Y * CmPerM, -0.15f * CmPerM),
 				FVector(Rand.FRandRange(0.7f, 1.3f))), nullptr, true);
 			++Rocks;
 		}
@@ -553,7 +553,7 @@ void AGSCampusBuilder::BuildTreesAndProps()
 		{
 			const FVector2D P(Rand.FRandRange(-320.f, 460.f), Rand.FRandRange(-100.f, 550.f));
 			if (!IsFree(P, 4.f)) continue;
-			AddModel(TEXT("SM_FlowerBed"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * M, P.Y * M, 0.f),
+			AddModel(TEXT("SM_FlowerBed"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * CmPerM, P.Y * CmPerM, 0.f),
 				FVector(Rand.FRandRange(0.8f, 1.3f))), nullptr, false);
 			++Beds;
 		}
@@ -565,22 +565,22 @@ void AGSCampusBuilder::BuildTreesAndProps()
 		for (const GSCampus::FBuilding& B : GSCampus::Buildings())
 		{
 			if (!B.bEnterable) continue;
-			const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * M, B.Y * M, 0.f));
+			const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * CmPerM, B.Y * CmPerM, 0.f));
 			const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
 			for (float Sgn : { -1.f, 1.f })
 			{
 				for (float Y = -HY + 3.f; Y < HY - 3.f; Y += 4.2f)
 				{
-					const FVector W = BT.TransformPosition(FVector((HX + 1.2f) * Sgn, Y, 0.f) * M);
-					const FVector2D P(W.X / M, W.Y / M);
+					const FVector W = BT.TransformPosition(FVector((HX + 1.2f) * Sgn, Y, 0.f) * CmPerM);
+					const FVector2D P(W.X / CmPerM, W.Y / CmPerM);
 					if (!IsFree(P, 0.6f)) continue;
 					AddModel(TEXT("SM_Hedge"), FTransform(FRotator(0.f, B.Yaw + 90.f, 0.f), W), nullptr, true);
 				}
 			}
 			for (int32 I = 0; I < 6; ++I)
 			{
-				const FVector W = BT.TransformPosition(FVector(Rand.FRandRange(-HX, HX), (HY + 1.5f) * (Rand.FRand() < 0.5f ? -1.f : 1.f), 0.f) * M);
-				const FVector2D P(W.X / M, W.Y / M);
+				const FVector W = BT.TransformPosition(FVector(Rand.FRandRange(-HX, HX), (HY + 1.5f) * (Rand.FRand() < 0.5f ? -1.f : 1.f), 0.f) * CmPerM);
+				const FVector2D P(W.X / CmPerM, W.Y / CmPerM);
 				if (IsFree(P, 0.8f)) AddModel(TEXT("SM_Bush"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), W, FVector(Rand.FRandRange(0.7f, 1.2f))), nullptr, false);
 			}
 		}
@@ -613,13 +613,13 @@ void AGSCampusBuilder::BuildTreesAndProps()
 		const FRotator Rot(0.f, FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)) + (SideSign > 0.f ? 0.f : 180.f) + Rand.FRandRange(-3.f, 3.f), 0.f);
 		if (bRealCars)
 		{
-			AddModel(CarModels[Rand.RandRange(0, 4)], FTransform(Rot, FVector(P.X * M, P.Y * M, 0.f)), CarPaints[Rand.RandRange(0, 6)], true);
+			AddModel(CarModels[Rand.RandRange(0, 4)], FTransform(Rot, FVector(P.X * CmPerM, P.Y * CmPerM, 0.f)), CarPaints[Rand.RandRange(0, 6)], true);
 		}
 		else
 		{
 			const FLinearColor C = CarColors[Rand.RandRange(0, 4)];
-			AddBox(FVector(P.X * M, P.Y * M, 0.75f * M), Rot, FVector(4.4f, 1.8f, 1.0f), C);
-			AddBox(FVector(P.X * M, P.Y * M, 1.55f * M), Rot, FVector(2.3f, 1.6f, 0.6f), C * 0.8f);
+			AddBox(FVector(P.X * CmPerM, P.Y * CmPerM, 0.75f * CmPerM), Rot, FVector(4.4f, 1.8f, 1.0f), C);
+			AddBox(FVector(P.X * CmPerM, P.Y * CmPerM, 1.55f * CmPerM), Rot, FVector(2.3f, 1.6f, 0.6f), C * 0.8f);
 		}
 		++Cars;
 	}
@@ -706,7 +706,7 @@ void AGSCampusBuilder::AddTrunkCollider(const FVector2D& P, float Radius, float 
 		TrunkColliders->RegisterComponent();
 	}
 	// engine cylinder: 100 cm tall, 100 cm across, pivot in the middle
-	TrunkColliders->AddInstance(FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, Height * 0.5f * M),
+	TrunkColliders->AddInstance(FTransform(FRotator::ZeroRotator, FVector(P.X * CmPerM, P.Y * CmPerM, Height * 0.5f * CmPerM),
 		FVector(Radius * 2.f, Radius * 2.f, Height)), /*bWorldSpace*/ true);
 }
 
@@ -726,19 +726,19 @@ void AGSCampusBuilder::BuildStreetLights()
 			for (const FBox2D& Box : Footprints) if (Box.ExpandBy(1.f).IsInside(P)) bBlocked = true;
 			if (bBlocked) continue;
 
-			FVector LightPos(P.X * M, P.Y * M, 5.7f * M);
+			FVector LightPos(P.X * CmPerM, P.Y * CmPerM, 5.7f * CmPerM);
 			if (PropMesh(TEXT("StreetLamp")))
 			{
 				// lamp head reaches 1.45 m over the road
 				const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(-Side.Y, -Side.X));
 				AddProp(TEXT("StreetLamp"), FTransform::Identity, P.X, P.Y, 0.f, Yaw, true);
 				const FVector2D Head = P - Side * 1.45f;
-				LightPos = FVector(Head.X * M, Head.Y * M, 5.85f * M);
+				LightPos = FVector(Head.X * CmPerM, Head.Y * CmPerM, 5.85f * CmPerM);
 			}
 			else
 			{
-				AddMesh(GSUtils::Cylinder(), FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, 3.f * M), FVector(0.15f, 0.15f, 6.f)), Pole, true);
-				AddBox(FVector(P.X * M, P.Y * M, 6.1f * M), FRotator::ZeroRotator, FVector(0.6f, 0.6f, 0.2f), Lamp, false);
+				AddMesh(GSUtils::Cylinder(), FTransform(FRotator::ZeroRotator, FVector(P.X * CmPerM, P.Y * CmPerM, 3.f * CmPerM), FVector(0.15f, 0.15f, 6.f)), Pole, true);
+				AddBox(FVector(P.X * CmPerM, P.Y * CmPerM, 6.1f * CmPerM), FRotator::ZeroRotator, FVector(0.6f, 0.6f, 0.2f), Lamp, false);
 			}
 
 			UPointLightComponent* L = NewObject<UPointLightComponent>(this);
@@ -816,7 +816,7 @@ void AGSCampusBuilder::AddProp(const TCHAR* Name, const FTransform& BT, float X,
 		ISM->RegisterComponent();
 		PropISMs.Add(Key, ISM);
 	}
-	const FVector Loc = BT.TransformPosition(FVector(X, Y, Z) * M);
+	const FVector Loc = BT.TransformPosition(FVector(X, Y, Z) * CmPerM);
 	const FRotator Rot = (FQuat(BT.GetRotation()) * FQuat(FRotator(0.f, Yaw, 0.f))).Rotator();
 	ISM->AddInstance(FTransform(Rot, Loc, FVector(Scale)), /*bWorldSpace*/ true);
 	++NumProps;
@@ -977,7 +977,7 @@ void AGSCampusBuilder::FurnishBuilding(const GSCampus::FBuilding& B)
 	}
 	if (MainBuildingMesh() && Name == TEXT("Hovedbygningen taarn")) return;
 
-	const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * M, B.Y * M, 0.f));
+	const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * CmPerM, B.Y * CmPerM, 0.f));
 	FRandomStream Rand(static_cast<int32>(GetTypeHash(Name)));
 	const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
 	const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
@@ -1034,7 +1034,7 @@ void AGSCampusBuilder::FurnishMainBuilding(const GSCampus::FBuilding& B)
 {
 	// Matches Tools/Blender/building_hovedbygningen.py: 4 floors of 5.5 m, corridor y in [-5, 5],
 	// cross walls at x = +-26, +-36, +-46, Lysgaarden |x| < 14, ramp rooms south of the corridor at |x| > 36.
-	const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * M, B.Y * M, 0.f));
+	const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * CmPerM, B.Y * CmPerM, 0.f));
 	FRandomStream Rand(4242);
 	const float FH = 5.5f;
 	TArray<FVector> Keep = {
@@ -1181,7 +1181,7 @@ void AGSCampusBuilder::BuildCampusProps()
 	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
 	{
 		if (!B.bEnterable) continue;
-		const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * M, B.Y * M, 0.f));
+		const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * CmPerM, B.Y * CmPerM, 0.f));
 		const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
 		const bool bMain = MainBuildingMesh() && FString(B.Name) == TEXT("Hovedbygningen");
 		auto Ok = [&](float LX, float LY, float Margin)
