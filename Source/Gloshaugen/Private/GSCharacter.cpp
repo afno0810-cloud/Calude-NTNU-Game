@@ -196,6 +196,20 @@ AGSCharacter::AGSCharacter()
 	TPWeaponMesh->SetRelativeLocation(FVector(40.f, 18.f, 30.f));
 	TPWeaponMesh->SetOwnerNoSee(true);
 	SetupVisual(TPWeaponMesh);
+	auto TPPart = [this](const TCHAR* Name)
+	{
+		UStaticMeshComponent* C = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+		C->SetupAttachment(TPWeaponMesh);
+		C->SetOwnerNoSee(true);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->SetGenerateOverlapEvents(false);
+		C->SetVisibility(false);
+		return C;
+	};
+	TPAttSight = TPPart(TEXT("TPAttSight"));
+	TPAttMuzzle = TPPart(TEXT("TPAttMuzzle"));
+	TPAttLaser = TPPart(TEXT("TPAttLaser"));
+	TPAttGrip = TPPart(TEXT("TPAttGrip"));
 
 	VestMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Vest"));
 	VestMesh->SetupAttachment(GetCapsuleComponent());
@@ -1644,7 +1658,11 @@ void AGSCharacter::ApplyWeaponVisuals()
 	const bool bHas = W && !W->Id.IsNone() && !bDead;
 	FPWeaponMesh->SetVisibility(bHas && !bBinoculars);
 	TPWeaponMesh->SetVisibility(bHas);
-	if (!bHas) return;
+	if (!bHas)
+	{
+		ApplyAttachmentVisuals(nullptr);
+		return;
+	}
 	const FGSWeaponStats& S = GSItems::Weapon(W->Id);
 	const FVector Fallback = S.Class == EGSWeaponClass::Pistol ? FVector(0.22f, 0.04f, 0.12f)
 		: S.Class == EGSWeaponClass::Melee ? FVector(0.7f, 0.03f, 0.05f) : FVector(0.95f, 0.05f, 0.11f);
@@ -1655,39 +1673,44 @@ void AGSCharacter::ApplyWeaponVisuals()
 
 void AGSCharacter::ApplyAttachmentVisuals(const FGSWeaponSlot* W)
 {
-	UStaticMeshComponent* Parts[] = { FPAttSight, FPAttMuzzle, FPAttLaser, FPAttGrip };
+	UStaticMeshComponent* Parts[] = { FPAttSight, FPAttMuzzle, FPAttLaser, FPAttGrip, TPAttSight, TPAttMuzzle, TPAttLaser, TPAttGrip };
 	for (UStaticMeshComponent* P : Parts) if (P) P->SetVisibility(false);
 	if (!W || W->Id.IsNone() || bDead || W->Attachments == 0) return;
 	const FGSWeaponStats& S = GSItems::Weapon(W->Id);
 	if (S.Mode == EGSFireMode::Melee) return;
 	const bool bPistol = S.Class == EGSWeaponClass::Pistol;
-	auto Show = [](UStaticMeshComponent* C, FName ItemId, const FVector& Loc)
+	// Each attachment goes on both guns: the first-person one you see and the third-person one others see
+	auto Show = [](UStaticMeshComponent* FP, UStaticMeshComponent* TP, FName ItemId, const FVector& Loc)
 	{
 		UStaticMesh* M = GSItems::GetMesh(ItemId);
-		if (!C || !M) return;
-		C->SetStaticMesh(M);
-		C->SetRelativeLocation(Loc);
-		C->SetRelativeRotation(FRotator::ZeroRotator);
-		C->SetRelativeScale3D(FVector(1.f));
-		C->SetVisibility(true);
+		if (!M) return;
+		for (UStaticMeshComponent* C : { FP, TP })
+		{
+			if (!C) continue;
+			C->SetStaticMesh(M);
+			C->SetRelativeLocation(Loc);
+			C->SetRelativeRotation(FRotator::ZeroRotator);
+			C->SetRelativeScale3D(FVector(1.f));
+			C->SetVisibility(true);
+		}
 	};
 	// Optics sit on the iron-sight line (their optical axis is this high above their base, in cm)
 	const float SightX = bPistol ? 1.f : 3.f;
-	if (W->Attachments & GSAttach::Scope8x)     Show(FPAttSight, TEXT("Scope8x"), FVector(SightX, 0.f, S.SightZ - 5.0f));
-	else if (W->Attachments & GSAttach::Scope)  Show(FPAttSight, TEXT("Scope"), FVector(SightX, 0.f, S.SightZ - 4.0f));
-	else if (W->Attachments & GSAttach::Holo)   Show(FPAttSight, TEXT("Holo"), FVector(SightX, 0.f, S.SightZ - 3.7f));
-	else if (W->Attachments & GSAttach::RedDot) Show(FPAttSight, TEXT("RedDot"), FVector(SightX, 0.f, S.SightZ - 3.2f));
+	if (W->Attachments & GSAttach::Scope8x)     Show(FPAttSight, TPAttSight, TEXT("Scope8x"), FVector(SightX, 0.f, S.SightZ - 5.0f));
+	else if (W->Attachments & GSAttach::Scope)  Show(FPAttSight, TPAttSight, TEXT("Scope"), FVector(SightX, 0.f, S.SightZ - 4.0f));
+	else if (W->Attachments & GSAttach::Holo)   Show(FPAttSight, TPAttSight, TEXT("Holo"), FVector(SightX, 0.f, S.SightZ - 3.7f));
+	else if (W->Attachments & GSAttach::RedDot) Show(FPAttSight, TPAttSight, TEXT("RedDot"), FVector(SightX, 0.f, S.SightZ - 3.2f));
 	// Muzzle devices on the bore axis, mount over the muzzle
-	if (W->Attachments & GSAttach::Suppressor)        Show(FPAttMuzzle, TEXT("Suppressor"), FVector(S.MuzzleX + 9.5f, 0.f, S.BoreZ));
-	else if (W->Attachments & GSAttach::Compensator)  Show(FPAttMuzzle, TEXT("Compensator"), FVector(S.MuzzleX + 2.5f, 0.f, S.BoreZ - 1.3f));
+	if (W->Attachments & GSAttach::Suppressor)        Show(FPAttMuzzle, TPAttMuzzle, TEXT("Suppressor"), FVector(S.MuzzleX + 9.5f, 0.f, S.BoreZ));
+	else if (W->Attachments & GSAttach::Compensator)  Show(FPAttMuzzle, TPAttMuzzle, TEXT("Compensator"), FVector(S.MuzzleX + 2.5f, 0.f, S.BoreZ - 1.3f));
 	// Under the barrel: laser forward, grip behind it
 	if (W->Attachments & GSAttach::Laser)
 	{
-		Show(FPAttLaser, TEXT("Laser"), bPistol ? FVector(S.MuzzleX * 0.6f, 0.f, S.BoreZ - 4.5f) : FVector(S.MuzzleX * 0.62f, 0.f, S.BoreZ - 6.f));
+		Show(FPAttLaser, TPAttLaser, TEXT("Laser"), bPistol ? FVector(S.MuzzleX * 0.6f, 0.f, S.BoreZ - 4.5f) : FVector(S.MuzzleX * 0.62f, 0.f, S.BoreZ - 6.f));
 	}
 	if ((W->Attachments & GSAttach::Grip) && !bPistol)
 	{
-		Show(FPAttGrip, TEXT("Grip"), FVector(S.MuzzleX * 0.45f, 0.f, S.BoreZ - 4.f - 10.75f));
+		Show(FPAttGrip, TPAttGrip, TEXT("Grip"), FVector(S.MuzzleX * 0.45f, 0.f, S.BoreZ - 4.f - 10.75f));
 	}
 }
 
@@ -2711,7 +2734,7 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		BodyMesh->SetVisibility(bVisible && !bHumanBody);
 		HeadMesh->SetVisibility(bVisible && !bHumanBody);
 		if (bHumanBody) GetMesh()->SetVisibility(bVisible);
-		TPWeaponMesh->SetVisibility(bVisible && GetCurrentWeapon() != nullptr);
+		TPWeaponMesh->SetHiddenInGame(!bVisible, true); // hides its attachments with it
 		VestMesh->SetVisibility(bVisible && !BodyArmor.IsNone());
 		HelmetMesh->SetVisibility(bVisible && !Helmet.IsNone());
 		BackpackMesh->SetVisibility(bVisible && !WornBackpack.IsNone());

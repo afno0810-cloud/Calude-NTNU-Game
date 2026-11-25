@@ -123,6 +123,11 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> BodyMesh;       // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> HeadMesh;       // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> TPWeaponMesh;   // seen by others
+	/** The same attachments on the third-person gun so other players see your scope, suppressor, laser and grip. */
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> TPAttSight;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> TPAttMuzzle;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> TPAttLaser;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> TPAttGrip;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> VestMesh;       // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> HelmetMesh;     // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> BackpackMesh;   // seen by others
