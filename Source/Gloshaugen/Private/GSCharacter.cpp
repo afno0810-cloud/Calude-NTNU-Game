@@ -423,6 +423,7 @@ bool AGSCharacter::TryMantle()
 	const FVector Launch = Fwd * 260.f + FVector(0.f, 0.f, Up);
 	LaunchCharacter(Launch, true, true);
 	if (!HasAuthority()) ServerMantle(Launch);
+	MantleStart = GetWorld()->GetTimeSeconds();
 	return true;
 }
 
@@ -1274,6 +1275,15 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 				Rot.Roll += 8.f * B;
 				Rot.Pitch -= 3.f * B;
 			}
+		}
+
+		// Mantle: tuck the gun down and to the side while the free hand pulls you over, then bring it back up
+		const float MT = Now - MantleStart;
+		if (MT < 0.7f)
+		{
+			const float Tuck = Ease(Phase01(MT, 0.f, 0.15f)) * (1.f - Ease(Phase01(MT, 0.4f, 0.7f)));
+			Pos += FVector(-8.f * Tuck, 6.f * Tuck, -20.f * Tuck);
+			Rot += FRotator(-25.f * Tuck, 20.f * Tuck, 35.f * Tuck);
 		}
 
 		// Melee: wind-up, fast swing, follow-through. Three swings in turn; light blades stab on the third.
