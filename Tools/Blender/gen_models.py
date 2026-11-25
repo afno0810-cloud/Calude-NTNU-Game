@@ -229,17 +229,23 @@ def finish(id, scale=1.0, metrics=None):
 
 # ------------------------------------------------------------------ guns
 def grip(m, mat, w=0.032):
-    prism("Grip", [(-0.055, -0.03), (0.005, -0.03), (-0.02, -0.15), (-0.075, -0.14)], w, mat)
-    box("TriggerGuard", (0.07, 0.01, 0.006), (0.015, 0, -0.07), m["steel"])
-    box("TriggerGuardF", (0.006, 0.01, 0.04), (0.048, 0, -0.05), m["steel"])
-    box("Trigger", (0.006, 0.006, 0.025), (0.012, 0, -0.045), m["steel"])
+    """Rifle pistol grip: raked, finger grooves on the front strap, palm swell at the back, flared base,
+    tube trigger guard and a curved blade trigger."""
+    prism("Grip", [(-0.055, -0.03), (0.005, -0.03), (-0.004, -0.06), (0.0, -0.075), (-0.009, -0.09), (-0.005, -0.105), (-0.016, -0.125),
+                   (-0.018, -0.148), (-0.078, -0.142), (-0.072, -0.11), (-0.064, -0.07)], w, mat, bevel=0.006)
+    box("GripCap", (0.06, w + 0.002, 0.008), (-0.048, 0, -0.146), mat, rot=(0, -6, 0), bevel=0.003)
+    for side in (-1, 1):
+        prism(f"GripTex{side}", [(-0.05, -0.045), (-0.01, -0.045), (-0.018, -0.12), (-0.064, -0.115)], 0.0015, m["rubber"], y=side * (w / 2), bevel=0.0005)
+    tube("TriggerGuard", [(0.005, 0, -0.03), (0.05, 0, -0.035), (0.054, 0, -0.05), (0.045, 0, -0.07), (0.0, 0, -0.072), (-0.012, 0, -0.06)],
+         [0.0035] * 6, m["steel"], segs=8, squash=(1.5, 1.0))
+    prism("Trigger", [(0.012, -0.03), (0.019, -0.03), (0.018, -0.045), (0.012, -0.058), (0.008, -0.056), (0.011, -0.044)], 0.006, m["steel"], bevel=0.0006)
 
 
 def build_pistol(p, m):
     s, h = p["slide"], p["h"]
     frame = m[p.get("frame", "poly")]
     slide = m[p.get("slidecol", "dark")]
-    box("Slide", (s, 0.028, h), (s / 2 - 0.06, 0, 0.012 + h / 2), slide)
+    box("Slide", (s, 0.028, h), (s / 2 - 0.06, 0, 0.012 + h / 2), slide, bevel=0.0045)
     for i in range(6):
         box(f"Serr{i}", (0.003, 0.03, h * 0.7), (-0.05 + i * 0.007, 0, 0.012 + h / 2), m["dark"], bevel=0)
     box("Frame", (s * 0.8, 0.026, 0.022), (s * 0.4 - 0.06, 0, 0.0), frame)
