@@ -405,16 +405,31 @@ def build_rifle(p, m):
             prism("Stock", [(x0 - 0.34, -0.15), (x0 - 0.1, -0.1), (0.02, -0.06), (0.02, -0.03), (x0, top - 0.005),
                             (x0 - 0.34, top - 0.02)], 0.044, smat, bevel=0.006)
         else:
-            prism("Stock", [(x0 - 0.32, -0.13), (x0 + 0.005, -0.035), (x0 + 0.005, top - 0.005), (x0 - 0.32, top - 0.02)],
-                  0.044, smat, bevel=0.006)
+            # comb, heel, slightly curved butt, toe, and a belly that sweeps up into the grip
+            L = 0.32
+            belly = [(x0 - L + L * t, -0.13 + 0.095 * (t ** 1.6)) for t in (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)]
+            prism("Stock", belly + [(x0 + 0.005, -0.035), (x0 + 0.005, top - 0.005), (x0 - 0.08, top - 0.008),
+                                    (x0 - 0.2, top - 0.016), (x0 - L, top - 0.018), (x0 - L - 0.004, (top - 0.13) / 2)],
+                  0.044, smat, bevel=0.007)
+            box("SlingStud", (0.01, 0.008, 0.012), (x0 - L + 0.07, 0, -0.118 + 0.007), m["steel"], bevel=0.002)
         box("ButtPad", (0.015, 0.046, top + 0.12), (x0 - 0.327, 0, (top - 0.13) / 2 - 0.005), m["rubber"])
     elif stock == "thumbhole":
         prism("StockTop", [(x0 - 0.33, top - 0.04), (x0, top - 0.035), (x0, top - 0.005), (x0 - 0.33, top - 0.01)], 0.04, furn)
         prism("StockLow", [(x0 - 0.33, -0.13), (x0 - 0.02, -0.06), (x0, -0.03), (x0 - 0.05, -0.03), (x0 - 0.33, -0.08)], 0.04, furn)
         box("StockRear", (0.03, 0.04, top + 0.13), (x0 - 0.32, 0, (top - 0.13) / 2), furn)
     elif stock == "retract":
-        cyl("Tube", 0.014, 0.2, (x0 - 0.1, 0, top - 0.03), m["dark"])
-        prism("Butt", [(x0 - 0.24, -0.09), (x0 - 0.17, -0.06), (x0 - 0.17, top - 0.01), (x0 - 0.24, top)], 0.04, m["poly"])
+        # buffer tube with castle nut, adjustable stock with cheek rest, latch lever and sling loop
+        o = lathe("Tube", [(0.0, 0.0), (0.0145, 0.0), (0.0145, 0.2), (0.012, 0.205), (0.0, 0.205)], m["dark"], segs=20)
+        o.rotation_euler = (0, math.radians(-90), 0)
+        o.location = (x0, 0, top - 0.03)
+        cyl("CastleNut", 0.018, 0.012, (x0 - 0.01, 0, top - 0.03), m["steel"], verts=8)
+        box("EndPlate", (0.004, 0.03, 0.036), (x0 - 0.002, 0, top - 0.035), m["steel"], bevel=0.001)
+        prism("Butt", [(x0 - 0.25, -0.095), (x0 - 0.2, -0.09), (x0 - 0.16, -0.05), (x0 - 0.14, top - 0.045),
+                       (x0 - 0.14, top - 0.01), (x0 - 0.2, top + 0.002), (x0 - 0.25, top + 0.002)], 0.042, m["poly"], bevel=0.005)
+        box("Cheek", (0.1, 0.044, 0.012), (x0 - 0.2, 0, top - 0.003), m["poly"], bevel=0.004)
+        box("ButtPad", (0.012, 0.045, top + 0.1), (x0 - 0.254, 0, (top - 0.095) / 2), m["rubber"], bevel=0.003)
+        box("Latch", (0.04, 0.012, 0.008), (x0 - 0.17, 0, -0.035), m["dark"], bevel=0.002)
+        box("SlingLoop", (0.012, 0.046, 0.016), (x0 - 0.235, 0, -0.06), m["steel"], bevel=0.002)
     # magazine
     mag = p.get("mag", "none")
     mxp = p.get("magx", 0.08)
