@@ -668,6 +668,7 @@ void AGSCharacter::FireOnce()
 	{
 		LastFireTime = Now;
 		LastMeleeTime = Now;
+		MeleeVariant = (MeleeVariant + 1) % 3; // alternate slash, backhand and overhead
 		GSAudio::PlayAt(this, TEXT("Melee_Swing"), GetActorLocation(), 0.8f, 15.f, FMath::FRandRange(0.9f, 1.1f));
 		ServerMelee(false);
 		return;
@@ -1275,14 +1276,39 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 			}
 		}
 
-		// Melee: wind-up, fast swing, follow-through
+		// Melee: wind-up, fast swing, follow-through. Three swings in turn; light blades stab on the third.
 		const float SW = Now - LastMeleeTime;
 		if (SW < 0.45f)
 		{
 			const float Wind = Ease(Phase01(SW, 0.f, 0.08f)) * (1.f - Phase01(SW, 0.08f, 0.16f));
 			const float Swing = Ease(Phase01(SW, 0.08f, 0.2f)) * (1.f - Ease(Phase01(SW, 0.22f, 0.45f)));
-			Rot += FRotator(25.f * Wind - 40.f * Swing, 25.f * Wind - 70.f * Swing, -15.f * Wind + 30.f * Swing);
-			Pos += FVector(-6.f * Wind + 30.f * Swing, 10.f * Wind - 25.f * Swing, 8.f * Wind - 4.f * Swing);
+			const FGSWeaponSlot* MW = GetCurrentWeapon();
+			const bool bBlade = MW && (MW->Id == FName(TEXT("Knife")) || MW->Id == FName(TEXT("PrintKnife")) || MW->Id == FName(TEXT("PistolKnife")));
+			switch (MeleeVariant)
+			{
+			case 1: // backhand: from the left across to the right
+				Rot += FRotator(20.f * Wind - 30.f * Swing, -30.f * Wind + 65.f * Swing, 20.f * Wind - 35.f * Swing);
+				Pos += FVector(-6.f * Wind + 28.f * Swing, -14.f * Wind + 22.f * Swing, 6.f * Wind - 2.f * Swing);
+				break;
+			case 2:
+				if (bBlade)
+				{
+					// stab: pull back, thrust straight forward
+					Rot += FRotator(-8.f * Wind + 6.f * Swing, 6.f * Wind - 4.f * Swing, 0.f);
+					Pos += FVector(-12.f * Wind + 36.f * Swing, 2.f * Wind - 6.f * Swing, 3.f * Wind - 2.f * Swing);
+				}
+				else
+				{
+					// overhead chop: raise high, bring it down hard
+					Rot += FRotator(45.f * Wind - 70.f * Swing, -5.f * Wind - 10.f * Swing, 5.f * Wind);
+					Pos += FVector(-8.f * Wind + 22.f * Swing, -4.f * Wind - 8.f * Swing, 22.f * Wind - 18.f * Swing);
+				}
+				break;
+			default: // slash from the right across to the left
+				Rot += FRotator(25.f * Wind - 40.f * Swing, 25.f * Wind - 70.f * Swing, -15.f * Wind + 30.f * Swing);
+				Pos += FVector(-6.f * Wind + 30.f * Swing, 10.f * Wind - 25.f * Swing, 8.f * Wind - 4.f * Swing);
+				break;
+			}
 		}
 	}
 	else

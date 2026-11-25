@@ -284,6 +284,8 @@ protected:
 	FVector2D RecoilRecover = FVector2D::ZeroVector;  // part that drifts back after the burst
 	int32 BurstShots = 0;
 	int32 FireVariant = 0;
+	/** Which melee swing plays next: slash, backhand, overhead chop (a stab for knives). */
+	int32 MeleeVariant = 0;
 	float FireAnimStart = -100.f;
 	float LastShotTime = -100.f;
 	float CycleStart = -100.f;   // pump or bolt cycle after a shot
