@@ -34,6 +34,10 @@ protected:
 	void DrawMinimap(AGSCharacter* C);
 	/** Lobby list with ready marks, countdown, match clock and the winner screen. */
 	void DrawMatch();
+	/** Black scope with a reticle while scoped in. */
+	void DrawScope(AGSCharacter* C);
+	/** Red wedge pointing to where the last hit came from. */
+	void DrawDamageDirection(AGSCharacter* C);
 	/** Fills a convex polygon (screen space) clipped to a rectangle. */
 	void FillClipped(TArray<FVector2D> Poly, const FBox2D& Clip, const FLinearColor& Color);
 	void DrawInventory(AGSCharacter* C);

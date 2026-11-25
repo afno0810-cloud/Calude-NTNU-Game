@@ -89,7 +89,9 @@ void AGSHUD::DrawHUD()
 		{
 			Box(0, 0, Canvas->SizeX, Canvas->SizeY, FLinearColor(0.6f, 0.f, 0.f, 0.35f * (1.f - SinceHurt / 0.5f)));
 		}
-		DrawCrosshair(C);
+		if (C->IsScopedIn() && C->GetAimBlend() > 0.85f) DrawScope(C);
+		else DrawCrosshair(C);
+		DrawDamageDirection(C);
 		DrawBars(C);
 		DrawAmmo(C);
 		DrawQuickbar(C);
@@ -505,6 +507,65 @@ void AGSHUD::DrawMinimap(AGSCharacter* C)
 		const FString Where = HereDist < 2.f ? FString::Printf(TEXT("I %s"), Here->Name) : FString::Printf(TEXT("Ved %s"), Here->Name);
 		Text(Where.Replace(TEXT("_"), TEXT(" ")), X0 + Size * 0.5f, Y0 + Size + 8.f, FLinearColor(0.9f, 0.95f, 1.f, 0.9f), 0.75f, true);
 	}
+}
+
+void AGSHUD::DrawScope(AGSCharacter* C)
+{
+	const float CX = Canvas->SizeX * 0.5f, CY = Canvas->SizeY * 0.5f;
+	const float R = Canvas->SizeY * 0.46f, Far = FMath::Max(Canvas->SizeX, Canvas->SizeY) * 2.f;
+	const int32 Seg = 64;
+	TArray<FCanvasUVTri> Tris;
+	const FLinearColor Black(0.f, 0.f, 0.f, 1.f);
+	for (int32 i = 0; i < Seg; ++i)
+	{
+		const float A0 = 2.f * PI * i / Seg, A1 = 2.f * PI * (i + 1) / Seg;
+		const FVector2D In0(CX + FMath::Cos(A0) * R, CY + FMath::Sin(A0) * R), In1(CX + FMath::Cos(A1) * R, CY + FMath::Sin(A1) * R);
+		const FVector2D Out0(CX + FMath::Cos(A0) * Far, CY + FMath::Sin(A0) * Far), Out1(CX + FMath::Cos(A1) * Far, CY + FMath::Sin(A1) * Far);
+		FCanvasUVTri T1; T1.V0_Pos = In0; T1.V1_Pos = Out0; T1.V2_Pos = Out1; T1.V0_Color = T1.V1_Color = T1.V2_Color = Black;
+		FCanvasUVTri T2; T2.V0_Pos = In0; T2.V1_Pos = Out1; T2.V2_Pos = In1; T2.V0_Color = T2.V1_Color = T2.V2_Color = Black;
+		Tris.Add(T1); Tris.Add(T2);
+	}
+	Canvas->K2_DrawTriangle(nullptr, Tris);
+	// reticle: thick outer posts, thin centre cross, mil dots
+	const FLinearColor Ink(0.f, 0.f, 0.f, 0.95f);
+	Box(CX - R, CY - 2.f, R * 0.55f, 4.f, Ink);
+	Box(CX + R * 0.45f, CY - 2.f, R * 0.55f, 4.f, Ink);
+	Box(CX - 2.f, CY + R * 0.45f, 4.f, R * 0.55f, Ink);
+	Box(CX - R * 0.45f, CY - 0.5f, R * 0.9f, 1.f, Ink);
+	Box(CX - 0.5f, CY - R * 0.45f, 1.f, R * 0.9f, Ink);
+	for (int32 i = 1; i <= 4; ++i)
+	{
+		const float D = R * 0.1f * i;
+		for (const FVector2D& P : { FVector2D(CX + D, CY), FVector2D(CX - D, CY), FVector2D(CX, CY + D), FVector2D(CX, CY - D) })
+		{
+			Box(P.X - 2.f, P.Y - 2.f, 4.f, 4.f, Ink);
+		}
+	}
+	Box(CX - 1.5f, CY - 1.5f, 3.f, 3.f, FLinearColor(1.f, 0.1f, 0.1f, 0.9f));
+	// hit marker still shows when scoped
+	const float SinceHit = GetWorld()->GetTimeSeconds() - C->GetLastHitMarkerTime();
+	if (SinceHit < 0.18f)
+	{
+		Box(CX + 8.f, CY + 8.f, 6.f, 6.f, FLinearColor(1.f, 0.2f, 0.2f, 1.f - SinceHit / 0.18f));
+	}
+}
+
+void AGSHUD::DrawDamageDirection(AGSCharacter* C)
+{
+	const float Age = GetWorld()->GetTimeSeconds() - C->LastDamageFromTime;
+	if (Age > 1.6f) return;
+	const FVector D = C->LastDamageFrom - C->GetActorLocation();
+	const float Rel = FMath::DegreesToRadians(FRotator::NormalizeAxis(D.Rotation().Yaw - C->GetControlRotation().Yaw));
+	const float CX = Canvas->SizeX * 0.5f, CY = Canvas->SizeY * 0.5f, Rad = Canvas->SizeY * 0.17f;
+	const FVector2D Dir(FMath::Sin(Rel), -FMath::Cos(Rel));
+	const FVector2D Side(-Dir.Y, Dir.X);
+	const FVector2D Tip = FVector2D(CX, CY) + Dir * (Rad + 26.f);
+	const FVector2D Base = FVector2D(CX, CY) + Dir * Rad;
+	const FLinearColor Col(1.f, 0.1f, 0.05f, 0.85f * (1.f - Age / 1.6f));
+	FCanvasUVTri T;
+	T.V0_Pos = Tip; T.V1_Pos = Base + Side * 34.f; T.V2_Pos = Base - Side * 34.f;
+	T.V0_Color = T.V1_Color = T.V2_Color = Col;
+	Canvas->K2_DrawTriangle(nullptr, TArray<FCanvasUVTri>{ T });
 }
 
 void AGSHUD::DrawMatch()

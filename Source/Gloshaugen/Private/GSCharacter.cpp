@@ -1216,6 +1216,8 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 		UpdateArms(Dt, W ? &S : nullptr, RT, bShellR);
 		UpdateItemUse(Dt);
 	}
+	// Looking through a scope: the HUD draws it, the gun and arms are hidden.
+	FPWeaponMesh->SetHiddenInGame(IsScopedIn() && AimBlend > 0.85f, true);
 	Camera->SetFieldOfView(FMath::FInterpTo(Camera->FieldOfView, TargetFOV, Dt, 12.f));
 	FPWeaponMesh->SetRelativeLocation(FMath::VInterpTo(FPWeaponMesh->GetRelativeLocation(), Pos, Dt, 40.f));
 	FPWeaponMesh->SetRelativeRotation(FMath::RInterpTo(FPWeaponMesh->GetRelativeRotation(), Rot, Dt, 40.f));
@@ -1409,6 +1411,20 @@ void AGSCharacter::UpdateItemUse(float Dt)
 	P = FMath::Lerp(Low, P, In);
 	FPItemMesh->SetRelativeLocation(FMath::VInterpTo(FPItemMesh->GetRelativeLocation(), P, Dt, 14.f));
 	FPItemMesh->SetRelativeRotation(FMath::RInterpTo(FPItemMesh->GetRelativeRotation(), R, Dt, 14.f));
+}
+
+bool AGSCharacter::IsScopedIn() const
+{
+	const FGSWeaponSlot* W = GetCurrentWeapon();
+	if (!W || !bAiming || bReloading) return false;
+	if (W->Attachments & (GSAttach::Scope | GSAttach::Scope8x)) return true;
+	return GetStats(*W).AimFOV <= 30.f;
+}
+
+void AGSCharacter::ClientDamageFrom_Implementation(FVector_NetQuantize From)
+{
+	LastDamageFrom = From;
+	LastDamageFromTime = GetWorld()->GetTimeSeconds();
 }
 
 void AGSCharacter::TickRecoil(float Dt)
@@ -2162,6 +2178,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 
 	Health = FMath::Max(0.f, Health - Damage);
 	LastDamageTakenTime = GetWorld()->GetTimeSeconds();
+	if (Shooter && Shooter != this) ClientDamageFrom(Shooter->GetActorLocation());
 	LastDamageWeapon = WeaponName;
 	LastDamageInstigator = EventInstigator;
 	OnRep_Health();

@@ -75,6 +75,13 @@ public:
 	FGSWeaponStats GetStats(const FGSWeaponSlot& Slot) const;
 	int32 GetMagSize(const FGSWeaponSlot& Slot) const { return GetStats(Slot).MagSize; }
 	float GetLastHitMarkerTime() const { return LastHitMarkerTime; }
+	/** Aiming through a magnified scope (4x / 8x or a sniper): the HUD draws the scope and the gun is hidden. */
+	bool IsScopedIn() const;
+	float GetAimBlend() const { return AimBlend; }
+	/** Where the last hit on you came from (world), and when (local time), for the HUD damage indicator. */
+	FVector LastDamageFrom = FVector::ZeroVector;
+	float LastDamageFromTime = -100.f;
+	UFUNCTION(Client, Unreliable) void ClientDamageFrom(FVector_NetQuantize From);
 	float GetLastDamageTakenTime() const { return LastDamageTakenTime; }
 	int32 GetBackpackSlots() const { return BaseBackpackSlots + BackpackBonus; }
 	int32 CountItem(FName Id) const;
