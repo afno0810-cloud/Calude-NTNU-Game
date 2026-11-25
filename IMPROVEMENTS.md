@@ -294,5 +294,13 @@ Nyeste runde øverst.
 269. Lysende lysspor (tracere)
 270. Varm løp ryker etter lange salver
 271. Vindbevegelse i blader uten feilmelding i UE 5.8
+272. Nye modeller: nøkkelkort med snor, dirkesett, fallskjermrigg, gripekrok, eksoskjelett, buet panserplate
+273. Nærkampvåpen på nytt: øks og slegge med formede hoder, dreid baseballkølle, bøyd brekkjern, ekte stekepanne, spyd
+274. Luger, MP40, Uzi og Suomi bygd på nytt med dreide løp, riflede deler og grepspaneler
+275. MG3, Bren og PKM med patronbelter og tofot, buet katana med egg
+276. Armbrøst, langbue, signalpistol, tobladet øks, C4 med detonator, M79, 3D-printet pistol og kniver bygd på nytt
+277. Andre spillere ser sikte, lyddemper, laser og grep på våpenet ditt
+278. Avrundede kolber og forskjefter på alle rifler, hagler og repetergevær
+279. Trommemagasin og kompass med detaljer
 
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*
