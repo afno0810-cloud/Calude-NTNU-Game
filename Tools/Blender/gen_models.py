@@ -85,6 +85,80 @@ def hemi(name, r, loc, mat, scale=(1, 1, 1), segs=24):
     return o
 
 
+def lathe(name, profile, mat, segs=32, loc=(0, 0, 0), scale=(1, 1, 1)):
+    """Surface of revolution around Z from a (radius, z) profile, bottom to top. Ends are capped
+    when the first/last radius is > 0. Gives smooth bottles, jars, cups, buns."""
+    me = bpy.data.meshes.new(name)
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    bm = bmesh.new()
+    rings = []
+    for r, z in profile:
+        ring = []
+        for k in range(segs):
+            a = 2 * math.pi * k / segs
+            ring.append(bm.verts.new((loc[0] + math.cos(a) * r * scale[0], loc[1] + math.sin(a) * r * scale[1], loc[2] + z * scale[2])))
+        rings.append(ring)
+    for a, b in zip(rings, rings[1:]):
+        for k in range(segs):
+            j = (k + 1) % segs
+            bm.faces.new((a[k], a[j], b[j], b[k]))
+    if profile[0][0] > 1e-5:
+        bm.faces.new(rings[0][::-1])
+    if profile[-1][0] > 1e-5:
+        bm.faces.new(rings[-1])
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(me)
+    bm.free()
+    o.data.materials.append(mat)
+    for f in me.polygons:
+        f.use_smooth = True
+    return o
+
+
+def tube(name, path, radii, mat, segs=16, squash=(1.0, 1.0), caps=True):
+    """Tube swept along a polyline (list of xyz) with per-point radius. squash scales the
+    cross-section (side, up). Used for bananas, sausages, baguettes, wraps, cables."""
+    me = bpy.data.meshes.new(name)
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    bm = bmesh.new()
+    from mathutils import Vector
+    P = [Vector(v) for v in path]
+    rings = []
+    up0 = Vector((0, 0, 1))
+    for i, c in enumerate(P):
+        t = (P[min(i + 1, len(P) - 1)] - P[max(i - 1, 0)]).normalized()
+        side = t.cross(up0)
+        if side.length < 1e-4:
+            side = t.cross(Vector((0, 1, 0)))
+        side.normalize()
+        up = side.cross(t).normalized()
+        r = radii[i]
+        ring = [bm.verts.new(c + side * math.cos(2 * math.pi * k / segs) * r * squash[0] + up * math.sin(2 * math.pi * k / segs) * r * squash[1]) for k in range(segs)]
+        rings.append(ring)
+    for a, b in zip(rings, rings[1:]):
+        for k in range(segs):
+            j = (k + 1) % segs
+            bm.faces.new((a[k], a[j], b[j], b[k]))
+    if caps:
+        bm.faces.new(rings[0][::-1])
+        bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(me)
+    bm.free()
+    o.data.materials.append(mat)
+    for f in me.polygons:
+        f.use_smooth = True
+    return o
+
+
+def arc_path(n, length, bend, axis_len="X"):
+    """n points along X over `length`, bowed upward in Z by `bend` at the middle."""
+    return [((i / (n - 1) - 0.5) * length, 0.0, bend * (1 - (2 * i / (n - 1) - 1) ** 2)) for i in range(n)]
+
+
 def rotated(o, rot_deg):
     o.rotation_euler = [math.radians(a) for a in rot_deg]
     return o
@@ -579,16 +653,22 @@ def item(name):
 
 @item("pills")
 def _(p, m):
-    cyl("Bottle", 0.022, 0.065, (0, 0, 0.0325), col(p["color"], 0, 0.3), axis="Z")
-    cyl("Cap", 0.024, 0.02, (0, 0, 0.075), col(p["cap"]), axis="Z")
-    cyl("Label", 0.0225, 0.03, (0, 0, 0.03), m["white"], axis="Z")
+    body = col(p["color"], 0, 0.35)
+    lathe("Bottle", [(0.0, 0.0), (0.019, 0.0), (0.0215, 0.003), (0.0215, 0.058), (0.019, 0.064), (0.012, 0.066), (0.012, 0.072)], body, segs=36)
+    lathe("Cap", [(0.0, 0.069), (0.0235, 0.069), (0.024, 0.071), (0.024, 0.088), (0.022, 0.0905), (0.0, 0.0905)], col(p["cap"], 0, 0.6), segs=36)
+    for k in range(24):
+        a = 2 * math.pi * k / 24
+        box(f"Rib{k}", (0.0016, 0.0016, 0.016), (math.cos(a) * 0.0242, math.sin(a) * 0.0242, 0.0795), col(p["cap"], 0, 0.6), rot=(0, 0, math.degrees(a)), bevel=0)
+    lathe("Label", [(0.0218, 0.012), (0.0218, 0.048)], m["white"], segs=36)
+    lathe("LabelBand", [(0.0219, 0.03), (0.0219, 0.037)], col(p["cap"], 0, 0.6), segs=36)
 
 
 @item("jar")
 def _(p, m):
-    cyl("Glass", 0.035, 0.08, (0, 0, 0.04), m["glass"], axis="Z")
-    cyl("Content", 0.0355, 0.05, (0, 0, 0.03), col(p["color"], 0, 0.9), axis="Z")
-    cyl("Lid", 0.037, 0.015, (0, 0, 0.087), m["dark"], axis="Z")
+    lathe("Glass", [(0.0, 0.0), (0.031, 0.0), (0.035, 0.004), (0.035, 0.07), (0.031, 0.076), (0.029, 0.078), (0.029, 0.084)], m["glass"], segs=40)
+    lathe("Content", [(0.0, 0.002), (0.033, 0.002), (0.0352, 0.006), (0.0352, 0.052), (0.0, 0.056)], col(p["color"], 0, 0.9), segs=40)
+    lathe("Lid", [(0.0, 0.078), (0.032, 0.078), (0.0325, 0.08), (0.0325, 0.092), (0.03, 0.094), (0.0, 0.094)], m["dark"], segs=40)
+    lathe("Label", [(0.0354, 0.058), (0.0354, 0.07)], m["paper"], segs=40)
 
 
 @item("tin")
@@ -665,14 +745,27 @@ def _(p, m):
 
 @item("plaster")
 def _(p, m):
-    box("Strip", (0.08, 0.022, 0.002), (0, 0, 0.001), col((0.85, 0.7, 0.55)), bevel=0)
-    box("Pad", (0.025, 0.018, 0.003), (0, 0, 0.0015), m["white"], bevel=0)
+    skin = col((0.86, 0.68, 0.52), 0, 0.7)
+    box("Strip", (0.076, 0.022, 0.0015), (0, 0, 0.00075), skin, bevel=0.0007)
+    for sx in (-1, 1):
+        sph(f"End{sx}", 0.011, (sx * 0.038, 0, 0.0006), skin, scale=(1, 1, 0.07), segs=24)
+    box("Pad", (0.026, 0.016, 0.0022), (0, 0, 0.0012), m["white"], bevel=0.0006)
+    for i in range(4):
+        for j in range(2):
+            for sx in (-1, 1):
+                cyl(f"Hole{i}{j}{sx}", 0.0006, 0.0002, (sx * (0.022 + i * 0.006), -0.004 + j * 0.008, 0.0016), col((0.76, 0.6, 0.45)), axis="Z", verts=6)
 
 
 @item("bandage")
 def _(p, m):
-    cyl("Roll", 0.03, 0.07, (0, 0, 0.03), m["white"], axis="Y", verts=24)
-    box("Tail", (0.08, 0.07, 0.002), (0.04, 0, 0.0), m["white"], bevel=0)
+    o = lathe("Roll", [(0.008, -0.035), (0.03, -0.035), (0.031, -0.032), (0.031, 0.032), (0.03, 0.035), (0.008, 0.035)], m["white"], segs=32)
+    o.rotation_euler = (math.radians(90), 0, 0)
+    o.location = (0, 0, 0.031)
+    o = lathe("Core", [(0.0075, -0.0352), (0.0075, 0.0352)], m["paper"], segs=20)
+    o.rotation_euler = (math.radians(90), 0, 0)
+    o.location = (0, 0, 0.031)
+    prism("Tail", [(0.0, 0.0), (0.09, 0.0), (0.09, 0.0018), (0.0, 0.0018)], 0.068, m["white"], bevel=0)
+    box("Clip", (0.012, 0.02, 0.003), (0.085, 0, 0.0025), m["chrome"], bevel=0.0005)
 
 
 @item("medkit")
@@ -695,14 +788,23 @@ def _(p, m):
 
 @item("cup")
 def _(p, m):
-    cone("Cup", 0.03, 0.04, 0.12, (0, 0, 0.06), m["white"])
-    cyl("Sleeve", 0.037, 0.045, (0, 0, 0.065), col((0.45, 0.3, 0.18)), axis="Z")
-    cyl("Lid", 0.042, 0.012, (0, 0, 0.125), m["poly"], axis="Z")
+    lathe("Cup", [(0.0, 0.0), (0.028, 0.0), (0.03, 0.003), (0.04, 0.115), (0.042, 0.118)], m["white"], segs=40)
+    lathe("Sleeve", [(0.0335, 0.035), (0.0385, 0.095)], col((0.45, 0.3, 0.18), 0, 0.9), segs=40)
+    lathe("Lid", [(0.0, 0.117), (0.0435, 0.117), (0.044, 0.122), (0.04, 0.126), (0.036, 0.133), (0.0, 0.133)], m["poly"], segs=40)
+    box("Sip", (0.012, 0.004, 0.004), (0.027, 0, 0.134), m["poly"], bevel=0.001)
 
 
 @item("bottle")
 def _(p, m):
-    bottle_with_cap(m, p["color"], p["cap"])
+    body = col(p["color"], 0, 0.1)
+    prof = [(0.0, 0.0), (0.024, 0.0), (0.028, 0.004), (0.028, 0.03)]
+    for i in range(5):  # grip rings
+        z = 0.035 + i * 0.012
+        prof += [(0.028, z), (0.0255, z + 0.004), (0.028, z + 0.008)]
+    prof += [(0.028, 0.14), (0.024, 0.16), (0.013, 0.178), (0.0115, 0.186), (0.0125, 0.188), (0.0115, 0.19)]
+    lathe("Body", prof, body, segs=36)
+    lathe("Label", [(0.0283, 0.095), (0.0283, 0.135)], m["white"], segs=36)
+    lathe("Cap", [(0.0, 0.189), (0.0128, 0.189), (0.0128, 0.204), (0.011, 0.206), (0.0, 0.206)], col(p["cap"], 0, 0.5), segs=36)
 
 
 @item("carton")
@@ -715,12 +817,13 @@ def _(p, m):
 
 @item("baguette")
 def _(p, m):
-    c = col((0.78, 0.52, 0.22), 0, 0.8)
-    cyl("Bread", 0.03, 0.5, (0, 0, 0.03), c, verts=16)
-    sph("EndA", 0.03, (0.25, 0, 0.03), c)
-    sph("EndB", 0.03, (-0.25, 0, 0.03), c)
+    c = col((0.78, 0.5, 0.2), 0, 0.8)
+    n = 15
+    path = [((i / (n - 1) - 0.5) * 0.52, 0, 0.026 + 0.004 * math.sin(i / (n - 1) * math.pi)) for i in range(n)]
+    rad = [0.013 + 0.02 * math.sin(math.pi * i / (n - 1)) ** 0.35 for i in range(n)]
+    tube("Bread", path, rad, c, segs=18, squash=(1.0, 0.85))
     for i in range(5):
-        box(f"Cut{i}", (0.05, 0.012, 0.01), (-0.18 + i * 0.09, 0, 0.058), col((0.9, 0.8, 0.6)), rot=(0, 0, 30), bevel=0)
+        box(f"Cut{i}", (0.055, 0.009, 0.006), (-0.17 + i * 0.085, 0, 0.051), col((0.93, 0.82, 0.6), 0, 0.9), rot=(0, 0, 25), bevel=0.002)
 
 
 @item("lunchbox")
@@ -739,17 +842,36 @@ def _(p, m):
 
 @item("kebab")
 def _(p, m):
-    cone("Pita", 0.045, 0.015, 0.18, (0, 0, 0.09), col((0.9, 0.75, 0.5)), verts=20)
-    sph("Filling", 0.042, (0, 0, 0.18), col((0.55, 0.3, 0.15)), scale=(1, 1, 0.6))
-    sph("Salad", 0.02, (0.02, 0.01, 0.2), col((0.2, 0.6, 0.15)))
-    cone("Foil", 0.04, 0.012, 0.09, (0, 0, 0.045), m["chrome"], verts=20)
+    # Rolled durum standing up: foil wrapped bottom half, open top with meat, salad, tomato, sauce.
+    pita = col((0.88, 0.72, 0.48), 0, 0.85)
+    lathe("Pita", [(0.0, 0.0), (0.03, 0.0), (0.036, 0.02), (0.038, 0.17), (0.036, 0.18)], pita, segs=28)
+    lathe("Foil", [(0.0, -0.001), (0.031, -0.001), (0.037, 0.02), (0.0395, 0.085), (0.042, 0.095)], m["chrome"], segs=14)
+    for k in range(7):
+        a = k * 2 * math.pi / 7
+        sph(f"Meat{k}", 0.013, (math.cos(a) * 0.017, math.sin(a) * 0.017, 0.178 + (k % 3) * 0.003), col((0.45, 0.24, 0.1), 0, 0.7), scale=(1.4, 0.8, 0.6))
+    for k in range(5):
+        a = k * 2 * math.pi / 5 + 0.4
+        box(f"Lettuce{k}", (0.022, 0.012, 0.003), (math.cos(a) * 0.02, math.sin(a) * 0.02, 0.19), col((0.35, 0.7, 0.2), 0, 0.6), rot=(25, 0, math.degrees(a)), bevel=0)
+    for k in range(3):
+        a = k * 2.1
+        cyl(f"Tomato{k}", 0.009, 0.004, (math.cos(a) * 0.014, math.sin(a) * 0.014, 0.193), col((0.8, 0.1, 0.06), 0, 0.3), axis="Z", verts=14)
+    sph("Sauce", 0.016, (0.004, -0.004, 0.197), col((0.95, 0.93, 0.85), 0, 0.3), scale=(1.6, 1.2, 0.35))
 
 
 @item("hotdog")
 def _(p, m):
-    box("Lompe", (0.17, 0.08, 0.01), (0, 0, 0.005), col((0.9, 0.85, 0.7)), bevel=0.004)
-    cyl("Sausage", 0.012, 0.16, (0, 0, 0.022), col((0.6, 0.25, 0.15)))
-    box("Ketchup", (0.13, 0.005, 0.004), (0, 0, 0.035), col((0.8, 0.05, 0.05)), bevel=0)
+    # Hot dog in lompe (potato flatbread) wrapped around the sausage, ketchup and mustard zigzag.
+    lompe = col((0.92, 0.85, 0.66), 0, 0.85)
+    o = lathe("Lompe", [(0.0, -0.08), (0.02, -0.08), (0.027, -0.072), (0.028, 0.0), (0.027, 0.072), (0.02, 0.08), (0.0, 0.08)], lompe, segs=24, scale=(0.55, 1.25, 1))
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0, 0, 0.016)
+    path = [(x, 0, 0.027 + 0.004 * (1 - (x / 0.095) ** 2)) for x in [i * 0.019 - 0.095 for i in range(11)]]
+    rad = [0.0085, 0.0115] + [0.0125] * 7 + [0.0115, 0.0085]
+    tube("Sausage", path, rad, col((0.62, 0.26, 0.14), 0, 0.35), segs=18)
+    zz = [(-0.07 + i * 0.012, (0.006 if i % 2 else -0.006), 0.0405) for i in range(12)]
+    tube("Ketchup", zz, [0.0022] * len(zz), col((0.75, 0.04, 0.03), 0, 0.2), segs=8)
+    zz2 = [(-0.064 + i * 0.012, (-0.005 if i % 2 else 0.005), 0.0415) for i in range(11)]
+    tube("Mustard", zz2, [0.0018] * len(zz2), col((0.9, 0.7, 0.05), 0, 0.3), segs=8)
 
 
 @item("taco")
@@ -776,33 +898,68 @@ def _(p, m):
 
 @item("waffle")
 def _(p, m):
-    c = col((0.9, 0.65, 0.3), 0, 0.7)
+    # Norwegian heart waffle: five hearts around a centre, with a grid pattern and jam + sour cream.
+    c = col((0.88, 0.62, 0.28), 0, 0.7)
+    cyl("Core", 0.05, 0.0105, (0, 0, 0.00525), c, axis="Z", verts=30)
     for i in range(5):
         a = i * 2 * math.pi / 5
-        cyl(f"Heart{i}", 0.045, 0.012, (math.cos(a) * 0.04, math.sin(a) * 0.04, 0.006), c, axis="Z")
-    sph("Jam", 0.025, (0, 0, 0.014), col((0.7, 0.05, 0.1)), scale=(1, 1, 0.3))
+        cx, cy = math.cos(a) * 0.045, math.sin(a) * 0.045
+        for sgn in (-1, 1):
+            b = a + sgn * 0.55
+            hz = 0.0112 + (i * 2 + (sgn > 0)) * 0.00012
+            cyl(f"Lobe{i}{sgn}", 0.024, hz, (cx + math.cos(b) * 0.016, cy + math.sin(b) * 0.016, hz / 2), c, axis="Z", verts=24)
+        box(f"Point{i}", (0.03, 0.03, 0.0108), (math.cos(a) * 0.028, math.sin(a) * 0.028, 0.0054), c, rot=(0, 0, math.degrees(a) + 45), bevel=0.002)
+    for k in range(-4, 5):
+        L = 2 * math.sqrt(max(0.0, 0.058 ** 2 - (k * 0.013) ** 2))
+        box(f"GridX{k}", (L, 0.0025, 0.002), (0, k * 0.013, 0.0136), col((0.7, 0.45, 0.18), 0, 0.8), bevel=0)
+        box(f"GridY{k}", (0.0025, L, 0.002), (k * 0.013, 0, 0.0136), col((0.7, 0.45, 0.18), 0, 0.8), bevel=0)
+    sph("Cream", 0.02, (0.01, 0.01, 0.016), col((0.97, 0.95, 0.9), 0, 0.4), scale=(1, 1, 0.45))
+    sph("Jam", 0.016, (-0.012, -0.006, 0.019), col((0.55, 0.03, 0.08), 0, 0.15), scale=(1, 1, 0.4))
 
 
 @item("bar")
 def _(p, m):
-    box("Wrapper", (0.13, 0.045, 0.018), (0, 0, 0.009), col(p["color"]), bevel=0.003)
-    box("Stripe", (0.131, 0.012, 0.019), (0, 0, 0.009), m["white"], bevel=0)
+    c = col(p["color"], 0, 0.35)
+    box("Wrapper", (0.12, 0.045, 0.016), (0, 0, 0.008), c, bevel=0.004)
+    for sx in (-1, 1):
+        x0 = 0.058 if sx > 0 else -0.07
+        prism(f"Crimp{sx}", [(x0, 0.001), (x0 + 0.012, 0.0), (x0 + 0.012, 0.016), (x0, 0.015)], 0.05, c, bevel=0.001)
+        for k in range(6):
+            box(f"Tooth{sx}{k}", (0.002, 0.051, 0.0025), (sx * 0.066, 0, 0.002 + k * 0.0026), col([v * 0.8 for v in p["color"]], 0, 0.4), bevel=0)
+    box("Stripe", (0.121, 0.0125, 0.0165), (0, 0, 0.008), m["white"], bevel=0.001)
+    box("Logo", (0.04, 0.03, 0.001), (-0.025, 0, 0.0165), m["gold"], bevel=0)
 
 
 @item("apple")
 def _(p, m):
-    sph("Apple", 0.04, (0, 0, 0.04), col((0.7, 0.05, 0.05), 0, 0.3), scale=(1, 1, 0.9))
-    cyl("Stem", 0.002, 0.02, (0, 0, 0.082), m["wood"], axis="Z")
-    box("Leaf", (0.02, 0.01, 0.002), (0.01, 0, 0.088), col((0.2, 0.6, 0.1)))
+    prof = []
+    for i in range(17):
+        t = i / 16
+        a = -math.pi / 2 + math.pi * t
+        r = 0.04 * math.cos(a) * (1 + 0.08 * math.sin(a))
+        z = 0.038 + 0.037 * math.sin(a)
+        dip = 0.008 * math.exp(-((r / 0.012) ** 2))
+        prof.append((max(r, 0.0), z - (dip if t > 0.5 else -dip)))
+    lathe("Apple", prof, col((0.72, 0.06, 0.05), 0, 0.28), segs=36)
+    rotated(cyl("Stem", 0.0018, 0.022, (0.002, 0, 0.078), m["wood"], axis="Z", verts=8), (0, 12, 0))
+    sph("Leaf", 0.012, (0.012, 0.004, 0.084), col((0.22, 0.55, 0.12), 0, 0.5), scale=(1.4, 0.55, 0.12))
 
 
 @item("banana")
 def _(p, m):
-    c = col((0.95, 0.8, 0.1), 0, 0.6)
-    for i in range(8):
-        a = math.radians(-50 + i * 14)
-        rotated(cyl(f"Seg{i}", 0.017 - abs(i - 3.5) * 0.0012, 0.03, (math.sin(a) * 0.11, 0, 0.11 - math.cos(a) * 0.11), c, axis="X", verts=6), (0, -math.degrees(a), 0))
-    cyl("Tip", 0.005, 0.02, (0.09, 0, 0.05), m["bake"])
+    n = 17
+    path = []
+    rad = []
+    for i in range(n):
+        t = i / (n - 1)
+        a = math.radians(-55 + 110 * t)
+        path.append((math.sin(a) * 0.1, 0, 0.1 - math.cos(a) * 0.1 + 0.018))
+        rad.append(0.003 + 0.016 * math.sin(math.pi * min(1, max(0, (t - 0.0) / 0.92))) ** 0.6)
+    tube("Peel", path, rad, col((0.93, 0.78, 0.12), 0, 0.55), segs=5, squash=(1.0, 1.0))
+    a = math.radians(-60)
+    rotated(cyl("Stem", 0.004, 0.025, (math.sin(a) * 0.1 - 0.006, 0, 0.1 - math.cos(a) * 0.1 + 0.03), col((0.35, 0.3, 0.1), 0, 0.8), axis="Z", verts=6), (0, -35, 0))
+    a = math.radians(57)
+    sph("Tip", 0.004, (math.sin(a) * 0.1, 0, 0.1 - math.cos(a) * 0.1 + 0.018), m["bake"])
 
 
 @item("noodlecup")
