@@ -48,15 +48,17 @@ class Mats:
 # ------------------------------------------------------------------ indoor
 @prop
 def p_Desk(k, m):
-    """Student desk: wooden top, metal legs, modesty panel."""
-    k.box((0, 0, 0.73), (0.7, 1.4, 0.03), m.lwood)
+    """Student desk: wooden top with soft edges, steel tube legs and rails, book shelf under the top."""
+    k.loft([(x, 0.715, 0.745, 0.7) for x in [-0.35 + 0.7 * i / 6 for i in range(7)]], m.lwood, segs=24, power=8.0)
     for x in (-0.3, 0.3):
-        for y in (-0.65, 0.65):
-            k.box((x, y, 0.36), (0.04, 0.04, 0.72), m.dark)
-    k.box((-0.32, 0, 0.5), (0.02, 1.3, 0.4), m.dark)
-    k.box((0, -0.65, 0.12), (0.6, 0.03, 0.03), m.dark)
-    k.box((0, 0.65, 0.12), (0.6, 0.03, 0.03), m.dark)
-
+        for y in (-0.64, 0.64):
+            k.tube([(x, y, 0.0), (x, y, 0.715)], 0.016, m.dark, segs=10)
+            k.cyl((x, y, 0.0), 0.02, 0.01, m.rubber, verts=10)
+    for y in (-0.64, 0.64):
+        k.tube([(-0.3, y, 0.12), (0.3, y, 0.12)], 0.012, m.dark, segs=8)
+    k.tube([(-0.3, -0.64, 0.68), (-0.3, 0.64, 0.68)], 0.012, m.dark, segs=8)
+    k.box((-0.32, 0, 0.5), (0.012, 1.24, 0.34), m.dark)
+    k.box((0.0, 0, 0.6), (0.55, 1.24, 0.012), m.dark)
 
 @prop
 def p_Chair(k, m):
@@ -304,22 +306,23 @@ def p_LabBench(k, m):
 
 @prop
 def p_Stool(k, m):
-    k.cyl((0, 0, 0.66), 0.18, 0.05, m.dark, verts=16)
+    """Lab stool: round padded seat, four splayed tube legs and a foot ring."""
+    k.loft([(x, 0.64, 0.7 + 0.01 * (1 - abs(x) / 0.18), max((0.18 ** 2 - x * x) ** 0.5, 0.04)) for x in [-0.17 + 0.34 * i / 16 for i in range(17)]], m.dark, segs=20, power=2.6)
     for i in range(4):
         a = math.radians(45 + i * 90)
-        k.box((math.cos(a) * 0.12, math.sin(a) * 0.12, 0.33), (0.025, 0.025, 0.66), m.metal, rot=(0, 0, math.degrees(a)))
-    k.cyl((0, 0, 0.25), 0.14, 0.02, m.metal, verts=16, r_top=0.14)
-
+        k.tube([(math.cos(a) * 0.17, math.sin(a) * 0.17, 0.0), (math.cos(a) * 0.1, math.sin(a) * 0.1, 0.64)], 0.012, m.metal, segs=8)
+        k.cyl((math.cos(a) * 0.17, math.sin(a) * 0.17, 0.0), 0.016, 0.01, m.rubber, verts=8)
+    k.tube([(math.cos(t) * 0.145, math.sin(t) * 0.145, 0.25) for t in [i * 2 * math.pi / 20 for i in range(20)]], 0.009, m.metal, segs=6, closed=True)
 
 @prop
 def p_CafeTable(k, m):
-    k.box((0, 0, 0.74), (0.9, 1.6, 0.04), m.white)
+    """Cafe table for the canteen: white top with soft edges, two pedestal feet, a tray and a cup."""
+    k.loft([(x, 0.72, 0.76, 0.8) for x in [-0.45 + 0.9 * i / 6 for i in range(7)]], m.white, segs=24, power=8.0)
     for y in (-0.6, 0.6):
-        k.cyl((0, y, 0), 0.25, 0.03, m.dark, verts=16)
-        k.cyl((0, y, 0.03), 0.04, 0.7, m.metal, verts=12)
+        k.cyl((0, y, 0), 0.25, 0.02, m.dark, verts=24, r_top=0.22)
+        k.cyl((0, y, 0.02), 0.04, 0.7, m.metal, verts=14)
     k.box((0.1, -0.3, 0.77), (0.3, 0.25, 0.02), m.orange)
-    k.cyl((-0.2, 0.4, 0.76), 0.04, 0.12, m.white, verts=12)
-
+    k.cyl((-0.2, 0.4, 0.76), 0.04, 0.1, m.white, verts=14, r_top=0.045)
 
 @prop
 def p_LectureSeats(k, m):
