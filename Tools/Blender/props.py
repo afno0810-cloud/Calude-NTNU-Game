@@ -140,13 +140,18 @@ def p_SecurityCamera(k, m):
 
 @prop
 def p_Locker(k, m):
-    """Row of three lockers against a wall (back at -X)."""
+    """Row of three lockers against a wall (back at -X): doors with vent slots, handles, padlock, legs, number plates."""
     for i in range(3):
         y = -0.4 + i * 0.4
-        k.box((0, y, 0.95), (0.5, 0.39, 1.9), m.blue if i != 1 else m.green)
-        for z in (0.5, 1.4):
-            k.box((0.252, y, z + 0.3), (0.004, 0.25, 0.02), m.dark)
-        k.box((0.255, y + 0.14, 0.95), (0.01, 0.02, 0.12), m.metal)
+        k.box((-0.01, y, 1.0), (0.48, 0.39, 1.8), m.dark)
+        k.box((0.235, y, 1.0), (0.012, 0.37, 1.76), m.blue if i != 1 else m.green)
+        for z in (1.55, 1.6, 1.65, 1.7, 0.3, 0.35, 0.4):
+            k.box((0.243, y, z), (0.004, 0.22, 0.012), m.dark)
+        k.box((0.248, y + 0.14, 1.0), (0.02, 0.03, 0.16), m.metal)
+        k.box((0.252, y + 0.14, 0.97), (0.02, 0.025, 0.04), m.yellow)
+        k.box((0.243, y, 1.78), (0.004, 0.08, 0.04), m.white)
+        for yy in (-0.17, 0.17):
+            k.box((0.0, y + yy, 0.05), (0.04, 0.04, 0.1), m.dark)
     k.box((0, 0, 1.92), (0.52, 1.22, 0.04), m.dark)
 
 
@@ -376,15 +381,42 @@ def p_BikeRack(k, m):
 
 @prop
 def p_Bike(k, m):
+    """City bike: tyres, rims and spokes, diamond frame, fork, handlebar, saddle, cranks, fenders and a basket."""
+    W = 0.33
     for x in (-0.52, 0.52):
-        k.cyl_axis((x, 0, 0.35), 0.34, 0.04, m.rubber, axis="Y", verts=24)
-        k.cyl_axis((x, 0, 0.35), 0.3, 0.045, m.metal, axis="Y", verts=24)
-    k.ramp((-0.52, 0, 0.35), (0.0, 0, 0.9), 0.03, 0.04, m.red)
-    k.ramp((0.0, 0, 0.9), (0.52, 0, 0.35), 0.03, 0.04, m.red)
-    k.box((0.05, 0, 0.6), (0.85, 0.03, 0.04), m.red)
-    k.box((-0.12, 0, 1.0), (0.26, 0.1, 0.05), m.rubber)
-    k.box((0.48, 0, 1.05), (0.05, 0.6, 0.03), m.dark)
-    k.cyl((0.0, 0.0, 0.3), 0.08, 0.02, m.dark, verts=12)
+        k.ring_y((x, 0, 0.35), W, 0.022, m.rubber, n=32, segs=8)
+        k.ring_y((x, 0, 0.35), W - 0.03, 0.01, m.metal, n=32, segs=6)
+        for i in range(16):
+            a = math.pi * i / 8
+            k.tube([(x, 0, 0.35), (x + math.cos(a) * (W - 0.03), 0, 0.35 + math.sin(a) * (W - 0.03))], 0.0018, m.metal, segs=4)
+        k.cyl_axis((x, 0, 0.35), 0.025, 0.07, m.dark, axis="Y", verts=12)
+        # fender over the top of each wheel
+        k.tube([(x + 0.36 * math.cos(a), 0, 0.35 + 0.36 * math.sin(a)) for a in [math.radians(d) for d in range(20, 161, 20)]], 0.018, m.red, segs=6)
+    hub_r, bb, seat, head_t, head_b = (-0.52, 0, 0.35), (-0.02, 0, 0.32), (-0.14, 0, 0.88), (0.38, 0, 0.9), (0.42, 0, 0.72)
+    for a, b in ((bb, seat), (seat, head_t), (bb, head_b), (head_b, head_t), (hub_r, bb), (hub_r, seat)):
+        k.tube([a, b], 0.018, m.red, segs=8)
+    for y in (-0.04, 0.04):
+        k.tube([(0.4, y, 0.78), (0.47, y, 0.55), (0.52, y, 0.35)], 0.012, m.metal, segs=6)
+    k.tube([(0.38, 0, 0.9), (0.36, 0, 1.02)], 0.016, m.metal, segs=8)
+    k.tube([(0.3, -0.28, 1.06), (0.34, -0.2, 1.03), (0.36, 0, 1.02), (0.34, 0.2, 1.03), (0.3, 0.28, 1.06)], 0.011, m.metal, segs=6)
+    for y in (-0.28, 0.28):
+        k.cyl_axis((0.3, y, 1.06), 0.016, 0.1, m.rubber, axis="Y", verts=10)
+    k.tube([(-0.14, 0, 0.88), (-0.16, 0, 0.98)], 0.014, m.metal, segs=8)
+    k.box((-0.15, 0, 1.0), (0.26, 0.1, 0.05), m.rubber)
+    k.box((-0.04, 0, 1.0), (0.06, 0.05, 0.04), m.rubber)
+    k.cyl_axis((-0.02, 0.03, 0.32), 0.09, 0.008, m.dark, axis="Y", verts=24)
+    for s_ in (-1, 1):
+        k.tube([(-0.02, s_ * 0.05, 0.32), (-0.02 + 0.08 * s_, s_ * 0.06, 0.32 - 0.14 * s_)], 0.008, m.metal, segs=6)
+        k.box((-0.02 + 0.08 * s_, s_ * 0.1, 0.32 - 0.14 * s_), (0.1, 0.08, 0.02), m.rubber)
+    k.tube([(-0.02, 0.04, 0.32), (-0.52, 0.04, 0.35)], 0.004, m.dark, segs=4)
+    k.tube([(-0.02, 0.04, 0.23), (-0.52, 0.04, 0.3)], 0.004, m.dark, segs=4)
+    # front basket
+    k.box((0.48, 0, 0.98), (0.26, 0.34, 0.02), m.dark)
+    for x, y in ((0.36, -0.17), (0.6, -0.17), (0.36, 0.17), (0.6, 0.17)):
+        k.tube([(x, y, 0.98), (x, y, 1.14)], 0.006, m.dark, segs=4)
+    for z in (1.06, 1.14):
+        k.tube([(0.36, -0.17, z), (0.6, -0.17, z), (0.6, 0.17, z), (0.36, 0.17, z)], 0.005, m.dark, segs=4, closed=True)
+    k.cyl_axis((-0.15, 0.0, 0.62), 0.006, 0.01, m.dark, axis="Y", verts=6)
 
 
 @prop

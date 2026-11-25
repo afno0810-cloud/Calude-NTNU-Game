@@ -110,6 +110,33 @@ class MeshKit:
             f.append((j, i, n + i, n + j))
         self._add(v, f, mi, Matrix.Identity(4))
 
+    def tube(self, path, r, mi, segs=8, closed=False):
+        """Round tube along a polyline of (x, y, z); closed=True joins the ends (rings, tyres)."""
+        P = [Vector(p) for p in path]
+        n = len(P)
+        rings = []
+        for i, c in enumerate(P):
+            if closed:
+                t = (P[(i + 1) % n] - P[(i - 1) % n]).normalized()
+            else:
+                t = (P[min(i + 1, n - 1)] - P[max(i - 1, 0)]).normalized()
+            up = Vector((0, 0, 1)) if abs(t.z) < 0.9 else Vector((1, 0, 0))
+            side = t.cross(up).normalized()
+            up = side.cross(t).normalized()
+            rings.append([self.bm.verts.new(c + (side * math.cos(2 * math.pi * k / segs) + up * math.sin(2 * math.pi * k / segs)) * r) for k in range(segs)])
+        pairs = list(zip(rings, rings[1:])) + ([(rings[-1], rings[0])] if closed else [])
+        for a_, b_ in pairs:
+            for k in range(segs):
+                j = (k + 1) % segs
+                self.bm.faces.new((a_[k], a_[j], b_[j], b_[k])).material_index = mi
+        if not closed:
+            self.bm.faces.new(rings[0][::-1]).material_index = mi
+            self.bm.faces.new(rings[-1]).material_index = mi
+
+    def ring_y(self, c, R, r, mi, n=28, segs=8):
+        """Torus standing in the XZ plane (wheel, tyre) centred on c."""
+        self.tube([(c[0] + R * math.cos(2 * math.pi * i / n), c[1], c[2] + R * math.sin(2 * math.pi * i / n)) for i in range(n)], r, mi, segs, closed=True)
+
     def ramp(self, p0, p1, width, thick, mi):
         """Sloped slab whose top surface goes from p0 to p1 (both (x, y, z) at the centerline)."""
         p0, p1 = Vector(p0), Vector(p1)
