@@ -1837,16 +1837,16 @@ def _(p, m):
 
 @item("compass")
 def _(p, m):
-    lathe("Case", [(0.0, 0.0), (0.028, 0.0), (0.031, 0.003), (0.031, 0.011), (0.029, 0.013), (0.027, 0.0125)], m["brass"], segs=40)
+    lathe("Case", [(0.0, 0.0), (0.028, 0.0), (0.031, 0.003), (0.031, 0.011), (0.029, 0.013), (0.027, 0.0125), (0.0265, 0.009), (0.0, 0.009)], m["brass"], segs=40)
     cyl("Face", 0.0268, 0.001, (0, 0, 0.0095), m["white"], axis="Z", verts=40)
     for k in range(36):
         a = k * math.pi / 18
         L = 0.005 if k % 9 == 0 else 0.0025
         box(f"Tick{k}", (L, 0.0006, 0.0004), (math.cos(a) * (0.0245 - L / 2), math.sin(a) * (0.0245 - L / 2), 0.0101), m["dark"], rot=(0, 0, math.degrees(a)), bevel=0)
-    prism("NeedleN", [(0.0, 0.0103), (0.02, 0.0108), (0.0, 0.0113)], 0.005, m["red"], bevel=0)
-    prism("NeedleS", [(0.0, 0.0103), (-0.02, 0.0108), (0.0, 0.0113)], 0.005, m["dark"], bevel=0)
+    for sgn, mat in ((1, m["red"]), (-1, m["dark"])):
+        sph(f"Needle{sgn}", 1.0, (sgn * 0.0095, 0, 0.0108), mat, scale=(0.0095, 0.0018, 0.0005), segs=10)
+    box("N", (0.003, 0.0045, 0.0005), (0.0195, 0, 0.0102), m["red"], bevel=0)
     cyl("Pivot", 0.0018, 0.003, (0, 0, 0.0112), m["brass"], axis="Z", verts=12)
-    cyl("Glass", 0.0275, 0.0008, (0, 0, 0.0122), m["glass"], axis="Z", verts=40)
     lathe("Bow", [(0.004, 0.0), (0.004, 0.006)], m["brass"], segs=16, loc=(0.034, 0, 0.004))
     ring = [(0.04 + math.cos(t) * 0.007, math.sin(t) * 0.007, 0.006) for t in [i * 2 * math.pi / 20 for i in range(21)]]
     tube("Ring", ring, [0.0012] * len(ring), m["brass"], segs=6, caps=False)
@@ -2115,9 +2115,27 @@ def _(p, m):
 
 @item("drum")
 def _(p, m):
-    cyl("Drum", 0.075, 0.05, (0, 0, 0.0), m["dark"], axis="Y", verts=32)
-    cyl("Cap", 0.03, 0.054, (0, 0, 0.0), m["steel"], axis="Y", verts=24)
-    box("Neck", (0.04, 0.026, 0.08), (0.02, 0, 0.09), m["dark"])
+    prof = [(0.0, -0.026), (0.07, -0.026), (0.075, -0.021)]
+    for k in range(3):
+        z = -0.016 + k * 0.012
+        prof += [(0.075, z), (0.077, z + 0.003), (0.075, z + 0.006)]
+    prof += [(0.075, 0.021), (0.07, 0.026), (0.0, 0.026)]
+    d = lathe("Drum", prof, m["dark"], segs=40)
+    d.rotation_euler = (math.radians(90), 0, 0)
+    for sy in (-1, 1):
+        cyl(f"Cap{sy}", 0.032, 0.004, (0, sy * 0.027, 0.0), m["steel"], axis="Y", verts=24)
+        for k in range(8):
+            a = k * math.pi / 4
+            box(f"Rib{sy}{k}", (0.03, 0.003, 0.004), (math.cos(a) * 0.05, sy * 0.0265, math.sin(a) * 0.05), m["steel"], rot=(0, -math.degrees(a), 0), bevel=0)
+    box("Key", (0.045, 0.012, 0.01), (0, -0.034, 0.0), m["steel"], bevel=0.003)
+    cyl("KeyHub", 0.008, 0.012, (0, -0.03, 0.0), m["steel"], axis="Y", verts=12)
+    box("Window", (0.004, 0.002, 0.04), (0.04, 0.0262, -0.02), col((0.6, 0.45, 0.15), 0.9, 0.35), rot=(0, 40, 0), bevel=0)
+    box("Neck", (0.04, 0.026, 0.08), (0.02, 0, 0.09), m["dark"], bevel=0.004)
+    box("FeedLips", (0.036, 0.016, 0.008), (0.02, 0, 0.133), m["steel"], bevel=0.002)
+    xl = lathe("Round", [(0.0, 0.0), (0.0045, 0.0), (0.0045, 0.012), (0.003, 0.018), (0.0, 0.02)], col((0.6, 0.45, 0.15), 0.9, 0.35), segs=10)
+    xl.location = (0.012, 0, 0.138)
+    xl.rotation_euler = (0, math.radians(90), 0)
+
 
 
 @item("comp")
