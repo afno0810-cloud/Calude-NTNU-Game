@@ -1881,6 +1881,8 @@ void AGSCharacter::SetupHumanBody()
 	};
 	static const TCHAR* AnimPaths[] = {
 		TEXT("/Game/Characters/Mannequins/Anims/Unarmed/ABP_Unarmed.ABP_Unarmed_C"),
+		TEXT("/Game/Characters/Mannequins/Anims/ABP_Manny.ABP_Manny_C"),
+		TEXT("/Game/Characters/Mannequins/Anims/ABP_Quinn.ABP_Quinn_C"),
 		TEXT("/Game/Characters/Mannequins/Animations/ABP_Manny.ABP_Manny_C"),
 		TEXT("/Game/Characters/Mannequins/Animations/ABP_Quinn.ABP_Quinn_C"),
 		TEXT("/Game/Mannequin/Animations/ThirdPerson_AnimBP.ThirdPerson_AnimBP_C"),
