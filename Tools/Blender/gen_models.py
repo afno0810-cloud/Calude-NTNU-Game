@@ -211,6 +211,37 @@ def loft_profile(name, bottom, topl, widths, mat, n=18, power=3.0):
     return loft(name, [(x, _interp(bottom, x), _interp(topl, x), _interp(widths, x)) for x in xs], mat, segs=20, power=power)
 
 
+def loft_z(name, stations, mat, segs=20, power=3.0):
+    """Like loft() but along -Z (grips): stations are (z, x_back, x_front, half_width)."""
+    me = bpy.data.meshes.new(name)
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    bm = bmesh.new()
+    rings = []
+    e = 2.0 / power
+    for z, xb, xf, hw in stations:
+        xc, hx = (xb + xf) / 2, (xf - xb) / 2
+        ring = []
+        for k in range(segs):
+            a = 2 * math.pi * k / segs
+            c, sn = math.cos(a), math.sin(a)
+            ring.append(bm.verts.new((xc + hx * math.copysign(abs(c) ** e, c), hw * math.copysign(abs(sn) ** e, sn), z)))
+        rings.append(ring)
+    for a, b in zip(rings, rings[1:]):
+        for k in range(segs):
+            j = (k + 1) % segs
+            bm.faces.new((a[k], a[j], b[j], b[k]))
+    bm.faces.new(rings[0][::-1])
+    bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(me)
+    bm.free()
+    o.data.materials.append(mat)
+    for f in me.polygons:
+        f.use_smooth = True
+    return o
+
+
 def rotated(o, rot_deg):
     o.rotation_euler = [math.radians(a) for a in rot_deg]
     return o
@@ -263,10 +294,15 @@ def build_pistol(p, m):
     box("MagRelease", (0.008, 0.004, 0.008), (-0.004, -0.0145, -0.015), m["steel"])
     # raked grip (about 18 degrees) with a finger-groove front strap, rounded backstrap and stippled side panels
     k = math.tan(math.radians(18))
-    front = [(0.0 - k * z, -z) for z in (0.0, 0.018, 0.03, 0.042, 0.055, 0.068, 0.082, 0.096, 0.108)]
-    front = [(x + (0.003 if i in (2, 4, 6) else 0.0), z) for i, (x, z) in enumerate(front)]
-    back = [(-0.056 - k * z, -z) for z in (0.108, 0.08, 0.04, 0.012)]
-    prism("Grip", front + back + [(-0.066, 0.004), (-0.05, 0.006)], 0.029, frame, bevel=0.005)
+    st = []
+    for i in range(23):
+        z = 0.004 - 0.112 * i / 22
+        d = -z
+        groove = 0.0028 * max(0.0, math.sin((d - 0.012) / 0.084 * 3 * math.pi)) if 0.012 < d < 0.096 else 0.0
+        swell = 0.004 * math.sin(min(max(d / 0.108, 0.0), 1.0) * math.pi)
+        st.append((z, -0.056 - k * d - swell, 0.0 - k * d + groove, 0.0145 + 0.0008 * math.sin(min(d / 0.108, 1.0) * math.pi)))
+    loft_z("Grip", st, frame, segs=24, power=3.2)
+    prism("GripTop", [(-0.066, 0.004), (-0.05, 0.006), (0.0, 0.0), (-0.056, -0.012)], 0.027, frame, bevel=0.004)
     for side in (-1, 1):
         prism(f"GripPanel{side}", [(-0.012 - k * 0.02, -0.02), (-0.016 - k * 0.092, -0.092), (-0.048 - k * 0.092, -0.092), (-0.048 - k * 0.02, -0.02)],
               0.002, m["rubber"], y=side * 0.0148, bevel=0.0008)
