@@ -133,7 +133,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 9000.0f; W.HipSpread = 1.8f; W.AimSpread = 0.3f; W.RecoilPitch = 3.2f; W.AimFOV = 72.0f;
 		W.HeadshotMultiplier = 2.2f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("357"));
-		W.MuzzleX = 21.0f; W.FPHip = FVector(32.f, 12.f, -15.f); W.FPAim = FVector(26.f, 0.f, -5.8f); }
+		W.MuzzleX = 20.8f; W.FPHip = FVector(32.f, 12.f, -15.f); W.FPAim = FVector(26.f, 0.f, -6.4f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("DesertEagle")); D.Name = TEXT("Desert Eagle");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
 		D.MeshPath = TEXT("/Game/Models/SM_DesertEagle.SM_DesertEagle"); D.MaxStack = 1;
@@ -981,7 +981,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 6000.0f; W.HipSpread = 2.6f; W.AimSpread = 0.6f; W.RecoilPitch = 0.5f; W.AimFOV = 70.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("57"));
-		W.MuzzleX = 23.0f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -10.0f); }
+		W.MuzzleX = 23.5f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -11.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Vector")); D.Name = TEXT("Kriss Vector");
 		D.Desc = TEXT("Nesten ingen rekyl."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Legendary;
 		D.MeshPath = TEXT("/Game/Models/SM_Vector.SM_Vector"); D.MaxStack = 1;
