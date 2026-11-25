@@ -60,15 +60,15 @@ def p_Desk(k, m):
 
 @prop
 def p_Chair(k, m):
-    """Stackable classroom chair, faces +X."""
-    k.box((0, 0, 0.45), (0.42, 0.42, 0.03), m.blue)
-    k.box((-0.21, 0, 0.72), (0.03, 0.4, 0.3), m.blue, rot=(0, -8, 0))
-    for x in (-0.18, 0.18):
-        for y in (-0.18, 0.18):
-            k.box((x, y, 0.22), (0.025, 0.025, 0.45), m.metal)
-    k.box((-0.2, -0.18, 0.6), (0.025, 0.025, 0.3), m.metal)
-    k.box((-0.2, 0.18, 0.6), (0.025, 0.025, 0.3), m.metal)
-
+    """Stackable classroom chair, faces +X: moulded seat and back shell on a bent tube frame."""
+    k.loft([(x, 0.43 + 0.012 * (1 - abs(x) / 0.21), 0.462 + 0.008 * (1 - abs(x) / 0.21), 0.21) for x in [-0.21 + 0.42 * i / 8 for i in range(9)]], m.blue, segs=20, power=4.0)
+    k.loft([(x, 0.6, 0.86, 0.2 - 0.01 * abs(x + 0.22) / 0.02) for x in (-0.235, -0.225, -0.215)], m.blue, segs=20, power=4.0)
+    for y in (-0.18, 0.18):
+        k.tube([(0.18, y, 0.0), (0.18, y, 0.42), (0.17, y, 0.44), (-0.17, y, 0.44), (-0.19, y, 0.42), (-0.19, y, 0.0)], 0.012, m.metal, segs=8)
+        k.tube([(-0.19, y, 0.44), (-0.215, y, 0.62), (-0.225, y, 0.8)], 0.012, m.metal, segs=8)
+        for x in (-0.19, 0.18):
+            k.cyl((x, y, 0.0), 0.016, 0.015, m.rubber, verts=8)
+    k.tube([(0.18, -0.18, 0.14), (0.18, 0.18, 0.14)], 0.009, m.metal, segs=6)
 
 @prop
 def p_OfficeChair(k, m):
@@ -231,15 +231,16 @@ def p_CoffeeMachine(k, m):
 
 @prop
 def p_Sofa(k, m):
-    k.box((0, 0, 0.22), (0.85, 1.9, 0.3), m.fabric_red)
-    k.box((-0.33, 0, 0.6), (0.2, 1.9, 0.6), m.fabric_red)
-    for y in (-0.88, 0.88):
-        k.box((0, y, 0.45), (0.85, 0.16, 0.5), m.fabric_red)
-    for y in (-0.42, 0.42):
-        k.box((0.02, y, 0.42), (0.7, 0.8, 0.12), m.fabric_red)
+    """Lounge sofa: soft rounded base, back, arms and three seat cushions, wooden feet."""
+    k.loft([(x, 0.08, 0.36, 0.95) for x in [-0.42 + 0.84 * i / 6 for i in range(7)]], m.fabric_red, segs=24, power=5.0)
+    k.loft([(x, 0.3, 0.9 - 0.06 * (x + 0.42) / 0.2, 0.95) for x in [-0.42 + 0.2 * i / 4 for i in range(5)]], m.fabric_red, segs=24, power=4.0)
+    for y in (-0.87, 0.87):
+        k.loft([(-0.42, 0.3, 0.62, 0.09), (0.0, 0.3, 0.64, 0.09), (0.42, 0.3, 0.6, 0.09)], m.fabric_red, segs=20, power=3.0, y0=y)
+    for y in (-0.52, 0.0, 0.52):
+        k.loft([(x, 0.35, 0.47 + 0.015 * (1 - abs(x - 0.03) / 0.34), 0.25) for x in [-0.3 + 0.64 * i / 6 for i in range(7)]], m.fabric_red, segs=20, power=3.0, y0=y)
     for x in (-0.35, 0.35):
         for y in (-0.85, 0.85):
-            k.box((x, y, 0.03), (0.05, 0.05, 0.07), m.wood)
+            k.cyl((x, y, 0.0), 0.025, 0.08, m.wood, verts=10, r_top=0.03)
 
 
 @prop

@@ -133,7 +133,7 @@ class MeshKit:
             self.bm.faces.new(rings[0][::-1]).material_index = mi
             self.bm.faces.new(rings[-1]).material_index = mi
 
-    def loft(self, stations, mi, segs=24, power=4.0):
+    def loft(self, stations, mi, segs=24, power=4.0, y0=0.0):
         """Rounded solid along X from (x, z_bottom, z_top, half_width) stations (superellipse sections)."""
         e = 2.0 / power
         rings = []
@@ -143,7 +143,7 @@ class MeshKit:
             for k in range(segs):
                 a = 2 * math.pi * k / segs
                 c, sn = math.cos(a), math.sin(a)
-                ring.append(self.bm.verts.new((x, hw * math.copysign(abs(c) ** e, c), zc + hh * math.copysign(abs(sn) ** e, sn))))
+                ring.append(self.bm.verts.new((x, y0 + hw * math.copysign(abs(c) ** e, c), zc + hh * math.copysign(abs(sn) ** e, sn))))
             rings.append(ring)
         for a_, b_ in zip(rings, rings[1:]):
             for k in range(segs):
