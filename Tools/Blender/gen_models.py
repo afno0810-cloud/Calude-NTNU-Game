@@ -2129,6 +2129,34 @@ def build_printknife(p, m):
 def _(p, m):
     """Ammo box for one caliber: cardboard box with a coloured band and a few rounds on top."""
     c = col(p["color"], 0, 0.7)
+    L, r = p.get("len", 0.03), p.get("r", 0.005)
+    if r >= 0.03:
+        # 84 mm rocket round: olive body, warhead, tail with fins, carry handle; lies on its side
+        green = col((0.3, 0.35, 0.2), 0, 0.6)
+        o = lathe("Rocket", [(0.0, -0.2), (0.03, -0.2), (0.034, -0.17), (0.034, -0.04), (0.04, -0.03), (0.042, 0.02), (0.036, 0.08), (0.02, 0.13), (0.006, 0.16), (0.0, 0.165)],
+                  green, segs=28)
+        o.rotation_euler = (0, math.radians(90), 0)
+        o.location = (0, 0, 0.045)
+        lathe("Band", [(0.0425, -0.0), (0.0425, 0.012)], col((0.9, 0.75, 0.1)), segs=28).rotation_euler = (0, math.radians(90), 0)
+        bpy.data.objects["Band"].location = (0.0, 0, 0.045)
+        for k in range(6):
+            a_ = k * math.pi / 3
+            box(f"Fin{k}", (0.05, 0.002, 0.028), (-0.18, math.cos(a_) * 0.04, 0.045 + math.sin(a_) * 0.04), m["dark"], rot=(math.degrees(a_) + 90, 0, 0), bevel=0)
+        cyl("Nozzle", 0.026, 0.01, (-0.205, 0, 0.045), m["dark"], verts=20)
+        box("Label", (0.06, 0.002, 0.02), (0.0, 0.034, 0.06), m["white"], bevel=0)
+        return
+    if r < 0.005 and L >= 0.25:
+        # bundle of arrows tied with cord: shafts, broadheads and fletching
+        for i in range(p.get("n", 6)):
+            y = -0.012 + (i % 3) * 0.009
+            z = 0.006 + (i // 3) * 0.008
+            cyl(f"Shaft{i}", 0.0035, 0.6, (0.0, y, z), m["lwood"], verts=8)
+            cone(f"Head{i}", 0.008, 0.0, 0.035, (0.315, y, z), m["steel"], axis="X", verts=4)
+            for k in range(3):
+                rotated(box(f"Fl{i}{k}", (0.07, 0.0008, 0.011), (-0.26, y, z), m["red"] if k == 0 else m["white"], bevel=0), (k * 120, 0, 0))
+        for x in (-0.15, 0.1):
+            cyl(f"Cord{x}", 0.017, 0.008, (x, -0.003, 0.01), col((0.5, 0.4, 0.25), 0, 0.9), verts=12)
+        return
     box("Box", (0.12, 0.08, 0.06), (0, 0, 0.03), col((0.75, 0.65, 0.45), 0, 0.85), bevel=0.003)
     box("Band", (0.122, 0.082, 0.02), (0, 0, 0.035), c, bevel=0)
     L, r = p.get("len", 0.03), p.get("r", 0.005)
