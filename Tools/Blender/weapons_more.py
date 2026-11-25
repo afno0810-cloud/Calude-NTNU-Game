@@ -329,12 +329,27 @@ def katana():
 
 def viking_sword():
     reset_scene(); m = mats()
-    prism("Blade", [(0.02, -0.025), (0.72, -0.02), (0.8, 0.0), (0.72, 0.02), (0.02, 0.025)], 0.006, m["blade"], bevel=0.001)
-    box("Fuller", (0.6, 0.007, 0.012), (0.35, 0, 0.0), material("M_BladeDark", (0.4, 0.4, 0.42), metallic=1.0, roughness=0.4), bevel=0.0)
-    box("Guard", (0.025, 0.03, 0.16), (0.0, 0, 0.0), m["steel"], bevel=0.004)
-    cyl("Grip", 0.016, 0.1, (-0.065, 0, 0.0), m["leather"], verts=12)
-    prism("Pommel", [(-0.115, -0.04), (-0.13, -0.03), (-0.15, 0.0), (-0.13, 0.03), (-0.115, 0.04)], 0.03, m["steel"], bevel=0.004)
+    prism("Blade", [(0.02, -0.026), (0.6, -0.021), (0.74, -0.012), (0.8, 0.0), (0.74, 0.012), (0.6, 0.021), (0.02, 0.026)], 0.006, m["blade"], bevel=0.0015)
+    box("Fuller", (0.6, 0.0065, 0.012), (0.33, 0, 0.0), material("M_BladeDark", (0.4, 0.4, 0.42), metallic=1.0, roughness=0.4), bevel=0.0)
+    for k in range(4):
+        box(f"Inlay{k}", (0.012, 0.0067, 0.006), (0.06 + k * 0.02, 0, 0.0), m["gold"], rot=(0, 0, 0), bevel=0)
+    _tube("Guard", [(0.0, 0, -0.08), (0.006, 0, -0.04), (0.008, 0, 0.0), (0.006, 0, 0.04), (0.0, 0, 0.08)], [0.008, 0.011, 0.012, 0.011, 0.008], m["steel"], segs=10, squash=(1.0, 0.9))
+    prof = [(0.0, -0.11), (0.015, -0.11)]
+    for i in range(5):
+        x = -0.105 + i * 0.019
+        prof += [(0.0165, x), (0.015, x + 0.0095)]
+    prof += [(0.016, -0.01), (0.0, -0.009)]
+    _xl("Grip", prof, m["leather"], segs=14)
+    # five-lobed pommel
+    for k in range(5):
+        a = (k - 2) * 0.32
+        from gen_models import sph
+        import math as _m
+        sph(f"Lobe{k}", 0.016, (-0.13 - 0.012 * _m.cos(a), 0, 0.028 * _m.sin(a) * 1.4), m["steel"], scale=(0.8, 0.9, 1.0), segs=12)
+    box("PommelBar", (0.02, 0.026, 0.07), (-0.115, 0, 0.0), m["steel"], bevel=0.006)
     join_all("SM_VikingSword"); export("SM_VikingSword")
+
+
 
 
 if __name__ == "__main__":

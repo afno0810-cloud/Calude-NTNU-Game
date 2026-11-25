@@ -648,15 +648,34 @@ def build_crossbow(p, m):
 # ------------------------------------------------------------------ melee
 def build_knife(p, m):
     b = p["blade"]
-    hgt = 0.05 if p.get("wide") else 0.032
-    prism("Blade", [(0.02, -hgt * 0.5), (0.02 + b * 0.8, -hgt * 0.5), (0.02 + b, hgt * 0.15), (0.02 + b * 0.85, hgt * 0.5),
-                    (0.02, hgt * 0.5)], 0.004, m["blade"], bevel=0.001)
-    box("Guard", (0.01, 0.025, hgt + 0.03), (0.015, 0, 0), m["dark"])
-    cyl("Handle", 0.015, 0.12, (-0.05, 0, 0), m["rubber"] if not p.get("wide") else m["wood"], verts=12)
+    wide = p.get("wide")
+    hgt = 0.05 if wide else 0.032
+    x0 = 0.02
+    if wide:
+        prof = [(x0, -hgt * 0.5), (x0 + b * 0.7, -hgt * 0.55), (x0 + b * 0.95, -hgt * 0.35), (x0 + b, hgt * 0.1), (x0 + b * 0.9, hgt * 0.5), (x0, hgt * 0.42)]
+    else:
+        # clip point combat knife
+        prof = [(x0, -hgt * 0.5), (x0 + b * 0.75, -hgt * 0.5), (x0 + b * 0.95, -hgt * 0.2), (x0 + b, hgt * 0.15), (x0 + b * 0.7, hgt * 0.42), (x0 + b * 0.5, hgt * 0.5), (x0, hgt * 0.5)]
+    prism("Blade", prof, 0.0045, m["blade"], bevel=0.0012)
+    prism("Edge", [(x0 + 0.005, -hgt * 0.5), (x0 + b * 0.75, -hgt * 0.5), (x0 + b * 0.95, -hgt * 0.2), (x0 + b * 0.93, -hgt * 0.14), (x0 + b * 0.73, -hgt * 0.4), (x0 + 0.005, -hgt * 0.4)],
+          0.0025, col((0.85, 0.85, 0.87), 1, 0.12), bevel=0.0005)
+    box("Fuller", (b * 0.5, 0.0048, hgt * 0.12), (x0 + b * 0.35, 0, hgt * 0.18), m["dark"], bevel=0)
+    if not wide:
+        for k in range(5):
+            box(f"Serr{k}", (0.004, 0.0047, 0.004), (x0 + 0.012 + k * 0.007, 0, hgt * 0.5), m["dark"], rot=(0, 45, 0), bevel=0)
+    box("Guard", (0.01, 0.024, hgt + 0.03), (0.015, 0, 0), m["dark"], bevel=0.003)
+    grip = m["wood"] if wide else m["rubber"]
+    prof = [(0.0, -0.118), (0.016, -0.118)]
     for i in range(5):
-        cyl(f"Ring{i}", 0.016, 0.004, (-0.1 + i * 0.025, 0, 0), m["dark"], verts=12)
-    sph("Pommel", 0.017, (-0.115, 0, 0), m["dark"])
+        x = -0.11 + i * 0.023
+        prof += [(0.0165, x), (0.0145, x + 0.008), (0.0145, x + 0.015), (0.0165, x + 0.023)]
+    prof += [(0.0155, 0.01), (0.0, 0.011)]
+    xlathe("Handle", prof, grip, segs=16)
+    xlathe("Pommel", [(0.0, -0.135), (0.012, -0.135), (0.018, -0.126), (0.018, -0.118), (0.0, -0.117)], m["dark"], segs=16)
+    tube("Lanyard", [(-0.13, 0, 0.0), (-0.15, 0, -0.01), (-0.16, 0, 0.005), (-0.145, 0, 0.012)], [0.0025] * 4, m["fabric"], segs=6)
     return dict(muzzle=0.02 + b, sight=0.0)
+
+
 
 
 def xlathe(name, profile, mat, segs=24, x0=0.0, z0=0.0):
@@ -2010,9 +2029,17 @@ def build_printed(p, m):
 
 def build_printknife(p, m):
     orange = col((1.0, 0.45, 0.08), 0, 0.5)
-    prism("Blade", [(0.02, -0.015), (0.15, -0.012), (0.18, 0.004), (0.15, 0.016), (0.02, 0.016)], 0.006, col((0.92, 0.92, 0.9), 0, 0.5))
-    box("Handle", (0.11, 0.025, 0.03), (-0.04, 0, 0.0), orange, bevel=0.006)
+    white = col((0.92, 0.92, 0.9), 0, 0.5)
+    prism("Blade", [(0.02, -0.015), (0.15, -0.012), (0.18, 0.004), (0.15, 0.016), (0.02, 0.016)], 0.006, white, bevel=0.0015)
+    for i in range(5):
+        box(f"Layer{i}", (0.14, 0.0062, 0.0008), (0.085, 0, -0.01 + i * 0.006), col((0.85, 0.85, 0.83)), bevel=0)
+    box("Handle", (0.11, 0.025, 0.03), (-0.04, 0, 0.0), orange, bevel=0.009)
+    for i in range(4):
+        box(f"Grip{i}", (0.006, 0.0255, 0.026), (-0.08 + i * 0.02, 0, 0.0), col((0.9, 0.4, 0.06)), bevel=0.002)
+    cyl("Hole", 0.005, 0.026, (-0.085, 0, 0.0), m["dark"], axis="Y", verts=12)
     return dict(muzzle=0.18, sight=0.0)
+
+
 
 
 # ------------------------------------------------------------------ ammo, attachments, filament, new food (round 3)
