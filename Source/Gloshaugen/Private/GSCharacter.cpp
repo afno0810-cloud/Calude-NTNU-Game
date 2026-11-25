@@ -1583,7 +1583,6 @@ void AGSCharacter::CompleteUse()
 				ClientToast(FString::Printf(TEXT("%s ladet med %s"), *GSItems::Name(W->Id), *Def->Name));
 			}
 		}
-		}
 		else bConsume = false;
 		break;
 	}
