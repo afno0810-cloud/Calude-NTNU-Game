@@ -249,11 +249,18 @@ void AGSCampusBuilder::BuildSidewalks()
 		const FVector2D Side(-D.Y, D.X);
 		const float Len = FVector2D::Distance(R.A, R.B);
 		const FRotator Rot(0.f, FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)), 0.f);
-		for (float S = 0.f; S < Len; S += Piece)
+		int32 PieceNo = 0;
+		for (float S = 0.f; S < Len; S += Piece, ++PieceNo)
 		{
 			const float L = FMath::Min(Piece, Len - S);
 			const FVector2D Mid = R.A + D * (S + L * 0.5f);
 			const bool bCrossing = OnOtherRoad(Mid, &R, 1.f);
+			// manholes in the lanes now and then
+			if (!bCrossing && PieceNo % 7 == 3)
+			{
+				const FVector2D H = Mid + Side * ((PieceNo & 8) ? 1.f : -1.f) * R.Width * 0.25f;
+				AddModel(TEXT("SM_Manhole"), FTransform(Rot, FVector(H.X * M, H.Y * M, 0.025f * M)), nullptr, false);
+			}
 			// centre line: 3 m dashes, 3 m gaps; solid edge lines
 			if (!bCrossing)
 			{
@@ -271,6 +278,23 @@ void AGSCampusBuilder::BuildSidewalks()
 				if (OnOtherRoad(K, &R, 0.3f) || InBuilding(W, 0.3f)) continue;
 				AddBoxMat(FVector(K.X * M, K.Y * M, 0.07f * M), Rot, FVector(L, KerbW, 0.16f), TEXT("W_Concrete"), KerbCol, true);
 				AddBoxMat(FVector(W.X * M, W.Y * M, 0.06f * M), Rot, FVector(L, WalkW, 0.12f), TEXT("W_Paving"), WalkCol, true);
+				// drain grates in the gutter, hydrants and utility boxes at the back of the sidewalk
+				if (L < Piece * 0.9f) continue;
+				const FRotator Facing(0.f, Rot.Yaw + (Sgn > 0.f ? 90.f : -90.f), 0.f);
+				if (PieceNo % 5 == 2)
+				{
+					const FVector2D G = Mid + Side * Sgn * (R.Width * 0.5f - 0.3f);
+					AddModel(TEXT("SM_Drain"), FTransform(Rot, FVector(G.X * M, G.Y * M, 0.035f * M)), nullptr, false);
+				}
+				const FVector2D Back = Mid + Side * Sgn * (R.Width * 0.5f + KerbW + WalkW - 0.4f);
+				if (PieceNo % 16 == 9)
+				{
+					AddModel(TEXT("SM_Hydrant"), FTransform(Facing, FVector(Back.X * M, Back.Y * M, 0.12f * M)), nullptr, true);
+				}
+				else if (PieceNo % 23 == 14)
+				{
+					AddModel(TEXT("SM_PowerBox"), FTransform(Facing, FVector(Back.X * M, Back.Y * M, 0.12f * M)), nullptr, true);
+				}
 			}
 		}
 	}
@@ -508,6 +532,31 @@ void AGSCampusBuilder::BuildTreesAndProps()
 				Leaves[Rand.RandRange(0, 2)], false);
 		}
 		++Trees;
+	}
+
+	// Moraine boulders on the lawns (they block bullets, good cover) and round flower beds.
+	if (bRealTrees)
+	{
+		int32 Rocks = 0;
+		for (int32 Try = 0; Try < 800 && Rocks < 70; ++Try)
+		{
+			const FVector2D P(Rand.FRandRange(-320.f, 460.f), Rand.FRandRange(-100.f, 550.f));
+			if (!IsFree(P, 4.f)) continue;
+			const float Pick = Rand.FRand();
+			const TCHAR* Kind = Pick < 0.45f ? TEXT("SM_Rock_A") : Pick < 0.8f ? TEXT("SM_Rock_B") : TEXT("SM_Rock_C");
+			AddModel(Kind, FTransform(FRotator(Rand.FRandRange(-6.f, 6.f), Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * M, P.Y * M, -0.15f * M),
+				FVector(Rand.FRandRange(0.7f, 1.3f))), nullptr, true);
+			++Rocks;
+		}
+		int32 Beds = 0;
+		for (int32 Try = 0; Try < 600 && Beds < 30; ++Try)
+		{
+			const FVector2D P(Rand.FRandRange(-320.f, 460.f), Rand.FRandRange(-100.f, 550.f));
+			if (!IsFree(P, 4.f)) continue;
+			AddModel(TEXT("SM_FlowerBed"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * M, P.Y * M, 0.f),
+				FVector(Rand.FRandRange(0.8f, 1.3f))), nullptr, false);
+			++Beds;
+		}
 	}
 
 	// Bushes and trimmed hedges along the building walls (not in front of the doors: hedges go on the short sides).

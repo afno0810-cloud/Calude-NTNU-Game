@@ -216,5 +216,13 @@ Nyeste runde øverst.
 194. Skogkledde åser i en ring 1,3 til 4 km ute
 195. Fjorden i nord
 196. Fjell og jorder som skifter etter høyde
+197. Kumlokk i støpejern i kjørebanene
+198. Sluk med rist langs fortauskanten
+199. Røde brannhydranter langs fortauene
+200. Grå koblingsskap for strøm
+201. 70 morenesteiner på plenene (gir dekning)
+202. Tre steinstørrelser med flate bruddflater
+203. 30 runde blomsterbed med steinkant
+204. Blomster i rødt, gult, hvitt og blått
 
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*
