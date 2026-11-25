@@ -670,21 +670,60 @@ def build_pan(p, m):
 
 # ------------------------------------------------------------------ armor
 def build_vest(p, m):
+    """Plate carrier / vest: shaped front and back panels, cummerbund, padded shoulder straps, MOLLE rows,
+    magazine pouches with mags showing, admin pouch with a flag patch, drag handle."""
     c = col(p["color"], 0, 0.9)
-    box("Front", (0.06, 0.36, 0.46), (0.13, 0, 0), c, bevel=0.01)
-    box("Back", (0.06, 0.36, 0.48), (-0.13, 0, 0), c, bevel=0.01)
-    for s in (-1, 1):
-        box(f"Side{s}", (0.22, 0.04, 0.2), (0, s * 0.18, -0.12), c, bevel=0.01)
-        box(f"Strap{s}", (0.3, 0.07, 0.025), (0, s * 0.11, 0.24), c, bevel=0.005)
-    for i in range(p.get("plates", 0)):
-        box(f"Plate{i}", (0.03, 0.29, 0.34), (0.17 if i == 0 else -0.17, 0, 0.03), c, bevel=0.012)
+    dark = col((p["color"][0] * 0.6, p["color"][1] * 0.6, p["color"][2] * 0.6), 0, 0.95)
+    plates = p.get("plates", 0)
+    th = 0.045 if plates else 0.03
+    for sx, name in ((1, "Front"), (-1, "Back")):
+        prism(name, [(-0.2, -0.17), (0.2, -0.17), (0.2, 0.06), (0.15, 0.13), (0.1, 0.15), (-0.1, 0.15), (-0.15, 0.13), (-0.2, 0.06)], th,
+              c, y=0.0, bevel=0.012)
+        o = bpy.data.objects[name]
+        o.rotation_euler = (0, 0, math.radians(90))
+        o.location = (sx * 0.135, 0, 0.02)
+        # MOLLE webbing rows
+        for k in range(3 if sx > 0 else 4):
+            box(f"{name}Molle{k}", (0.006, 0.36, 0.012), (sx * (0.135 + th / 2 + 0.002), 0, -0.13 + k * 0.045), dark, bevel=0.001)
+    # cummerbund wrapping the sides
+    ring = [(math.cos(t) * 0.15, math.sin(t) * 0.19, -0.1) for t in [math.radians(a) for a in range(-60, 61, 10)]]
+    ring2 = [(-x, y, z) for x, y, z in ring]
+    for nm, path in (("CummerR", [(x, y, z) for x, y, z in ring if y < 0] + []), ):
+        pass
+    for side in (-1, 1):
+        path = [(math.cos(t) * 0.15, side * math.sin(t) * 0.19, -0.09) for t in [math.radians(a) for a in range(25, 156, 10)]]
+        tube(f"Cummer{side}", path, [0.07] * len(path), c, segs=12, squash=(0.22, 1.0))
+    # shoulder straps arching over the shoulders, padded
+    for sy in (-1, 1):
+        path = [(0.13 - 0.26 * t, sy * 0.1, 0.16 + 0.05 * math.sin(math.pi * t)) for t in [k / 10 for k in range(11)]]
+        tube(f"Strap{sy}", path, [0.028] * 11, c, segs=10, squash=(1.7, 0.45))
+        box(f"Buckle{sy}", (0.012, 0.05, 0.02), (0.15, sy * 0.1, 0.16), m["poly"], bevel=0.002)
+    # magazine pouches on the front, mags sticking out
     n = p.get("pouches", 0)
-    for i in range(n):
-        y = -0.15 + (0.3 / max(1, n - 1)) * i if n > 1 else 0
-        box(f"Pouch{i}", (0.05, 0.065, 0.11), (0.19, y, -0.14), c, bevel=0.006)
-        box(f"PouchFlap{i}", (0.052, 0.067, 0.02), (0.19, y, -0.085), col((p["color"][0] * 0.7, p["color"][1] * 0.7, p["color"][2] * 0.7)))
+    for k in range(n):
+        y = (-0.14 + 0.28 * k / max(1, n - 1)) if n > 1 else 0.0
+        if n > 3:
+            y = -0.15 + k * (0.3 / (n - 1))
+        x0 = 0.135 + th / 2 + 0.028
+        box(f"Pouch{k}", (0.05, min(0.07, 0.3 / max(n, 1) + 0.01), 0.11), (x0, y, -0.11), c, bevel=0.006)
+        box(f"PouchMag{k}", (0.03, 0.022, 0.03), (x0 - 0.002, y, -0.045), m["dark"], bevel=0.002)
+        box(f"Bungee{k}", (0.052, 0.005, 0.03), (x0 + 0.001, y, -0.05), dark, bevel=0.001)
+    if plates:
+        box("Admin", (0.025, 0.2, 0.08), (0.135 + th / 2 + 0.012, 0, 0.06), c, bevel=0.006)
+        box("Zip", (0.002, 0.18, 0.004), (0.135 + th / 2 + 0.026, 0, 0.095), m["poly"], bevel=0)
+        box("Patch", (0.003, 0.07, 0.045), (0.135 + th / 2 + 0.026, -0.05, 0.05), col((0.73, 0.02, 0.15), 0, 0.8), bevel=0.0005)
+        box("PatchW", (0.0035, 0.07, 0.01), (0.135 + th / 2 + 0.026, -0.05, 0.05), m["white"], bevel=0)
+        box("PatchW2", (0.0035, 0.012, 0.045), (0.135 + th / 2 + 0.026, -0.06, 0.05), m["white"], bevel=0)
+        box("PatchB", (0.004, 0.07, 0.005), (0.135 + th / 2 + 0.026, -0.05, 0.05), col((0.0, 0.13, 0.46), 0, 0.8), bevel=0)
+        box("PatchB2", (0.004, 0.006, 0.045), (0.135 + th / 2 + 0.026, -0.06, 0.05), col((0.0, 0.13, 0.46), 0, 0.8), bevel=0)
+    # drag handle on the back
+    loop = [(-0.135 - th / 2 - 0.005, math.cos(t) * 0.04, 0.15 + math.sin(t) * 0.03) for t in [math.radians(a) for a in range(0, 181, 20)]]
+    tube("Drag", loop, [0.007] * len(loop), dark, segs=8)
     if p.get("collar"):
-        box("Collar", (0.3, 0.3, 0.05), (0, 0, 0.26), c, bevel=0.02)
+        neck = [(math.cos(t) * 0.11, math.sin(t) * 0.13, 0.23) for t in [math.radians(a) for a in range(-150, 151, 15)]]
+        tube("Collar", neck, [0.035] * len(neck), c, segs=12, squash=(0.6, 1.0))
+        for sy in (-1, 1):
+            box(f"Shoulder{sy}", (0.16, 0.08, 0.03), (0.0, sy * 0.18, 0.21), c, bevel=0.012)
     return None
 
 
@@ -708,20 +747,54 @@ def build_exo(p, m):
 
 def build_helmet(p, m):
     k = p["kind"]
+
+    def dome(name, R, sx, sy, sz, mat, cut=0.0, z0=0.0):
+        prof = []
+        for i in range(13):
+            a = math.pi / 2 * i / 12
+            prof.append((R * math.cos(a), z0 + R * math.sin(a)))
+        prof = [(R * 1.02, z0 - cut)] + prof
+        return lathe(name, prof, mat, segs=40, scale=(sx, sy, sz))
+
     if k == "bike":
         c = col((0.9, 0.3, 0.05), 0, 0.3)
-        hemi("Shell", 0.13, (0, 0, 0), c, scale=(1.25, 1.0, 0.9))
-        for i in range(4):
-            box(f"Vent{i}", (0.12, 0.012, 0.03), (0.0, -0.045 + i * 0.03, 0.11), m["poly"], bevel=0)
+        dome("Shell", 0.13, 1.25, 1.0, 0.9, c, cut=0.01)
+        dome("Liner", 0.128, 1.24, 0.99, 0.88, m["white"], cut=0.03, z0=-0.0)
+        for i in range(5):
+            y = -0.06 + i * 0.03
+            box(f"Vent{i}", (0.16 - abs(i - 2) * 0.03, 0.012, 0.03), (0.0, y, 0.112 - abs(i - 2) * 0.006), m["poly"], bevel=0.004)
+        box("Visor", (0.06, 0.16, 0.008), (0.16, 0, 0.03), c, rot=(0, -12, 0), bevel=0.003)
+        for sy in (-1, 1):
+            tube(f"Strap{sy}", [(0.02, sy * 0.12, -0.01), (0.03, sy * 0.1, -0.1), (0.04, sy * 0.05, -0.15)], [0.005] * 3, m["poly"], segs=6, squash=(2.0, 0.5))
         return None
     c = m["green"] if k == "combat" else col((0.08, 0.09, 0.08), 0, 0.8)
-    hemi("Shell", 0.135, (0, 0, 0), c, scale=(1.12, 1.0, 1.0))
-    cyl("Rim", 0.14, 0.02, (0, 0, 0.0), c, axis="Z", verts=32)
+    if k == "combat":
+        # classic full-cut helmet with brim, cover seams, band and chin strap
+        dome("Shell", 0.135, 1.12, 1.0, 1.0, c, cut=0.035)
+        lathe("Brim", [(0.142, -0.04), (0.152, -0.04), (0.152, -0.032), (0.142, -0.03)], c, segs=40, scale=(1.12, 1.0, 1.0))
+        lathe("Band", [(0.1365, 0.02), (0.1365, 0.045)], col((0.1, 0.1, 0.08), 0, 0.9), segs=40, scale=(1.12, 1.0, 1.0))
+        for sy in (-1, 1):
+            tube(f"Chin{sy}", [(0.0, sy * 0.13, -0.03), (0.02, sy * 0.1, -0.12), (0.05, sy * 0.04, -0.16)], [0.006] * 3, m["fabric"], segs=6, squash=(2.0, 0.5))
+        return None
+    # high-cut tactical helmet: ear cut-outs, side rails, NVG shroud, velcro, visor
+    dome("Shell", 0.135, 1.12, 1.0, 1.0, c, cut=0.0, z0=0.0)
+    for sy in (-1, 1):
+        box(f"EarCut{sy}", (0.08, 0.02, 0.05), (0.0, sy * 0.13, 0.01), m["poly"], bevel=0.01)
+        box(f"Rail{sy}", (0.13, 0.014, 0.022), (-0.005, sy * 0.136, 0.045), m["poly"], bevel=0.003)
+        for kk in range(5):
+            box(f"RailSlot{sy}{kk}", (0.006, 0.0145, 0.006), (-0.05 + kk * 0.022, sy * 0.136, 0.05), m["dark"], bevel=0)
+        cyl(f"Pivot{sy}", 0.012, 0.01, (0.0, sy * 0.142, 0.02), m["dark"], axis="Y", verts=16)
+    box("Shroud", (0.035, 0.06, 0.05), (0.145, 0, 0.075), m["poly"], rot=(0, 20, 0), bevel=0.006)
+    box("Velcro", (0.1, 0.09, 0.006), (0.0, 0, 0.133), col((0.12, 0.12, 0.11), 0, 1.0), bevel=0.002)
+    box("Counterweight", (0.05, 0.08, 0.03), (-0.155, 0, 0.05), m["poly"], rot=(0, -20, 0), bevel=0.008)
     if k == "visor":
-        hemi("Visor", 0.14, (0.012, 0, -0.005), col((0.05, 0.08, 0.1), 0.6, 0.05), scale=(1.12, 0.95, 0.55))
-        box("NVGMount", (0.03, 0.05, 0.04), (0.15, 0, 0.08), m["poly"])
-        for s in (-1, 1):
-            box(f"Rail{s}", (0.14, 0.012, 0.02), (0.0, s * 0.135, 0.04), m["poly"])
+        o = lathe("Visor", [(0.1, -0.06), (0.15, -0.03), (0.155, 0.02), (0.152, 0.05)], col((0.05, 0.08, 0.1), 0.6, 0.05), segs=40, scale=(1.12, 0.95, 1.0))
+        # keep only the front half of the visor
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.x < 0.06], context="VERTS")
+        bm.to_mesh(o.data)
+        bm.free()
     return None
 
 
