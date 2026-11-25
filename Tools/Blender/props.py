@@ -114,26 +114,40 @@ def p_PC(k, m):
 
 @prop
 def p_Printer3D(k, m):
-    """3D printer on a rolling cart, front +X, with a half-printed part and a filament spool."""
-    k.box((0, 0, 0.42), (0.6, 0.7, 0.04), m.dark)
-    k.box((0, 0, 0.08), (0.6, 0.7, 0.04), m.dark)
+    """3D printer on a rolling cart, front +X: enclosed printer with glass door, gantry, hotend, part on the bed,
+    touch screen, filament spool on the side, cart with tube legs and casters."""
+    k.loft([(x, 0.4, 0.44, 0.35) for x in [-0.3 + 0.6 * i / 4 for i in range(5)]], m.dark, segs=20, power=8.0)
+    k.loft([(x, 0.06, 0.1, 0.35) for x in [-0.3 + 0.6 * i / 4 for i in range(5)]], m.dark, segs=20, power=8.0)
     for x in (-0.27, 0.27):
         for y in (-0.32, 0.32):
-            k.box((x, y, 0.25), (0.04, 0.04, 0.4), m.metal)
-            k.cyl((x, y, 0.0), 0.035, 0.05, m.rubber, verts=10)
-    # printer frame
+            k.tube([(x, y, 0.06), (x, y, 0.44)], 0.017, m.metal, segs=8)
+            k.sphere((x, y, 0.03), 0.03, m.rubber)
+    # enclosure: dark frame posts, glass panels, top lid
     for x in (-0.22, 0.22):
         for y in (-0.22, 0.22):
-            k.box((x, y, 0.75), (0.04, 0.04, 0.62), m.dark)
-    k.box((0, 0, 1.07), (0.48, 0.48, 0.04), m.dark)
+            k.box((x, y, 0.76), (0.03, 0.03, 0.64), m.dark)
+    k.loft([(x, 1.06, 1.1, 0.25) for x in [-0.25 + 0.5 * i / 4 for i in range(5)]], m.dark, segs=20, power=8.0)
     k.box((0, 0, 0.47), (0.48, 0.48, 0.06), m.dark)
-    k.box((0, 0, 0.56), (0.36, 0.36, 0.01), m.glass)
-    k.box((0, 0, 0.8), (0.04, 0.46, 0.03), m.metal)
-    k.box((0, 0.05, 0.76), (0.08, 0.06, 0.08), m.orange)
-    k.box((0, 0, 0.6), (0.12, 0.12, 0.06), m.orange)
-    k.box((0.245, 0.15, 0.6), (0.01, 0.12, 0.08), m.screen_on)
-    k.cyl_axis((-0.15, 0, 1.2), 0.1, 0.07, m.orange, axis="Y", verts=20)
-    k.box((0.2, -0.15, 0.48), (0.03, 0.1, 0.02), m.white)
+    k.box((0.235, 0, 0.77), (0.006, 0.42, 0.56), m.glass)
+    for y in (-0.235, 0.235):
+        k.box((0, y, 0.77), (0.42, 0.006, 0.56), m.glass)
+    k.box((0.245, -0.17, 0.77), (0.02, 0.02, 0.18), m.metal)
+    # gantry, hotend with fan, bed and a half printed NTNU part
+    k.box((0, 0, 0.92), (0.4, 0.03, 0.03), m.metal)
+    k.box((0.02, 0.06, 0.88), (0.07, 0.06, 0.09), m.orange)
+    k.cyl_axis((0.06, 0.06, 0.88), 0.025, 0.01, m.dark, axis="X", verts=12)
+    k.cyl((0.02, 0.06, 0.82), 0.008, 0.012, m.metal, verts=8, r_top=0.002)
+    k.box((0, 0, 0.6), (0.36, 0.36, 0.012), m.metal)
+    k.box((0, 0, 0.607), (0.34, 0.34, 0.002), m.dark)
+    k.cyl((0.0, 0.06, 0.61), 0.05, 0.05, m.orange, verts=6)
+    k.box((-0.06, -0.06, 0.63), (0.06, 0.06, 0.04), m.orange)
+    k.box((0.245, 0.15, 0.52), (0.01, 0.14, 0.08), m.screen_on)
+    # filament spool on a side holder
+    k.tube([(-0.1, 0.25, 0.9), (-0.1, 0.33, 0.9)], 0.01, m.metal, segs=6)
+    k.cyl_axis((-0.1, 0.3, 0.9), 0.1, 0.06, m.dark, axis="Y", verts=24)
+    k.cyl_axis((-0.1, 0.3, 0.9), 0.09, 0.062, m.orange, axis="Y", verts=24)
+    k.tube([(-0.1, 0.27, 0.99), (-0.05, 0.24, 1.04), (0.02, 0.06, 0.93)], 0.002, m.orange, segs=4)
+    k.box((0.2, -0.15, 0.45), (0.03, 0.1, 0.02), m.white)
 
 
 @prop
