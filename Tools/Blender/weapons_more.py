@@ -21,74 +21,6 @@ def mats():
     )
 
 
-def mg3():
-    reset_scene(); m = mats()
-    box("Receiver", (0.42, 0.05, 0.075), (0.08, 0, 0.0), m["steel"])
-    box("TopCover", (0.26, 0.055, 0.025), (0.0, 0, 0.05), m["steel"])
-    box("FeedTray", (0.08, 0.09, 0.03), (0.0, 0, 0.03), m["dark"])
-    cyl("Jacket", 0.022, 0.42, (0.50, 0, 0.0), m["steel"], verts=20)
-    for i in range(10):
-        box(f"Hole{i}", (0.018, 0.046, 0.012), (0.33 + i * 0.035, 0, 0.0), m["dark"], bevel=0.0)
-    cyl("Muzzle", 0.026, 0.07, (0.745, 0, 0.0), m["steel"], verts=16)
-    cyl("Barrel", 0.009, 0.06, (0.80, 0, 0.0), m["steel"])
-    prism("Stock", [(-0.52, -0.12), (-0.13, -0.035), (-0.13, 0.035), (-0.52, 0.03)], 0.05, m["poly"], bevel=0.008)
-    prism("Grip", [(-0.06, -0.035), (0.0, -0.035), (-0.025, -0.15), (-0.08, -0.14)], 0.034, m["poly"])
-    box("TriggerGuard", (0.08, 0.012, 0.006), (0.0, 0, -0.075), m["steel"])
-    box("FrontSight", (0.01, 0.004, 0.05), (0.68, 0, 0.045), m["steel"])
-    box("RearSight", (0.03, 0.03, 0.03), (0.14, 0, 0.055), m["steel"])
-    box("CarryHandle", (0.12, 0.012, 0.012), (0.48, 0.03, 0.06), m["steel"])
-    # bipod folded under the jacket
-    box("BipodL", (0.25, 0.008, 0.01), (0.47, -0.02, -0.035), m["steel"], rot=(0, -6, 0))
-    box("BipodR", (0.25, 0.008, 0.01), (0.47, 0.02, -0.035), m["steel"], rot=(0, -6, 0))
-    # belt hanging from the left
-    for i in range(8):
-        cyl(f"Round{i}", 0.006, 0.07, (0.0 - 0.003 * i, -0.06 - i * 0.012, -0.01 - i * 0.012), m["brass"], axis="X", verts=8)
-    join_all("SM_MG3"); export("SM_MG3")
-
-
-def bren():
-    reset_scene(); m = mats()
-    box("Receiver", (0.32, 0.05, 0.07), (0.05, 0, 0.0), m["steel"])
-    cyl("Barrel", 0.016, 0.45, (0.43, 0, 0.0), m["steel"], verts=20)
-    for i in range(8):
-        cyl(f"Fin{i}", 0.022, 0.008, (0.25 + i * 0.03, 0, 0.0), m["steel"], verts=20)
-    cyl("Flash", 0.02, 0.08, (0.69, 0, 0.0), m["steel"], verts=16)
-    cyl("GasTube", 0.012, 0.35, (0.35, 0, -0.04), m["steel"])
-    # curved top magazine
-    prism("Magazine", [(0.0, 0.035), (0.07, 0.035), (0.1, 0.12), (0.09, 0.2), (0.04, 0.19), (0.03, 0.12)], 0.025, m["steel"])
-    box("CarryHandle", (0.12, 0.015, 0.015), (0.26, 0.04, 0.05), m["wood"], rot=(0, 0, 20))
-    prism("Stock", [(-0.5, -0.11), (-0.1, -0.035), (-0.1, 0.03), (-0.5, 0.03)], 0.045, m["wood"], bevel=0.008)
-    box("ButtPlate", (0.015, 0.05, 0.145), (-0.505, 0, -0.04), m["steel"])
-    prism("Grip", [(-0.05, -0.035), (0.01, -0.035), (-0.02, -0.14), (-0.07, -0.13)], 0.034, m["wood"])
-    box("TriggerGuard", (0.07, 0.012, 0.006), (0.0, 0, -0.07), m["steel"])
-    box("BipodL", (0.006, 0.01, 0.28), (0.5, -0.05, -0.13), m["steel"], rot=(18, 15, 0))
-    box("BipodR", (0.006, 0.01, 0.28), (0.5, 0.05, -0.13), m["steel"], rot=(-18, 15, 0))
-    box("RearSight", (0.02, 0.03, 0.04), (-0.05, -0.03, 0.05), m["steel"])
-    box("FrontSight", (0.01, 0.004, 0.03), (0.47, -0.03, 0.04), m["steel"])
-    join_all("SM_Bren"); export("SM_Bren")
-
-
-def pkm():
-    reset_scene(); m = mats()
-    box("Receiver", (0.34, 0.05, 0.07), (0.07, 0, 0.0), m["steel"])
-    box("TopCover", (0.22, 0.054, 0.02), (0.03, 0, 0.045), m["steel"])
-    cyl("Barrel", 0.012, 0.46, (0.47, 0, 0.01), m["steel"], verts=20)
-    cyl("GasTube", 0.011, 0.30, (0.37, 0, -0.03), m["steel"])
-    cyl("Flash", 0.016, 0.07, (0.73, 0, 0.01), m["steel"], verts=16)
-    box("CarryHandle", (0.10, 0.012, 0.03), (0.30, 0, 0.05), m["wood"])
-    prism("Stock", [(-0.5, -0.1), (-0.12, -0.035), (-0.12, 0.03), (-0.5, 0.04), (-0.34, -0.03)], 0.04, m["bake"], bevel=0.008)
-    prism("Grip", [(-0.05, -0.035), (0.01, -0.035), (-0.02, -0.14), (-0.07, -0.13)], 0.034, m["bake"])
-    box("TriggerGuard", (0.07, 0.012, 0.006), (0.0, 0, -0.07), m["steel"])
-    # ammo box hanging under the receiver, belt into the left side
-    box("AmmoBox", (0.11, 0.09, 0.13), (0.08, 0, -0.12), m["steel"])
-    box("AmmoBoxLid", (0.115, 0.095, 0.01), (0.08, 0, -0.05), m["dark"])
-    for i in range(5):
-        cyl(f"Round{i}", 0.005, 0.06, (0.06 + i * 0.01, -0.035, -0.04 + i * 0.012), m["brass"], verts=8)
-    box("BipodL", (0.006, 0.01, 0.3), (0.55, -0.06, -0.13), m["steel"], rot=(20, 12, 0))
-    box("BipodR", (0.006, 0.01, 0.3), (0.55, 0.06, -0.13), m["steel"], rot=(-20, 12, 0))
-    join_all("SM_PKM"); export("SM_PKM")
-
-
 def _xl(name, prof, mat, segs=24, x0=0.0, z0=0.0, y0=0.0):
     """Turned part along +X from a (radius, x) profile."""
     import math as _m
@@ -102,6 +34,124 @@ def _xl(name, prof, mat, segs=24, x0=0.0, z0=0.0, y0=0.0):
 def _tube(*a, **k):
     from gen_models import tube
     return tube(*a, **k)
+
+
+def _grip(m, mat, x=0.0):
+    """Pistol grip with finger grooves and a tube trigger guard and blade trigger."""
+    prism("Grip", [(x - 0.055, -0.035), (x + 0.005, -0.035), (x - 0.008, -0.08), (x - 0.02, -0.12), (x - 0.03, -0.148), (x - 0.078, -0.14), (x - 0.07, -0.09)],
+          0.034, mat, bevel=0.006)
+    _tube("Guard", [(x + 0.015, 0, -0.036), (x + 0.06, 0, -0.04), (x + 0.064, 0, -0.07), (x + 0.0, 0, -0.074)], [0.004] * 4, m["steel"], segs=8, squash=(1.6, 1.0))
+    box("Trigger", (0.006, 0.006, 0.026), (x + 0.03, 0, -0.055), m["steel"], rot=(0, -12, 0), bevel=0.001)
+
+
+def _belt(m, n, start, step):
+    for i in range(n):
+        x, y, z = start[0] + step[0] * i, start[1] + step[1] * i, start[2] + step[2] * i
+        _xl(f"Round{i}", [(0.0, -0.035), (0.0062, -0.035), (0.0062, 0.005), (0.0045, 0.012), (0.0042, 0.02), (0.0018, 0.034), (0.0, 0.036)], m["brass"], segs=10, x0=x, y0=y, z0=z)
+        box(f"Link{i}", (0.03, 0.013, 0.004), (x - 0.005, y, z + 0.006), m["dark"], bevel=0.001)
+
+
+def mg3():
+    reset_scene(); m = mats()
+    box("Receiver", (0.42, 0.05, 0.075), (0.08, 0, 0.0), m["steel"], bevel=0.006)
+    for sy in (-1, 1):
+        box(f"RecRib{sy}", (0.3, 0.002, 0.006), (0.1, sy * 0.0255, -0.015), m["dark"], bevel=0)
+    box("TopCover", (0.26, 0.055, 0.025), (0.0, 0, 0.05), m["steel"], bevel=0.005)
+    cyl("CoverHinge", 0.008, 0.06, (0.13, 0, 0.05), m["dark"], axis="Y", verts=12)
+    box("CoverLatch", (0.02, 0.03, 0.012), (-0.125, 0, 0.065), m["dark"], bevel=0.003)
+    box("FeedTray", (0.08, 0.09, 0.03), (0.0, 0, 0.03), m["dark"], bevel=0.004)
+    _xl("Jacket", [(0.0, 0.29), (0.024, 0.29), (0.024, 0.71), (0.0, 0.711)], m["steel"], segs=28)
+    for i in range(9):
+        for sz in (-1, 1):
+            box(f"Hole{i}{sz}", (0.026, 0.05, 0.009), (0.33 + i * 0.04, 0, sz * 0.008), m["dark"], bevel=0.0035)
+    _xl("Muzzle", [(0.0, 0.71), (0.028, 0.71), (0.028, 0.76), (0.024, 0.775), (0.016, 0.785), (0.0, 0.786)], m["steel"], segs=24)
+    _xl("Barrel", [(0.0, 0.78), (0.0095, 0.78), (0.0095, 0.82), (0.0, 0.821)], m["dark"], segs=16)
+    # polymer stock with buffer and pistol grip
+    prism("Stock", [(-0.52, -0.125), (-0.48, -0.13), (-0.3, -0.07), (-0.13, -0.035), (-0.13, 0.035), (-0.3, 0.03), (-0.52, 0.035)], 0.05, m["poly"], bevel=0.01)
+    box("ButtPad", (0.016, 0.054, 0.165), (-0.524, 0, -0.045), m["dark"], bevel=0.005)
+    _grip(m, m["poly"])
+    box("CockHandle", (0.03, 0.025, 0.014), (0.18, 0.034, 0.012), m["steel"], bevel=0.004)
+    # sights and carry handle
+    box("FrontSightBase", (0.02, 0.03, 0.01), (0.68, 0, 0.026), m["steel"], bevel=0.002)
+    box("FrontSight", (0.006, 0.004, 0.04), (0.68, 0, 0.05), m["steel"], bevel=0.001)
+    box("RearSight", (0.04, 0.03, 0.02), (0.14, 0, 0.07), m["steel"], bevel=0.003)
+    box("RearLeaf", (0.006, 0.02, 0.025), (0.15, 0, 0.09), m["steel"], rot=(0, -20, 0), bevel=0.001)
+    _tube("CarryHandle", [(0.44, 0.02, 0.0), (0.45, 0.06, 0.03), (0.52, 0.06, 0.04), (0.56, 0.02, 0.01)], [0.006] * 4, m["steel"], segs=8)
+    # bipod folded under the jacket
+    for sy in (-1, 1):
+        _tube(f"Bipod{sy}", [(0.68, sy * 0.02, -0.02), (0.55, sy * 0.022, -0.032), (0.42, sy * 0.022, -0.04)], [0.0055] * 3, m["steel"], segs=8)
+        box(f"Foot{sy}", (0.02, 0.012, 0.006), (0.415, sy * 0.022, -0.042), m["dark"], bevel=0.002)
+    _belt(m, 9, (0.0, -0.055, 0.02), (-0.002, -0.004, -0.014))
+    join_all("SM_MG3"); export("SM_MG3")
+
+
+def bren():
+    reset_scene(); m = mats()
+    box("Receiver", (0.32, 0.05, 0.07), (0.05, 0, 0.0), m["steel"], bevel=0.006)
+    box("BodyLower", (0.2, 0.046, 0.03), (0.0, 0, -0.045), m["steel"], bevel=0.004)
+    prof = [(0.0, 0.2), (0.016, 0.2)]
+    for i in range(10):
+        x = 0.23 + i * 0.026
+        prof += [(0.016, x), (0.023, x + 0.003), (0.023, x + 0.008), (0.016, x + 0.011)]
+    prof += [(0.014, 0.5), (0.013, 0.65), (0.0, 0.651)]
+    _xl("Barrel", prof, m["steel"], segs=24)
+    _xl("Flash", [(0.0, 0.64), (0.014, 0.64), (0.02, 0.7), (0.023, 0.73), (0.0, 0.731)], m["steel"], segs=20)
+    _xl("GasTube", [(0.0, 0.2), (0.012, 0.2), (0.012, 0.56), (0.015, 0.565), (0.015, 0.59), (0.0, 0.591)], m["steel"], segs=16, z0=-0.04)
+    # curved top magazine, offset sights
+    prism("Magazine", [(0.0, 0.035), (0.07, 0.035), (0.1, 0.12), (0.09, 0.2), (0.04, 0.19), (0.03, 0.12)], 0.025, m["steel"], bevel=0.003)
+    box("MagLip", (0.075, 0.03, 0.01), (0.035, 0, 0.04), m["dark"], bevel=0.002)
+    _tube("CarryHandle", [(0.24, 0.0, 0.035), (0.26, 0.03, 0.07), (0.3, 0.05, 0.09), (0.33, 0.06, 0.09)], [0.008] * 4, m["wood"], segs=10)
+    prism("Stock", [(-0.5, -0.115), (-0.3, -0.075), (-0.18, -0.05), (-0.1, -0.035), (-0.1, 0.03), (-0.5, 0.03)], 0.045, m["wood"], bevel=0.01)
+    _xl("Buffer", [(0.0, -0.13), (0.02, -0.13), (0.022, -0.11), (0.022, -0.06), (0.0, -0.059)], m["steel"], segs=16, z0=0.0)
+    box("ButtPlate", (0.015, 0.05, 0.145), (-0.505, 0, -0.04), m["steel"], bevel=0.005)
+    _tube("Monopod", [(-0.42, 0, -0.1), (-0.43, 0, -0.15)], [0.006, 0.006], m["steel"], segs=8)
+    _grip(m, m["wood"])
+    for sy in (-1, 1):
+        _tube(f"Bipod{sy}", [(0.5, sy * 0.012, -0.05), (0.53, sy * 0.06, -0.16), (0.56, sy * 0.1, -0.27)], [0.006] * 3, m["steel"], segs=8)
+        box(f"Foot{sy}", (0.03, 0.014, 0.008), (0.565, sy * 0.1, -0.275), m["dark"], bevel=0.002)
+    cyl("RearDrum", 0.016, 0.02, (-0.05, -0.035, 0.05), m["steel"], axis="Y", verts=16)
+    box("RearSight", (0.02, 0.008, 0.04), (-0.05, -0.03, 0.05), m["steel"], bevel=0.002)
+    box("FrontSight", (0.01, 0.004, 0.03), (0.47, -0.03, 0.04), m["steel"], bevel=0.001)
+    box("FrontSightArm", (0.012, 0.03, 0.01), (0.47, -0.015, 0.022), m["steel"], bevel=0.002)
+    join_all("SM_Bren"); export("SM_Bren")
+
+
+def pkm():
+    reset_scene(); m = mats()
+    box("Receiver", (0.34, 0.05, 0.07), (0.07, 0, 0.0), m["steel"], bevel=0.005)
+    for sy in (-1, 1):
+        box(f"Rivets{sy}", (0.25, 0.002, 0.004), (0.08, sy * 0.0255, -0.02), m["dark"], bevel=0)
+    box("TopCover", (0.22, 0.054, 0.02), (0.03, 0, 0.045), m["steel"], bevel=0.004)
+    for k in range(5):
+        box(f"CoverRib{k}", (0.006, 0.055, 0.004), (-0.04 + k * 0.03, 0, 0.056), m["dark"], bevel=0)
+    prof = [(0.0, 0.24), (0.016, 0.24), (0.016, 0.3), (0.012, 0.31)]
+    prof += [(0.012, 0.69), (0.0, 0.691)]
+    _xl("Barrel", prof, m["steel"], segs=20, z0=0.01)
+    _xl("Flash", [(0.0, 0.69), (0.016, 0.69), (0.016, 0.765), (0.0, 0.766)], m["steel"], segs=20, z0=0.01)
+    for k in range(4):
+        box(f"FlashSlot{k}", (0.05, 0.004, 0.034), (0.735, 0, 0.01), m["dark"], rot=(k * 45, 0, 0), bevel=0)
+    _xl("GasTube", [(0.0, 0.24), (0.011, 0.24), (0.011, 0.52), (0.014, 0.525), (0.014, 0.55), (0.0, 0.551)], m["steel"], segs=16, z0=-0.03)
+    # wooden carry handle on the barrel
+    _tube("HandleArm", [(0.33, 0, 0.02), (0.33, 0, 0.05), (0.36, 0, 0.065)], [0.006] * 3, m["steel"], segs=8)
+    _xl("CarryHandle", [(0.0, 0.34), (0.012, 0.34), (0.014, 0.37), (0.014, 0.43), (0.012, 0.45), (0.0, 0.451)], m["wood"], segs=14, z0=0.068)
+    # skeleton stock (two rails and a butt plate)
+    _tube("StockTop", [(-0.12, 0, 0.015), (-0.3, 0, 0.012), (-0.48, 0, 0.012)], [0.012, 0.012, 0.012], m["bake"], segs=10, squash=(1.6, 1.0))
+    _tube("StockLow", [(-0.12, 0, -0.03), (-0.3, 0, -0.06), (-0.48, 0, -0.1)], [0.012, 0.012, 0.012], m["bake"], segs=10, squash=(1.6, 1.0))
+    box("ButtPlate", (0.03, 0.04, 0.14), (-0.49, 0, -0.04), m["bake"], bevel=0.008)
+    box("ButtPad", (0.008, 0.042, 0.14), (-0.508, 0, -0.04), m["dark"], bevel=0.003)
+    _grip(m, m["bake"])
+    # ammo box hanging under the receiver, belt into the right side
+    box("AmmoBox", (0.11, 0.09, 0.13), (0.08, 0, -0.12), m["steel"], bevel=0.006)
+    for sy in (-1, 1):
+        box(f"BoxRib{sy}", (0.08, 0.002, 0.09), (0.08, sy * 0.046, -0.12), m["dark"], bevel=0.002)
+    box("AmmoBoxLid", (0.115, 0.095, 0.01), (0.08, 0, -0.05), m["dark"], bevel=0.002)
+    _belt(m, 5, (0.06, -0.035, -0.042), (0.008, 0.0, 0.012))
+    for sy in (-1, 1):
+        _tube(f"Bipod{sy}", [(0.6, sy * 0.012, -0.0), (0.61, sy * 0.06, -0.13), (0.62, sy * 0.1, -0.27)], [0.006] * 3, m["steel"], segs=8)
+        box(f"Foot{sy}", (0.03, 0.014, 0.008), (0.625, sy * 0.1, -0.275), m["dark"], bevel=0.002)
+    box("FrontSight", (0.006, 0.004, 0.04), (0.67, 0, 0.04), m["steel"], bevel=0.001)
+    box("RearSight", (0.05, 0.03, 0.018), (0.16, 0, 0.045), m["steel"], bevel=0.003)
+    join_all("SM_PKM"); export("SM_PKM")
 
 
 def mp40():
@@ -256,17 +306,25 @@ def suomi():
 
 def katana():
     reset_scene(); m = mats()
-    # slightly curved blade (several angled segments)
-    for i in range(6):
-        box(f"Blade{i}", (0.12, 0.006, 0.032 - i * 0.002), (0.08 + i * 0.115, 0, 0.003 * i * i * 0.3), m["blade"],
-            rot=(0, -i * 1.2, 0), bevel=0.001)
-    box("Tip", (0.05, 0.005, 0.02), (0.76, 0, 0.03), m["blade"], rot=(0, -12, 0), bevel=0.001)
-    cyl("Tsuba", 0.04, 0.008, (0.015, 0, 0.0), m["gold"], verts=24)
-    cyl("Handle", 0.016, 0.26, (-0.12, 0, 0.0), m["wrap"], verts=12)
-    for i in range(8):
-        box(f"Wrap{i}", (0.012, 0.034, 0.034), (-0.23 + i * 0.03, 0, 0.0), m["gold"], rot=(45, 0, 0), bevel=0.0)
-    cyl("Pommel", 0.018, 0.015, (-0.255, 0, 0.0), m["gold"], verts=16)
+    from gen_models import arc_path
+    import math as _m
+    # curved blade: thin tall cross-section swept along a gentle arc, with a lighter edge
+    pts = [(x + 0.42, y, z + 0.0) for (x, y, z) in arc_path(14, 0.72, 0.028)]
+    pts = [(x, y, z - 0.028 * (1 - ((x - 0.42) / 0.36) ** 2) * 0 + 0.028 * ((x - 0.06) / 0.72) ** 1.6) for (x, y, z) in pts]
+    r = [0.0145 - 0.004 * i / 13 for i in range(14)]
+    r[-1] = 0.004
+    _tube("Blade", pts, r, m["blade"], segs=12, squash=(0.2, 1.0))
+    _tube("Edge", [(x, y, z - 0.009) for (x, y, z) in pts], [v * 0.45 for v in r], material("M_BladeEdge", (0.9, 0.9, 0.92), metallic=1.0, roughness=0.1), segs=8, squash=(0.18, 1.0))
+    box("Habaki", (0.03, 0.009, 0.03), (0.055, 0, 0.0), m["gold"], bevel=0.002)
+    _xl("Tsuba", [(0.0, 0.03), (0.04, 0.03), (0.042, 0.034), (0.04, 0.038), (0.0, 0.038)], m["dark"], segs=32)
+    _xl("Handle", [(0.0, -0.27), (0.017, -0.27), (0.016, -0.12), (0.017, 0.03), (0.0, 0.031)], m["wrap"], segs=14)
+    for i in range(9):
+        box(f"Wrap{i}", (0.02, 0.035, 0.012), (-0.25 + i * 0.03, 0, 0.0), m["wrap"], rot=(0, 0, 45), bevel=0.003)
+        box(f"Diamond{i}", (0.012, 0.0355, 0.006), (-0.25 + i * 0.03, 0, 0.0), material("M_Samegawa", (0.85, 0.83, 0.75), roughness=0.7), rot=(45, 0, 0), bevel=0.0)
+    _xl("Kashira", [(0.0, -0.29), (0.014, -0.29), (0.018, -0.282), (0.018, -0.268), (0.0, -0.267)], m["gold"], segs=16)
     join_all("SM_Katana"); export("SM_Katana")
+
+
 
 
 def viking_sword():
