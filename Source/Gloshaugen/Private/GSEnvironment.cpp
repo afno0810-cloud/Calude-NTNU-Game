@@ -19,6 +19,8 @@
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMaterialLibrary.h"
+#include "Materials/MaterialParameterCollection.h"
 
 namespace
 {
@@ -242,6 +244,22 @@ void AGSEnvironment::Tick(float DeltaSeconds)
 	};
 	UpdateParticles(DeltaSeconds, RainISM, RainDrops, Amount(EGSWeather::Rain) * IndoorFactor, false, CamLoc);
 	UpdateParticles(DeltaSeconds, SnowISM, SnowFlakes, Amount(EGSWeather::Snow) * IndoorFactor, true, CamLoc);
+
+	// Wet streets and snow cover on every material (M_GS_Surface / M_GS_World read MPC_GS_Weather).
+	// Gets wet in about a minute of rain, dries over a few minutes; snow settles and melts slower.
+	const float Rain = Amount(EGSWeather::Rain);
+	const float Snow = Amount(EGSWeather::Snow);
+	Wetness = FMath::FInterpConstantTo(Wetness, Rain > 0.3f ? 1.f : 0.f, DeltaSeconds, Rain > 0.3f ? 1.f / 60.f : 1.f / 240.f);
+	SnowCover = FMath::FInterpConstantTo(SnowCover, Snow > 0.3f ? 1.f : 0.f, DeltaSeconds, Snow > 0.3f ? 1.f / 120.f : 1.f / 400.f);
+	if (!WeatherMPC)
+	{
+		WeatherMPC = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/GS/MPC_GS_Weather.MPC_GS_Weather"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	}
+	if (WeatherMPC)
+	{
+		UKismetMaterialLibrary::SetScalarParameterValue(this, WeatherMPC, TEXT("Wetness"), Wetness);
+		UKismetMaterialLibrary::SetScalarParameterValue(this, WeatherMPC, TEXT("SnowCover"), SnowCover);
+	}
 }
 
 void AGSEnvironment::UpdatePostProcess(float Elevation, EGSWeather Weather, EGSWeather Prev, float Blend)

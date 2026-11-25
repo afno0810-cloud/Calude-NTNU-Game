@@ -48,6 +48,10 @@ protected:
 	TArray<FVector> RainDrops;  // world positions (cm)
 	TArray<FVector> SnowFlakes;
 	float Time = 0.f;
+	/** 0..1, rises while it rains and dries slowly afterwards; snow cover the same way. Sent to MPC_GS_Weather. */
+	float Wetness = 0.f;
+	float SnowCover = 0.f;
+	UPROPERTY() TObjectPtr<class UMaterialParameterCollection> WeatherMPC;
 	float IndoorCheckTimer = 0.f;
 	float IndoorFactor = 1.f;   // 1 = outside, 0 = under a roof
 	bool bIndoorTarget = false;

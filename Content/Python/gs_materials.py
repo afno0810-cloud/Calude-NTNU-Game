@@ -20,7 +20,7 @@ GS = "/Game/GS"
 TEX = GS + "/Textures"
 MAT = GS + "/Materials"
 MODELS = "/Game/Models"
-VERSION = 4  # bump to rebuild the master materials
+VERSION = 5  # bump to rebuild the master materials
 
 mel = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -92,6 +92,23 @@ def _new_material(name):
     return tools.create_asset(name, MAT, unreal.Material, unreal.MaterialFactoryNew())
 
 
+def ensure_weather_mpc():
+    """MPC_GS_Weather: Wetness and SnowCover (0..1), set every frame by AGSEnvironment."""
+    path = f"{GS}/MPC_GS_Weather"
+    if eal.does_asset_exist(path):
+        return eal.load_asset(path)
+    mpc = tools.create_asset("MPC_GS_Weather", GS, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
+    params = []
+    for n in ("Wetness", "SnowCover"):
+        p = unreal.CollectionScalarParameter()
+        p.set_editor_property("parameter_name", n)
+        p.set_editor_property("default_value", 0.0)
+        params.append(p)
+    mpc.set_editor_property("scalar_parameters", params)
+    eal.save_loaded_asset(mpc)
+    return mpc
+
+
 def _surface_master(name, world):
     m = _new_material(name)
     S = unreal.MaterialSamplerType
@@ -141,13 +158,59 @@ def _surface_master(name, world):
     c2 = _expr(m, unreal.MaterialExpressionMultiply, -350, -350)
     mel.connect_material_expressions(c1, "", c2, "A")
     mel.connect_material_expressions(var, "", c2, "B")
-    mel.connect_material_property(c2, "", unreal.MaterialProperty.MP_BASE_COLOR)
-
     rmul = _expr(m, unreal.MaterialExpressionScalarParameter, -650, 420, parameter_name="RoughnessScale", default_value=1.0)
     r = _expr(m, unreal.MaterialExpressionMultiply, -500, 350)
     mel.connect_material_expressions(a, "G", r, "A")
     mel.connect_material_expressions(rmul, "", r, "B")
-    mel.connect_material_property(r, "", unreal.MaterialProperty.MP_ROUGHNESS)
+
+    # Weather: rain darkens and makes everything glossy (wet streets reflect with ray tracing),
+    # snow settles on surfaces that face up.
+    mpc = ensure_weather_mpc()
+    wet = _expr(m, unreal.MaterialExpressionCollectionParameter, -350, 800, collection=mpc, parameter_name="Wetness")
+    snow = _expr(m, unreal.MaterialExpressionCollectionParameter, -350, 900, collection=mpc, parameter_name="SnowCover")
+    dark = _expr(m, unreal.MaterialExpressionConstant, -350, 1000, r=0.55)
+    one = _expr(m, unreal.MaterialExpressionConstant, -350, 1060, r=1.0)
+    wdark = _expr(m, unreal.MaterialExpressionLinearInterpolate, -200, 900)
+    mel.connect_material_expressions(one, "", wdark, "A")
+    mel.connect_material_expressions(dark, "", wdark, "B")
+    mel.connect_material_expressions(wet, "", wdark, "Alpha")
+    c3 = _expr(m, unreal.MaterialExpressionMultiply, -50, -350)
+    mel.connect_material_expressions(c2, "", c3, "A")
+    mel.connect_material_expressions(wdark, "", c3, "B")
+    # snow mask: up-facing (world normal Z) x cover
+    vn = _expr(m, unreal.MaterialExpressionVertexNormalWS, -350, 1150)
+    vz = _expr(m, unreal.MaterialExpressionComponentMask, -200, 1150, r=False, g=False, b=True, a=False)
+    mel.connect_material_expressions(vn, "", vz, "")
+    up = _expr(m, unreal.MaterialExpressionSmoothStep, -50, 1150)
+    k1 = _expr(m, unreal.MaterialExpressionConstant, -200, 1230, r=0.55)
+    k2 = _expr(m, unreal.MaterialExpressionConstant, -200, 1290, r=0.85)
+    mel.connect_material_expressions(k1, "", up, "Min")
+    mel.connect_material_expressions(k2, "", up, "Max")
+    mel.connect_material_expressions(vz, "", up, "Value")
+    smask = _expr(m, unreal.MaterialExpressionMultiply, 100, 1100)
+    mel.connect_material_expressions(up, "", smask, "A")
+    mel.connect_material_expressions(snow, "", smask, "B")
+    white = _expr(m, unreal.MaterialExpressionConstant3Vector, 100, 1000, constant=unreal.LinearColor(0.85, 0.87, 0.9, 1))
+    c4 = _expr(m, unreal.MaterialExpressionLinearInterpolate, 250, -350)
+    mel.connect_material_expressions(c3, "", c4, "A")
+    mel.connect_material_expressions(white, "", c4, "B")
+    mel.connect_material_expressions(smask, "", c4, "Alpha")
+    mel.connect_material_property(c4, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    wetr = _expr(m, unreal.MaterialExpressionConstant, -350, 500, r=0.08)
+    r2 = _expr(m, unreal.MaterialExpressionLinearInterpolate, -200, 400)
+    mel.connect_material_expressions(r, "", r2, "A")
+    mel.connect_material_expressions(wetr, "", r2, "B")
+    wet85 = _expr(m, unreal.MaterialExpressionMultiply, -350, 600)
+    mel.connect_material_expressions(wet, "", wet85, "A")
+    k85 = _expr(m, unreal.MaterialExpressionConstant, -500, 600, r=0.85)
+    mel.connect_material_expressions(k85, "", wet85, "B")
+    mel.connect_material_expressions(wet85, "", r2, "Alpha")
+    snowr = _expr(m, unreal.MaterialExpressionConstant, 100, 500, r=0.75)
+    r3 = _expr(m, unreal.MaterialExpressionLinearInterpolate, 250, 400)
+    mel.connect_material_expressions(r2, "", r3, "A")
+    mel.connect_material_expressions(snowr, "", r3, "B")
+    mel.connect_material_expressions(smask, "", r3, "Alpha")
+    mel.connect_material_property(r3, "", unreal.MaterialProperty.MP_ROUGHNESS)
     mmul = _expr(m, unreal.MaterialExpressionScalarParameter, -650, 520, parameter_name="MetallicScale", default_value=1.0)
     mt = _expr(m, unreal.MaterialExpressionMultiply, -500, 480)
     mel.connect_material_expressions(a, "B", mt, "A")
