@@ -323,15 +323,19 @@ def p_CafeTable(k, m):
 
 @prop
 def p_LectureSeats(k, m):
-    """Row of 6 auditorium seats with a writing table in front (+X)."""
+    """Row of 6 auditorium seats with a writing table in front (+X): padded seat and back shells, side standards."""
     for i in range(6):
         y = -1.5 + i * 0.6
-        k.box((0, y, 0.45), (0.45, 0.5, 0.08), m.fabric_red)
-        k.box((-0.22, y, 0.8), (0.08, 0.5, 0.6), m.fabric_red, rot=(0, -10, 0))
-    for y in (-1.8, -0.6, 0.6, 1.8):
-        k.box((0, y, 0.35), (0.5, 0.05, 0.7), m.dark)
-    k.box((0.45, 0, 0.78), (0.35, 3.6, 0.03), m.lwood)
+        k.loft([(x, 0.41, 0.49 + 0.01 * (1 - abs(x) / 0.22), 0.24) for x in [-0.22 + 0.44 * i / 6 for i in range(7)]], m.fabric_red, segs=20, power=3.0, y0=y)
+        k.loft([(x, 0.52 + (x + 0.31) * 0.2, 1.08 + (x + 0.31) * 0.2, 0.24) for x in (-0.31, -0.27, -0.23)], m.fabric_red, segs=20, power=3.0, y0=y)
+        k.loft([(-0.335, 0.52, 1.08, 0.235), (-0.315, 0.52, 1.08, 0.235)], m.dark, segs=16, power=4.0, y0=y)
+    for y in (-1.8, -1.2, -0.6, 0.0, 0.6, 1.2, 1.8):
+        k.loft([(x, 0.0, 0.62 - 0.1 * abs(x) / 0.25, 0.025) for x in [-0.25 + 0.5 * i / 6 for i in range(7)]], m.dark, segs=12, power=4.0, y0=y)
+        k.box((0.0, y, 0.64), (0.3, 0.06, 0.04), m.lwood)
+    k.loft([(x, 0.765, 0.795, 1.8) for x in [0.28 + 0.34 * i / 4 for i in range(5)]], m.lwood, segs=24, power=6.0)
     k.box((0.6, 0, 0.4), (0.03, 3.6, 0.78), m.lwood)
+    for y in (-1.5, -0.3, 0.9):
+        k.box((0.585, y + 0.3, 0.08), (0.005, 0.12, 0.05), m.white)
 
 
 @prop
