@@ -260,6 +260,8 @@ protected:
 	float LastShotTime = -100.f;
 	float CycleStart = -100.f;   // pump or bolt cycle after a shot
 	bool bCycleBolt = false;
+	float TPSprint = 0.f;
+	float LastRemoteShotTime = -100.f;
 	float StepDistance = 0.f;
 	FVector2D LookSwayInput = FVector2D::ZeroVector;
 	FRotator SwayRot = FRotator::ZeroRotator;

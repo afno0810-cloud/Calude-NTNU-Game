@@ -873,6 +873,7 @@ void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVe
 {
 	if (!bSilent) NoteShotForRadio(Start);
 	if (IsLocallyControlled()) return; // shooter already drew it
+	LastRemoteShotTime = GetWorld()->GetTimeSeconds();
 	{
 		const FGSWeaponSlot* W = GetCurrentWeapon();
 		GSAudio::PlayShotFor(this, W ? GetStats(*W).Class : EGSWeaponClass::Rifle, bSilent, Start);
@@ -1362,7 +1363,16 @@ void AGSCharacter::UpdateItemUse(float Dt)
 	const bool bDrink = Def->Thirst > 0.f && Def->Hunger <= 0.f;
 	const bool bPills = Id.Contains(TEXT("Pill")) || Id.Contains(TEXT("Painkillers")) || Id.Contains(TEXT("Snus")) || Id.Contains(TEXT("Nicotine"));
 	const bool bWrap = Id.Contains(TEXT("Bandage")) || Id.Contains(TEXT("Plaster"));
-	if (Def->Cat == EGSItemCat::Food && bDrink)
+	if (Def->Cat == EGSItemCat::Throwable)
+	{
+		// pull the pin (small jerk), cock the arm back over the shoulder, then the throw goes
+		const float Pin = Bump(T, 0.15f, 0.35f);
+		const float Back = Ease(Phase01(T, 0.45f, 0.85f));
+		const float Fwd = Ease(Phase01(T, 0.88f, 1.f));
+		P = Hold + FVector(-2.f, 0.f, 3.f) * Pin + FVector(-14.f, 10.f, 20.f) * Back + FVector(30.f, -14.f, -6.f) * Fwd;
+		R = FRotator(-35.f * Back + 50.f * Fwd, -20.f, 20.f * Pin);
+	}
+	else if (Def->Cat == EGSItemCat::Food && bDrink)
 	{
 		// bottle up to the mouth and tip it back, small sips
 		const float Up = FMath::Clamp((T - 0.15f) / 0.15f, 0.f, 1.f) * FMath::Clamp((0.92f - T) / 0.12f, 0.f, 1.f);
@@ -2497,6 +2507,22 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		TPWeaponMesh->SetVisibility(bVisible && GetCurrentWeapon() != nullptr);
 		VestMesh->SetVisibility(bVisible && !BodyArmor.IsNone());
 		HelmetMesh->SetVisibility(bVisible && !Helmet.IsNone());
+	}
+
+	// Other players' weapons: held at the shoulder, pointing where they aim (up/down), lowered when
+	// sprinting, kicking back when they shoot, bobbing with their steps.
+	if (!IsLocallyControlled() && !bDead && GetNetMode() != NM_DedicatedServer)
+	{
+		const float AimPitch = FRotator::NormalizeAxis(GetBaseAimRotation().Pitch);
+		const float Spd = GetVelocity().Size2D();
+		TPSprint = FMath::FInterpTo(TPSprint, bSprinting ? 1.f : 0.f, DeltaSeconds, 6.f);
+		const float Since = GetWorld()->GetTimeSeconds() - LastRemoteShotTime;
+		const float Kick = Since < 0.3f ? FMath::Exp(-Since * 14.f) : 0.f;
+		const float Bob = FMath::Sin(GetWorld()->GetTimeSeconds() * (bSprinting ? 13.f : 8.5f)) * FMath::Min(Spd / 600.f, 1.f);
+		const FVector Shoulder(5.f, 18.f, bIsCrouched ? 10.f : 48.f);
+		const FRotator Aim(FMath::Lerp(AimPitch, -35.f, TPSprint) + 8.f * Kick, FMath::Lerp(0.f, -40.f, TPSprint), 0.f);
+		TPWeaponMesh->SetRelativeLocation(Shoulder + Aim.RotateVector(FVector(30.f - 6.f * Kick, 0.f, -6.f)) + FVector(0.f, 0.f, Bob * 2.f));
+		TPWeaponMesh->SetRelativeRotation(Aim);
 	}
 
 	if (IsLocallyControlled())
