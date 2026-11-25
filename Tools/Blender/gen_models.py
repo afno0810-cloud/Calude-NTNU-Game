@@ -720,8 +720,8 @@ def build_vest(p, m):
     loop = [(-0.135 - th / 2 - 0.005, math.cos(t) * 0.04, 0.15 + math.sin(t) * 0.03) for t in [math.radians(a) for a in range(0, 181, 20)]]
     tube("Drag", loop, [0.007] * len(loop), dark, segs=8)
     if p.get("collar"):
-        neck = [(math.cos(t) * 0.11, math.sin(t) * 0.13, 0.23) for t in [math.radians(a) for a in range(-150, 151, 15)]]
-        tube("Collar", neck, [0.035] * len(neck), c, segs=12, squash=(0.6, 1.0))
+        # throat protector hanging under the front panel and padded shoulder armour
+        box("Throat", (0.02, 0.12, 0.07), (0.15, 0, 0.19), c, rot=(0, -15, 0), bevel=0.012)
         for sy in (-1, 1):
             box(f"Shoulder{sy}", (0.16, 0.08, 0.03), (0.0, sy * 0.18, 0.21), c, bevel=0.012)
     return None
