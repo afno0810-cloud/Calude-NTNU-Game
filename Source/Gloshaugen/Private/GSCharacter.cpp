@@ -1324,6 +1324,8 @@ static FVector KeyPath(float T, const TArray<FGSKey>& Keys)
 	return Keys.Last().V;
 }
 
+static UStaticMesh* GSFXMesh(const TCHAR* Name); // defined next to SpawnShellFX
+
 void AGSCharacter::UpdateArms(float Dt, const FGSWeaponStats* S, float ReloadT, bool bShellReload)
 {
 	const FGSWeaponSlot* W = GetCurrentWeapon();
