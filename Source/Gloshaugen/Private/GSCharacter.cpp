@@ -1981,6 +1981,46 @@ void AGSCharacter::UpdateLocalVisuals(float DeltaSeconds)
 	{
 		AddControllerYawInput(FMath::Sin(T * 0.9f) * 0.03f);
 	}
+
+	// Camera animation on top of the view (does not move the aim): lean into strafes, flinch when hit,
+	// dip on landing (harder falls dip more), slow breathing that gets heavier when hurt or out of breath.
+	const float Dt = FMath::Min(DeltaSeconds, 0.05f);
+	const FVector Vel = GetVelocity();
+	const float Right = FVector::DotProduct(Vel, GetActorRightVector()) / FMath::Max(WalkSpeed, 1.f);
+	CamLean = FMath::FInterpTo(CamLean, bDead ? 0.f : FMath::Clamp(Right, -1.5f, 1.5f) * 1.4f, Dt, 6.f);
+
+	if (LastDamageTakenTime > FlinchSeenTime + 0.01f)
+	{
+		FlinchSeenTime = LastDamageTakenTime;
+		FlinchStart = T;
+		FlinchSign = FMath::RandBool() ? 1.f : -1.f;
+	}
+	const float FA = T - FlinchStart;
+	const float Flinch = FA < 0.6f ? FMath::Exp(-FA * 7.f) * FMath::Sin(FA * 30.f) : 0.f;
+
+	const bool bFalling = GetCharacterMovement()->IsFalling();
+	if (bFalling) CamFallSpeed = FMath::Max(CamFallSpeed, -Vel.Z);
+	if (bCamWasFalling && !bFalling)
+	{
+		CamDipVel -= FMath::Clamp(CamFallSpeed * 0.25f, 40.f, 260.f);
+		CamFallSpeed = 0.f;
+	}
+	bCamWasFalling = bFalling;
+	CamDipVel += (-CamDip * 180.f - CamDipVel * 18.f) * Dt;
+	CamDip += CamDipVel * Dt;
+
+	const float Hurt = 1.f - FMath::Clamp(Health / FMath::Max(MaxHealth, 1.f), 0.f, 1.f);
+	const float Tired = 1.f - Stamina / 100.f;
+	const float BreathRate = 1.4f + 1.6f * FMath::Max(Hurt, Tired);
+	const float BreathAmp = (bAiming ? 0.05f : 0.15f) * (1.f + 2.f * FMath::Max(Hurt, Tired));
+	const float Breath = FMath::Sin(T * BreathRate) * BreathAmp;
+
+	Camera->ClearAdditiveOffset();
+	if (!bDead)
+	{
+		const FRotator CamRot(Breath + Flinch * 2.5f, Flinch * FlinchSign * 1.2f, CamLean + Flinch * FlinchSign * 3.f);
+		Camera->AddAdditiveOffset(FTransform(CamRot, FVector(0.f, 0.f, CamDip)), 0.f);
+	}
 }
 
 void AGSCharacter::Tick(float DeltaSeconds)

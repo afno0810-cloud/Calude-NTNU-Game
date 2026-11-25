@@ -223,6 +223,15 @@ protected:
 	float AimBlend = 0.f;
 	float SprintBlend = 0.f;
 	float BobTime = 0.f;
+	// Camera animation (local only): strafe lean, hit flinch, landing dip, breathing
+	float CamLean = 0.f;
+	float CamDip = 0.f;
+	float CamDipVel = 0.f;
+	float CamFallSpeed = 0.f;
+	bool bCamWasFalling = false;
+	float FlinchSeenTime = -100.f;
+	float FlinchStart = -100.f;
+	float FlinchSign = 1.f;
 	FVector2D LookSwayInput = FVector2D::ZeroVector;
 	FRotator SwayRot = FRotator::ZeroRotator;
 	FVector KickPos = FVector::ZeroVector;

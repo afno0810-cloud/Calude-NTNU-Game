@@ -224,5 +224,10 @@ Nyeste runde øverst.
 202. Tre steinstørrelser med flate bruddflater
 203. 30 runde blomsterbed med steinkant
 204. Blomster i rødt, gult, hvitt og blått
+205. Kameraet lener seg inn i sidesteg
+206. Kameraet rykker til når du blir truffet
+207. Kameraet dukker ned når du lander, mer etter høye fall
+208. Pusting i kameraet, tyngre når du er skadet eller sliten
+209. Roligere pust når du sikter
 
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*
