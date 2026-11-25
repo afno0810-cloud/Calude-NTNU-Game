@@ -421,7 +421,9 @@ def build_rifle(p, m):
     bz = top - rh * 0.4
     br = p.get("barrel_r", 0.009)
     blen = p["barrel"]
-    box("Receiver", (x1 - x0, 0.05, rh), ((x0 + x1) / 2, 0, top - rh / 2), m["steel"], bevel=0.003)
+    # receiver with softly rounded corners (machined/stamped look rather than a sharp block)
+    loft("Receiver", [(x0 + (x1 - x0) * t, top - rh, top - (0.003 if t < 0.02 or t > 0.98 else 0.0), 0.025) for t in [i / 10 for i in range(11)]],
+         m["steel"], segs=28, power=6.0)
     box("EjectionPort", (0.07, 0.052, 0.015), (0.03, 0, top - 0.02), m["dark"], bevel=0)
     # --- detail pass: split line, bolt in the port, pins, charging handle, selector, magwell, sling swivels
     box("SplitLine", (x1 - x0 - 0.01, 0.0515, 0.002), ((x0 + x1) / 2, 0, top - rh * 0.55), m["dark"], bevel=0)
