@@ -117,6 +117,21 @@ def build_pistol(p, m):
     for i in range(6):
         box(f"Serr{i}", (0.003, 0.03, h * 0.7), (-0.05 + i * 0.007, 0, 0.012 + h / 2), m["dark"], bevel=0)
     box("Frame", (s * 0.8, 0.026, 0.022), (s * 0.4 - 0.06, 0, 0.0), frame)
+    # --- detail pass: ejection port with brass, front serrations, slide stop, takedown, accessory rail, beavertail
+    box("Port", (0.035, 0.03, h * 0.45), (0.0, 0.002, 0.012 + h * 0.72), m["dark"], bevel=0)
+    box("PortBrass", (0.022, 0.026, 0.008), (0.0, 0.003, 0.012 + h * 0.7), m["brass"], bevel=0.001)
+    for i in range(4):
+        box(f"FSerr{i}", (0.003, 0.0305, h * 0.6), (s - 0.11 + i * 0.007, 0, 0.012 + h / 2), m["dark"], bevel=0)
+    box("SlideStop", (0.025, 0.004, 0.006), (0.01, -0.0145, 0.008), m["steel"], bevel=0.001)
+    cyl("Takedown", 0.004, 0.028, (0.04, 0, 0.005), m["steel"], axis="Y", verts=10)
+    box("Rail", (0.04, 0.02, 0.006), (s * 0.62 - 0.06, 0, -0.012), frame)
+    for i in range(3):
+        box(f"RailSlot{i}", (0.004, 0.021, 0.004), (s * 0.62 - 0.075 + i * 0.012, 0, -0.016), m["dark"], bevel=0)
+    box("Beavertail", (0.025, 0.026, 0.01), (-0.07, 0, 0.0), frame, rot=(0, 15, 0))
+    box("MagRelease", (0.008, 0.004, 0.008), (-0.004, -0.0145, -0.015), m["steel"])
+    for side in (-1, 1):
+        prism(f"GripPanel{side}", [(-0.058, -0.012), (-0.008, -0.012), (-0.024, -0.098), (-0.074, -0.094)], 0.003,
+              m["rubber"], y=side * 0.0155)
     cyl("Bore", 0.006, 0.01, (s - 0.06, 0, 0.012 + h * 0.6), m["dark"])
     prism("Grip", [(-0.06, 0.0), (0.0, 0.0), (-0.02, -0.11), (-0.08, -0.105)], 0.03, frame)
     box("MagBase", (0.05, 0.031, 0.01), (-0.05, 0, -0.108), m["dark"], rot=(0, -15, 0))
@@ -160,17 +175,35 @@ def build_rifle(p, m):
     bz = top - rh * 0.4
     br = p.get("barrel_r", 0.009)
     blen = p["barrel"]
-    box("Receiver", (x1 - x0, 0.05, rh), ((x0 + x1) / 2, 0, top - rh / 2), m["steel"])
+    box("Receiver", (x1 - x0, 0.05, rh), ((x0 + x1) / 2, 0, top - rh / 2), m["steel"], bevel=0.003)
     box("EjectionPort", (0.07, 0.052, 0.015), (0.03, 0, top - 0.02), m["dark"], bevel=0)
+    # --- detail pass: split line, bolt in the port, pins, charging handle, selector, magwell, sling swivels
+    box("SplitLine", (x1 - x0 - 0.01, 0.0515, 0.002), ((x0 + x1) / 2, 0, top - rh * 0.55), m["dark"], bevel=0)
+    box("BoltFace", (0.05, 0.048, 0.011), (0.03, 0.002, top - 0.02), m["chrome"], bevel=0.001)
+    box("ForwardAssist", (0.022, 0.012, 0.016), (x0 + 0.05, 0.03, top - 0.018), m["dark"], bevel=0.002)
+    for i, px in enumerate((x0 + 0.03, (x0 + x1) / 2 + 0.02, x1 - 0.03)):
+        cyl(f"Pin{i}", 0.0035, 0.054, (px, 0, top - rh * 0.72), m["dark"], axis="Y", verts=10)
+    box("ChargingHandle", (0.03, 0.01, 0.012), (x1 - 0.04, 0.03, top - 0.012), m["dark"], bevel=0.002)
+    box("Selector", (0.016, 0.006, 0.01), (-0.01, -0.028, -0.012), m["steel"], rot=(0, 20, 0), bevel=0.001)
+    box("MagRelease", (0.01, 0.006, 0.01), (0.05, 0.028, top - rh - 0.005), m["dark"])
+    if p.get("mag", "none") not in ("none", "boxbelt", "drum"):
+        box("Magwell", (0.05, 0.034, 0.03), (p.get("magx", 0.08), 0, top - rh - 0.008), m["steel"], bevel=0.003)
+    box("SlingSwivel", (0.012, 0.004, 0.018), (x0 - 0.02, 0.026, top - rh * 0.5), m["dark"])
     # barrel and handguard
     hlen, hmat, hstyle = p["hg"]
     hmat = m[hmat]
     cyl("Barrel", br, blen + 0.01, (x1 + blen / 2, 0, bz), m["steel"])
+    cyl("BarrelStep", br * 1.25, blen * 0.25, (x1 + blen * 0.125, 0, bz), m["steel"], verts=20)
+    cyl("Crown", br * 0.55, 0.002, (x1 + blen + 0.0055, 0, bz), m["dark"], verts=16)
     if hstyle == "rail":
         box("Handguard", (hlen, 0.055, rh * 0.85), (x1 + hlen / 2, 0, bz), hmat)
         box("TopRail", (hlen + (x1 - x0), 0.022, 0.008), ((x0 + x1 + hlen) / 2, 0, top + 0.004), m["dark"])
         for i in range(int((hlen + x1 - x0) / 0.012)):
             box(f"RailSlot{i}", (0.004, 0.024, 0.004), (x0 + 0.006 + i * 0.012, 0, top + 0.008), m["dark"], bevel=0)
+        # M-LOK slots along the handguard sides and a vented bottom
+        for i in range(int(hlen / 0.045)):
+            for side in (-1, 1):
+                box(f"MLok{i}_{side}", (0.03, 0.004, 0.009), (x1 + 0.03 + i * 0.045, side * 0.027, bz), m["dark"], bevel=0)
     elif hstyle == "round":
         cyl("Handguard", 0.026, hlen, (x1 + hlen / 2, 0, bz), hmat, verts=16)
     elif hstyle == "ak":
@@ -237,13 +270,26 @@ def build_rifle(p, m):
     if mag == "straight":
         box("Mag", (0.035, 0.026, 0.17), (mxp, 0, mz - 0.08), m["dark"], rot=(0, -8, 0))
     elif mag in ("curved", "curved_s"):
+        # one smooth banana curve (was stacked boxes), with ribs and a floor plate
         n, sl = (5, 0.042) if mag == "curved" else (4, 0.036)
+        steps = 16
+        total = n * sl
         x, z = mxp, mz
-        for i in range(n):
-            ang = 8 + i * 7
-            box(f"Mag{i}", (0.038, 0.026, sl + 0.004), (x, 0, z - sl / 2), m["dark"], rot=(0, -ang, 0), bevel=0.001)
-            x += math.sin(math.radians(ang)) * sl
-            z -= math.cos(math.radians(ang)) * sl
+        rear, front, centre = [], [], []
+        for i in range(steps + 1):
+            ang = math.radians(8 + (i / steps) * (n - 1) * 7)
+            nx, nz = math.cos(ang), math.sin(ang)  # perpendicular to the path, pointing forward/down
+            rear.append((x - nx * 0.019, z - nz * 0.019 * 0.0 + 0.0))
+            front.append((x + nx * 0.019, z + 0.0))
+            centre.append((x, z, ang))
+            x += math.sin(ang) * total / steps
+            z -= math.cos(ang) * total / steps
+        prism("Mag", rear + front[::-1], 0.026, m["dark"], bevel=0.002)
+        for i in range(2, steps, 3):
+            cx, cz, ang = centre[i]
+            box(f"MagRib{i}", (0.036, 0.028, 0.004), (cx, 0, cz), m["dark"], rot=(0, -math.degrees(ang), 0), bevel=0.001)
+        cx, cz, ang = centre[-1]
+        box("MagFloor", (0.044, 0.03, 0.008), (cx, 0, cz), m["dark"], rot=(0, -math.degrees(ang), 0), bevel=0.002)
     elif mag == "drum":
         box("DrumNeck", (0.04, 0.03, 0.04), (mxp, 0, mz - 0.015), m["steel"])
         cyl("Drum", 0.075, 0.05, (mxp, 0, mz - 0.1), m["steel"], axis="Y", verts=32)

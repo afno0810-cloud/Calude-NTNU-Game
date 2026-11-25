@@ -43,7 +43,7 @@ def material(name, color, metallic=0.0, roughness=0.6):
     return mat
 
 
-def _finish(obj, mat, bevel=0.0, segments=2):
+def _finish(obj, mat, bevel=0.0, segments=3):
     if mat:
         obj.data.materials.append(mat)
     if bevel > 0:
@@ -54,7 +54,7 @@ def _finish(obj, mat, bevel=0.0, segments=2):
     return obj
 
 
-def box(name, size, loc, mat=None, rot=(0, 0, 0), bevel=0.002):
+def box(name, size, loc, mat=None, rot=(0, 0, 0), bevel=0.0025):
     """Box with size (x, y, z) centered at loc. rot in degrees."""
     bpy.ops.mesh.primitive_cube_add(size=1, location=loc, rotation=[math.radians(r) for r in rot])
     obj = bpy.context.active_object
@@ -96,6 +96,31 @@ def prism(name, profile_xz, width, mat=None, y=0.0, bevel=0.002):
     return _finish(obj, mat, bevel)
 
 
+ITEM_UV_TILE = 0.2  # meters per UV unit on hand-held items (textures repeat every 20 cm / Tiling)
+
+
+def box_uvs(obj, tile):
+    """World-scale box projection so textures (wood grain, steel, polymer) show at real size on every part.
+    Primitive and extruded parts otherwise have stretched or missing UVs, which makes them look flat."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    uv = bm.loops.layers.uv.verify()
+    bm.normal_update()
+    for f in bm.faces:
+        n = f.normal
+        ax = max(range(3), key=lambda i: abs(n[i]))
+        for loop in f.loops:
+            c = loop.vert.co
+            if ax == 0:
+                loop[uv].uv = (c.y / tile, c.z / tile)
+            elif ax == 1:
+                loop[uv].uv = (c.x / tile, c.z / tile)
+            else:
+                loop[uv].uv = (c.x / tile, c.y / tile)
+    bm.to_mesh(obj.data)
+    bm.free()
+
+
 def join_all(name):
     """Apply modifiers and join everything into one object."""
     bpy.ops.object.select_all(action="DESELECT")
@@ -113,6 +138,7 @@ def join_all(name):
     obj.data.name = name
     # Origin = world origin (the grip), so Unreal and previews agree on the pivot.
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    box_uvs(obj, ITEM_UV_TILE)
     bpy.ops.object.shade_smooth()
     # Keep hard edges crisp
     try:

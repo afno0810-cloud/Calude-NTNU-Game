@@ -517,7 +517,26 @@ def bark(seed):
     save("BirchBark", col2, 0.5 - 0.3 * lent, 0.7, nstrength=2.0)
 
 
+def gun_wood(seed):
+    """Oiled walnut/birch for gun stocks: one continuous grain along U (the length of the stock), no plank seams,
+    with darker figure, pores and a satin finish."""
+    rng = np.random.default_rng(seed)
+    x, y = grid()
+    warp = fbm(rng, 2.0, 1, 8) - 0.5
+    rings = np.sin((y * 30 + warp * 2.2 + 0.7 * (fbm(rng, 1.6, 2, 12) - 0.5)) * 2 * np.pi)
+    grain = 0.5 + 0.5 * rings
+    streak = np.repeat(fbm(rng, 1.0, 40, 400)[:, :1], N, 1)  # fine lines along x
+    figure = fbm(rng, 1.8, 2, 30)
+    t = 0.45 * grain + 0.3 * streak + 0.25 * figure
+    col = colorize((0.11, 0.05, 0.022), (0.05, 0.025, 0.012), t)
+    pores = (fbm(rng, 0.5, 300) > 0.78).astype(np.float32)
+    col *= (1 - 0.25 * pores)[..., None]
+    height = 0.6 * streak + 0.2 * grain - 0.3 * pores
+    save("GunWood", col, height, 0.35 + 0.15 * (1 - grain) + 0.2 * pores, nstrength=1.5, ao=np.ones((N, N)))
+
+
 JOBS = {
+    "GunWood": lambda: gun_wood(41),
     "Brick": lambda: brick("Brick", (0.42, 0.17, 0.11), (0.08, 0.04, 0.03), 1),
     "BrickBrown": lambda: brick("BrickBrown", (0.27, 0.15, 0.1), (0.05, 0.03, 0.02), 2, mortar=(0.45, 0.43, 0.4)),
     "BrickYellow": lambda: brick("BrickYellow", (0.62, 0.52, 0.36), (0.06, 0.05, 0.04), 3),

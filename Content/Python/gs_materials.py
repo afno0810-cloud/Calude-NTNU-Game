@@ -12,6 +12,7 @@
    (Poly Haven, Megascans, Fab) win over ours when their names match; see SCANNED_KEYWORDS.
 """
 import os
+import re
 import unreal
 
 PROJECT_DIR = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
@@ -20,7 +21,7 @@ GS = "/Game/GS"
 TEX = GS + "/Textures"
 MAT = GS + "/Materials"
 MODELS = "/Game/Models"
-VERSION = 5  # bump to rebuild the master materials
+VERSION = 6  # bump to rebuild the master materials
 
 mel = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -379,24 +380,26 @@ INSTANCES = {
     "Bark": ("Bark", (1, 1, 1), 1, 1, 0, "Surface"),
     "BirchBark": ("BirchBark", (1, 1, 1), 1, 1, 0, "Surface"),
     # weapons and items (Tools/Blender/gen_models.py and weapon_*.py use M_<name>)
-    "M_Wood": ("Wood", (1.25, 1.0, 0.8), 1.5, 0.8, 0, "Surface"),
-    "M_LightWood": ("Floor", (1.1, 1.0, 0.85), 1.5, 0.9, 0, "Surface"),
-    "M_Steel": ("Metal", (0.75, 0.76, 0.78), 3, 0.7, 1, "Surface"),
-    "M_DarkSteel": ("Metal", (0.1, 0.1, 0.11), 3, 1.1, 1, "Surface"),
-    "M_Chrome": ("Metal", (0.95, 0.95, 0.97), 3, 0.25, 1, "Surface"),
-    "M_Blade": ("Metal", (0.85, 0.86, 0.88), 4, 0.5, 1, "Surface"),
-    "M_BladeDark": ("Metal", (0.2, 0.2, 0.21), 4, 0.9, 1, "Surface"),
-    "M_Gold": ("Metal", (1.0, 0.75, 0.3), 3, 0.5, 1, "Surface"),
-    "M_Brass": ("Metal", (0.85, 0.62, 0.3), 3, 0.6, 1, "Surface"),
-    "M_BlackPolymer": ("Plastic", (0.05, 0.05, 0.055), 3, 1.3, 0, "Surface"),
-    "M_Bakelite": ("Plastic", (0.25, 0.1, 0.05), 3, 0.8, 0, "Surface"),
-    "M_OliveDrab": ("PaintedMetal", (0.22, 0.25, 0.14), 3, 1.1, 0, "Surface"),
-    "M_Tan": ("PaintedMetal", (0.55, 0.45, 0.3), 3, 1.1, 0, "Surface"),
-    "M_Leather": ("Leather", (1, 1, 1), 2, 1, 0, "Surface"),
-    "M_KatanaWrap": ("Fabric", (0.05, 0.05, 0.08), 6, 1, 0, "Surface"),
-    "M_Fabric": ("Fabric", (0.3, 0.32, 0.25), 3, 1, 0, "Surface"),
-    "M_Rubber": ("Rubber", (1, 1, 1), 3, 1, 0, "Surface"),
+    "M_Wood": ("GunWood", (1, 1, 1), 1.0, 1.0, 0, "Surface"),
+    "M_LightWood": ("GunWood", (1.7, 1.6, 1.5), 1.0, 1.0, 0, "Surface"),
+    "M_Steel": ("Metal", (0.2, 0.2, 0.21), 1.2, 0.75, 1, "Surface"),
+    "M_DarkSteel": ("Metal", (0.08, 0.08, 0.085), 1.2, 1.0, 1, "Surface"),
+    "M_Chrome": ("Metal", (0.95, 0.95, 0.97), 1.2, 0.25, 1, "Surface"),
+    "M_Blade": ("Metal", (0.85, 0.86, 0.88), 1.2, 0.5, 1, "Surface"),
+    "M_BladeDark": ("Metal", (0.2, 0.2, 0.21), 1.2, 0.9, 1, "Surface"),
+    "M_Gold": ("Metal", (1.0, 0.75, 0.3), 1.2, 0.5, 1, "Surface"),
+    "M_Brass": ("Metal", (0.85, 0.62, 0.3), 1.2, 0.6, 1, "Surface"),
+    "M_BlackPolymer": ("Plastic", (0.05, 0.05, 0.055), 1.2, 1.3, 0, "Surface"),
+    "M_Bakelite": ("Plastic", (0.25, 0.1, 0.05), 1.2, 0.8, 0, "Surface"),
+    "M_OliveDrab": ("PaintedMetal", (0.22, 0.25, 0.14), 1.2, 1.1, 0, "Surface"),
+    "M_Tan": ("PaintedMetal", (0.55, 0.45, 0.3), 1.2, 1.1, 0, "Surface"),
+    "M_Leather": ("Leather", (1, 1, 1), 1.2, 1, 0, "Surface"),
+    "M_KatanaWrap": ("Fabric", (0.05, 0.05, 0.08), 4, 1, 0, "Surface"),
+    "M_Fabric": ("Fabric", (0.3, 0.32, 0.25), 2, 1, 0, "Surface"),
+    "M_Rubber": ("Rubber", (1, 1, 1), 1.2, 1, 0, "Surface"),
     "M_Paper": ("Plastic", (1.2, 1.18, 1.1), 1, 1.5, 0, "Surface"),
+    "M_White": ("Plastic", (1.15, 1.15, 1.15), 1.2, 1, 0, "Surface"),
+    "M_Red": ("PaintedMetal", (0.9, 0.05, 0.04), 1.2, 0.9, 0, "Surface"),
     "Leather": ("Leather", (1, 1, 1), 1, 1, 0, "Surface"),
     # lights and screens (glow; Lumen uses them to light the rooms)
     "LightPanel": ("Plastic", (1.2, 1.2, 1.2), 1, 1, 0, "Surface", 12.0),
@@ -576,8 +579,47 @@ def _scanned_materials():
     return found
 
 
+_COLOR_SLOT = re.compile(r"^M_C_(\d\d)(\d\d)(\d\d)_(\d)$")
+
+
+def ensure_color_instance(base):
+    """Items made with col((r, g, b), metallic) get slot M_C_rrggbb_m (0-99 per channel). Give each its own
+    textured instance: plastic micro detail for paint/plastic, brushed metal when metallic."""
+    m = _COLOR_SLOT.match(base)
+    if not m:
+        return None
+    r, g, b, met = (int(x) for x in m.groups())
+    name = f"MI_GS_{base[2:]}"
+    path = f"{MAT}/{name}"
+    if eal.does_asset_exist(path):
+        return f"{path}.{name}"
+    metallic = met >= 5
+    texset, base_val = ("Metal", 0.56) if metallic else ("Plastic", 0.75)
+    mi = tools.create_asset(name, MAT, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    parent = eal.load_asset(f"{MAT}/M_GS_Surface")
+    if not mi or not parent:
+        return None
+    mel.set_material_instance_parent(mi, parent)
+    for param, suffix in (("BaseColorTex", "_D"), ("NormalTex", "_N"), ("ARMTex", "_ARM")):
+        t = tex(f"T_GS_{texset}{suffix}")
+        if t:
+            mel.set_material_instance_texture_parameter_value(mi, param, t)
+    mel.set_material_instance_vector_parameter_value(
+        mi, "Tint", unreal.LinearColor(r / 99 / base_val, g / 99 / base_val, b / 99 / base_val, 1))
+    mel.set_material_instance_scalar_parameter_value(mi, "Tiling", 1.2)
+    mel.set_material_instance_scalar_parameter_value(mi, "RoughnessScale", 0.8 if metallic else 1.0)
+    mel.set_material_instance_scalar_parameter_value(mi, "MetallicScale", 1.0 if metallic else 0.0)
+    eal.save_loaded_asset(mi)
+    return f"{path}.{name}"
+
+
 def pick_material(slot, scanned):
     base = slot.split(".")[0]
+    if base in ("M_Glass", "M_Lens"):
+        g = "Glass" if base == "M_Glass" else "GlassDark"
+        return f"{MAT}/MI_GS_{g}.MI_GS_{g}"
+    if base.startswith("M_C_"):
+        return ensure_color_instance(base)
     for word in SCANNED_KEYWORDS.get(base, []):
         hits = [m for m in scanned if word in m[0]]
         if hits:
