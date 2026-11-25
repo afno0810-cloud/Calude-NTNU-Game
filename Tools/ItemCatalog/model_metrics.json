@@ -1,0 +1,466 @@
+{
+ "AG3": {
+  "mesh": "SM_AG3",
+  "muzzle": 0.9,
+  "sight": 0.065
+ },
+ "AK47": {
+  "mesh": "SM_AK47",
+  "muzzle": 0.515,
+  "sight": 0.05
+ },
+ "Adrenaline": {
+  "mesh": "SM_Adrenaline"
+ },
+ "AmmoBox": {
+  "mesh": "SM_AmmoBox"
+ },
+ "Apple": {
+  "mesh": "SM_Apple"
+ },
+ "ArmorPill": {
+  "mesh": "SM_ArmorPill"
+ },
+ "ArmorPlate": {
+  "mesh": "SM_ArmorPlate"
+ },
+ "Baguette": {
+  "mesh": "SM_Baguette"
+ },
+ "Banana": {
+  "mesh": "SM_Banana"
+ },
+ "Bandage": {
+  "mesh": "SM_Bandage"
+ },
+ "Barrett": {
+  "mesh": "SM_Barrett",
+  "muzzle": 1.2539999999999998,
+  "sight": 0.15
+ },
+ "BaseballBat": {
+  "mesh": "SM_BaseballBat",
+  "muzzle": 0.7,
+  "sight": 0.0
+ },
+ "Berserk": {
+  "mesh": "SM_Berserk"
+ },
+ "BigBackpack": {
+  "mesh": "SM_BigBackpack"
+ },
+ "BikeHelmet": {
+  "mesh": "SM_BikeHelmet"
+ },
+ "Binoculars": {
+  "mesh": "SM_Binoculars"
+ },
+ "Bloodthirst": {
+  "mesh": "SM_Bloodthirst"
+ },
+ "Bren": {
+  "mesh": "SM_Bren",
+  "muzzle": 0.73,
+  "sight": 0.06
+ },
+ "Brunost": {
+  "mesh": "SM_Brunost"
+ },
+ "Bulk": {
+  "mesh": "SM_Bulk"
+ },
+ "C4": {
+  "mesh": "SM_C4"
+ },
+ "CarlGustaf": {
+  "mesh": "SM_CarlGustaf",
+  "muzzle": 0.57,
+  "sight": 0.14
+ },
+ "ChocoBar": {
+  "mesh": "SM_ChocoBar"
+ },
+ "Coffee": {
+  "mesh": "SM_Coffee"
+ },
+ "CombatHelmet": {
+  "mesh": "SM_CombatHelmet"
+ },
+ "Compass": {
+  "mesh": "SM_Compass"
+ },
+ "Crossbow": {
+  "mesh": "SM_Crossbow",
+  "muzzle": 0.45,
+  "sight": 0.075
+ },
+ "Crowbar": {
+  "mesh": "SM_Crowbar",
+  "muzzle": 0.62,
+  "sight": 0.0
+ },
+ "Defib": {
+  "mesh": "SM_Defib"
+ },
+ "DesertEagle": {
+  "mesh": "SM_DesertEagle",
+  "muzzle": 0.21000000000000002,
+  "sight": 0.063
+ },
+ "DoubleBarrel": {
+  "mesh": "SM_DoubleBarrel",
+  "muzzle": 0.65,
+  "sight": 0.045
+ },
+ "Drom": {
+  "mesh": "SM_Drom"
+ },
+ "Drone": {
+  "mesh": "SM_Drone"
+ },
+ "EnergyDrink": {
+  "mesh": "SM_EnergyDrink"
+ },
+ "Exo": {
+  "mesh": "SM_Exo"
+ },
+ "ExtMag": {
+  "mesh": "SM_ExtMag"
+ },
+ "FAL": {
+  "mesh": "SM_FAL",
+  "muzzle": 0.5750000000000001,
+  "sight": 0.09000000000000001
+ },
+ "FishBalls": {
+  "mesh": "SM_FishBalls"
+ },
+ "Flashbang": {
+  "mesh": "SM_Flashbang"
+ },
+ "Flashlight": {
+  "mesh": "SM_Flashlight"
+ },
+ "Fokus": {
+  "mesh": "SM_Fokus"
+ },
+ "FragGrenade": {
+  "mesh": "SM_FragGrenade"
+ },
+ "FryingPan": {
+  "mesh": "SM_FryingPan",
+  "muzzle": 0.37,
+  "sight": 0.0
+ },
+ "Garand": {
+  "mesh": "SM_Garand",
+  "muzzle": 0.5800000000000001,
+  "sight": 0.04
+ },
+ "Ghost": {
+  "mesh": "SM_Ghost"
+ },
+ "Glock17": {
+  "mesh": "SM_Glock17",
+  "muzzle": 0.13,
+  "sight": 0.053
+ },
+ "Grandiosa": {
+  "mesh": "SM_Grandiosa"
+ },
+ "Grapple": {
+  "mesh": "SM_Grapple"
+ },
+ "GronnJar": {
+  "mesh": "SM_GronnJar"
+ },
+ "HK416": {
+  "mesh": "SM_HK416",
+  "muzzle": 0.475,
+  "sight": 0.08000000000000002
+ },
+ "HeavyVest": {
+  "mesh": "SM_HeavyVest"
+ },
+ "Hotdog": {
+  "mesh": "SM_Hotdog"
+ },
+ "Iskald": {
+  "mesh": "SM_Iskald"
+ },
+ "Kanelbolle": {
+  "mesh": "SM_Kanelbolle"
+ },
+ "Kar98k": {
+  "mesh": "SM_Kar98k",
+  "muzzle": 0.7400000000000001,
+  "sight": 0.05
+ },
+ "Katana": {
+  "mesh": "SM_Katana",
+  "muzzle": 0.8,
+  "sight": 0.0
+ },
+ "Kebab": {
+  "mesh": "SM_Kebab"
+ },
+ "Keycard": {
+  "mesh": "SM_Keycard"
+ },
+ "Knife": {
+  "mesh": "SM_Knife",
+  "muzzle": 0.19,
+  "sight": 0.0
+ },
+ "Krag": {
+  "mesh": "SM_Krag",
+  "muzzle": 0.84,
+  "sight": 0.05
+ },
+ "L96": {
+  "mesh": "SM_L96",
+  "muzzle": 0.84,
+  "sight": 0.08
+ },
+ "Laser": {
+  "mesh": "SM_Laser"
+ },
+ "LaughGas": {
+  "mesh": "SM_LaughGas"
+ },
+ "Lockpick": {
+  "mesh": "SM_Lockpick"
+ },
+ "Luger": {
+  "mesh": "SM_Luger",
+  "muzzle": 0.15,
+  "sight": 0.032
+ },
+ "Lunchbox": {
+  "mesh": "SM_Lunchbox"
+ },
+ "Lynet": {
+  "mesh": "SM_Lynet"
+ },
+ "M1911": {
+  "mesh": "SM_Pistol_M1911",
+  "muzzle": 0.17,
+  "sight": 0.045
+ },
+ "M79": {
+  "mesh": "SM_M79",
+  "muzzle": 0.42,
+  "sight": 0.075
+ },
+ "MG3": {
+  "mesh": "SM_MG3",
+  "muzzle": 0.82,
+  "sight": 0.06
+ },
+ "MP40": {
+  "mesh": "SM_MP40",
+  "muzzle": 0.34,
+  "sight": 0.035
+ },
+ "MP5": {
+  "mesh": "SM_MP5",
+  "muzzle": 0.24000000000000002,
+  "sight": 0.05
+ },
+ "Machete": {
+  "mesh": "SM_Machete",
+  "muzzle": 0.44,
+  "sight": 0.0
+ },
+ "Makarov": {
+  "mesh": "SM_Makarov",
+  "muzzle": 0.1,
+  "sight": 0.047999999999999994
+ },
+ "Medkit": {
+  "mesh": "SM_Medkit"
+ },
+ "Milk": {
+  "mesh": "SM_Milk"
+ },
+ "Minimi": {
+  "mesh": "SM_Minimi",
+  "muzzle": 0.655,
+  "sight": 0.065
+ },
+ "Molotov": {
+  "mesh": "SM_Molotov"
+ },
+ "Morphine": {
+  "mesh": "SM_Morphine"
+ },
+ "Musket": {
+  "mesh": "SM_Musket",
+  "muzzle": 1.05,
+  "sight": 0.04
+ },
+ "NVGoggles": {
+  "mesh": "SM_NVGoggles"
+ },
+ "Nicotine": {
+  "mesh": "SM_Nicotine"
+ },
+ "NightEye": {
+  "mesh": "SM_NightEye"
+ },
+ "Noodles": {
+  "mesh": "SM_Noodles"
+ },
+ "OldPizza": {
+  "mesh": "SM_OldPizza"
+ },
+ "OrangeSoda": {
+  "mesh": "SM_OrangeSoda"
+ },
+ "Oyet": {
+  "mesh": "SM_Oyet"
+ },
+ "PKM": {
+  "mesh": "SM_PKM",
+  "muzzle": 0.77,
+  "sight": 0.06
+ },
+ "PPSh": {
+  "mesh": "SM_PPSh",
+  "muzzle": 0.36,
+  "sight": 0.04
+ },
+ "Painkillers": {
+  "mesh": "SM_Painkillers"
+ },
+ "Parachute": {
+  "mesh": "SM_Parachute"
+ },
+ "Phoenix": {
+  "mesh": "SM_Phoenix"
+ },
+ "PistolKnife": {
+  "mesh": "SM_PistolKnife",
+  "muzzle": 0.15,
+  "sight": 0.045
+ },
+ "Plaster": {
+  "mesh": "SM_Plaster"
+ },
+ "PlateCarrier": {
+  "mesh": "SM_PlateCarrier"
+ },
+ "Pump": {
+  "mesh": "SM_Pump",
+  "muzzle": 0.615,
+  "sight": 0.04
+ },
+ "Radio": {
+  "mesh": "SM_Radio"
+ },
+ "RedDot": {
+  "mesh": "SM_RedDot"
+ },
+ "Regenerator": {
+  "mesh": "SM_Regenerator"
+ },
+ "Revolver": {
+  "mesh": "SM_Revolver",
+  "muzzle": 0.21,
+  "sight": 0.058
+ },
+ "SVD": {
+  "mesh": "SM_SVD",
+  "muzzle": 0.745,
+  "sight": 0.08
+ },
+ "Saiga": {
+  "mesh": "SM_Saiga",
+  "muzzle": 0.52,
+  "sight": 0.05500000000000001
+ },
+ "Salmon": {
+  "mesh": "SM_Salmon"
+ },
+ "Scope": {
+  "mesh": "SM_Scope"
+ },
+ "Skolebolle": {
+  "mesh": "SM_Skolebolle"
+ },
+ "Sledgehammer": {
+  "mesh": "SM_Sledgehammer",
+  "muzzle": 0.7,
+  "sight": 0.0
+ },
+ "SmallBackpack": {
+  "mesh": "SM_SmallBackpack"
+ },
+ "SmokeGrenade": {
+  "mesh": "SM_SmokeGrenade"
+ },
+ "Snus": {
+  "mesh": "SM_Snus"
+ },
+ "SoftVest": {
+  "mesh": "SM_SoftVest"
+ },
+ "StudentCard": {
+  "mesh": "SM_StudentCard"
+ },
+ "Suomi": {
+  "mesh": "SM_Suomi",
+  "muzzle": 0.5,
+  "sight": 0.04
+ },
+ "Suppressor": {
+  "mesh": "SM_Suppressor"
+ },
+ "SurgeryKit": {
+  "mesh": "SM_SurgeryKit"
+ },
+ "TacHelmet": {
+  "mesh": "SM_TacHelmet"
+ },
+ "TacVest": {
+  "mesh": "SM_TacVest"
+ },
+ "Taco": {
+  "mesh": "SM_Taco"
+ },
+ "Thompson": {
+  "mesh": "SM_Thompson",
+  "muzzle": 0.43500000000000005,
+  "sight": 0.045
+ },
+ "TripMine": {
+  "mesh": "SM_TripMine"
+ },
+ "Trophy": {
+  "mesh": "SM_Trophy"
+ },
+ "TurboPill": {
+  "mesh": "SM_TurboPill"
+ },
+ "Uzi": {
+  "mesh": "SM_Uzi",
+  "muzzle": 0.26,
+  "sight": 0.07
+ },
+ "VikingAxe": {
+  "mesh": "SM_VikingAxe",
+  "muzzle": 0.6,
+  "sight": 0.0
+ },
+ "VikingSword": {
+  "mesh": "SM_VikingSword",
+  "muzzle": 0.8,
+  "sight": 0.0
+ },
+ "Waffle": {
+  "mesh": "SM_Waffle"
+ },
+ "Water": {
+  "mesh": "SM_Water"
+ }
+}

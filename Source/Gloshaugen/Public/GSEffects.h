@@ -15,6 +15,10 @@ public:
 
 	static void SpawnTracer(UWorld* World, const FVector& Start, const FVector& End);
 	static void SpawnImpact(UWorld* World, const FVector& Location, const FVector& Normal);
+	static void SpawnMuzzleFlash(UWorld* World, const FVector& Location, const FVector& Dir, bool bSilent);
+	static void SpawnExplosion(UWorld* World, const FVector& Location, float Radius);
+	/** A plain colored sphere (smoke puffs, fire, flashes). */
+	static AGSShortFX* SpawnBlob(UWorld* World, const FVector& Location, const FVector& Scale, const FLinearColor& Color, float LifeSeconds);
 
 protected:
 	UPROPERTY() TObjectPtr<class UStaticMeshComponent> Mesh;

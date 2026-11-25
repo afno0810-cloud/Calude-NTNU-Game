@@ -1,8 +1,8 @@
 #include "GSPickup.h"
 #include "GSCharacter.h"
 #include "GSUtils.h"
-#include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
@@ -11,105 +11,175 @@ AGSPickup::AGSPickup()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
-	SetNetUpdateFrequency(5.f);
+	SetNetUpdateFrequency(2.f);
+	SetNetCullDistanceSquared(FMath::Square(25000.f));
 
-	Trigger = CreateDefaultSubobject<USphereComponent>(TEXT("Trigger"));
-	Trigger->InitSphereRadius(110.f);
-	Trigger->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
-	RootComponent = Trigger;
+	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	RootComponent = Root;
 
-	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-	Mesh->SetupAttachment(Trigger);
-	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	auto Visual = [this](const TCHAR* Name)
+	{
+		UStaticMeshComponent* C = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+		C->SetupAttachment(Root);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->SetGenerateOverlapEvents(false);
+		C->CanCharacterStepUpOn = ECB_No;
+		return C;
+	};
+	Mesh = Visual(TEXT("Mesh"));
+	Glow = Visual(TEXT("Glow"));
+	Beam = Visual(TEXT("Beam"));
+	Crate = Visual(TEXT("Crate"));
 
-	Glow = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Glow"));
-	Glow->SetupAttachment(Trigger);
-	Glow->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Glow->SetRelativeLocation(FVector(0.f, 0.f, -45.f));
 	Glow->SetRelativeScale3D(FVector(0.9f, 0.9f, 0.02f));
 	Glow->SetCastShadow(false);
+	Beam->SetRelativeLocation(FVector(0.f, 0.f, 150.f));
+	Beam->SetRelativeScale3D(FVector(0.04f, 0.04f, 4.f));
+	Beam->SetCastShadow(false);
+	Crate->SetRelativeLocation(FVector(0.f, 0.f, -20.f));
+	Crate->SetRelativeScale3D(FVector(0.9f, 0.6f, 0.5f));
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeF(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylF(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	Mesh->SetStaticMesh(CubeF.Object);
+	Crate->SetStaticMesh(CubeF.Object);
 	Glow->SetStaticMesh(CylF.Object);
+	Beam->SetStaticMesh(CylF.Object);
 }
 
 void AGSPickup::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AGSPickup, WeaponId);
+	DOREPLIFETIME(AGSPickup, ItemId);
+	DOREPLIFETIME(AGSPickup, Count);
 	DOREPLIFETIME(AGSPickup, bAvailable);
+	DOREPLIFETIME(AGSPickup, bLocked);
+}
+
+AGSPickup* AGSPickup::SpawnDropped(UWorld* World, const FVector& Location, FName ItemId, int32 Count, int32 Ammo, int32 Reserve, uint8 Attachments)
+{
+	if (!World || !GSItems::Find(ItemId) || Count <= 0) return nullptr;
+	// Put it on the floor
+	FVector Loc = Location;
+	FHitResult Hit;
+	if (World->LineTraceSingleByChannel(Hit, Location + FVector(0.f, 0.f, 50.f), Location - FVector(0.f, 0.f, 400.f), ECC_WorldStatic))
+	{
+		Loc = Hit.ImpactPoint + FVector(0.f, 0.f, 50.f);
+	}
+	FActorSpawnParameters P;
+	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AGSPickup* Pickup = World->SpawnActor<AGSPickup>(Loc, FRotator::ZeroRotator, P);
+	if (!Pickup) return nullptr;
+	Pickup->bRespawns = false;
+	Pickup->ItemId = ItemId;
+	Pickup->Count = Count;
+	Pickup->Ammo = Ammo;
+	Pickup->Reserve = Reserve;
+	Pickup->Attachments = Attachments;
+	Pickup->SetLifeSpan(180.f);
+	Pickup->OnRep_State();
+	return Pickup;
 }
 
 void AGSPickup::BeginPlay()
 {
 	Super::BeginPlay();
-	if (HasAuthority())
-	{
-		Trigger->OnComponentBeginOverlap.AddDynamic(this, &AGSPickup::OnOverlap);
-	}
+	OnRep_State();
+}
+
+void AGSPickup::Roll()
+{
+	ItemId = GSItems::RandomLoot(Rng, MinRarity);
+	const FGSItemDef* Def = GSItems::Find(ItemId);
+	Count = Def ? GSItems::PickupCount(*Def, Rng) : 1;
+	Ammo = Reserve = -1;
+	Attachments = 0;
+	bLocked = bIsCrate;
+	bAvailable = true;
 	OnRep_State();
 }
 
 void AGSPickup::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	if (GetNetMode() != NM_DedicatedServer)
+	if (GetNetMode() != NM_DedicatedServer && bAvailable && !bLocked)
 	{
-		Mesh->AddLocalRotation(FRotator(0.f, 90.f * DeltaSeconds, 0.f));
-		Mesh->SetRelativeLocation(FVector(0.f, 0.f, FMath::Sin(GetWorld()->GetTimeSeconds() * 2.f) * 8.f));
+		Mesh->AddLocalRotation(FRotator(0.f, 60.f * DeltaSeconds, 0.f));
+		Mesh->SetRelativeLocation(FVector(Mesh->GetRelativeLocation().X, Mesh->GetRelativeLocation().Y,
+			BaseMeshZ + FMath::Sin(GetWorld()->GetTimeSeconds() * 2.f) * 6.f));
 	}
 }
 
 void AGSPickup::OnRep_State()
 {
-	const FGSWeaponStats& S = GSWeapons::Get(WeaponId);
-	if (UStaticMesh* Model = GSWeapons::GetMesh(WeaponId))
+	const FGSItemDef* Def = GSItems::Find(ItemId);
+	const FLinearColor RarityCol = Def ? GSItems::RarityColor(Def->Rarity) : FLinearColor::Gray;
+
+	if (UStaticMesh* Model = GSItems::GetMesh(ItemId))
 	{
 		Mesh->SetStaticMesh(Model);
-		Mesh->SetRelativeScale3D(FVector(1.2f));
 		Mesh->EmptyOverrideMaterials();
+		// Small things (pills, cards) are scaled up so you can see them.
+		const float Size = Model->GetBounds().BoxExtent.GetMax() * 2.f;
+		const float Scale = FMath::Clamp(45.f / FMath::Max(Size, 1.f), 1.f, 4.f);
+		Mesh->SetRelativeScale3D(FVector(Scale));
+		// Center it over the ring
+		const FVector Center = Model->GetBounds().Origin * Scale;
+		Mesh->SetRelativeLocation(FVector(-Center.X, -Center.Y, -Center.Z));
+		BaseMeshZ = -Center.Z;
 	}
 	else
 	{
-		Mesh->SetRelativeScale3D(S.MeshScale);
-		GSUtils::SetColor(Mesh, S.Color);
+		Mesh->SetStaticMesh(GSUtils::Cube());
+		Mesh->SetRelativeScale3D(Def && Def->IsWeapon() ? FVector(0.7f, 0.06f, 0.15f) : FVector(0.25f));
+		Mesh->SetRelativeLocation(FVector::ZeroVector);
+		BaseMeshZ = 0.f;
+		GSUtils::SetColor(Mesh, RarityCol);
 	}
-	// Color of the ring shows how valuable it is (rarity system comes later).
-	GSUtils::SetColor(Glow, WeaponId == EGSWeaponId::AG3 ? FLinearColor(0.1f, 0.5f, 1.f) : FLinearColor(0.6f, 0.6f, 0.6f));
-	Mesh->SetVisibility(bAvailable);
-	Glow->SetVisibility(bAvailable);
-}
 
-void AGSPickup::OnOverlap(UPrimitiveComponent*, AActor* Other, UPrimitiveComponent*, int32, bool, const FHitResult&)
-{
-	TryGiveTo(Other);
-}
-
-void AGSPickup::TryGiveTo(AActor* Other)
-{
-	if (!HasAuthority() || !bAvailable) return;
-	AGSCharacter* C = Cast<AGSCharacter>(Other);
-	if (!C || C->bDead) return;
-	if (C->GiveWeapon(WeaponId))
+	GSUtils::SetColor(Glow, RarityCol * 2.f);
+	const bool bBeam = Def && Def->Rarity >= EGSRarity::Epic;
+	if (bBeam)
 	{
-		bAvailable = false;
-		OnRep_State();
-		GetWorldTimerManager().SetTimer(RespawnTimer, this, &AGSPickup::Respawn, RespawnSeconds, false);
+		GSUtils::SetColor(Beam, RarityCol * 6.f);
+		Beam->SetRelativeScale3D(FVector(0.04f, 0.04f, Def->Rarity >= EGSRarity::Legendary ? 6.f : 3.f));
+		Beam->SetRelativeLocation(FVector(0.f, 0.f, Def->Rarity >= EGSRarity::Legendary ? 250.f : 100.f));
 	}
+	GSUtils::SetColor(Crate, bLocked ? FLinearColor(0.12f, 0.16f, 0.1f) : FLinearColor(0.3f, 0.3f, 0.3f));
+
+	Mesh->SetVisibility(bAvailable && !bLocked);
+	Glow->SetVisibility(bAvailable);
+	Beam->SetVisibility(bAvailable && bBeam);
+	Crate->SetVisibility(bLocked);
+}
+
+void AGSPickup::Unlock()
+{
+	bLocked = false;
+	OnRep_State();
+}
+
+void AGSPickup::OnTaken(int32 Taken)
+{
+	Count -= Taken;
+	if (Count > 0)
+	{
+		OnRep_State();
+		return;
+	}
+	bAvailable = false;
+	OnRep_State();
+	if (!bRespawns)
+	{
+		Destroy();
+		return;
+	}
+	const float Delay = bIsCrate ? Rng.FRandRange(150.f, 240.f) : Rng.FRandRange(75.f, 150.f);
+	GetWorldTimerManager().SetTimer(RespawnTimer, this, &AGSPickup::Respawn, Delay, false);
 }
 
 void AGSPickup::Respawn()
 {
-	bAvailable = true;
-	OnRep_State();
-	// Someone may already be standing on it.
-	TArray<AActor*> Overlapping;
-	Trigger->GetOverlappingActors(Overlapping, AGSCharacter::StaticClass());
-	for (AActor* A : Overlapping)
-	{
-		TryGiveTo(A);
-		if (!bAvailable) break;
-	}
+	Roll();
 }

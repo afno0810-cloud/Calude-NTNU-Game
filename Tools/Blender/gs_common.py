@@ -19,6 +19,7 @@ OUT_DIR = os.path.join(ROOT, "SourceArt", "Models")
 
 def reset_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
+    _materials.clear()
     bpy.context.scene.unit_settings.system = "METRIC"
     bpy.context.scene.unit_settings.scale_length = 1.0
 
@@ -110,6 +111,8 @@ def join_all(name):
     obj = bpy.context.active_object
     obj.name = name
     obj.data.name = name
+    # Origin = world origin (the grip), so Unreal and previews agree on the pivot.
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     bpy.ops.object.shade_smooth()
     # Keep hard edges crisp
     try:

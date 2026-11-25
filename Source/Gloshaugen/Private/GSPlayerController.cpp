@@ -37,6 +37,14 @@ void AGSPlayerController::EnsureInputCreated()
 	ReloadAction = MakeAction(this, TEXT("IA_Reload"), EInputActionValueType::Boolean);
 	Slot1Action = MakeAction(this, TEXT("IA_Slot1"), EInputActionValueType::Boolean);
 	Slot2Action = MakeAction(this, TEXT("IA_Slot2"), EInputActionValueType::Boolean);
+	Slot3Action = MakeAction(this, TEXT("IA_Slot3"), EInputActionValueType::Boolean);
+	Slot4Action = MakeAction(this, TEXT("IA_Slot4"), EInputActionValueType::Boolean);
+	InteractAction = MakeAction(this, TEXT("IA_Interact"), EInputActionValueType::Boolean);
+	UseItemAction = MakeAction(this, TEXT("IA_UseItem"), EInputActionValueType::Boolean);
+	NextItemAction = MakeAction(this, TEXT("IA_NextItem"), EInputActionValueType::Boolean);
+	DropItemAction = MakeAction(this, TEXT("IA_DropItem"), EInputActionValueType::Boolean);
+	MeleeAction = MakeAction(this, TEXT("IA_Melee"), EInputActionValueType::Boolean);
+	InventoryAction = MakeAction(this, TEXT("IA_Inventory"), EInputActionValueType::Boolean);
 	NextWeaponAction = MakeAction(this, TEXT("IA_NextWeapon"), EInputActionValueType::Boolean);
 	ScoreboardAction = MakeAction(this, TEXT("IA_Scoreboard"), EInputActionValueType::Boolean);
 
@@ -72,6 +80,14 @@ void AGSPlayerController::EnsureInputCreated()
 	C->MapKey(ReloadAction, EKeys::R);
 	C->MapKey(Slot1Action, EKeys::One);
 	C->MapKey(Slot2Action, EKeys::Two);
+	C->MapKey(Slot3Action, EKeys::Three);
+	C->MapKey(Slot4Action, EKeys::Four);
+	C->MapKey(InteractAction, EKeys::E);
+	C->MapKey(UseItemAction, EKeys::F);
+	C->MapKey(NextItemAction, EKeys::Q);
+	C->MapKey(DropItemAction, EKeys::G);
+	C->MapKey(MeleeAction, EKeys::V);
+	C->MapKey(InventoryAction, EKeys::I);
 	C->MapKey(NextWeaponAction, EKeys::MouseScrollDown);
 	C->MapKey(NextWeaponAction, EKeys::MouseScrollUp);
 	C->MapKey(ScoreboardAction, EKeys::Tab);
@@ -95,6 +111,7 @@ void AGSPlayerController::SetupInputComponent()
 	{
 		EIC->BindAction(ScoreboardAction, ETriggerEvent::Started, this, &AGSPlayerController::ShowScoreboard);
 		EIC->BindAction(ScoreboardAction, ETriggerEvent::Completed, this, &AGSPlayerController::HideScoreboard);
+		EIC->BindAction(InventoryAction, ETriggerEvent::Started, this, &AGSPlayerController::ToggleInventory);
 	}
 }
 

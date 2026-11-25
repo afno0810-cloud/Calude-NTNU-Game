@@ -28,17 +28,71 @@ void AGSGameMode::BeginPlay()
 
 void AGSGameMode::SpawnPickups()
 {
-	for (const GSCampus::FPickupSpot& Spot : GSCampus::PickupSpots())
+	FRandomStream Rng(FMath::Rand());
+	int32 Total = 0;
+	auto Spawn = [&](const FVector& LocM, bool bCrate, EGSRarity MinRarity)
 	{
 		FActorSpawnParameters P;
 		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		const FVector Loc(Spot.X * 100.f, Spot.Y * 100.f, Spot.Z * 100.f + 60.f);
+		const FVector Loc = LocM * 100.f + FVector(0.f, 0.f, 60.f);
 		if (AGSPickup* Pickup = GetWorld()->SpawnActor<AGSPickup>(Loc, FRotator::ZeroRotator, P))
 		{
-			Pickup->WeaponId = Spot.Weapon;
-			Pickup->RespawnSeconds = Spot.Weapon == EGSWeaponId::AG3 ? 30.f : 20.f;
+			Pickup->Rng.Initialize(Rng.RandHelper(1 << 30));
+			Pickup->bIsCrate = bCrate;
+			Pickup->MinRarity = MinRarity;
+			Pickup->Roll();
+			++Total;
+		}
+	};
+
+	// Loot inside every building, on every floor. Stay away from walls and the stairwell corner (+X +Y).
+	const TArray<GSCampus::FBuilding>& Buildings = GSCampus::Buildings();
+	for (const GSCampus::FBuilding& B : Buildings)
+	{
+		if (!B.bEnterable) continue;
+		const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
+		const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X, B.Y, 0.f));
+		const float HX = B.SizeX * 0.5f - 2.f, HY = B.SizeY * 0.5f - 2.f;
+		const int32 PerFloor = FMath::Clamp(FMath::RoundToInt(B.SizeX * B.SizeY / 450.f), 2, 9);
+		for (int32 F = 0; F < Floors; ++F)
+		{
+			for (int32 I = 0; I < PerFloor; ++I)
+			{
+				float X = 0.f, Y = 0.f;
+				for (int32 Try = 0; Try < 10; ++Try)
+				{
+					X = Rng.FRandRange(-HX, HX);
+					Y = Rng.FRandRange(-HY, HY);
+					if (!(X > HX - 16.f && Y > HY - 5.f)) break;
+				}
+				Spawn(BT.TransformPosition(FVector(X, Y, F * B.FloorHeight + 0.35f)), false, EGSRarity::Common);
+			}
+		}
+		// A locked crate with good stuff on the top floor of the bigger buildings
+		if (Floors >= 3 || B.SizeX * B.SizeY > 4000.f)
+		{
+			Spawn(BT.TransformPosition(FVector(Rng.FRandRange(-HX, 0.f), Rng.FRandRange(-HY, 0.f), (Floors - 1) * B.FloorHeight + 0.35f)), true,
+				Floors >= 8 ? EGSRarity::Legendary : EGSRarity::Epic);
 		}
 	}
+	// The big one: a mythic crate in the middle of Lysgaarden
+	Spawn(FVector(0.f, 4.f, 0.35f), true, EGSRarity::Mythic);
+
+	// Outdoors: scattered around campus, not inside buildings
+	for (int32 I = 0; I < 60; ++I)
+	{
+		for (int32 Try = 0; Try < 20; ++Try)
+		{
+			const FVector2D P(Rng.FRandRange(-280.f, 430.f), Rng.FRandRange(-110.f, 520.f));
+			bool bInside = false;
+			for (const GSCampus::FBuilding& B : Buildings)
+			{
+				if (FMath::Abs(P.X - B.X) < B.SizeX * 0.5f + 3.f && FMath::Abs(P.Y - B.Y) < B.SizeY * 0.5f + 3.f) { bInside = true; break; }
+			}
+			if (!bInside) { Spawn(FVector(P.X, P.Y, 0.f), false, EGSRarity::Common); break; }
+		}
+	}
+	UE_LOG(LogTemp, Log, TEXT("Gloshaugen: spawned %d loot spots"), Total);
 }
 
 FTransform AGSGameMode::PickSpawnTransform() const

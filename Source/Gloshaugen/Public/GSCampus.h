@@ -90,25 +90,4 @@ namespace GSCampus
 		return List;
 	}
 
-	struct FPickupSpot { float X, Y, Z; EGSWeaponId Weapon; };
-
-	/** Weapon pickups (m). Z is height above ground (use floor height for upper floors). */
-	inline const TArray<FPickupSpot>& PickupSpots()
-	{
-		static const TArray<FPickupSpot> List = {
-			{   0.f,    0.f,  0.5f, EGSWeaponId::AG3 },     // Lysgaarden
-			{   0.f,  -70.f,  0.5f, EGSWeaponId::AG3 },     // plenen foran Hovedbygningen
-			{ -20.f,  190.f,  0.5f, EGSWeaponId::AG3 },     // Sentralbygg 1, inne
-			{ 235.f,  425.f,  0.5f, EGSWeaponId::AG3 },     // Realfagbygget, inne
-			{ 235.f,  160.f,  0.5f, EGSWeaponId::AG3 },     // Elektrobygget, inne
-			{ -105.f, 335.f,  0.5f, EGSWeaponId::AG3 },     // Kjemiblokkene, inne
-			{ 105.f,  305.f,  0.5f, EGSWeaponId::Pistol },  // Stripa
-			{ -125.f,  10.f,  0.5f, EGSWeaponId::Pistol },  // Gamle fysikk
-			{ 125.f,   10.f,  0.5f, EGSWeaponId::Pistol },  // Gamle kjemi
-			{ 370.f,  280.f,  0.5f, EGSWeaponId::Pistol },  // Varmeteknisk
-			{ -240.f, 470.f,  0.5f, EGSWeaponId::AG3 },     // Idrettsbygget
-			{  60.f,  215.f, 40.5f, EGSWeaponId::AG3 },     // Sentralbygg 2, nest oeverste etasje
-		};
-		return List;
-	}
 }

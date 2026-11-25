@@ -31,10 +31,19 @@ public:
 	UPROPERTY() TObjectPtr<UInputAction> ReloadAction;
 	UPROPERTY() TObjectPtr<UInputAction> Slot1Action;
 	UPROPERTY() TObjectPtr<UInputAction> Slot2Action;
+	UPROPERTY() TObjectPtr<UInputAction> Slot3Action;
+	UPROPERTY() TObjectPtr<UInputAction> Slot4Action;
+	UPROPERTY() TObjectPtr<UInputAction> InteractAction;
+	UPROPERTY() TObjectPtr<UInputAction> UseItemAction;
+	UPROPERTY() TObjectPtr<UInputAction> NextItemAction;
+	UPROPERTY() TObjectPtr<UInputAction> DropItemAction;
+	UPROPERTY() TObjectPtr<UInputAction> MeleeAction;
+	UPROPERTY() TObjectPtr<UInputAction> InventoryAction;
 	UPROPERTY() TObjectPtr<UInputAction> NextWeaponAction;
 	UPROPERTY() TObjectPtr<UInputAction> ScoreboardAction;
 
 	bool bShowScoreboard = false;
+	bool bShowInventory = false;
 
 	/** Console: "Host" starts a listen server on this map. */
 	UFUNCTION(Exec) void Host();
@@ -44,4 +53,5 @@ public:
 protected:
 	void ShowScoreboard() { bShowScoreboard = true; }
 	void HideScoreboard() { bShowScoreboard = false; }
+	void ToggleInventory() { bShowInventory = !bShowInventory; }
 };
