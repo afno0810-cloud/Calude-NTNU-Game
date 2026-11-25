@@ -122,7 +122,7 @@ def join_all(name):
     return obj
 
 
-def export(name, also_blend=True):
+def export(name, also_blend=True, also_glb=True):
     """Export the scene as FBX (for Unreal) and .glb (for quick previews)."""
     os.makedirs(OUT_DIR, exist_ok=True)
     fbx = os.path.join(OUT_DIR, f"{name}.fbx")
@@ -136,8 +136,9 @@ def export(name, also_blend=True):
         add_leaf_bones=False,
         bake_space_transform=True,
     )
-    glb = os.path.join(OUT_DIR, f"{name}.glb")
-    bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB")
+    if also_glb:
+        glb = os.path.join(OUT_DIR, f"{name}.glb")
+        bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB")
     if also_blend:
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT_DIR, f"{name}.blend"))
     print(f"Exported {fbx}")

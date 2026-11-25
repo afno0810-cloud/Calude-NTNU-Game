@@ -33,6 +33,12 @@ protected:
 	/** Adds a box. Center in cm, size in METERS. */
 	void AddBox(const FVector& CenterCm, const FRotator& Rot, const FVector& SizeM, const FLinearColor& Color, bool bCollide = true);
 	void AddMesh(class UStaticMesh* Mesh, const FTransform& T, const FLinearColor& Color, bool bCollide);
+	/** Box with one of our PBR materials (MI_GS_<MatName>, made by Content/Python/gs_materials.py); flat colour if it is missing. */
+	void AddBoxMat(const FVector& CenterCm, const FRotator& Rot, const FVector& SizeM, const TCHAR* MatName, const FLinearColor& Fallback, bool bCollide);
+	static class UMaterialInterface* GSMaterial(const TCHAR* Name);
+	/** "IT-bygget" -> "IT_bygget": the asset name used by Tools/Blender/buildings.py. */
+	static FString SafeName(const FString& Name);
+	void BuildSidewalks();
 
 	void BuildGround();
 	void BuildRoads();
@@ -53,6 +59,13 @@ protected:
 	/** Places SM_Prop_<Name> (from Tools/Blender/props.py). Local meters in building transform BT, yaw in degrees. Skipped if not imported. */
 	void AddProp(const TCHAR* Name, const FTransform& BT, float X, float Y, float Z, float Yaw, bool bCollide = true, float Scale = 1.f);
 	static class UStaticMesh* PropMesh(const TCHAR* Name);
+	/** Any model in /Game/Models by asset name (trees, cars ...); null if not imported. */
+	static class UStaticMesh* ModelMesh(const TCHAR* Name);
+	/** Instanced model in world space. PaintMat (MI_GS_<PaintMat>) replaces the "CarPaint" slot. */
+	void AddModel(const TCHAR* Name, const FTransform& WorldT, const TCHAR* PaintMat, bool bCollide);
+	/** Invisible cylinder so tree trunks block players and bullets while leaves do not. */
+	void AddTrunkCollider(const FVector2D& P, float Radius, float Height);
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> TrunkColliders;
 	int32 NumProps = 0;
 
 	UInstancedStaticMeshComponent* GetISM(class UStaticMesh* Mesh, const FLinearColor& Color, bool bCollide);

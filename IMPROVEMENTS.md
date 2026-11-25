@@ -1,0 +1,191 @@
+# Forbedringer i Gløshaugen Strike
+
+Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
+Nyeste runde øverst.
+
+## Runde 4: grafikk (25. nov. kveld)
+
+### Materialer og teksturer
+1. Egen PBR-tekstur for rød murstein (farge, relieff, ruhet, skygger i fugene)
+2. Brun murstein (Elektrobygget)
+3. Gul murstein (Realfagbygget)
+4. Grå granitt i kvader med ujevne skift (Hovedbygningen)
+5. Mørk sokkelstein
+6. Lys sandstein til gesimser, vindusbrett og bånd
+7. Skifertak med overlappende skifer og litt mose
+8. Puss med fine ujevnheter og regnstriper
+9. Forskalingsbetong med bordstruktur og porer
+10. Glatt betong
+11. Eikeparkett
+12. Mørkt treverk
+13. Marmorfliser med årer
+14. Terrazzogulv
+15. Kobber med irr
+16. Børstet metall med riper
+17. Lakkert metall
+18. Vevd stoff
+19. Asfalt med steinkorn og sprekker
+20. Belegningsstein med mose i fugene
+21. Gress med tørre flekker og jord
+22. Grus
+23. Plast
+24. Gummi
+25. Løvatlas med gjennomskinnelige blader
+26. Furu-/lønnebark
+27. Bjørkebark
+28. Stor variasjonstekstur som skjuler at teksturene gjentar seg
+29. Alle teksturene er sømløse
+30. Unreal lager hovedmaterialet M_GS_Surface automatisk (farge × tone × variasjon, normal, AO, ruhet, metall)
+31. Verdensprojisert materiale for bakke og veier, så teksturene ikke strekkes
+32. Ekte vindusglass: gjennomsiktig, reflekterende og tosidig
+33. Løvmateriale med maskering, tosidig lys gjennom bladene og vind
+34. 60 ferdige materialinstanser (MI_GS_*)
+35. Materialer legges automatisk på alle modeller etter navn på materialsporet
+36. Skannede materialer (Poly Haven, Megascans, Fab) vinner automatisk over våre når navnet passer
+37. Søkeord for Poly Haven-navn (red_brick, castle_wall, asphalt, aerial_grass ...)
+38. 7 billakkfarger (sølv, sort, hvit, rød, blå, grå, grønn)
+
+### Lys og rendering
+39. Hardware ray tracing i Lumen (RTX), både lys og refleksjoner
+40. Treffbasert lys i refleksjoner, så speilinger viser riktige farger
+41. Refleksjoner i glass (front layer)
+42. Konsollkommando `Straaling 0/1` for å slå ray tracing av og på
+43. Kartet `Gloshaugen` lages automatisk første gang
+44. Kartet har sol, himmel, skylys, tåke og skyer, så det ser riktig ut i editoren også
+
+### Bygg
+45. Gamle fysikk som ekte 3D-modell
+46. Gamle kjemi som ekte 3D-modell
+47. Kjelhuset som ekte 3D-modell
+48. Kjelhuspipa: 38 m teglpipe med jernbånd
+49. Sentralbygg 1 som ekte 3D-modell
+50. Sentralbygg 2 som ekte 3D-modell
+51. Bergbygget som ekte 3D-modell
+52. Elektrobygget som ekte 3D-modell
+53. IT-bygget som ekte 3D-modell
+54. Stripa med glassfasade
+55. Kjemiblokkene som ekte 3D-modell
+56. Varmeteknisk som ekte 3D-modell
+57. Realfagbygget som ekte 3D-modell
+58. Idrettsbygget med glassfasade
+59. Hovedbygningen vest som ekte 3D-modell
+60. Hovedbygningen øst som ekte 3D-modell
+61. Vindusrammer med midtpost og tverrpost i alle vinduer
+62. Glassruter i alle vinduer, uten kollisjon, så du kan skyte og hoppe gjennom
+63. Vindusbrett under alle vinduer
+64. Overligger over vinduene på de klassiske byggene
+65. Sokkel langs bunnen av alle bygg
+66. Etasjebånd på de klassiske byggene og på betongbyggene
+67. Gesims øverst på de klassiske byggene
+68. Saltak i skifer på de gamle byggene
+69. Kobberkam på mønet
+70. Takarker med vinduer
+71. Piper på takene
+72. Flate tak med takpapp og grus
+73. Brystning med beslag rundt flate tak
+74. Maskinrom på taket over trappa
+75. Ventilasjonsaggregater med vifter på takene
+76. Takvinduer
+77. Lufterør
+78. Antenner og rødt flylys på de høye byggene
+79. Vertikale aluminiumsribber på glassbyggene
+80. Takutstikk på glassbyggene
+81. Dørkarmer og glass over dørene
+82. Baldakin over alle innganger
+83. Lampe over hver inngang
+84. Dørmatte ved hver inngang
+85. Skilt over hovedinngangen
+86. Puss på innsiden av alle yttervegger
+87. Terrazzogulv i alle etasjer
+88. Takplater med lys i taket i alle etasjer
+89. Rekkverk langs rampene
+90. Rekkverk rundt trappeåpningen
+91. Hovedbygningen: vindusrammer i alle vinduer
+92. Hovedbygningen: glass i alle vinduer
+93. Hovedbygningen: glasstak over Lysgården
+94. Mørkere og mer riktig stein på Hovedbygningen
+
+### Ute
+95. Gress med ekte tekstur på hele campus
+96. Asfalt på veiene
+97. Belegningsstein på gangstiene
+98. Fortau langs alle bilveier
+99. Kantstein
+100. Stiplet midtlinje
+101. Heltrukne kantlinjer
+102. Fortau og linjer stopper i kryss og ved byggvegger
+103. Lønnetre
+104. Bjørk
+105. Stor gran
+106. Liten gran
+107. Busker
+108. Klippede hekker langs byggene
+109. 220 trær i stedet for 160
+110. Trær har usynlig stammekollisjon, så kuler går gjennom løvet, men ikke stammen
+111. Sedan
+112. Kombi
+113. SUV med takrails
+114. Liten bil
+115. Varebil
+116. Bilene har hjul med felger, lys, skilt, speil, dørhåndtak og støtfangere
+117. Bilene står parkert ved fortauskanten, ikke oppå den
+118. 60 biler i stedet for 36, uten at de står oppå hverandre eller i kryss
+
+### Ytelse
+119. Møbler og ting ute bruker hierarkisk instansiering (HISM), så de som ikke synes tegnes ikke
+120. Trær, busker og biler bruker også HISM med avstandsgrense
+121. Ingen .glb-forhåndsvisninger av store modeller i repoet (mindre nedlasting)
+
+## Runde 3 (25. nov. ettermiddag)
+122. Hovedbygningen som ekte 3D-modell med Lysgården, trapp, scene og gallerier
+123. Tårnet med spiralrampe opp til klokketårnet
+124. 43 møbler, utendørsting og roboter
+125. Møbler i alle rom: klasserom, kontor, lab, kantine, bibliotek, salong, serverrom, lager
+126. Benker, sykkelstativ, sparkesykler, busskur, søppelkasser, containere, piknikbord, byggegjerder, NTNU-skilt
+127. Robothund, vaktrobot og leveringsrobot
+128. PC-er med overvåkningskamera
+129. Sporing av alle spillere på kart fra PC
+130. 3D-printere som lager 13 ting av filament
+131. 38 overvåkningskameraer
+132. Ammo per kaliber (15 kalibre)
+133. Panserbrytende ammo
+134. Hulspissammo
+135. Brannammo
+136. Sporlysammo
+137. Sjokkammo
+138. Holo-sikte
+139. 8x kikkertsikte
+140. Trommelmagasin
+141. Kompensator
+142. Grep
+143. Modifikasjoner som erstatter hverandre i samme spor
+144. Over/under-hagle
+145. M72 LAW (engangs)
+146. Mosin
+147. Remington 700
+148. M14
+149. G36
+150. SCAR
+151. UMP
+152. P90
+153. Vector
+154. Signalpistol
+155. Langbue
+156. Printet pistol
+157. Tobladet vikingøks
+158. Spyd
+159. Printet kniv
+160. Printet hjelm
+161. Ladeanimasjon med magasin ut, magasin inn og sleide
+162. Patron-for-patron lading på hagler
+163. Magasinet faller ut og blir liggende
+164. Inspisering av våpenet (T)
+165. Pust, skritt og sprint-stilling
+166. Rekyl med fjær
+167. Nærkamp med oppsving og slag
+168. Lefse, fårikål, pinnekjøtt, julebrus, risgrøt, tran, Kvikk Lunsj, solbærtoddy, rakfisk og sodd
+169. Volumetriske skyer
+170. Fargekorrigering etter vær og tid på døgnet
+171. Konsollkommandoene `Grafikk` og `Opplosning`
+
+*(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*

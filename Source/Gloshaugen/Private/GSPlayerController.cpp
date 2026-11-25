@@ -1,4 +1,5 @@
 #include "GSPlayerController.h"
+#include "HAL/IConsoleManager.h"
 #include "GSHUD.h"
 #include "GSCharacter.h"
 #include "GSTerminal.h"
@@ -179,6 +180,20 @@ void AGSPlayerController::Opplosning(int32 Percent)
 		S->SaveSettings();
 		ClientMessage(FString::Printf(TEXT("Oppl\u00F8sning %d %%"), FMath::Clamp(Percent, 50, 100)));
 	}
+}
+
+void AGSPlayerController::Straaling(int32 On)
+{
+	const bool bOn = On != 0;
+	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.HardwareRayTracing")))
+	{
+		V->Set(bOn ? 1 : 0, ECVF_SetByConsole);
+	}
+	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.Reflections.HardwareRayTracing")))
+	{
+		V->Set(bOn ? 1 : 0, ECVF_SetByConsole);
+	}
+	ClientMessage(bOn ? TEXT("Ray tracing P\u00C5 (Lumen med RTX)") : TEXT("Ray tracing AV (programvare-Lumen, raskere)"));
 }
 
 // ---------------------------------------------------------------- PCs (security cameras, tracker) and 3D printers

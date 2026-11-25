@@ -85,6 +85,8 @@ public:
 	UFUNCTION(Exec) void Grafikk(int32 Level);
 	/** Console: "Opplosning 50".."Opplosning 100" = how much of the screen resolution is rendered before TSR upscales it. */
 	UFUNCTION(Exec) void Opplosning(int32 Percent);
+	/** Console: "Straaling 1" = hardware ray tracing in Lumen (RTX), "Straaling 0" = software Lumen (faster). */
+	UFUNCTION(Exec) void Straaling(int32 On);
 
 protected:
 	bool ServerCanUse(const AGSTerminal* T) const;

@@ -1,6 +1,8 @@
 #include "GSCampusBuilder.h"
 #include "GSUtils.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "Materials/MaterialInterface.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -88,6 +90,68 @@ void AGSCampusBuilder::AddBox(const FVector& CenterCm, const FRotator& Rot, cons
 	AddMesh(GSUtils::Cube(), FTransform(Rot, CenterCm, SizeM), Color, bCollide);
 }
 
+UMaterialInterface* AGSCampusBuilder::GSMaterial(const TCHAR* Name)
+{
+	static TMap<FString, TWeakObjectPtr<UMaterialInterface>> Cache;
+	static TSet<FString> Missing;
+	const FString Key(Name);
+	if (TWeakObjectPtr<UMaterialInterface>* Found = Cache.Find(Key))
+	{
+		if (Found->IsValid()) return Found->Get();
+	}
+	if (Missing.Contains(Key)) return nullptr;
+	const FString Path = FString::Printf(TEXT("/Game/GS/Materials/MI_GS_%s.MI_GS_%s"), Name, Name);
+	UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (!Mat)
+	{
+		Missing.Add(Key);
+		return nullptr;
+	}
+	Cache.Add(Key, Mat);
+	return Mat;
+}
+
+void AGSCampusBuilder::AddBoxMat(const FVector& CenterCm, const FRotator& Rot, const FVector& SizeM, const TCHAR* MatName,
+	const FLinearColor& Fallback, bool bCollide)
+{
+	if (SizeM.X <= 0.01f || SizeM.Y <= 0.01f || SizeM.Z <= 0.01f) return;
+	UMaterialInterface* Mat = GSMaterial(MatName);
+	if (!Mat)
+	{
+		AddBox(CenterCm, Rot, SizeM, Fallback, bCollide);
+		return;
+	}
+	const FString Key = FString::Printf(TEXT("Cube_%s_%d"), MatName, bCollide ? 1 : 0);
+	UInstancedStaticMeshComponent* ISM = nullptr;
+	if (TObjectPtr<UInstancedStaticMeshComponent>* Found = ISMs.Find(Key))
+	{
+		ISM = *Found;
+	}
+	else
+	{
+		ISM = NewObject<UInstancedStaticMeshComponent>(this);
+		ISM->SetMobility(EComponentMobility::Static);
+		ISM->SetStaticMesh(GSUtils::Cube());
+		ISM->SetupAttachment(RootComponent);
+		if (bCollide) ISM->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+		else ISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		ISM->RegisterComponent();
+		ISM->SetMaterial(0, Mat);
+		ISMs.Add(Key, ISM);
+	}
+	ISM->AddInstance(FTransform(Rot, CenterCm, SizeM), /*bWorldSpace*/ true);
+}
+
+FString AGSCampusBuilder::SafeName(const FString& Name)
+{
+	FString Out = Name;
+	for (TCHAR& C : Out.GetCharArray())
+	{
+		if (C != 0 && !FChar::IsAlnum(C)) C = TEXT('_');
+	}
+	return Out;
+}
+
 void AGSCampusBuilder::Build()
 {
 	const double StartTime = FPlatformTime::Seconds();
@@ -97,6 +161,7 @@ void AGSCampusBuilder::Build()
 	{
 		BuildBuilding(B);
 	}
+	BuildSidewalks();
 	BuildTreesAndProps();
 	BuildCampusProps();
 	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
@@ -118,7 +183,7 @@ void AGSCampusBuilder::Build()
 void AGSCampusBuilder::BuildGround()
 {
 	// Big lawn under everything. Top surface at Z = 0.
-	AddBox(FVector(70.f * M, 220.f * M, -0.5f * M), FRotator::ZeroRotator, FVector(2400.f, 2400.f, 1.f), FLinearColor(0.16f, 0.27f, 0.11f));
+	AddBoxMat(FVector(70.f * M, 220.f * M, -0.5f * M), FRotator::ZeroRotator, FVector(2400.f, 2400.f, 1.f), TEXT("W_Grass"), FLinearColor(0.16f, 0.27f, 0.11f), true);
 }
 
 void AGSCampusBuilder::BuildRoads()
@@ -131,7 +196,67 @@ void AGSCampusBuilder::BuildRoads()
 		const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X));
 		const FLinearColor Col = R.bPath ? FLinearColor(0.42f, 0.41f, 0.39f) : FLinearColor(0.10f, 0.10f, 0.11f);
 		const float Z = R.bPath ? -0.01f : -0.02f; // path on top of road where they cross
-		AddBox(FVector(C.X * M, C.Y * M, Z * M), FRotator(0.f, Yaw, 0.f), FVector(Len + R.Width, R.Width, 0.1f), Col);
+		AddBoxMat(FVector(C.X * M, C.Y * M, Z * M), FRotator(0.f, Yaw, 0.f), FVector(Len + R.Width, R.Width, 0.1f),
+			R.bPath ? TEXT("W_Paving") : TEXT("W_Asphalt"), Col, true);
+	}
+}
+
+void AGSCampusBuilder::BuildSidewalks()
+{
+	// Car roads get painted lines, kerbs and paved sidewalks on both sides. Done in short pieces,
+	// so they stop at crossings and at building walls.
+	const TArray<GSCampus::FRoad>& Roads = GSCampus::Roads();
+	auto OnOtherRoad = [&](const FVector2D& P, const GSCampus::FRoad* Self, float Margin)
+	{
+		for (const GSCampus::FRoad& R : Roads)
+		{
+			if (&R == Self || R.bPath) continue;
+			if (DistToSegment(P, R.A, R.B) < R.Width * 0.5f + Margin) return true;
+		}
+		return false;
+	};
+	auto InBuilding = [&](const FVector2D& P, float Margin)
+	{
+		for (const FBox2D& Box : Footprints) if (Box.ExpandBy(Margin).IsInside(P)) return true;
+		return false;
+	};
+	const FLinearColor Paint(0.85f, 0.85f, 0.8f);
+	const FLinearColor KerbCol(0.55f, 0.55f, 0.53f);
+	const FLinearColor WalkCol(0.45f, 0.44f, 0.42f);
+	constexpr float Piece = 6.f;
+	constexpr float WalkW = 2.2f;
+	constexpr float KerbW = 0.2f;
+	for (const GSCampus::FRoad& R : Roads)
+	{
+		if (R.bPath) continue;
+		const FVector2D D = (R.B - R.A).GetSafeNormal();
+		const FVector2D Side(-D.Y, D.X);
+		const float Len = FVector2D::Distance(R.A, R.B);
+		const FRotator Rot(0.f, FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)), 0.f);
+		for (float S = 0.f; S < Len; S += Piece)
+		{
+			const float L = FMath::Min(Piece, Len - S);
+			const FVector2D Mid = R.A + D * (S + L * 0.5f);
+			const bool bCrossing = OnOtherRoad(Mid, &R, 1.f);
+			// centre line: 3 m dashes, 3 m gaps; solid edge lines
+			if (!bCrossing)
+			{
+				AddBox(FVector(Mid.X * M, Mid.Y * M, 0.035f * M), Rot, FVector(L * 0.5f, 0.12f, 0.01f), Paint, false);
+				for (float Sgn : { -1.f, 1.f })
+				{
+					const FVector2D E = Mid + Side * Sgn * (R.Width * 0.5f - 0.35f);
+					AddBox(FVector(E.X * M, E.Y * M, 0.035f * M), Rot, FVector(L, 0.1f, 0.01f), Paint, false);
+				}
+			}
+			for (float Sgn : { -1.f, 1.f })
+			{
+				const FVector2D K = Mid + Side * Sgn * (R.Width * 0.5f + KerbW * 0.5f);
+				const FVector2D W = Mid + Side * Sgn * (R.Width * 0.5f + KerbW + WalkW * 0.5f);
+				if (OnOtherRoad(K, &R, 0.3f) || InBuilding(W, 0.3f)) continue;
+				AddBoxMat(FVector(K.X * M, K.Y * M, 0.07f * M), Rot, FVector(L, KerbW, 0.16f), TEXT("W_Concrete"), KerbCol, true);
+				AddBoxMat(FVector(W.X * M, W.Y * M, 0.06f * M), Rot, FVector(L, WalkW, 0.12f), TEXT("W_Paving"), WalkCol, true);
+			}
+		}
 	}
 }
 
@@ -158,8 +283,49 @@ void AGSCampusBuilder::BuildBuilding(const GSCampus::FBuilding& B)
 				C->SetWorldTransform(BT);
 				C->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 				C->RegisterComponent();
+				if (UStaticMesh* Glass = ModelMesh(TEXT("SM_Glass_Hovedbygningen")))
+				{
+					UStaticMeshComponent* G = NewObject<UStaticMeshComponent>(this);
+					G->SetMobility(EComponentMobility::Static);
+					G->SetStaticMesh(Glass);
+					G->SetupAttachment(RootComponent);
+					G->SetWorldTransform(BT);
+					G->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					G->SetCastShadow(false);
+					G->RegisterComponent();
+				}
 				// front bay with the main door and the turrets
 				Footprints.Add(FBox2D(FVector2D(B.X - 12.f, B.Y - 21.f), FVector2D(B.X + 12.f, B.Y - 14.f)));
+			}
+			return;
+		}
+	}
+
+	// Detailed Blender model of this building (Tools/Blender/buildings.py), plus its window glass.
+	if (B.bEnterable)
+	{
+		const FString Safe = SafeName(Name);
+		const FString MeshPath = FString::Printf(TEXT("/Game/Models/SM_Bygg_%s.SM_Bygg_%s"), *Safe, *Safe);
+		if (UStaticMesh* Model = LoadObject<UStaticMesh>(nullptr, *MeshPath, nullptr, LOAD_NoWarn | LOAD_Quiet))
+		{
+			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+			C->SetMobility(EComponentMobility::Static);
+			C->SetStaticMesh(Model);
+			C->SetupAttachment(RootComponent);
+			C->SetWorldTransform(BT);
+			C->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+			C->RegisterComponent();
+			const FString GlassPath = FString::Printf(TEXT("/Game/Models/SM_Glass_%s.SM_Glass_%s"), *Safe, *Safe);
+			if (UStaticMesh* Glass = LoadObject<UStaticMesh>(nullptr, *GlassPath, nullptr, LOAD_NoWarn | LOAD_Quiet))
+			{
+				UStaticMeshComponent* G = NewObject<UStaticMeshComponent>(this);
+				G->SetMobility(EComponentMobility::Static);
+				G->SetStaticMesh(Glass);
+				G->SetupAttachment(RootComponent);
+				G->SetWorldTransform(BT);
+				G->SetCollisionEnabled(ECollisionEnabled::NoCollision); // shoot and jump through windows
+				G->SetCastShadow(false);
+				G->RegisterComponent();
 			}
 			return;
 		}
@@ -293,41 +459,178 @@ void AGSCampusBuilder::BuildTreesAndProps()
 
 	const FLinearColor Trunk(0.22f, 0.16f, 0.11f);
 	const FLinearColor Leaves[] = { FLinearColor(0.12f, 0.25f, 0.08f), FLinearColor(0.16f, 0.30f, 0.10f), FLinearColor(0.20f, 0.28f, 0.09f) };
+	const bool bRealTrees = ModelMesh(TEXT("SM_Tree_Maple")) != nullptr;
 
+	// Trees: maples and birches on the lawns, spruces in groups (Trondheim). Leaves have no collision;
+	// an invisible trunk collider stops players and bullets.
 	int32 Trees = 0;
-	for (int32 Try = 0; Try < 2000 && Trees < 160; ++Try)
+	for (int32 Try = 0; Try < 3000 && Trees < 220; ++Try)
 	{
 		const FVector2D P(Rand.FRandRange(-320.f, 460.f), Rand.FRandRange(-100.f, 550.f));
 		if (!IsFree(P, 6.f)) continue;
-		const float H = Rand.FRandRange(6.f, 12.f);
-		AddMesh(GSUtils::Cylinder(), FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, H * 0.25f * M), FVector(0.45f, 0.45f, H * 0.5f)), Trunk, true);
-		const float R = Rand.FRandRange(3.f, 5.5f);
-		AddMesh(GSUtils::Sphere(), FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, (H * 0.5f + R * 0.6f) * M), FVector(R, R, R * 1.3f)),
-			Leaves[Rand.RandRange(0, 2)], false);
+		if (bRealTrees)
+		{
+			const float Pick = Rand.FRand();
+			const TCHAR* Kind = Pick < 0.38f ? TEXT("SM_Tree_Maple") : Pick < 0.68f ? TEXT("SM_Tree_Birch")
+				: Pick < 0.88f ? TEXT("SM_Tree_Spruce") : TEXT("SM_Tree_SpruceSmall");
+			const float Scale = Rand.FRandRange(0.8f, 1.3f);
+			AddModel(Kind, FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * M, P.Y * M, 0.f), FVector(Scale)), nullptr, false);
+			AddTrunkCollider(P, 0.35f * Scale, 6.f * Scale);
+			// a few bushes around some trees
+			if (Rand.FRand() < 0.35f)
+			{
+				const FVector2D Q = P + FVector2D(Rand.FRandRange(-3.f, 3.f), Rand.FRandRange(-3.f, 3.f));
+				if (IsFree(Q, 2.f)) AddModel(TEXT("SM_Bush"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(Q.X * M, Q.Y * M, 0.f), FVector(Rand.FRandRange(0.8f, 1.4f))), nullptr, false);
+			}
+		}
+		else
+		{
+			const float H = Rand.FRandRange(6.f, 12.f);
+			AddMesh(GSUtils::Cylinder(), FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, H * 0.25f * M), FVector(0.45f, 0.45f, H * 0.5f)), Trunk, true);
+			const float R = Rand.FRandRange(3.f, 5.5f);
+			AddMesh(GSUtils::Sphere(), FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, (H * 0.5f + R * 0.6f) * M), FVector(R, R, R * 1.3f)),
+				Leaves[Rand.RandRange(0, 2)], false);
+		}
 		++Trees;
 	}
 
-	// Parked cars along the car roads: good cover.
+	// Bushes and trimmed hedges along the building walls (not in front of the doors: hedges go on the short sides).
+	if (bRealTrees)
+	{
+		for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+		{
+			if (!B.bEnterable) continue;
+			const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * M, B.Y * M, 0.f));
+			const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
+			for (float Sgn : { -1.f, 1.f })
+			{
+				for (float Y = -HY + 3.f; Y < HY - 3.f; Y += 4.2f)
+				{
+					const FVector W = BT.TransformPosition(FVector((HX + 1.2f) * Sgn, Y, 0.f) * M);
+					const FVector2D P(W.X / M, W.Y / M);
+					if (!IsFree(P, 0.6f)) continue;
+					AddModel(TEXT("SM_Hedge"), FTransform(FRotator(0.f, B.Yaw + 90.f, 0.f), W), nullptr, true);
+				}
+			}
+			for (int32 I = 0; I < 6; ++I)
+			{
+				const FVector W = BT.TransformPosition(FVector(Rand.FRandRange(-HX, HX), (HY + 1.5f) * (Rand.FRand() < 0.5f ? -1.f : 1.f), 0.f) * M);
+				const FVector2D P(W.X / M, W.Y / M);
+				if (IsFree(P, 0.8f)) AddModel(TEXT("SM_Bush"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), W, FVector(Rand.FRandRange(0.7f, 1.2f))), nullptr, false);
+			}
+		}
+	}
+
+	// Parked cars along the kerb of the car roads: good cover. Five body types in seven colours.
+	const TCHAR* CarModels[] = { TEXT("SM_Car_Sedan"), TEXT("SM_Car_Hatch"), TEXT("SM_Car_SUV"), TEXT("SM_Car_Estate"), TEXT("SM_Car_Van") };
+	const TCHAR* CarPaints[] = { TEXT("CarPaint_Silver"), TEXT("CarPaint_Black"), TEXT("CarPaint_White"), TEXT("CarPaint_Red"),
+		TEXT("CarPaint_Blue"), TEXT("CarPaint_Grey"), TEXT("CarPaint_Green") };
+	const bool bRealCars = ModelMesh(CarModels[0]) != nullptr;
 	const FLinearColor CarColors[] = { FLinearColor(0.6f, 0.6f, 0.62f), FLinearColor(0.05f, 0.05f, 0.06f),
 		FLinearColor(0.5f, 0.06f, 0.05f), FLinearColor(0.1f, 0.18f, 0.4f), FLinearColor(0.85f, 0.85f, 0.85f) };
 	int32 Cars = 0;
-	for (int32 Try = 0; Try < 300 && Cars < 36; ++Try)
+	TArray<FVector2D> CarSpots;
+	for (int32 Try = 0; Try < 600 && Cars < 60; ++Try)
 	{
 		const GSCampus::FRoad& R = Roads[Rand.RandRange(0, Roads.Num() - 1)];
 		if (R.bPath) continue;
 		const FVector2D D = (R.B - R.A).GetSafeNormal();
 		const FVector2D Side(-D.Y, D.X);
 		const float T = Rand.FRandRange(0.05f, 0.95f);
-		const FVector2D P = R.A + (R.B - R.A) * T + Side * (R.Width * 0.5f + 1.6f) * (Rand.FRand() > 0.5f ? 1.f : -1.f);
-		bool bInBuilding = false;
-		for (const FBox2D& Box : Footprints) if (Box.ExpandBy(3.f).IsInside(P)) bInBuilding = true;
-		if (bInBuilding) continue;
-		const FRotator Rot(0.f, FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)), 0.f);
-		const FLinearColor C = CarColors[Rand.RandRange(0, 4)];
-		AddBox(FVector(P.X * M, P.Y * M, 0.75f * M), Rot, FVector(4.4f, 1.8f, 1.0f), C);
-		AddBox(FVector(P.X * M, P.Y * M, 1.55f * M), Rot, FVector(2.3f, 1.6f, 0.6f), C * 0.8f);
+		const float SideSign = Rand.FRand() > 0.5f ? 1.f : -1.f;
+		const FVector2D P = R.A + (R.B - R.A) * T + Side * (R.Width * 0.5f - 1.15f) * SideSign;
+		bool bBlocked = false;
+		for (const FBox2D& Box : Footprints) if (Box.ExpandBy(3.f).IsInside(P)) bBlocked = true;
+		for (const FVector2D& Q : CarSpots) if (FVector2D::Distance(P, Q) < 6.f) bBlocked = true;
+		for (const GSCampus::FRoad& O : Roads) if (&O != &R && !O.bPath && DistToSegment(P, O.A, O.B) < O.Width * 0.5f + 4.f) bBlocked = true;
+		if (bBlocked) continue;
+		CarSpots.Add(P);
+		const FRotator Rot(0.f, FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)) + (SideSign > 0.f ? 0.f : 180.f) + Rand.FRandRange(-3.f, 3.f), 0.f);
+		if (bRealCars)
+		{
+			AddModel(CarModels[Rand.RandRange(0, 4)], FTransform(Rot, FVector(P.X * M, P.Y * M, 0.f)), CarPaints[Rand.RandRange(0, 6)], true);
+		}
+		else
+		{
+			const FLinearColor C = CarColors[Rand.RandRange(0, 4)];
+			AddBox(FVector(P.X * M, P.Y * M, 0.75f * M), Rot, FVector(4.4f, 1.8f, 1.0f), C);
+			AddBox(FVector(P.X * M, P.Y * M, 1.55f * M), Rot, FVector(2.3f, 1.6f, 0.6f), C * 0.8f);
+		}
 		++Cars;
 	}
+}
+
+UStaticMesh* AGSCampusBuilder::ModelMesh(const TCHAR* Name)
+{
+	static TMap<FString, TWeakObjectPtr<UStaticMesh>> Cache;
+	static TSet<FString> Missing;
+	const FString Key(Name);
+	if (TWeakObjectPtr<UStaticMesh>* Found = Cache.Find(Key))
+	{
+		if (Found->IsValid()) return Found->Get();
+	}
+	if (Missing.Contains(Key)) return nullptr;
+	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Models/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (!Mesh)
+	{
+		Missing.Add(Key);
+		return nullptr;
+	}
+	Cache.Add(Key, Mesh);
+	return Mesh;
+}
+
+void AGSCampusBuilder::AddModel(const TCHAR* Name, const FTransform& WorldT, const TCHAR* PaintMat, bool bCollide)
+{
+	UStaticMesh* Mesh = ModelMesh(Name);
+	if (!Mesh) return;
+	const FString Key = FString::Printf(TEXT("%s_%s_%d"), Name, PaintMat ? PaintMat : TEXT("-"), bCollide ? 1 : 0);
+	UInstancedStaticMeshComponent* ISM = nullptr;
+	if (TObjectPtr<UInstancedStaticMeshComponent>* Found = PropISMs.Find(Key))
+	{
+		ISM = *Found;
+	}
+	else
+	{
+		ISM = NewObject<UHierarchicalInstancedStaticMeshComponent>(this);
+		ISM->SetMobility(EComponentMobility::Static);
+		ISM->SetStaticMesh(Mesh);
+		ISM->SetupAttachment(RootComponent);
+		if (bCollide) ISM->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+		else ISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		ISM->SetCullDistances(0, 40000);
+		ISM->RegisterComponent();
+		if (PaintMat)
+		{
+			const int32 Slot = Mesh->GetMaterialIndex(FName(TEXT("CarPaint")));
+			if (UMaterialInterface* Paint = GSMaterial(PaintMat))
+			{
+				if (Slot != INDEX_NONE) ISM->SetMaterial(Slot, Paint);
+			}
+		}
+		PropISMs.Add(Key, ISM);
+	}
+	ISM->AddInstance(WorldT, /*bWorldSpace*/ true);
+	++NumProps;
+}
+
+void AGSCampusBuilder::AddTrunkCollider(const FVector2D& P, float Radius, float Height)
+{
+	if (!TrunkColliders)
+	{
+		TrunkColliders = NewObject<UInstancedStaticMeshComponent>(this);
+		TrunkColliders->SetMobility(EComponentMobility::Static);
+		TrunkColliders->SetStaticMesh(GSUtils::Cylinder());
+		TrunkColliders->SetupAttachment(RootComponent);
+		TrunkColliders->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+		TrunkColliders->SetVisibility(false);
+		TrunkColliders->SetHiddenInGame(true);
+		TrunkColliders->SetCastShadow(false);
+		TrunkColliders->RegisterComponent();
+	}
+	// engine cylinder: 100 cm tall, 100 cm across, pivot in the middle
+	TrunkColliders->AddInstance(FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, Height * 0.5f * M),
+		FVector(Radius * 2.f, Radius * 2.f, Height)), /*bWorldSpace*/ true);
 }
 
 void AGSCampusBuilder::BuildStreetLights()
@@ -413,7 +716,7 @@ void AGSCampusBuilder::AddProp(const TCHAR* Name, const FTransform& BT, float X,
 	}
 	else
 	{
-		ISM = NewObject<UInstancedStaticMeshComponent>(this);
+		ISM = NewObject<UHierarchicalInstancedStaticMeshComponent>(this); // culls per cluster: much cheaper with 30 000 props
 		ISM->SetMobility(EComponentMobility::Static);
 		ISM->SetStaticMesh(Mesh);
 		ISM->SetupAttachment(RootComponent);

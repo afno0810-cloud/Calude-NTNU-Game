@@ -59,6 +59,7 @@ Trykk Play. Da får du ett vindu per spiller, koblet sammen som et ekte online-s
 ### Konsollkommandoer (§)
 - `Grafikk 0-4`: lav, middels, høy, episk, kino (standard er høy)
 - `Opplosning 50-100`: oppløsning i prosent før TSR skalerer opp (standard 72, passer RTX 3050)
+- `Straaling 0/1`: ray tracing (Lumen med RTX) av eller på. Standard er på; slå av hvis det hakker
 
 ## Hva som er med i denne versjonen
 
@@ -85,6 +86,8 @@ Trykk Play. Da får du ett vindu per spiller, koblet sammen som et ekte online-s
 
 **Grafikk:** Lumen, Nanite, virtuelle skygger, TSR, volumetriske skyer og fargekorrigering etter vær og tid på døgnet. Modellene våre er laget i kode og er reserver: henter du gratis Megascans-materialer og Fab-modeller, kobles de på automatisk (se under).
 
+Se [IMPROVEMENTS.md](IMPROVEMENTS.md) for alle forbedringene, runde for runde.
+
 ## For utviklere
 
 - `Source/Gloshaugen/Public/GSCampus.h`: layout av campus (bygg, veier, spawn, våpen)
@@ -108,6 +111,8 @@ Modellene lages med Python-skript i `Tools/Blender/` og ligger ferdig eksportert
 - Lage modellene på nytt: `python Tools/Blender/gen_models.py` (alle gjenstandene i katalogen), pluss `weapon_ag3.py`, `weapon_pistol_m1911.py` og `weapons_more.py` for de håndlagde
 - Oversiktsbilder: `python Tools/Blender/contact_sheet.py ut.png SM_AK47 SM_Kebab ...`
 
+- Teksturer: `python3 Tools/Textures/gen_textures.py` (sømløse PBR-teksturer til `SourceArt/Textures`, blir materialer i Unreal automatisk)
+- Byggene: `python Tools/Blender/buildings.py` (alle unntatt Hovedbygningen, rett fra `GSCampus.h`). Trær: `nature.py`. Biler: `cars.py`
 - Møbler og campus-ting: `python Tools/Blender/props.py`. Hovedbygningen: `python Tools/Blender/building_hovedbygningen.py`
 
 ### Megascans og Fab (gjør det mye penere)

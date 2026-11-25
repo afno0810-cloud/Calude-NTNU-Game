@@ -168,7 +168,7 @@ class MeshKit:
                 else:
                     loop[uv].uv = (c.x / tile, c.y / tile)
 
-    def finish(self, also_blend=True):
+    def finish(self, also_blend=True, also_glb=False):
         bmesh.ops.remove_doubles(self.bm, verts=self.bm.verts, dist=1e-5)
         # Mirror Y (Unreal flips it back on import) and fix the winding.
         for v in self.bm.verts:
@@ -184,5 +184,5 @@ class MeshKit:
         bpy.context.collection.objects.link(obj)
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
-        export(self.name, also_blend)
+        export(self.name, also_blend, also_glb)
         return obj

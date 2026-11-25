@@ -3,8 +3,10 @@
 1. Imports (or re-imports) every model in SourceArt/Models/*.fbx into /Game/Models,
    so new models from Claude appear in the game without any clicking.
 2. Buildings get "complex as simple" collision, so you can walk inside them.
-3. If you have added Megascans / Fab materials to the project, they are put on the
-   buildings and props automatically (matched by name, see MATERIAL_KEYWORDS).
+3. Materials: our own PBR textures (SourceArt/Textures) become MI_GS_* materials, and every model gets
+   them by material slot name. Scanned materials you add (Poly Haven, Megascans, Fab) win when their
+   names match (see gs_materials.py).
+4. Creates the map Content/Maps/Gloshaugen the first time.
 """
 import os
 import unreal
@@ -16,24 +18,7 @@ DEST = "/Game/Models"
 # Meshes you walk inside: exact per-triangle collision instead of convex hulls.
 COMPLEX_COLLISION_PREFIXES = ("SM_Hovedbygningen", "SM_Bygg_", "SM_Prop_BusStop", "SM_Prop_BikeRack", "SM_Prop_PicnicTable", "SM_Prop_LectureSeats")
 # Meshes that get Megascans materials (they have tiling UVs from Tools/Blender/meshkit.py).
-MEGASCANS_PREFIXES = ("SM_Hovedbygningen", "SM_Bygg_", "SM_Prop_")
-
-# Blender material (slot) name -> words to look for in the names of materials you added from Fab/Megascans.
-MATERIAL_KEYWORDS = {
-    "Stone": ["granite", "stone_wall", "stonewall", "castle", "rough_stone", "stone"],
-    "StoneDark": ["granite", "basalt", "dark_stone", "stone"],
-    "Trim": ["sandstone", "limestone", "concrete"],
-    "Slate": ["slate", "roof_tile", "rooftile", "roof"],
-    "Plaster": ["plaster", "stucco", "painted_wall"],
-    "Marble": ["marble", "terrazzo"],
-    "Floor": ["parquet", "wood_floor", "woodfloor", "floor"],
-    "Wood": ["oak", "wood_planks", "wood"],
-    "Copper": ["copper", "patina"],
-    "Metal": ["metal", "steel", "iron"],
-    "Concrete": ["concrete", "cement"],
-    "Fabric": ["fabric", "cloth", "carpet"],
-}
-
+MEGASCANS_PREFIXES = ("SM_Hovedbygningen", "SM_Bygg_", "SM_Prop_")  # built as Nanite (not glass, cars or trees: they use translucent or masked materials)
 
 def _is_building(name):
     return name.startswith(COMPLEX_COLLISION_PREFIXES)
@@ -107,59 +92,6 @@ def fix_building_collision(names):
             body.set_editor_property("collision_trace_flag", unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE)
             unreal.EditorAssetLibrary.save_loaded_asset(mesh)
             unreal.log(f"Gloshaugen: {name} bruker presis kollisjon")
-
-
-def _find_megascans_materials():
-    """All material instances outside /Game/Models (that is, the ones you added from Fab/Megascans)."""
-    registry = unreal.AssetRegistryHelpers.get_asset_registry()
-    found = []
-    for cls in ("MaterialInstanceConstant", "Material"):
-        flt = unreal.ARFilter(class_paths=[unreal.TopLevelAssetPath("/Script/Engine", cls)],
-                              package_paths=["/Game"], recursive_paths=True)
-        for data in registry.get_assets(flt):
-            path = str(data.package_name)
-            if path.startswith(DEST) or "/Python" in path:
-                continue
-            found.append((str(data.asset_name).lower(), f"{path}.{data.asset_name}", cls == "MaterialInstanceConstant"))
-    return found
-
-
-def _pick(slot, mats):
-    for word in MATERIAL_KEYWORDS.get(slot, []):
-        hits = [m for m in mats if word in m[0]]
-        if hits:
-            hits.sort(key=lambda m: (not m[2], len(m[0])))  # prefer instances, then the shortest name
-            return hits[0][1]
-    return None
-
-
-def apply_megascans():
-    mats = _find_megascans_materials()
-    if not mats:
-        return
-    for name in unreal.EditorAssetLibrary.list_assets(DEST, recursive=False):
-        short = name.split("/")[-1].split(".")[0]
-        if not short.startswith(MEGASCANS_PREFIXES):
-            continue
-        mesh = unreal.EditorAssetLibrary.load_asset(name)
-        if not isinstance(mesh, unreal.StaticMesh):
-            continue
-        changed = False
-        for i, sm in enumerate(mesh.get_editor_property("static_materials")):
-            slot = str(sm.get_editor_property("material_slot_name"))
-            path = _pick(slot, mats)
-            if not path:
-                continue
-            current = sm.get_editor_property("material_interface")
-            if current and current.get_path_name() == path:
-                continue
-            mat = unreal.EditorAssetLibrary.load_asset(path)
-            if mat:
-                mesh.set_material(i, mat)
-                changed = True
-        if changed:
-            unreal.EditorAssetLibrary.save_loaded_asset(mesh)
-            unreal.log(f"Gloshaugen: Megascans-materialer lagt på {short}")
 
 
 # ------------------------------------------------------------------ Fab models replace Claude's models
@@ -283,10 +215,33 @@ try:
 except Exception as e:  # never block the editor from opening
     unreal.log_warning(f"Gloshaugen: modell-import feilet: {e}")
 try:
-    apply_megascans()
+    import gs_materials
+    gs_materials.run()  # our PBR textures and materials; scanned Poly Haven / Megascans materials win by name
 except Exception as e:
-    unreal.log_warning(f"Gloshaugen: Megascans-kobling feilet: {e}")
+    unreal.log_warning(f"Gloshaugen: materialer feilet: {e}")
 try:
     link_fab_models()
 except Exception as e:
     unreal.log_warning(f"Gloshaugen: Fab-kobling feilet: {e}")
+
+
+# The map is made one tick after startup, when the editor is ready to open levels.
+_map_handle = None
+
+
+def _make_map(_dt):
+    global _map_handle
+    if _map_handle is not None:
+        unreal.unregister_slate_post_tick_callback(_map_handle)
+        _map_handle = None
+    try:
+        import gs_materials
+        gs_materials.ensure_map()
+    except Exception as e:
+        unreal.log_warning(f"Gloshaugen: kunne ikke lage kartet: {e}")
+
+
+try:
+    _map_handle = unreal.register_slate_post_tick_callback(_make_map)
+except Exception as e:
+    unreal.log_warning(f"Gloshaugen: {e}")

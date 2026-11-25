@@ -44,6 +44,8 @@ RAMP_X = (40.0, 52.5)
 RAMP_Y = (10.5, 13.2)
 TOWER = (-6.0, 6.0, 14.0, 26.0)
 TOWER_H = 38.0
+PANES = []  # window glass, exported as SM_Glass_Hovedbygningen (no collision)
+FRAME = K.mat("PlasticWhite", (0.88, 0.87, 0.84), rough=0.4)
 
 
 # ---------------------------------------------------------------- walls with openings
@@ -117,6 +119,30 @@ def facade(axis, at, a0, a1, outward, doors=(), skip=(), height=H, floors=FLOORS
         else:
             x = at + o * (W / 2 + depth / 2)
             K.box_minmax((x - depth / 2, al, zl), (x + depth / 2, ah, zh), m)
+    def inner(al, ah, zl, zh, pos, depth, m):
+        """Box inside the wall opening, `pos` m in from the outside face."""
+        if axis == "X":
+            y = at + o * (W / 2 - pos)
+            K.box_minmax((al, y - depth / 2, zl), (ah, y + depth / 2, zh), m)
+        else:
+            x = at + o * (W / 2 - pos)
+            K.box_minmax((x - depth / 2, al, zl), (x + depth / 2, ah, zh), m)
+    # window frames: outer ring, mullion and transom, then the pane
+    for (c, w, b, t) in deco:
+        fw, fp = 0.08, 0.22
+        inner(c - w / 2, c + w / 2, b, b + fw, fp, 0.1, FRAME)
+        inner(c - w / 2, c + w / 2, t - fw, t, fp, 0.1, FRAME)
+        inner(c - w / 2, c - w / 2 + fw, b, t, fp, 0.1, FRAME)
+        inner(c + w / 2 - fw, c + w / 2, b, t, fp, 0.1, FRAME)
+        inner(c - 0.035, c + 0.035, b, t, fp, 0.1, FRAME)
+        zt = b + (t - b) * 0.74
+        inner(c - w / 2, c + w / 2, zt - 0.035, zt + 0.035, fp, 0.1, FRAME)
+        if axis == "X":
+            y = at + o * (W / 2 - fp - 0.06)
+            PANES.append(((c, y, (b + t) / 2), (w - 0.1, 0.012, t - b - 0.1)))
+        else:
+            x = at + o * (W / 2 - fp - 0.06)
+            PANES.append(((x, c, (b + t) / 2), (0.012, w - 0.1, t - b - 0.1)))
     # sills, lintels (keystone look) and frames
     for (c, w, b, t) in deco:
         ob(c - w / 2 - 0.15, c + w / 2 + 0.15, b - 0.15, b, 0.18, TRIM)
@@ -313,6 +339,12 @@ for k in range(1, 5):
     for yy in (Y0 + W + (0.0 - Y0 - W) * t, (Y1 - W) * (1 - t)):
         K.box_minmax((ax0 - 1.0, yy - 0.06, gz + 5.0 * (t if yy < 0 else 1 - t) + 0.05), (ax1 + 1.0, yy + 0.06, gz + 5.0 * (t if yy < 0 else 1 - t) + 0.25), METAL)
 K.box_minmax((ax0 - 1.0, -0.2, gz + 4.9), (ax1 + 1.0, 0.2, gz + 5.3), METAL)
+# the glass of the roof (in the see-through glass mesh, so daylight still reaches the hall)
+_run = 0.0 - (Y0 + W)
+_ang = math.degrees(math.atan2(5.0, _run))
+_len = math.hypot(_run, 5.0)
+PANES.append((((ax0 + ax1) / 2, (Y0 + W) / 2, gz + 2.5 + 0.42), (ax1 - ax0 + 2.0, _len, 0.02), (_ang, 0, 0)))
+PANES.append((((ax0 + ax1) / 2, (Y1 - W) / 2, gz + 2.5 + 0.42), (ax1 - ax0 + 2.0, _len, 0.02), (-_ang, 0, 0)))
 # gable ends of the glass roof
 for x in (ax0 - 1.0, ax1 + 1.0):
     K.prism_x(x - 0.3, x, [(Y0 + W, gz), (Y1 - W, gz), (0.0, gz + 5.0)], STONE)
@@ -434,4 +466,10 @@ K.box((0.0, by - 0.5, 6.2), (6.0, 0.12, 0.9), K.mat("SignDark", (0.05, 0.07, 0.1
 K.cyl((0.0, by - 1.0, H + 8.5), 0.07, 6.0, METAL, verts=6)
 
 K.finish()
+
+G = MeshKit("SM_Glass_Hovedbygningen")
+GM = G.mat("Glass", (0.06, 0.09, 0.1), rough=0.05)
+for p in PANES:
+    G.box(p[0], p[1], GM, rot=p[2] if len(p) > 2 else (0, 0, 0))
+G.finish()
 print("done SM_Hovedbygningen")
