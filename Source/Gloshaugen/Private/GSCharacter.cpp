@@ -678,6 +678,7 @@ void AGSCharacter::FireOnce()
 		DrawPellets(Start, Camera->GetForwardVector(), Seed, S.Pellets, bAiming ? S.AimSpread : S.HipSpread, true);
 	}
 	AGSShortFX::SpawnMuzzleFlash(GetWorld(), MuzzleStart, Camera->GetForwardVector(), S.bSilent);
+	BarrelHeat = FMath::Min(BarrelHeat + (S.Class == EGSWeaponClass::Shotgun || S.Class == EGSWeaponClass::Sniper ? 3.f : 1.f), 30.f);
 	GSAudio::Play2D(this, GSAudio::ShotName(S.Class, S.bSilent), S.bSilent ? 0.6f : 1.f, FMath::FRandRange(0.96f, 1.04f));
 	if (W->Ammo <= 1) GSAudio::Play2D(this, TEXT("Dry_Fire"), 0.5f);
 
@@ -1166,6 +1167,14 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 				Pos.X -= 0.6f * B;
 				Rot.Roll += 3.f * B;
 			}
+		}
+		// Hot barrel: thin smoke curls off the muzzle after a long burst
+		BarrelHeat = FMath::Max(0.f, BarrelHeat - Dt * 2.f);
+		if (BarrelHeat > 6.f && Now - LastShotTime > 0.2f && Now - LastBarrelSmoke > 0.07f && !IsScopedIn())
+		{
+			LastBarrelSmoke = Now;
+			const float MD = GSItems::GetMesh(W->Id) ? S.MuzzleX : 50.f;
+			AGSShortFX::SpawnBarrelSmoke(GetWorld(), FPWeaponMesh->GetComponentLocation() + FPWeaponMesh->GetForwardVector() * MD, FPWeaponMesh->GetForwardVector());
 		}
 		// Idle fidget: after standing still for a while, glance at the gun
 		{

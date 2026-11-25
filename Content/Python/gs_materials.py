@@ -21,7 +21,7 @@ GS = "/Game/GS"
 TEX = GS + "/Textures"
 MAT = GS + "/Materials"
 MODELS = "/Game/Models"
-VERSION = 7  # bump to rebuild the master materials
+VERSION = 8  # bump to rebuild the master materials
 
 mel = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -334,6 +334,68 @@ def _foliage_master():
     eal.save_loaded_asset(m)
 
 
+def _fx_master(name, additive):
+    """Soft round sprite for smoke, dust, fire and flashes (used by AGSShortFX on a camera-facing plane).
+    Params: Color (rgb), Glow (emissive multiplier), Opacity (0..1), Soft (edge falloff power)."""
+    m = _new_material(name)
+    m.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE if additive else unreal.BlendMode.BLEND_TRANSLUCENT)
+    m.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    m.set_editor_property("two_sided", True)
+    col = _expr(m, unreal.MaterialExpressionVectorParameter, -900, -200, parameter_name="Color",
+                default_value=unreal.LinearColor(0.5, 0.5, 0.5, 1))
+    glow = _expr(m, unreal.MaterialExpressionScalarParameter, -900, -60, parameter_name="Glow", default_value=1.0)
+    op = _expr(m, unreal.MaterialExpressionScalarParameter, -900, 40, parameter_name="Opacity", default_value=1.0)
+    soft = _expr(m, unreal.MaterialExpressionScalarParameter, -900, 120, parameter_name="Soft", default_value=1.6)
+    # radial mask: r^2 = dot(uv-0.5, uv-0.5) * 4, mask = saturate(1 - r^2) ^ Soft
+    uv = _expr(m, unreal.MaterialExpressionTextureCoordinate, -1300, 250)
+    sub = _expr(m, unreal.MaterialExpressionSubtract, -1150, 250, const_b=0.5)
+    mel.connect_material_expressions(uv, "", sub, "A")
+    dot = _expr(m, unreal.MaterialExpressionDotProduct, -1000, 250)
+    mel.connect_material_expressions(sub, "", dot, "A")
+    mel.connect_material_expressions(sub, "", dot, "B")
+    r2 = _expr(m, unreal.MaterialExpressionMultiply, -850, 250, const_b=4.0)
+    mel.connect_material_expressions(dot, "", r2, "A")
+    inv = _expr(m, unreal.MaterialExpressionOneMinus, -700, 250)
+    mel.connect_material_expressions(r2, "", inv, "")
+    sat = _expr(m, unreal.MaterialExpressionSaturate, -560, 250)
+    mel.connect_material_expressions(inv, "", sat, "")
+    pw = _expr(m, unreal.MaterialExpressionPower, -420, 250)
+    mel.connect_material_expressions(sat, "", pw, "Base")
+    mel.connect_material_expressions(soft, "", pw, "Exponent")
+    mask = pw
+    if not additive:
+        # break the round blob up a little with world-space noise so smoke looks like smoke
+        try:
+            nz = _expr(m, unreal.MaterialExpressionNoise, -700, 420, scale=0.08, levels=3, output_min=0.45, output_max=1.0)
+            mm = _expr(m, unreal.MaterialExpressionMultiply, -300, 330)
+            mel.connect_material_expressions(pw, "", mm, "A")
+            mel.connect_material_expressions(nz, "", mm, "B")
+            mask = mm
+        except Exception as e:
+            log(f"stoey i roeyk hoppet over: {e}")
+    a = _expr(m, unreal.MaterialExpressionMultiply, -200, 150)
+    mel.connect_material_expressions(mask, "", a, "A")
+    mel.connect_material_expressions(op, "", a, "B")
+    e = _expr(m, unreal.MaterialExpressionMultiply, -500, -150)
+    mel.connect_material_expressions(col, "", e, "A")
+    mel.connect_material_expressions(glow, "", e, "B")
+    if additive:
+        e2 = _expr(m, unreal.MaterialExpressionMultiply, -100, -100)
+        mel.connect_material_expressions(e, "", e2, "A")
+        mel.connect_material_expressions(a, "", e2, "B")
+        mel.connect_material_property(e2, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    else:
+        mel.connect_material_property(e, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        try:
+            df = _expr(m, unreal.MaterialExpressionDepthFade, 0, 150, fade_distance_default=25.0)
+            mel.connect_material_expressions(a, "", df, "Opacity")
+            mel.connect_material_property(df, "", unreal.MaterialProperty.MP_OPACITY)
+        except Exception:
+            mel.connect_material_property(a, "", unreal.MaterialProperty.MP_OPACITY)
+    mel.recompile_material(m)
+    eal.save_loaded_asset(m)
+
+
 def build_masters():
     stamp = os.path.join(PROJECT_DIR, "Saved", "GSMaterials.version")
     have = 0
@@ -349,6 +411,11 @@ def build_masters():
     _surface_master("M_GS_World", world=True)
     _glass_master()
     _foliage_master()
+    for nm, add in (("M_GS_FX", False), ("M_GS_FXAdd", True)):
+        try:
+            _fx_master(nm, add)
+        except Exception as e:
+            log(f"{nm} feilet: {e}")
     os.makedirs(os.path.dirname(stamp), exist_ok=True)
     with open(stamp, "w") as f:
         f.write(str(VERSION))

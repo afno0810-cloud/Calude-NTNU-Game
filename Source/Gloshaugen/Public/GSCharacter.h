@@ -248,6 +248,8 @@ protected:
 	float WallBlend = 0.f;        // gun pulled back to high ready when you stand close to a wall
 	float IdleTime = 0.f;         // seconds without moving or shooting (idle fidget)
 	bool bAnimWasCrouched = false;
+	float BarrelHeat = 0.f;       // rises per shot, barrel smokes after a long burst
+	float LastBarrelSmoke = -100.f;
 	bool bWasFalling = false;
 	float InspectStart = -100.f;
 	float AimBlend = 0.f;

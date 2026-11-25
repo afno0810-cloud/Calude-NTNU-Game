@@ -115,7 +115,8 @@ void AGSProjectile::Tick(float DeltaSeconds)
 	// Rockets leave a smoke trail
 	if (!bExploded && IsKind(TEXT("rocket")) && GetNetMode() != NM_DedicatedServer)
 	{
-		AGSShortFX::SpawnBlob(GetWorld(), GetActorLocation(), FVector(0.25f), FLinearColor(0.6f, 0.6f, 0.6f), 0.8f);
+		AGSShortFX::SpawnSprite(GetWorld(), GetActorLocation(), 12.f, 70.f, FLinearColor(0.7f, 0.7f, 0.7f), 0.45f, 1.6f, FMath::VRand() * 20.f, false, 1.f, 8.f, 1.f);
+		AGSShortFX::SpawnSprite(GetWorld(), GetActorLocation(), 18.f, 6.f, FLinearColor(1.f, 0.6f, 0.2f), 1.f, 0.06f, FVector::ZeroVector, true, 30.f);
 	}
 
 	if (!HasAuthority()) return;
@@ -237,23 +238,21 @@ void AGSProjectile::OnRep_Exploded()
 	Mesh->SetVisibility(false);
 	if (IsKind(TEXT("smoke")))
 	{
-		// A thick grey cloud you cannot see through
-		for (int32 I = 0; I < 26; ++I)
-		{
-			const FVector Off(FMath::FRandRange(-1.f, 1.f) * Radius * 0.6f, FMath::FRandRange(-1.f, 1.f) * Radius * 0.6f, FMath::FRandRange(0.f, 1.f) * 300.f);
-			AGSShortFX::SpawnBlob(World, Loc + Off, FVector(FMath::FRandRange(2.f, 3.5f)), FLinearColor(0.55f, 0.56f, 0.58f), 20.f);
-		}
+		// A thick grey cloud you cannot see through: billowing soft sprites
+		AGSShortFX::SpawnSmokeCloud(World, Loc + FVector(0.f, 0.f, 120.f), FMath::Max(Radius, 300.f), FLinearColor(0.55f, 0.56f, 0.58f), 20.f, 34);
 	}
 	else if (IsKind(TEXT("flash")))
 	{
-		AGSShortFX::SpawnBlob(World, Loc, FVector(3.f), FLinearColor(1.f, 1.f, 1.f) * 40.f, 0.12f);
+		AGSShortFX::SpawnSprite(World, Loc, 300.f, 500.f, FLinearColor(1.f, 1.f, 1.f), 1.f, 0.15f, FVector::ZeroVector, true, 80.f);
+		AGSShortFX::SpawnSmokeCloud(World, Loc, 80.f, FLinearColor(0.7f, 0.7f, 0.7f), 3.f, 4);
 	}
 	else if (IsKind(TEXT("fire")))
 	{
 		for (int32 I = 0; I < 14; ++I)
 		{
 			const FVector Off(FMath::FRandRange(-1.f, 1.f) * Radius * 0.7f, FMath::FRandRange(-1.f, 1.f) * Radius * 0.7f, 20.f);
-			AGSShortFX::SpawnBlob(World, Loc + Off, FVector(0.8f, 0.8f, FMath::FRandRange(0.8f, 1.8f)), FLinearColor(1.f, 0.35f, 0.05f) * 10.f, 8.f);
+			AGSShortFX::SpawnSprite(World, Loc + Off + FVector(0.f, 0.f, 30.f), 60.f, FMath::FRandRange(90.f, 140.f), FLinearColor(1.f, 0.4f, 0.08f), 1.f, 8.f, FVector::ZeroVector, true, 12.f, 0.f, 1.f);
+			AGSShortFX::SpawnSprite(World, Loc + Off + FVector(0.f, 0.f, 120.f), 80.f, 260.f, FLinearColor(0.08f, 0.07f, 0.06f), 0.6f, 8.f, FVector(0.f, 0.f, 20.f), false, 1.f, 3.f, 0.5f);
 		}
 	}
 	else
