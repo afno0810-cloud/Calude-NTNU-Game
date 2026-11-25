@@ -98,6 +98,14 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UCameraComponent> Camera;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPWeaponMesh;   // seen only by owner
+	/** First-person gloved arms (SM_FPArm_R/L) holding the weapon, a magazine in the left hand while reloading,
+	 *  the item being eaten/drunk/injected and the hand holding it, and your own legs when you look down. */
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPArmR;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPArmL;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPMag;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPItemMesh;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPItemHand;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> FPLegs;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> BodyMesh;       // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> HeadMesh;       // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> TPWeaponMesh;   // seen by others
@@ -147,6 +155,12 @@ protected:
 	void SpawnShellFX(EGSWeaponClass Class);
 	/** Applies camera recoil smoothly over a few frames and drifts part of it back when you stop firing. */
 	void TickRecoil(float Dt);
+	/** Places the arms on the weapon (grip + handguard), animates the left hand during reloads. */
+	void UpdateArms(float Dt, const struct FGSWeaponStats* S, float ReloadT, bool bShellReload);
+	/** Eating, drinking, pills, injections, bandages: the item comes up in your hand. */
+	void UpdateItemUse(float Dt);
+	FName ItemAnimId;
+	FVector LeftHandHome = FVector::ZeroVector;
 	void Inspect();
 	void TickSurvival(float DeltaSeconds);
 	void TickEffects();

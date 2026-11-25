@@ -149,6 +149,29 @@ AGSCharacter::AGSCharacter()
 	FPWeaponMesh->SetCastShadow(false);
 	SetupVisual(FPWeaponMesh);
 
+	auto FPPart = [this](const TCHAR* Name, USceneComponent* Parent)
+	{
+		UStaticMeshComponent* C = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+		C->SetupAttachment(Parent);
+		C->SetOnlyOwnerSee(true);
+		C->SetCastShadow(false);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->SetGenerateOverlapEvents(false);
+		C->SetVisibility(false);
+		return C;
+	};
+	FPArmR = FPPart(TEXT("FPArmR"), FPWeaponMesh);
+	FPArmL = FPPart(TEXT("FPArmL"), FPWeaponMesh);
+	FPMag = FPPart(TEXT("FPMag"), FPArmL);
+	FPItemMesh = FPPart(TEXT("FPItem"), Camera);
+	FPItemHand = FPPart(TEXT("FPItemHand"), FPItemMesh);
+	FPLegs = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPLegs"));
+	FPLegs->SetupAttachment(GetCapsuleComponent());
+	FPLegs->SetOnlyOwnerSee(true);
+	FPLegs->SetCastShadow(false);
+	FPLegs->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	FPLegs->SetVisibility(false);
+
 	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Body"));
 	BodyMesh->SetupAttachment(GetCapsuleComponent());
 	BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, -14.f));
@@ -1185,9 +1208,196 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 		Pos += GSItems::MeshOffset(W->Id);
 	}
 
+	{
+		const float RT = (bReloading && ReloadLength > 0.f) ? (Now - ReloadStart) / ReloadLength : -1.f;
+		const bool bShellR = W && (S.Class == EGSWeaponClass::Shotgun || (S.Class == EGSWeaponClass::Sniper && S.MagSize <= 5));
+		UpdateArms(Dt, W ? &S : nullptr, RT, bShellR);
+		UpdateItemUse(Dt);
+	}
 	Camera->SetFieldOfView(FMath::FInterpTo(Camera->FieldOfView, TargetFOV, Dt, 12.f));
 	FPWeaponMesh->SetRelativeLocation(FMath::VInterpTo(FPWeaponMesh->GetRelativeLocation(), Pos, Dt, 40.f));
 	FPWeaponMesh->SetRelativeRotation(FMath::RInterpTo(FPWeaponMesh->GetRelativeRotation(), Rot, Dt, 40.f));
+}
+
+static UStaticMesh* FPModel(const TCHAR* Name)
+{
+	static TMap<FString, TWeakObjectPtr<UStaticMesh>> Cache;
+	if (TWeakObjectPtr<UStaticMesh>* F = Cache.Find(Name)) { if (F->IsValid()) return F->Get(); }
+	UStaticMesh* M = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Models/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (M) Cache.Add(Name, M);
+	return M;
+}
+
+// Piecewise path through keyframes (time 0..1 -> position), eased between keys.
+struct FGSKey { float T; FVector V; };
+static FVector KeyPath(float T, const TArray<FGSKey>& Keys)
+{
+	if (Keys.Num() == 0) return FVector::ZeroVector;
+	if (T <= Keys[0].T) return Keys[0].V;
+	for (int32 i = 1; i < Keys.Num(); ++i)
+	{
+		if (T <= Keys[i].T)
+		{
+			const float A = (T - Keys[i - 1].T) / FMath::Max(Keys[i].T - Keys[i - 1].T, 0.001f);
+			return FMath::Lerp(Keys[i - 1].V, Keys[i].V, A * A * (3.f - 2.f * A));
+		}
+	}
+	return Keys.Last().V;
+}
+
+void AGSCharacter::UpdateArms(float Dt, const FGSWeaponStats* S, float ReloadT, bool bShellReload)
+{
+	const FGSWeaponSlot* W = GetCurrentWeapon();
+	UStaticMesh* ArmR = FPModel(TEXT("SM_FPArm_R"));
+	UStaticMesh* ArmL = FPModel(TEXT("SM_FPArm_L"));
+	const bool bModel = W && GSItems::GetMesh(W->Id) != nullptr;
+	const bool bShow = S && ArmR && ArmL && bModel && FPWeaponMesh->IsVisible() && UseItemId.IsNone();
+	FPArmR->SetVisibility(bShow);
+	if (!bShow)
+	{
+		FPArmL->SetVisibility(false);
+		FPMag->SetVisibility(false);
+		return;
+	}
+	if (FPArmR->GetStaticMesh() != ArmR) FPArmR->SetStaticMesh(ArmR);
+	if (FPArmL->GetStaticMesh() != ArmL) FPArmL->SetStaticMesh(ArmL);
+
+	// Where the left hand rests (weapon space, cm). Knives and one-handed melee: no left hand.
+	const float MX = S->MuzzleX;
+	bool bLeft = true;
+	FVector Home(MX * 0.45f, 0.f, -2.5f);
+	FRotator HomeRot = FRotator::ZeroRotator;
+	switch (S->Class)
+	{
+	case EGSWeaponClass::Pistol:   Home = FVector(-1.f, 0.5f, -7.5f); HomeRot = FRotator(-20.f, 0.f, 25.f); break;
+	case EGSWeaponClass::Shotgun:  Home = FVector(MX * 0.58f, 0.f, -3.f); break;
+	case EGSWeaponClass::Launcher: Home = FVector(MX * 0.25f, 0.f, -7.f); break;
+	case EGSWeaponClass::Bow:      Home = FVector(-12.f, 0.f, -4.f); break;
+	case EGSWeaponClass::Melee:    bLeft = MX > 45.f; Home = FVector(-14.f, 0.f, 0.f); break;
+	default: break;
+	}
+	LeftHandHome = Home;
+	FVector L = Home;
+	FRotator LR = HomeRot;
+	bool bMag = false;
+	if (ReloadT >= 0.f && bLeft)
+	{
+		const FVector Well = S->Class == EGSWeaponClass::Pistol ? FVector(-4.f, 0.f, -12.f) : FVector(8.f, 0.f, -9.f);
+		const FVector Pouch(-18.f, 14.f, -40.f);
+		if (bShellReload)
+		{
+			// one shell at a time from the belt into the loading port
+			const int32 N = FMath::Max(2, S->MagSize / 2);
+			const float Cyc = FMath::Frac(FMath::Clamp((ReloadT - 0.12f) / 0.76f, 0.f, 1.f) * N);
+			const FVector Port(6.f, 0.f, -6.f);
+			const float In = FMath::Clamp(ReloadT / 0.12f, 0.f, 1.f) * FMath::Clamp((1.f - ReloadT) / 0.12f, 0.f, 1.f);
+			L = FMath::Lerp(Home, KeyPath(Cyc, { {0.f, Port}, {0.45f, Pouch * 0.6f}, {1.f, Port} }), In);
+			bMag = Cyc > 0.45f && In > 0.5f;
+		}
+		else
+		{
+			const FVector Charge = S->Class == EGSWeaponClass::Pistol ? FVector(-5.f, 0.f, 4.f) : FVector(-2.f, -4.f, 5.f);
+			L = KeyPath(ReloadT, {
+				{0.f, Home}, {0.12f, Well}, {0.28f, Well + FVector(0.f, 0.f, -14.f)}, {0.42f, Pouch},
+				{0.56f, Well + FVector(0.f, 0.f, -14.f)}, {0.64f, Well}, {0.72f, Charge}, {0.82f, Charge + FVector(-9.f, 0.f, 0.f)},
+				{0.95f, Home} });
+			LR = FRotator(0.f, 0.f, 30.f * FMath::Sin(FMath::Clamp(ReloadT, 0.f, 1.f) * PI));
+			// old magazine in the hand going out, new one coming in
+			bMag = (ReloadT > 0.14f && ReloadT < 0.27f) || (ReloadT > 0.42f && ReloadT < 0.64f);
+		}
+	}
+	FPArmL->SetVisibility(bLeft);
+	FPArmL->SetRelativeLocation(FMath::VInterpTo(FPArmL->GetRelativeLocation(), L, Dt, 25.f));
+	FPArmL->SetRelativeRotation(FMath::RInterpTo(FPArmL->GetRelativeRotation(), LR, Dt, 25.f));
+	FPMag->SetVisibility(bMag);
+	if (bMag)
+	{
+		if (FPMag->GetStaticMesh() != GSUtils::Cube()) FPMag->SetStaticMesh(GSUtils::Cube());
+		const bool bShell = bShellReload;
+		FPMag->SetRelativeLocation(bShell ? FVector(1.f, 0.f, 1.f) : FVector(0.f, 0.f, -8.f));
+		FPMag->SetRelativeScale3D(bShell ? FVector(0.065f, 0.02f, 0.02f) : FVector(0.035f, 0.025f, 0.17f));
+		GSUtils::SetColor(FPMag, bShell ? FLinearColor(0.5f, 0.04f, 0.03f) : FLinearColor(0.03f, 0.03f, 0.035f));
+	}
+}
+
+void AGSCharacter::UpdateItemUse(float Dt)
+{
+	const FGSItemDef* Def = UseItemId.IsNone() ? nullptr : GSItems::Find(UseItemId);
+	UStaticMesh* Model = Def ? GSItems::GetMesh(UseItemId) : nullptr;
+	if (!Model)
+	{
+		FPItemMesh->SetVisibility(false);
+		FPItemHand->SetVisibility(false);
+		ItemAnimId = NAME_None;
+		return;
+	}
+	if (ItemAnimId != UseItemId)
+	{
+		ItemAnimId = UseItemId;
+		FPItemMesh->SetStaticMesh(Model);
+		const float Size = Model->GetBounds().BoxExtent.GetMax() * 2.f;
+		FPItemMesh->SetRelativeScale3D(FVector(FMath::Clamp(14.f / FMath::Max(Size, 1.f), 0.3f, 3.f)));
+		FPItemMesh->SetRelativeLocation(FVector(30.f, 14.f, -40.f));
+		if (UStaticMesh* Hand = FPModel(TEXT("SM_FPArm_R"))) FPItemHand->SetStaticMesh(Hand);
+	}
+	FPItemMesh->SetVisibility(true);
+	FPItemHand->SetVisibility(FPItemHand->GetStaticMesh() != nullptr);
+	// the hand keeps its real size even when the item is scaled up or down
+	const float Inv = 1.f / FMath::Max(FPItemMesh->GetRelativeScale3D().X, 0.01f);
+	FPItemHand->SetRelativeScale3D(FVector(Inv));
+	FPItemHand->SetRelativeLocation(FVector(-2.f, 0.f, -4.f) * Inv);
+
+	const float Now = GetServerTime();
+	const float Len = FMath::Max(UseEndTime - UseStartTime, 0.1f);
+	const float T = FMath::Clamp((Now - UseStartTime) / Len, 0.f, 1.f);
+	const float In = FMath::Clamp(T / 0.15f, 0.f, 1.f) * FMath::Clamp((1.f - T) / 0.1f, 0.f, 1.f);
+	const FString Id = UseItemId.ToString();
+	const FVector Low(30.f, 14.f, -40.f);
+	const FVector Hold(28.f, 8.f, -16.f);
+	const FVector Mouth(14.f, 2.f, -7.f);
+	FVector P = Hold;
+	FRotator R(0.f, -20.f, 0.f);
+	const float Clock = Now - UseStartTime;
+	const bool bDrink = Def->Thirst > 0.f && Def->Hunger <= 0.f;
+	const bool bPills = Id.Contains(TEXT("Pill")) || Id.Contains(TEXT("Painkillers")) || Id.Contains(TEXT("Snus")) || Id.Contains(TEXT("Nicotine"));
+	const bool bWrap = Id.Contains(TEXT("Bandage")) || Id.Contains(TEXT("Plaster"));
+	if (Def->Cat == EGSItemCat::Food && bDrink)
+	{
+		// bottle up to the mouth and tip it back, small sips
+		const float Up = FMath::Clamp((T - 0.15f) / 0.15f, 0.f, 1.f) * FMath::Clamp((0.92f - T) / 0.12f, 0.f, 1.f);
+		P = FMath::Lerp(Hold, Mouth, Up);
+		R = FRotator(55.f * Up + 6.f * FMath::Sin(Clock * 6.f) * Up, -10.f, 0.f);
+	}
+	else if (Def->Cat == EGSItemCat::Food)
+	{
+		// bites: to the mouth, chew, again
+		const float Bite = FMath::Max(0.f, FMath::Sin(Clock * PI / 0.7f));
+		P = FMath::Lerp(Hold, Mouth, Bite * 0.85f);
+		R = FRotator(15.f * Bite, -25.f, 10.f * Bite);
+	}
+	else if (bPills)
+	{
+		const float Up = FMath::Clamp((T - 0.3f) / 0.2f, 0.f, 1.f) * FMath::Clamp((0.8f - T) / 0.15f, 0.f, 1.f);
+		P = FMath::Lerp(Hold, Mouth, Up);
+		R = FRotator(40.f * Up, -15.f, 20.f * FMath::Sin(Clock * 12.f) * (1.f - Up));
+	}
+	else if (bWrap || Def->Cat == EGSItemCat::Medicine)
+	{
+		// wrapping / working on the wound low in front of you
+		const float A = Clock * (bWrap ? 7.f : 4.f);
+		P = FVector(30.f, -4.f, -24.f) + FVector(0.f, FMath::Cos(A) * 6.f, FMath::Sin(A) * 4.f);
+		R = FRotator(-20.f, -30.f + FMath::Sin(A) * 15.f, 30.f);
+	}
+	else
+	{
+		// injection into the other arm: aim, push, hold
+		const float Push = FMath::Clamp((T - 0.35f) / 0.1f, 0.f, 1.f) * FMath::Clamp((0.85f - T) / 0.1f, 0.f, 1.f);
+		P = FVector(24.f, -12.f + 4.f * Push, -24.f);
+		R = FRotator(-10.f, -70.f, 0.f);
+	}
+	P = FMath::Lerp(Low, P, In);
+	FPItemMesh->SetRelativeLocation(FMath::VInterpTo(FPItemMesh->GetRelativeLocation(), P, Dt, 14.f));
+	FPItemMesh->SetRelativeRotation(FMath::RInterpTo(FPItemMesh->GetRelativeRotation(), R, Dt, 14.f));
 }
 
 void AGSCharacter::TickRecoil(float Dt)
@@ -2041,6 +2251,16 @@ void AGSCharacter::SetupHumanBody()
 	Skel->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
 	Skel->SetVisibility(true);
 	bHumanBody = true;
+	// Your own legs when you look down: same body, upper body hidden, a little behind the camera.
+	if (IsLocallyControlled() && FPLegs)
+	{
+		FPLegs->SetSkeletalMesh(Body);
+		if (Anim) FPLegs->SetAnimInstanceClass(Anim);
+		FPLegs->SetRelativeLocation(FVector(-14.f, 0.f, -GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight()));
+		FPLegs->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+		FPLegs->HideBoneByName(TEXT("spine_03"), EPhysBodyOp::PBO_None);
+		FPLegs->SetVisibility(true);
+	}
 	// keep the old shapes as invisible hitboxes
 	BodyMesh->SetVisibility(false);
 	HeadMesh->SetVisibility(false);
@@ -2049,6 +2269,7 @@ void AGSCharacter::SetupHumanBody()
 void AGSCharacter::OnRep_Dead()
 {
 	if (!bDead) return;
+	if (FPLegs) FPLegs->SetVisibility(false);
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HeadMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
