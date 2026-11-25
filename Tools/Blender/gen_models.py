@@ -1088,26 +1088,50 @@ def _(p, m):
 @item("grenade")
 def _(p, m):
     k = p["kind"]
+    steel = m["steel"]
     if k == "frag":
-        sph("Body", 0.032, (0, 0, 0.04), m["green"], scale=(1, 1, 1.2))
+        prof = []
+        for i in range(15):
+            a = -math.pi / 2 + math.pi * i / 14
+            prof.append((0.032 * math.cos(a), 0.038 + 0.04 * math.sin(a)))
+        prof = [(0.0, prof[0][1])] + prof[1:-1] + [(0.0115, 0.076)]
+        lathe("Body", prof, m["green"], segs=36)
+        lathe("Seam", [(0.0322, 0.036), (0.0322, 0.04)], col((0.2, 0.24, 0.13), 0.2, 0.6), segs=36)
+        top = 0.076
+        for i in range(3):
+            box(f"Print{i}", (0.012 - i * 0.002, 0.001, 0.003), (0.0, -0.0318, 0.05 - i * 0.006), col((0.85, 0.8, 0.3)), bevel=0)
     else:
-        cyl("Body", 0.03, 0.11, (0, 0, 0.055), m["dark"] if k == "flash" else col((0.5, 0.5, 0.5)), axis="Z")
+        body = m["dark"] if k == "flash" else col((0.45, 0.47, 0.4), 0.4, 0.5)
+        lathe("Body", [(0.0, 0.0), (0.028, 0.0), (0.03, 0.003), (0.03, 0.108), (0.027, 0.112), (0.012, 0.114)], body, segs=36)
         if k == "flash":
-            for i in range(6):
-                a = i * math.pi / 3
-                cyl(f"Hole{i}", 0.006, 0.01, (math.cos(a) * 0.029, math.sin(a) * 0.029, 0.07), m["poly"], axis="Z")
+            for row in range(2):
+                for i in range(6):
+                    a = i * math.pi / 3 + row * math.pi / 6
+                    box(f"Hole{row}{i}", (0.004, 0.012, 0.016), (math.cos(a) * 0.029, math.sin(a) * 0.029, 0.035 + row * 0.04), m["poly"], rot=(0, 0, math.degrees(a)), bevel=0.001)
         else:
-            cyl("Stripe", 0.031, 0.015, (0, 0, 0.08), col((0.9, 0.85, 0.1)), axis="Z")
-    top = 0.085 if k == "frag" else 0.115
-    cyl("Fuse", 0.011, 0.02, (0, 0, top), m["steel"], axis="Z")
-    box("Spoon", (0.01, 0.014, 0.07), (0.033, 0, top - 0.035), m["steel"], rot=(0, 8, 0))
-    cyl("Ring", 0.012, 0.002, (-0.015, 0, top + 0.012), m["steel"], axis="Y")
+            lathe("Stripe", [(0.0303, 0.07), (0.0303, 0.085)], col((0.9, 0.85, 0.1)), segs=36)
+            lathe("Text", [(0.0302, 0.03), (0.0302, 0.05)], col((0.15, 0.15, 0.12)), segs=36)
+            for i in range(4):
+                a = i * math.pi / 2
+                cyl(f"Vent{i}", 0.003, 0.002, (math.cos(a) * 0.015, math.sin(a) * 0.015, 0.001), m["poly"], axis="Z", verts=8)
+        top = 0.114
+    lathe("Fuse", [(0.0, top - 0.004), (0.0105, top - 0.004), (0.0105, top + 0.01), (0.0085, top + 0.013), (0.006, top + 0.022), (0.0, top + 0.022)], steel, segs=24)
+    prism("Spoon", [(0.008, top + 0.02), (0.016, top + 0.018), (0.034, top - 0.01), (0.036, top - 0.06), (0.031, top - 0.062), (0.029, top - 0.012), (0.012, top + 0.012), (0.008, top + 0.014)], 0.011, steel, bevel=0.0006)
+    ring = [(-0.012 + math.cos(t) * 0.011, 0.0, top + 0.014 + math.sin(t) * 0.011) for t in [i * 2 * math.pi / 20 for i in range(21)]]
+    tube("Ring", ring, [0.0012] * len(ring), m["chrome"], segs=6, caps=False)
+    tube("Pin", [(-0.003, 0, top + 0.012), (0.012, 0, top + 0.012)], [0.001, 0.001], m["chrome"], segs=6)
 
 
 @item("molotov")
 def _(p, m):
-    bottle_with_cap(m, (0.25, 0.45, 0.15), (0.9, 0.85, 0.7), r=0.03, h=0.24)
-    box("Rag", (0.02, 0.03, 0.08), (0.01, 0, 0.27), col((0.8, 0.75, 0.6)), rot=(0, 15, 0))
+    glass = col((0.22, 0.4, 0.14), 0, 0.05)
+    lathe("Bottle", [(0.0, 0.0), (0.026, 0.0), (0.03, 0.004), (0.03, 0.15), (0.027, 0.17), (0.016, 0.195), (0.012, 0.215), (0.012, 0.23), (0.014, 0.232), (0.012, 0.236)], glass, segs=32)
+    lathe("Fuel", [(0.0, 0.003), (0.0302, 0.004), (0.0302, 0.11), (0.0, 0.112)], col((0.75, 0.5, 0.1), 0, 0.1), segs=32)
+    lathe("Label", [(0.0305, 0.05), (0.0305, 0.1)], m["paper"], segs=32)
+    rag = col((0.78, 0.72, 0.58), 0, 1.0)
+    tube("RagNeck", [(0, 0, 0.212), (0, 0, 0.24)], [0.0145, 0.0135], rag, segs=12)
+    tube("RagTail", [(0.006, 0, 0.238), (0.014, 0.002, 0.252), (0.02, 0.0, 0.262), (0.03, -0.004, 0.258), (0.036, -0.006, 0.244)], [0.007, 0.0075, 0.007, 0.006, 0.004], rag, segs=8, squash=(1.0, 0.45))
+    tube("Twine", [(math.cos(t) * 0.0142, math.sin(t) * 0.0142, 0.218) for t in [i * 2 * math.pi / 16 for i in range(17)]], [0.0012] * 17, col((0.4, 0.3, 0.18), 0, 1.0), segs=5, caps=False)
 
 
 @item("c4")
@@ -1122,32 +1146,77 @@ def _(p, m):
 
 @item("mine")
 def _(p, m):
-    prism("Body", [(-0.11, 0.0), (0.11, 0.0), (0.1, 0.09), (-0.1, 0.09)], 0.035, m["green"])
-    box("Front", (0.2, 0.002, 0.07), (0, -0.018, 0.045), col((0.25, 0.28, 0.15)), bevel=0)
+    # Directional mine: curved box on scissor legs, sight on top, tripwire spool.
+    n = 11
+    outer = [(math.sin(t) * 0.12, -0.018 + (1 - math.cos(t)) * 0.12) for t in [-0.7 + 1.4 * i / (n - 1) for i in range(n)]]
+    me = bpy.data.meshes.new("Body")
+    o = bpy.data.objects.new("Body", me)
+    bpy.context.collection.objects.link(o)
+    bm = bmesh.new()
+    ring = []
+    for x, y in outer:
+        ring.append([bm.verts.new((x, y + dy, z)) for dy, z in ((0.0, 0.0), (0.0, 0.085), (0.032, 0.085), (0.032, 0.0))])
+    for a, b in zip(ring, ring[1:]):
+        for k in range(4):
+            j = (k + 1) % 4
+            bm.faces.new((a[k], b[k], b[j], a[j]))
+    bm.faces.new(ring[0])
+    bm.faces.new(ring[-1][::-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(me)
+    bm.free()
+    o.data.materials.append(m["green"])
+    for f in me.polygons:
+        f.use_smooth = False
+    box("Text", (0.09, 0.001, 0.02), (0, -0.0135, 0.06), col((0.85, 0.82, 0.6)), bevel=0)
+    box("Sight", (0.012, 0.012, 0.012), (0, 0.008, 0.092), m["dark"], bevel=0.002)
     for s in (-1, 1):
+        cyl(f"Fuze{s}", 0.005, 0.014, (s * 0.04, 0.008, 0.091), m["dark"], axis="Z", verts=12)
         for t in (-1, 1):
-            rotated(cyl(f"Leg{s}{t}", 0.003, 0.07, (s * 0.07, t * 0.02, -0.02), m["steel"], axis="Z"), (t * 25, 0, 0))
-    cyl("Wire", 0.0008, 0.5, (0.35, 0, 0.02), m["chrome"])
+            rotated(cyl(f"Leg{s}{t}", 0.0022, 0.075, (s * 0.075, 0.008 + t * 0.016, -0.025), m["steel"], axis="Z", verts=8), (t * 22, 0, 0))
+    cyl("Spool", 0.012, 0.012, (0.0, 0.03, 0.02), m["poly"], axis="Y", verts=16)
+    tube("Wire", [(0.0, 0.03, 0.02), (0.1, 0.08, 0.0), (0.22, 0.09, 0.0)], [0.0006] * 3, m["chrome"], segs=4)
 
 
 @item("binoculars")
 def _(p, m):
     for s in (-1, 1):
-        cyl(f"Tube{s}", 0.025, 0.12, (0, s * 0.035, 0), m["poly"])
-        cyl(f"Lens{s}", 0.021, 0.122, (0, s * 0.035, 0), m["lens"])
-        cyl(f"Eye{s}", 0.018, 0.03, (-0.07, s * 0.033, 0), m["rubber"])
-    box("Bridge", (0.05, 0.04, 0.02), (-0.01, 0, 0), m["dark"])
-    cyl("Focus", 0.008, 0.03, (-0.02, 0, 0.015), m["dark"], axis="Y")
+        y = s * 0.034
+        o = lathe(f"Tube{s}", [(0.017, -0.06), (0.0185, -0.045), (0.022, -0.02), (0.025, 0.03), (0.026, 0.062), (0.024, 0.065)], m["green"], segs=28)
+        o.rotation_euler = (0, math.radians(90), 0)
+        o.location = (0.0, y, 0.0)
+        o = lathe(f"Armor{s}", [(0.0228, -0.01), (0.0258, 0.03), (0.0262, 0.05)], m["rubber"], segs=28)
+        o.rotation_euler = (0, math.radians(90), 0)
+        o.location = (0.0, y, 0.0)
+        cyl(f"Lens{s}", 0.021, 0.004, (0.063, y, 0.0), m["lens"], verts=28)
+        o = lathe(f"Eyecup{s}", [(0.0, -0.08), (0.016, -0.08), (0.017, -0.077), (0.016, -0.06)], m["rubber"], segs=24)
+        o.rotation_euler = (0, math.radians(90), 0)
+        o.location = (0.0, y, 0.0)
+        cyl(f"Ocular{s}", 0.009, 0.002, (-0.08, y, 0.0), m["lens"], verts=20)
+    for x in (-0.03, 0.035):
+        box(f"Bridge{x}", (0.022, 0.05, 0.012), (x, 0, 0.004), m["dark"], bevel=0.003)
+    cyl("Hinge", 0.008, 0.11, (0.0, 0, 0.006), m["dark"], verts=16)
+    cyl("Focus", 0.01, 0.018, (-0.04, 0, 0.012), m["rubber"], axis="Y", verts=20)
+    box("Strap", (0.01, 0.012, 0.006), (-0.055, 0.058, 0.0), m["poly"], bevel=0.002)
 
 
 @item("goggles")
 def _(p, m):
-    box("Housing", (0.05, 0.08, 0.04), (0, 0, 0), m["green"], bevel=0.008)
+    box("Housing", (0.05, 0.07, 0.035), (0, 0, 0), m["green"], bevel=0.009)
+    box("Battery", (0.03, 0.03, 0.018), (-0.005, 0.045, 0.012), m["green"], bevel=0.005)
+    cyl("BattCap", 0.008, 0.006, (-0.005, 0.063, 0.012), m["dark"], axis="Y", verts=16)
     for s in (-1, 1):
-        cyl(f"Tube{s}", 0.017, 0.06, (0.045, s * 0.03, 0), m["green"])
-        cyl(f"Lens{s}", 0.014, 0.062, (0.045, s * 0.03, 0), col((0.1, 0.6, 0.2), 0.5, 0.05))
-    box("Mount", (0.03, 0.03, 0.05), (-0.01, 0, 0.04), m["poly"])
-    box("Strap", (0.01, 0.2, 0.02), (-0.04, 0, 0.0), m["fabric"])
+        o = lathe(f"Tube{s}", [(0.014, 0.02), (0.016, 0.03), (0.0175, 0.065), (0.019, 0.072), (0.018, 0.075)], m["green"], segs=24)
+        o.rotation_euler = (0, math.radians(90), 0)
+        o.location = (0, s * 0.018, 0)
+        cyl(f"Lens{s}", 0.015, 0.003, (0.075, s * 0.018, 0), col((0.1, 0.5, 0.25), 0.6, 0.05), verts=24)
+        o = lathe(f"Eyecup{s}", [(0.0, -0.045), (0.016, -0.045), (0.018, -0.04), (0.015, -0.02)], m["rubber"], segs=24)
+        o.rotation_euler = (0, math.radians(90), 0)
+        o.location = (0, s * 0.03, 0)
+        cyl(f"Knob{s}", 0.005, 0.008, (0.01, s * 0.04, -0.012), m["dark"], axis="Y", verts=12)
+    box("Mount", (0.028, 0.03, 0.04), (-0.012, 0, 0.035), m["poly"], bevel=0.004)
+    box("Dovetail", (0.04, 0.02, 0.008), (-0.012, 0, 0.058), m["dark"], bevel=0.002)
+    box("Strap", (0.012, 0.2, 0.022), (-0.045, 0, -0.005), m["fabric"], bevel=0.003)
 
 
 @item("drone")
@@ -1208,11 +1277,23 @@ def _(p, m):
 
 @item("radio")
 def _(p, m):
-    box("Body", (0.035, 0.06, 0.13), (0, 0, 0.065), m["poly"], bevel=0.006)
-    cyl("Antenna", 0.005, 0.12, (0, 0.015, 0.19), m["rubber"], axis="Z")
-    cyl("Knob", 0.006, 0.012, (0, -0.015, 0.136), m["dark"], axis="Z")
-    box("Screen", (0.002, 0.04, 0.025), (0.018, 0, 0.1), col((0.3, 0.6, 0.3), 0, 0.1), bevel=0)
-    box("Grill", (0.002, 0.045, 0.04), (0.018, 0, 0.045), m["dark"], bevel=0)
+    box("Body", (0.035, 0.058, 0.12), (0, 0, 0.06), m["poly"], bevel=0.008)
+    box("Grip", (0.037, 0.06, 0.05), (0, 0, 0.03), m["rubber"], bevel=0.008)
+    lathe("Antenna", [(0.0, 0.118), (0.0065, 0.118), (0.0065, 0.135), (0.0045, 0.145), (0.0042, 0.23), (0.003, 0.236), (0.0, 0.237)], m["rubber"], segs=16, loc=(0, 0.014, 0))
+    cyl("Knob", 0.0065, 0.014, (0, -0.016, 0.126), m["dark"], axis="Z", verts=18)
+    for k in range(12):
+        a = k * math.pi / 6
+        box(f"KnobRib{k}", (0.0012, 0.0012, 0.012), (math.cos(a) * 0.0067, -0.016 + math.sin(a) * 0.0067, 0.126), m["dark"], bevel=0)
+    box("Screen", (0.002, 0.04, 0.022), (0.0177, 0, 0.1), col((0.35, 0.65, 0.35), 0, 0.1), bevel=0.0005)
+    box("Bezel", (0.0015, 0.046, 0.028), (0.0172, 0, 0.1), m["dark"], bevel=0.001)
+    for r in range(3):
+        for c in range(3):
+            box(f"Key{r}{c}", (0.003, 0.011, 0.007), (0.018, -0.014 + c * 0.014, 0.075 - r * 0.011), col((0.25, 0.25, 0.27)), bevel=0.001)
+    for i in range(6):
+        box(f"Grill{i}", (0.002, 0.04, 0.0018), (0.0185, 0, 0.03 - i * 0.004), m["dark"], bevel=0)
+    box("PTT", (0.012, 0.004, 0.025), (0.0, 0.031, 0.075), m["dark"], bevel=0.0015)
+    box("Clip", (0.004, 0.026, 0.07), (-0.021, 0, 0.065), m["dark"], bevel=0.0015)
+    cyl("Led", 0.002, 0.003, (0.006, 0.006, 0.121), col((0.9, 0.1, 0.05), 0, 0.2), axis="Z", verts=8)
 
 
 @item("ammobox")
@@ -1266,10 +1347,27 @@ def _(p, m):
 
 @item("extmag")
 def _(p, m):
-    for i in range(6):
-        ang = 4 + i * 5
-        box(f"Mag{i}", (0.038, 0.026, 0.05), (math.sin(math.radians(ang)) * 0.05 * i, 0, -0.045 * i), m["dark"], rot=(0, -ang, 0))
-    box("Base", (0.045, 0.03, 0.012), (0.16, 0, -0.27), m["poly"], rot=(0, -30, 0))
+    # Extended curved rifle magazine (40 rounds): one smooth arc body with ribs and a floor plate.
+    n = 14
+    L = 0.3
+    pts_f, pts_b = [], []
+    for i in range(n):
+        t = i / (n - 1)
+        a = math.radians(5 + 28 * t)
+        cx = 0.12 * (1 - math.cos(a)) * 1.9
+        cz = -L * t
+        pts_f.append((cx + 0.02 * math.cos(a), cz - 0.02 * math.sin(a) * 0.3))
+        pts_b.append((cx - 0.02 * math.cos(a), cz + 0.02 * math.sin(a) * 0.3))
+    prism("Body", pts_f + pts_b[::-1], 0.024, m["dark"], bevel=0.002)
+    for i in range(1, n - 1):
+        x0, z0 = pts_f[i]
+        x1, z1 = pts_b[i]
+        if i % 2 == 0:
+            box(f"Rib{i}", (abs(x0 - x1) * 0.8, 0.0255, 0.006), ((x0 + x1) / 2, 0, (z0 + z1) / 2), m["dark"], rot=(0, -math.degrees(math.radians(5 + 28 * i / (n - 1))), 0), bevel=0.001)
+    xe, ze = (pts_f[-1][0] + pts_b[-1][0]) / 2, (pts_f[-1][1] + pts_b[-1][1]) / 2
+    box("Floor", (0.05, 0.03, 0.012), (xe, 0, ze - 0.004), m["poly"], rot=(0, -33, 0), bevel=0.003)
+    box("Lips", (0.03, 0.018, 0.012), (0.0, 0, 0.006), m["dark"], bevel=0.001)
+    sph("Round", 0.005, (0.008, 0, 0.012), m["brass"], scale=(3, 1, 1))
 
 
 @item("laser")
@@ -1281,10 +1379,19 @@ def _(p, m):
 
 @item("compass")
 def _(p, m):
-    cyl("Case", 0.03, 0.012, (0, 0, 0.006), m["brass"], axis="Z", verts=32)
-    cyl("Face", 0.027, 0.013, (0, 0, 0.0065), m["white"], axis="Z", verts=32)
-    box("NeedleN", (0.022, 0.004, 0.002), (0.011, 0, 0.0135), m["red"], bevel=0)
-    box("NeedleS", (0.022, 0.004, 0.002), (-0.011, 0, 0.0135), m["dark"], bevel=0)
+    lathe("Case", [(0.0, 0.0), (0.028, 0.0), (0.031, 0.003), (0.031, 0.011), (0.029, 0.013), (0.027, 0.0125)], m["brass"], segs=40)
+    cyl("Face", 0.0268, 0.001, (0, 0, 0.0095), m["white"], axis="Z", verts=40)
+    for k in range(36):
+        a = k * math.pi / 18
+        L = 0.005 if k % 9 == 0 else 0.0025
+        box(f"Tick{k}", (L, 0.0006, 0.0004), (math.cos(a) * (0.0245 - L / 2), math.sin(a) * (0.0245 - L / 2), 0.0101), m["dark"], rot=(0, 0, math.degrees(a)), bevel=0)
+    prism("NeedleN", [(0.0, 0.0103), (0.02, 0.0108), (0.0, 0.0113)], 0.005, m["red"], bevel=0)
+    prism("NeedleS", [(0.0, 0.0103), (-0.02, 0.0108), (0.0, 0.0113)], 0.005, m["dark"], bevel=0)
+    cyl("Pivot", 0.0018, 0.003, (0, 0, 0.0112), m["brass"], axis="Z", verts=12)
+    cyl("Glass", 0.0275, 0.0008, (0, 0, 0.0122), m["glass"], axis="Z", verts=40)
+    lathe("Bow", [(0.004, 0.0), (0.004, 0.006)], m["brass"], segs=16, loc=(0.034, 0, 0.004))
+    ring = [(0.04 + math.cos(t) * 0.007, math.sin(t) * 0.007, 0.006) for t in [i * 2 * math.pi / 20 for i in range(21)]]
+    tube("Ring", ring, [0.0012] * len(ring), m["brass"], segs=6, caps=False)
 
 
 @item("defib")
@@ -1299,11 +1406,18 @@ def _(p, m):
 @item("trophy")
 def _(p, m):
     g = m["gold"]
-    box("Base", (0.1, 0.1, 0.04), (0, 0, 0.02), m["dark"], bevel=0.004)
-    cyl("Stem", 0.012, 0.08, (0, 0, 0.08), g, axis="Z")
-    cone("Cup", 0.02, 0.07, 0.12, (0, 0, 0.18), g, verts=32)
+    box("Base", (0.1, 0.1, 0.035), (0, 0, 0.0175), m["dark"], bevel=0.004)
+    box("Plate", (0.06, 0.001, 0.016), (0, -0.0505, 0.0175), m["brass"], bevel=0)
+    lathe("Stem", [(0.0, 0.035), (0.03, 0.035), (0.028, 0.042), (0.012, 0.048), (0.009, 0.07), (0.016, 0.078), (0.009, 0.086), (0.008, 0.11), (0.02, 0.12)], g, segs=36)
+    prof = [(0.02, 0.118)]
+    for i in range(12):
+        t = i / 11
+        prof.append((0.02 + 0.05 * math.sin(t * math.pi / 2) ** 0.8, 0.12 + 0.11 * t))
+    prof += [(0.073, 0.232), (0.066, 0.23), (0.0, 0.2)]
+    lathe("Cup", prof, g, segs=40)
     for s in (-1, 1):
-        cyl(f"Handle{s}", 0.025, 0.008, (0, s * 0.075, 0.18), g, axis="Y")
+        path = [(0, s * (0.058 + 0.03 * math.sin(t)), 0.2 - 0.06 * (1 - math.cos(t)) - 0.01 * t) for t in [i * math.pi / 10 for i in range(11)]]
+        tube(f"Handle{s}", path, [0.0045] * len(path), g, segs=10)
 
 
 
