@@ -89,74 +89,169 @@ def pkm():
     join_all("SM_PKM"); export("SM_PKM")
 
 
+def _xl(name, prof, mat, segs=24, x0=0.0, z0=0.0, y0=0.0):
+    """Turned part along +X from a (radius, x) profile."""
+    import math as _m
+    from gen_models import lathe
+    o = lathe(name, prof, mat, segs=segs)
+    o.location = (x0, y0, z0)
+    o.rotation_euler = (0, _m.radians(90), 0)
+    return o
+
+
+def _tube(*a, **k):
+    from gen_models import tube
+    return tube(*a, **k)
+
+
 def mp40():
     reset_scene(); m = mats()
-    cyl("Receiver", 0.022, 0.26, (0.02, 0, 0.0), m["steel"], verts=20)
-    cyl("Barrel", 0.01, 0.20, (0.25, 0, -0.005), m["steel"])
-    box("RestBar", (0.03, 0.03, 0.02), (0.17, 0, -0.03), m["poly"])
-    box("Magwell", (0.04, 0.035, 0.07), (0.12, 0, -0.05), m["steel"])
-    prism("Magazine", [(0.104, -0.085), (0.136, -0.085), (0.136, -0.33), (0.104, -0.33)], 0.022, m["steel"], bevel=0.002)
-    prism("Frame", [(-0.06, -0.025), (0.08, -0.025), (0.08, -0.04), (-0.06, -0.04)], 0.03, m["bake"])
-    prism("Grip", [(-0.05, -0.035), (0.0, -0.035), (-0.02, -0.14), (-0.065, -0.13)], 0.03, m["bake"])
-    box("TriggerGuard", (0.05, 0.01, 0.005), (0.015, 0, -0.07), m["steel"])
-    box("CockingKnob", (0.012, 0.03, 0.012), (0.06, -0.03, 0.01), m["steel"])
-    # folding stock (folded under)
-    box("StockArmL", (0.24, 0.006, 0.01), (0.03, -0.022, -0.06), m["steel"])
-    box("StockArmR", (0.24, 0.006, 0.01), (0.03, 0.022, -0.06), m["steel"])
-    box("ButtPlate", (0.012, 0.05, 0.06), (0.15, 0, -0.085), m["steel"])
-    box("RearSight", (0.02, 0.02, 0.025), (-0.04, 0, 0.03), m["steel"])
-    box("FrontSight", (0.008, 0.004, 0.02), (0.33, 0, 0.012), m["steel"])
+    # ribbed receiver tube, barrel with nut and the bakelite resting bar
+    prof = [(0.0, -0.112), (0.02, -0.112), (0.022, -0.105)]
+    for i in range(10):
+        x = -0.1 + i * 0.024
+        prof += [(0.022, x), (0.0205, x + 0.006), (0.0205, x + 0.012), (0.022, x + 0.018)]
+    prof += [(0.022, 0.15), (0.0, 0.152)]
+    _xl("Receiver", prof, m["steel"], segs=24, x0=0.02 - 0.02)
+    _xl("BarrelNut", [(0.0, 0.15), (0.016, 0.15), (0.016, 0.175), (0.0, 0.176)], m["dark"], segs=16)
+    _xl("Barrel", [(0.0, 0.17), (0.0095, 0.17), (0.0085, 0.33), (0.0105, 0.332), (0.0105, 0.345), (0.0, 0.346)], m["steel"], segs=16, z0=-0.005)
+    prism("RestBar", [(0.16, -0.022), (0.215, -0.022), (0.22, -0.034), (0.16, -0.036)], 0.026, m["bake"], bevel=0.003)
+    _xl("FrontHood", [(0.0, 0.318), (0.009, 0.318), (0.009, 0.332), (0.0, 0.332)], m["dark"], segs=12, z0=0.018)
+    box("FrontSight", (0.006, 0.003, 0.016), (0.325, 0, 0.012), m["steel"], bevel=0)
+    # magwell and magazine with ribs
+    box("Magwell", (0.04, 0.034, 0.075), (0.12, 0, -0.05), m["steel"], bevel=0.003)
+    prism("Magazine", [(0.106, -0.085), (0.134, -0.085), (0.134, -0.33), (0.106, -0.33)], 0.021, m["dark"], bevel=0.002)
+    for sy in (-1, 1):
+        box(f"MagRib{sy}", (0.008, 0.002, 0.2), (0.12, sy * 0.0108, -0.22), m["steel"], bevel=0)
+    # bakelite lower and grip with finger grooves
+    prism("Frame", [(-0.1, -0.022), (0.1, -0.022), (0.1, -0.045), (0.02, -0.045), (-0.1, -0.035)], 0.034, m["bake"], bevel=0.004)
+    prism("Grip", [(-0.048, -0.04), (0.002, -0.04), (-0.018, -0.145), (-0.065, -0.138)], 0.032, m["bake"], bevel=0.006)
+    for i in range(6):
+        box(f"GripRib{i}", (0.04, 0.0335, 0.003), (-0.03 - i * 0.004, 0, -0.06 - i * 0.014), m["bake"], rot=(0, -20, 0), bevel=0)
+    _tube("Guard", [(0.006, 0, -0.045), (0.04, 0, -0.05), (0.044, 0, -0.078), (0.0, 0, -0.08)], [0.0035] * 4, m["steel"], segs=8, squash=(1.6, 1.0))
+    box("Trigger", (0.006, 0.006, 0.024), (0.022, 0, -0.06), m["steel"], rot=(0, -12, 0), bevel=0.001)
+    box("CockingKnob", (0.014, 0.034, 0.014), (0.06, -0.03, 0.012), m["steel"], bevel=0.004)
+    box("CockSlot", (0.14, 0.002, 0.006), (0.02, -0.0215, 0.01), m["dark"], bevel=0)
+    # folding stock folded under the gun
+    for sy in (-1, 1):
+        _tube(f"StockArm{sy}", [(-0.09, sy * 0.022, -0.045), (0.02, sy * 0.022, -0.062), (0.14, sy * 0.022, -0.062)], [0.005] * 3, m["steel"], segs=8, squash=(1.0, 1.6))
+    box("ButtPlate", (0.012, 0.052, 0.065), (0.15, 0, -0.088), m["steel"], bevel=0.004)
+    box("RearSight", (0.02, 0.022, 0.02), (-0.04, 0, 0.026), m["steel"], bevel=0.002)
+    for sy in (-1, 1):
+        box(f"RearEar{sy}", (0.012, 0.004, 0.014), (-0.04, sy * 0.009, 0.04), m["steel"], bevel=0)
+    _tube("Sling", [(-0.1, 0.0, -0.02), (-0.112, 0.0, -0.03), (-0.1, 0.0, -0.04)], [0.003] * 3, m["steel"], segs=6)
     join_all("SM_MP40"); export("SM_MP40")
+
+
 
 
 def luger():
     reset_scene(); m = mats()
-    cyl("Barrel", 0.0085, 0.11, (0.095, 0, 0.02), m["steel"], verts=16)
-    box("Receiver", (0.10, 0.022, 0.03), (0.0, 0, 0.012), m["steel"])
-    box("Toggle", (0.06, 0.018, 0.016), (-0.035, 0, 0.032), m["steel"])
-    cyl("ToggleKnobL", 0.008, 0.035, (-0.06, 0, 0.032), m["steel"], axis="Y", verts=12)
-    prism("Grip", [(-0.055, -0.005), (0.0, -0.005), (-0.035, -0.11), (-0.09, -0.1)], 0.026, m["wood"])
-    box("TriggerGuard", (0.045, 0.008, 0.005), (0.015, 0, -0.035), m["steel"])
-    box("FrontSight", (0.004, 0.003, 0.008), (0.145, 0, 0.032), m["steel"])
+    _xl("Barrel", [(0.0, 0.045), (0.012, 0.045), (0.012, 0.06), (0.0095, 0.065), (0.0082, 0.148), (0.0, 0.15)], m["steel"], segs=18, z0=0.02)
+    box("FrontSight", (0.006, 0.003, 0.01), (0.142, 0, 0.032), m["steel"], bevel=0)
+    box("Receiver", (0.105, 0.022, 0.03), (-0.002, 0, 0.012), m["steel"], bevel=0.004)
+    # toggle joint with its two knurled knobs
+    box("Toggle1", (0.035, 0.016, 0.014), (-0.02, 0, 0.033), m["steel"], bevel=0.004)
+    box("Toggle2", (0.03, 0.016, 0.014), (-0.05, 0, 0.033), m["steel"], bevel=0.004)
+    cyl("Pin", 0.006, 0.02, (-0.035, 0, 0.033), m["dark"], axis="Y", verts=12)
+    for sy in (-1, 1):
+        cyl(f"Knob{sy}", 0.0095, 0.008, (-0.066, sy * 0.012, 0.036), m["steel"], axis="Y", verts=16)
+        for k in range(6):
+            box(f"Knurl{sy}{k}", (0.019, 0.0085, 0.0015), (-0.066, sy * 0.012, 0.036), m["dark"], rot=(0, k * 30, 0), bevel=0)
+    # raked wooden grip with checkering and the magazine base knob
+    prism("Frame", [(-0.06, -0.003), (0.0, -0.003), (-0.035, -0.112), (-0.094, -0.102)], 0.022, m["steel"], bevel=0.003)
+    for sy in (-1, 1):
+        prism(f"Panel{sy}", [(-0.054, -0.012), (-0.008, -0.012), (-0.036, -0.1), (-0.087, -0.093)], 0.004, m["wood"], y=sy * 0.012, bevel=0.0015)
+        cyl(f"GripScrew{sy}", 0.004, 0.0045, (-0.05, sy * 0.0142, -0.055), m["steel"], axis="Y", verts=10)
+    box("MagBase", (0.03, 0.018, 0.01), (-0.066, 0, -0.11), m["wood"], rot=(0, 10, 0), bevel=0.003)
+    _tube("Guard", [(0.008, 0, -0.003), (0.035, 0, -0.012), (0.036, 0, -0.038), (0.0, 0, -0.04)], [0.0032] * 4, m["steel"], segs=8, squash=(1.6, 1.0))
+    box("Trigger", (0.006, 0.006, 0.02), (0.016, 0, -0.02), m["steel"], rot=(0, -12, 0), bevel=0.001)
+    box("Safety", (0.02, 0.003, 0.006), (-0.045, 0.012, 0.002), m["steel"], bevel=0)
     join_all("SM_Luger"); export("SM_Luger")
+
+
 
 
 def uzi():
     reset_scene(); m = mats()
-    box("Receiver", (0.30, 0.045, 0.06), (0.06, 0, 0.01), m["steel"])
-    cyl("Barrel", 0.01, 0.05, (0.235, 0, 0.0), m["steel"])
-    box("BarrelNut", (0.02, 0.04, 0.04), (0.215, 0, 0.0), m["steel"])
-    box("TopCover", (0.22, 0.046, 0.012), (0.04, 0, 0.045), m["dark"])
-    box("CockingKnob", (0.02, 0.02, 0.014), (0.12, 0, 0.056), m["dark"])
-    prism("GripMag", [(-0.025, -0.02), (0.025, -0.02), (0.035, -0.3), (-0.015, -0.3)], 0.032, m["poly"])
-    box("MagBase", (0.055, 0.036, 0.012), (0.01, 0, -0.302), m["steel"])
-    box("Handguard", (0.12, 0.05, 0.03), (0.14, 0, -0.03), m["poly"])
-    box("TriggerGuard", (0.07, 0.012, 0.006), (-0.01, 0, -0.08), m["steel"])
-    box("StockArm", (0.22, 0.03, 0.01), (-0.15, 0, -0.02), m["steel"])
-    box("Butt", (0.012, 0.05, 0.07), (-0.26, 0, -0.04), m["steel"])
-    box("FrontSightGuard", (0.015, 0.03, 0.03), (0.18, 0, 0.055), m["steel"])
+    box("Receiver", (0.3, 0.045, 0.058), (0.06, 0, 0.01), m["steel"], bevel=0.006)
+    for sy in (-1, 1):
+        for k in range(3):
+            box(f"Rib{sy}{k}", (0.24, 0.002, 0.004), (0.05, sy * 0.0228, -0.005 + k * 0.014), m["dark"], bevel=0)
+    box("TopCover", (0.22, 0.047, 0.012), (0.04, 0, 0.044), m["dark"], bevel=0.003)
+    for k in range(8):
+        box(f"CoverRib{k}", (0.004, 0.044, 0.003), (0.08 + k * 0.007, 0, 0.051), m["steel"], bevel=0)
+    box("CockingKnob", (0.02, 0.02, 0.014), (0.12, 0, 0.057), m["dark"], bevel=0.004)
+    _xl("BarrelNut", [(0.0, 0.21), (0.021, 0.21), (0.021, 0.228), (0.0, 0.229)], m["dark"], segs=20)
+    for k in range(10):
+        box(f"Knurl{k}", (0.018, 0.0435, 0.002), (0.219, 0, 0.0), m["steel"], rot=(k * 18, 0, 0), bevel=0)
+    _xl("Barrel", [(0.0, 0.228), (0.0095, 0.228), (0.0095, 0.262), (0.0, 0.263)], m["steel"], segs=16)
+    # front sight guard ears and rear sight
+    for sy in (-1, 1):
+        box(f"FrontEar{sy}", (0.016, 0.004, 0.03), (0.18, sy * 0.012, 0.058), m["steel"], bevel=0.001)
+    box("FrontPost", (0.004, 0.003, 0.02), (0.18, 0, 0.055), m["steel"], bevel=0)
+    for sy in (-1, 1):
+        box(f"RearEar{sy}", (0.016, 0.004, 0.022), (-0.06, sy * 0.012, 0.055), m["steel"], bevel=0.001)
+    # grip with the magazine inside it, plastic panels and grip safety
+    prism("GripMag", [(-0.025, -0.02), (0.025, -0.02), (0.035, -0.3), (-0.015, -0.3)], 0.032, m["steel"], bevel=0.003)
+    for sy in (-1, 1):
+        prism(f"Panel{sy}", [(-0.022, -0.03), (0.022, -0.03), (0.03, -0.17), (-0.016, -0.17)], 0.004, m["poly"], y=sy * 0.017, bevel=0.0015)
+        for k in range(8):
+            box(f"Chk{sy}{k}", (0.04, 0.0045, 0.002), (0.004 + k * 0.001, sy * 0.017, -0.045 - k * 0.015), m["dark"], bevel=0)
+    box("GripSafety", (0.008, 0.026, 0.06), (-0.028, 0, -0.07), m["dark"], rot=(0, -4, 0), bevel=0.002)
+    box("MagBase", (0.055, 0.036, 0.012), (0.01, 0, -0.302), m["steel"], bevel=0.003)
+    box("Handguard", (0.12, 0.05, 0.03), (0.14, 0, -0.03), m["poly"], bevel=0.008)
+    for k in range(5):
+        box(f"HgRib{k}", (0.004, 0.051, 0.022), (0.1 + k * 0.018, 0, -0.03), m["dark"], bevel=0)
+    _tube("Guard", [(0.03, 0, -0.02), (0.05, 0, -0.04), (0.04, 0, -0.085), (-0.02, 0, -0.085), (-0.03, 0, -0.07)], [0.004] * 5, m["steel"], segs=8, squash=(1.6, 1.0))
+    box("Trigger", (0.006, 0.006, 0.024), (0.012, 0, -0.055), m["steel"], rot=(0, -12, 0), bevel=0.001)
+    box("Selector", (0.012, 0.004, 0.012), (-0.02, 0.025, -0.01), m["dark"], bevel=0.002)
+    # folding metal stock (extended)
+    for sy in (-1, 1):
+        _tube(f"StockArm{sy}", [(-0.09, sy * 0.018, -0.005), (-0.18, sy * 0.02, -0.025), (-0.26, sy * 0.02, -0.035)], [0.005] * 3, m["steel"], segs=8, squash=(1.0, 1.6))
+    box("Butt", (0.014, 0.055, 0.075), (-0.265, 0, -0.045), m["steel"], bevel=0.005)
+    box("Hinge", (0.02, 0.05, 0.02), (-0.09, 0, -0.005), m["dark"], bevel=0.004)
     join_all("SM_Uzi"); export("SM_Uzi")
+
+
 
 
 def suomi():
     reset_scene(); m = mats()
-    cyl("Receiver", 0.024, 0.32, (0.04, 0, 0.0), m["steel"], verts=20)
-    cyl("Jacket", 0.02, 0.28, (0.34, 0, 0.0), m["steel"], verts=20)
+    _xl("Receiver", [(0.0, -0.12), (0.022, -0.12), (0.024, -0.112), (0.024, 0.2), (0.0, 0.202)], m["steel"], segs=24)
+    _xl("EndCap", [(0.0, -0.135), (0.016, -0.135), (0.02, -0.125), (0.023, -0.118), (0.0, -0.117)], m["dark"], segs=20)
+    _xl("Jacket", [(0.0, 0.2), (0.02, 0.2), (0.02, 0.47), (0.0, 0.471)], m["steel"], segs=24)
     for i in range(7):
-        box(f"Slot{i}", (0.02, 0.042, 0.008), (0.24 + i * 0.03, 0, 0.0), m["dark"], bevel=0.0)
-    cyl("Muzzle", 0.016, 0.03, (0.49, 0, 0.0), m["steel"], verts=16)
-    # wooden stock + fore end
-    prism("Stock", [(-0.42, -0.12), (-0.1, -0.07), (-0.02, -0.06), (-0.02, -0.02), (-0.42, -0.01)], 0.045, m["wood"], bevel=0.008)
-    box("Forend", (0.2, 0.045, 0.03), (0.06, 0, -0.035), m["wood"])
-    box("TriggerGuard", (0.06, 0.012, 0.006), (-0.02, 0, -0.1), m["steel"])
-    box("Trigger", (0.006, 0.006, 0.025), (-0.02, 0, -0.08), m["steel"])
-    # drum magazine (70 rounds)
-    cyl("Drum", 0.1, 0.06, (0.05, 0, -0.16), m["steel"], axis="Y", verts=32)
-    cyl("DrumCap", 0.06, 0.065, (0.05, 0, -0.16), m["dark"], axis="Y", verts=24)
-    box("DrumNeck", (0.04, 0.035, 0.05), (0.05, 0, -0.06), m["steel"])
-    box("RearSight", (0.03, 0.02, 0.02), (0.15, 0, 0.03), m["steel"])
-    box("FrontSight", (0.008, 0.004, 0.02), (0.47, 0, 0.025), m["steel"])
+        box(f"Slot{i}", (0.022, 0.042, 0.008), (0.25 + i * 0.03, 0, 0.0), m["dark"], bevel=0.003)
+    _xl("Muzzle", [(0.0, 0.47), (0.017, 0.47), (0.017, 0.5), (0.012, 0.505), (0.0, 0.506)], m["steel"], segs=18)
+    box("Brake", (0.016, 0.004, 0.034), (0.488, 0, 0.0), m["dark"], bevel=0)
+    # wooden stock with wrist and fore end
+    prism("Stock", [(-0.43, -0.13), (-0.38, -0.135), (-0.2, -0.085), (-0.1, -0.075), (-0.05, -0.085), (-0.02, -0.06), (-0.02, -0.018),
+                    (-0.15, -0.025), (-0.43, -0.01)], 0.044, m["wood"], bevel=0.01)
+    box("ButtPlate", (0.008, 0.046, 0.12), (-0.432, 0, -0.07), m["dark"], rot=(0, 4, 0), bevel=0.003)
+    prism("Forend", [(-0.02, -0.018), (0.2, -0.018), (0.2, -0.045), (0.16, -0.05), (-0.02, -0.06)], 0.046, m["wood"], bevel=0.008)
+    _tube("Guard", [(0.0, 0, -0.058), (-0.01, 0, -0.1), (-0.04, 0, -0.105), (-0.06, 0, -0.085)], [0.004] * 4, m["steel"], segs=8, squash=(1.6, 1.0))
+    box("Trigger", (0.006, 0.006, 0.026), (-0.025, 0, -0.08), m["steel"], rot=(0, -12, 0), bevel=0.001)
+    # 70 round drum: ribbed shell, cap and winding key
+    from gen_models import lathe as _lathe
+    import math as _m
+    prof = [(0.0, -0.032), (0.095, -0.032), (0.1, -0.026)]
+    for k in range(3):
+        z = -0.02 + k * 0.016
+        prof += [(0.1, z), (0.102, z + 0.004), (0.1, z + 0.008)]
+    prof += [(0.1, 0.026), (0.095, 0.032), (0.0, 0.032)]
+    d = _lathe("Drum", prof, m["steel"], segs=40)
+    d.location = (0.05, 0, -0.17)
+    d.rotation_euler = (_m.radians(90), 0, 0)
+    cyl("DrumCap", 0.06, 0.068, (0.05, 0, -0.17), m["dark"], axis="Y", verts=32)
+    box("Key", (0.05, 0.012, 0.012), (0.05, -0.04, -0.17), m["steel"], bevel=0.004)
+    box("DrumNeck", (0.045, 0.036, 0.06), (0.05, 0, -0.06), m["steel"], bevel=0.004)
+    box("RearSight", (0.05, 0.02, 0.016), (0.15, 0, 0.03), m["steel"], bevel=0.003)
+    box("FrontSight", (0.008, 0.004, 0.02), (0.46, 0, 0.026), m["steel"], bevel=0)
+    box("CockHandle", (0.02, 0.012, 0.01), (-0.08, 0, 0.028), m["dark"], bevel=0.003)
     join_all("SM_Suomi"); export("SM_Suomi")
+
+
 
 
 def katana():
@@ -185,5 +280,7 @@ def viking_sword():
 
 
 if __name__ == "__main__":
+    want = sys.argv[1:]
     for fn in (mg3, bren, pkm, mp40, luger, uzi, suomi, katana, viking_sword):
-        fn()
+        if not want or fn.__name__ in want:
+            fn()
