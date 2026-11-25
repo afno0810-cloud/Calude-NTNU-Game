@@ -653,13 +653,44 @@ void AGSCharacter::FireOnce()
 
 	if (!HasAuthority()) W->Ammo--; // prediction, corrected by replication
 
-	// Recoil
+	// Recoil: a per-weapon pattern that climbs during a burst and wanders sideways, applied smoothly
+	// (TickRecoil), plus one of five fire animations on the weapon and a pump/bolt cycle where it has one.
 	const float Recoil = S.RecoilPitch * Mods.Recoil;
 	CurrentRecoil += Recoil;
+	BurstShots = (Now - LastShotTime < S.FireInterval * 1.8f + 0.05f) ? BurstShots + 1 : 0;
+	LastShotTime = Now;
 	AddWeaponKick(Recoil, S.Class);
 	const float AimFactor = bAiming ? 0.6f : 1.f;
-	AddControllerPitchInput(-Recoil * AimFactor);
-	AddControllerYawInput(FMath::FRandRange(-0.25f, 0.25f) * Recoil * AimFactor);
+	const float Climb = 1.f + 0.05f * FMath::Min(BurstShots, 12);
+	const float Hash = float(GetTypeHash(W->Id) % 97) * 0.13f;
+	const float Side = FMath::Sin(BurstShots * 0.85f + Hash) * 0.55f + FMath::FRandRange(-0.2f, 0.2f);
+	RecoilPending += FVector2D(Recoil * AimFactor * Climb, Side * Recoil * AimFactor * 0.6f);
+	FireVariant = (FireVariant + FMath::RandRange(1, 4)) % 5; // never the same twice in a row
+	FireAnimStart = Now;
+	const bool bPump = S.Class == EGSWeaponClass::Shotgun && !S.bAutomatic && S.FireInterval >= 0.5f;
+	const bool bBolt = S.Class == EGSWeaponClass::Sniper && !S.bAutomatic && S.FireInterval >= 0.9f;
+	if (bPump || bBolt)
+	{
+		CycleStart = Now;
+		bCycleBolt = bBolt;
+		const EGSWeaponClass Cls = S.Class;
+		const TCHAR* First = bBolt ? TEXT("Reload_Out") : TEXT("Pump_Back");
+		const TCHAR* Second = bBolt ? TEXT("Reload_In") : TEXT("Pump_Fwd");
+		FTimerHandle H1, H2;
+		GetWorldTimerManager().SetTimer(H1, FTimerDelegate::CreateWeakLambda(this, [this, First, Cls]()
+		{
+			GSAudio::Play2D(this, First, 0.7f, 1.05f);
+			SpawnShellFX(Cls);
+		}), bBolt ? 0.35f : 0.18f, false);
+		GetWorldTimerManager().SetTimer(H2, FTimerDelegate::CreateWeakLambda(this, [this, Second]()
+		{
+			GSAudio::Play2D(this, Second, 0.7f, 0.9f);
+		}), bBolt ? 0.7f : 0.38f, false);
+	}
+	else if (S.Class != EGSWeaponClass::Launcher && S.Class != EGSWeaponClass::Bow)
+	{
+		SpawnShellFX(S.Class);
+	}
 
 	ServerFire(Start, S.Mode == EGSFireMode::Hitscan ? Dir : Camera->GetForwardVector(), Seed);
 
@@ -936,7 +967,7 @@ void AGSCharacter::AddWeaponKick(float Strength, EGSWeaponClass Class)
 	const float Big = Class == EGSWeaponClass::Sniper || Class == EGSWeaponClass::Shotgun || Class == EGSWeaponClass::Launcher ? 1.8f : 1.f;
 	const float K = FMath::Clamp(Strength, 0.2f, 4.f) * Big * (bAiming ? 0.55f : 1.f);
 	KickVel += FVector(-120.f * K, FMath::FRandRange(-12.f, 12.f) * K, 18.f * K);
-	KickRotVel += FRotator(140.f * K, FMath::FRandRange(-30.f, 30.f) * K, FMath::FRandRange(-60.f, 60.f) * K);
+	KickRotVel += FRotator(140.f * K, FMath::FRandRange(-15.f, 15.f) * K, FMath::FRandRange(-20.f, 20.f) * K);
 }
 
 void AGSCharacter::Inspect()
@@ -1063,6 +1094,54 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 			Rot += FRotator(10.f * Mid, 55.f * (1.f - Mid) * A + 20.f * Mid * A, -35.f * (1.f - Mid) * A + 60.f * Mid * A);
 		}
 
+		// Fire: five different shot animations (picked per shot), heavier for big guns, smaller when aiming.
+		const float FT = Now - FireAnimStart;
+		if (FT >= 0.f && FT < 0.6f)
+		{
+			float Heavy = 1.f, Rate = 16.f;
+			switch (S.Class)
+			{
+			case EGSWeaponClass::Pistol:   Heavy = 1.2f; Rate = 18.f; break;
+			case EGSWeaponClass::SMG:      Heavy = 0.6f; Rate = 26.f; break;
+			case EGSWeaponClass::LMG:      Heavy = 0.8f; Rate = 22.f; break;
+			case EGSWeaponClass::Sniper:   Heavy = 2.2f; Rate = 8.f; break;
+			case EGSWeaponClass::Shotgun:  Heavy = 2.f;  Rate = 9.f; break;
+			case EGSWeaponClass::Launcher: Heavy = 2.6f; Rate = 6.f; break;
+			default: break;
+			}
+			const float Env = Ease(Phase01(FT, 0.f, 0.025f)) * FMath::Exp(-FT * Rate) * Heavy;
+			const float A = 1.f - AimBlend * 0.6f;
+			switch (FireVariant)
+			{
+			case 0: Pos.X -= 3.f * Env; Rot.Pitch += 4.f * Env * A; break;                                         // straight back, muzzle up
+			case 1: Pos.X -= 2.5f * Env; Rot.Pitch += 3.f * Env * A; Rot.Roll += 5.f * Env * A; break;            // twist right
+			case 2: Pos.X -= 2.5f * Env; Rot.Pitch += 3.f * Env * A; Rot.Roll -= 4.f * Env * A; Rot.Yaw -= 2.f * Env * A; break; // twist left
+			case 3: Pos.X -= 1.5f * Env; Pos.Z += 1.5f * Env; Rot.Pitch += 6.f * Env * A; break;                 // muzzle snap
+			default: Pos.X -= 3.5f * Env; Pos.Z -= 1.f * Env; Rot.Pitch += 2.f * Env * A; Rot.Yaw += 1.5f * Env * A; break; // into the shoulder
+			}
+			if (S.Class == EGSWeaponClass::Pistol) Rot.Pitch += 5.f * Env * A; // wrist flips up
+		}
+		// Pump-action and bolt-action cycle after the shot
+		const float CT = Now - CycleStart;
+		if (CT >= 0.f && CT < 1.1f && !bReloading)
+		{
+			if (bCycleBolt)
+			{
+				const float B = Bump(CT, 0.2f, 1.0f);
+				Rot.Roll += 22.f * B * (1.f - AimBlend * 0.5f);
+				Pos.Y -= 4.f * B;
+				Pos.X -= 4.f * Bump(CT, 0.4f, 0.75f);
+				Rot.Pitch -= 4.f * B;
+			}
+			else
+			{
+				const float B = Bump(CT, 0.12f, 0.5f);
+				Pos.X -= 6.f * B;
+				Rot.Roll += 8.f * B;
+				Rot.Pitch -= 3.f * B;
+			}
+		}
+
 		// Melee: wind-up, fast swing, follow-through
 		const float SW = Now - LastMeleeTime;
 		if (SW < 0.45f)
@@ -1107,8 +1186,57 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 	}
 
 	Camera->SetFieldOfView(FMath::FInterpTo(Camera->FieldOfView, TargetFOV, Dt, 12.f));
-	FPWeaponMesh->SetRelativeLocation(FMath::VInterpTo(FPWeaponMesh->GetRelativeLocation(), Pos, Dt, 22.f));
-	FPWeaponMesh->SetRelativeRotation(FMath::RInterpTo(FPWeaponMesh->GetRelativeRotation(), Rot, Dt, 22.f));
+	FPWeaponMesh->SetRelativeLocation(FMath::VInterpTo(FPWeaponMesh->GetRelativeLocation(), Pos, Dt, 40.f));
+	FPWeaponMesh->SetRelativeRotation(FMath::RInterpTo(FPWeaponMesh->GetRelativeRotation(), Rot, Dt, 40.f));
+}
+
+void AGSCharacter::TickRecoil(float Dt)
+{
+	const FVector2D Step = RecoilPending * (1.f - FMath::Exp(-Dt * 35.f));
+	RecoilPending -= Step;
+	AddControllerPitchInput(-Step.X);
+	AddControllerYawInput(Step.Y);
+	RecoilRecover += Step * 0.6f;
+	if (GetWorld()->GetTimeSeconds() - LastShotTime > 0.15f)
+	{
+		const FVector2D Back = RecoilRecover * (1.f - FMath::Exp(-Dt * 5.f));
+		RecoilRecover -= Back;
+		AddControllerPitchInput(Back.X);
+		AddControllerYawInput(-Back.Y);
+	}
+}
+
+void AGSCharacter::SpawnShellFX(EGSWeaponClass Class)
+{
+	UWorld* World = GetWorld();
+	if (!World || GetNetMode() == NM_DedicatedServer) return;
+	const FVector Port = FPWeaponMesh->GetComponentLocation() + Camera->GetForwardVector() * 8.f + Camera->GetRightVector() * 3.f + Camera->GetUpVector() * 4.f;
+	AStaticMeshActor* Shell = World->SpawnActor<AStaticMeshActor>(Port, Camera->GetComponentRotation() + FRotator(0.f, 90.f, 90.f));
+	if (!Shell) return;
+	Shell->SetMobility(EComponentMobility::Movable);
+	UStaticMeshComponent* C = Shell->GetStaticMeshComponent();
+	C->SetStaticMesh(GSUtils::Cylinder());
+	const bool bShotgun = Class == EGSWeaponClass::Shotgun;
+	const bool bBig = Class == EGSWeaponClass::Sniper || Class == EGSWeaponClass::LMG;
+	const float R = bShotgun ? 0.02f : bBig ? 0.012f : 0.009f;
+	const float L = bShotgun ? 0.065f : bBig ? 0.07f : Class == EGSWeaponClass::Pistol ? 0.02f : 0.045f;
+	C->SetWorldScale3D(FVector(R, R, L));
+	C->SetCastShadow(false);
+	GSUtils::SetColor(C, bShotgun ? FLinearColor(0.5f, 0.04f, 0.03f) : FLinearColor(0.75f, 0.52f, 0.18f));
+	C->SetCollisionProfileName(TEXT("PhysicsActor"));
+	C->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	C->SetSimulatePhysics(true);
+	C->SetPhysicsLinearVelocity(GetVelocity() + Camera->GetRightVector() * FMath::FRandRange(150.f, 230.f)
+		+ Camera->GetUpVector() * FMath::FRandRange(90.f, 160.f) - Camera->GetForwardVector() * FMath::FRandRange(0.f, 40.f));
+	C->SetPhysicsAngularVelocityInDegrees(FVector(FMath::FRandRange(-900.f, 900.f), FMath::FRandRange(-900.f, 900.f), 0.f));
+	Shell->SetLifeSpan(4.f);
+	// tinkle when it lands
+	FTimerHandle H;
+	TWeakObjectPtr<AStaticMeshActor> WeakShell(Shell);
+	World->GetTimerManager().SetTimer(H, FTimerDelegate::CreateWeakLambda(this, [this, WeakShell]()
+	{
+		if (WeakShell.IsValid()) GSAudio::PlayAt(this, GSAudio::Variant(TEXT("Shell"), 3), WeakShell->GetActorLocation(), 0.4f, 12.f, FMath::FRandRange(0.9f, 1.2f));
+	}), FMath::FRandRange(0.45f, 0.7f), false);
 }
 
 void AGSCharacter::DropMagazineFX()
@@ -2152,6 +2280,7 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		if (bBinoculars && !HasItemKind(KindZoom)) bBinoculars = false;
 		if (bNightVisionGoggles && !HasItemKind(KindNightVision)) bNightVisionGoggles = false;
 
+		TickRecoil(DeltaSeconds);
 		UpdateWeaponAnimation(DeltaSeconds);
 	}
 }

@@ -228,6 +228,10 @@ if __name__ == "__main__":
     metal_click("Reload_In", [1200, 2100, 3100], 0.3, 0.9)
     metal_click("Slide", [900, 1600], 0.35, 1.0)
     metal_click("Dry_Fire", [3500], 0.1, 0.5)
+    for v, fs in enumerate(([4200, 6100, 8300], [3800, 5600, 7900], [4600, 6900, 9100])):
+        metal_click(f"Shell_{v + 1}", fs, 0.3, 0.2)
+    metal_click("Pump_Back", [700, 1300], 0.3, 1.0)
+    metal_click("Pump_Fwd", [900, 1700], 0.25, 1.0)
     whoosh()
     hit_body()
     hitmarker()

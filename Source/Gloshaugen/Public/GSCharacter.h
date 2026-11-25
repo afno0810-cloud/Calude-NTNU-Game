@@ -143,6 +143,10 @@ protected:
 	void UpdateWeaponAnimation(float DeltaSeconds);
 	void AddWeaponKick(float Strength, EGSWeaponClass Class);
 	void DropMagazineFX();
+	/** Brass (or a red shotgun shell) flies out of the ejection port and bounces (local, cosmetic). */
+	void SpawnShellFX(EGSWeaponClass Class);
+	/** Applies camera recoil smoothly over a few frames and drifts part of it back when you stop firing. */
+	void TickRecoil(float Dt);
 	void Inspect();
 	void TickSurvival(float DeltaSeconds);
 	void TickEffects();
@@ -233,6 +237,15 @@ protected:
 	float FlinchStart = -100.f;
 	float FlinchSign = 1.f;
 	float LastSeenHealth = 100.f;
+	// Fire animation and recoil (local only)
+	FVector2D RecoilPending = FVector2D::ZeroVector;  // pitch, yaw (degrees) still to apply
+	FVector2D RecoilRecover = FVector2D::ZeroVector;  // part that drifts back after the burst
+	int32 BurstShots = 0;
+	int32 FireVariant = 0;
+	float FireAnimStart = -100.f;
+	float LastShotTime = -100.f;
+	float CycleStart = -100.f;   // pump or bolt cycle after a shot
+	bool bCycleBolt = false;
 	float StepDistance = 0.f;
 	FVector2D LookSwayInput = FVector2D::ZeroVector;
 	FRotator SwayRot = FRotator::ZeroRotator;
