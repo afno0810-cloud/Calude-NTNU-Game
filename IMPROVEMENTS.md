@@ -308,5 +308,8 @@ Nyeste runde øverst.
 283. Siktet svaier i kikkertsikte; hold Shift for å holde pusten i 4 sekunder (pustemåler i siktet)
 284. Avrundede pistolgrep, håndvern og mottakere; ekte rakett- og pileammo
 285. Ny sykkel med eiker, ramme og kurv, og skap med ventiler og hengelås
+286. Avrundede biler med glasstak, takstolper og dekk med sidevegger
+287. Nye møbler: skolestol på rørramme, sofa med puter, kontorstol, auditoriumseter, pult, labkrakk og kafébord
+288. Robotene bygd på nytt: menneskerobot med kuleledd og visir, robothund med kneledd og kamerahode
 
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*
