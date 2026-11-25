@@ -578,19 +578,25 @@ def p_Bollard_Light(k, m):
 # ------------------------------------------------------------------ robots (static shells; Isaac Lab animation later)
 @prop
 def p_RobotDog(k, m):
-    """Quadruped robot dog, about 0.7 m long, facing +X."""
+    """Quadruped robot dog, about 0.7 m long, facing +X: rounded body, camera head, hip motors, bent legs, rubber feet."""
     body = k.mat("RobotBody", (0.9, 0.75, 0.1), metallic=0.3, rough=0.4)
-    k.box((0, 0, 0.45), (0.65, 0.26, 0.16), body)
-    k.box((0, 0, 0.535), (0.5, 0.2, 0.03), m.dark)
-    k.box((0.36, 0, 0.47), (0.12, 0.2, 0.12), m.dark)
-    for y in (-0.06, 0.06):
-        k.cyl_axis((0.425, y, 0.48), 0.025, 0.01, m.screen, axis="X", verts=12)
+    k.loft([(x, 0.37 + 0.01 * abs(x) / 0.33, 0.53 - 0.02 * abs(x) / 0.33, 0.13 - 0.015 * abs(x) / 0.33) for x in [-0.33 + 0.66 * i / 10 for i in range(11)]], body, segs=24, power=4.0)
+    k.loft([(x, 0.53, 0.55, 0.09) for x in [-0.25 + 0.5 * i / 6 for i in range(7)]], m.dark, segs=16, power=6.0)
+    k.loft([(0.33, 0.4, 0.52, 0.1), (0.38, 0.41, 0.51, 0.09), (0.4, 0.42, 0.5, 0.08)], m.dark, segs=20, power=4.0)
+    for y in (-0.045, 0.045):
+        k.cyl_axis((0.402, y, 0.46), 0.022, 0.01, m.screen, axis="X", verts=14)
+    k.cyl_axis((0.402, 0.0, 0.43), 0.008, 0.01, m.screen_on, axis="X", verts=8)
     for x in (-0.24, 0.24):
         for y in (-0.15, 0.15):
-            k.cyl_axis((x, y, 0.42), 0.055, 0.06, m.dark, axis="Y", verts=12)
-            k.ramp((x, y * 1.1, 0.42), (x + 0.06, y * 1.1, 0.24), 0.06, 0.05, body)
-            k.ramp((x + 0.06, y * 1.1, 0.24), (x - 0.02, y * 1.1, 0.03), 0.04, 0.04, m.dark)
-            k.cyl((x - 0.02, y * 1.1, 0.0), 0.03, 0.04, m.rubber, verts=10)
+            yy = y * 1.08
+            k.cyl_axis((x, y, 0.42), 0.055, 0.07, m.dark, axis="Y", verts=16)
+            knee = (x + 0.07 if x > 0 else x - 0.07, yy, 0.23)
+            k.tube([(x, yy, 0.42), knee], 0.035, body, segs=12)
+            k.sphere(knee, 0.035, m.dark)
+            foot = (x - 0.01 if x > 0 else x + 0.01, yy, 0.035)
+            k.tube([knee, foot], 0.022, m.dark, segs=10)
+            k.sphere(foot, 0.035, m.rubber)
+    k.loft([(-0.34, 0.42, 0.5, 0.08), (-0.335, 0.42, 0.5, 0.08)], m.screen_on, segs=12, power=6.0)
 
 
 @prop
