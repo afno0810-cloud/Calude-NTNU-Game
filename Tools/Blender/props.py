@@ -72,16 +72,22 @@ def p_Chair(k, m):
 
 @prop
 def p_OfficeChair(k, m):
-    k.cyl((0, 0, 0.0), 0.32, 0.04, m.plastic, verts=5)
+    """Office chair: five-star base with casters, gas lift, padded seat and back, armrests."""
     for i in range(5):
-        a = i * 72
-        k.cyl((math.cos(math.radians(a)) * 0.3, math.sin(math.radians(a)) * 0.3, 0.0), 0.035, 0.05, m.rubber, verts=8)
-    k.cyl((0, 0, 0.04), 0.03, 0.38, m.metal, verts=12)
-    k.box((0, 0, 0.47), (0.48, 0.48, 0.08), m.fabric)
-    k.box((-0.24, 0, 0.82), (0.08, 0.46, 0.6), m.fabric, rot=(0, -10, 0))
-    for y in (-0.25, 0.25):
-        k.box((0.02, y, 0.62), (0.3, 0.05, 0.04), m.plastic)
-        k.box((-0.05, y, 0.55), (0.04, 0.04, 0.15), m.plastic)
+        a = math.radians(i * 72)
+        c, sn = math.cos(a), math.sin(a)
+        k.tube([(0.0, 0.0, 0.1), (c * 0.15, sn * 0.15, 0.085), (c * 0.3, sn * 0.3, 0.07)], 0.022, m.plastic, segs=8)
+        k.cyl((c * 0.3, sn * 0.3, 0.0), 0.03, 0.05, m.rubber, verts=10)
+        k.tube([(c * 0.3, sn * 0.3, 0.05), (c * 0.3, sn * 0.3, 0.075)], 0.01, m.metal, segs=6)
+    k.cyl((0, 0, 0.08), 0.04, 0.06, m.plastic, verts=14)
+    k.cyl((0, 0, 0.14), 0.025, 0.28, m.metal, verts=14)
+    k.cyl((0, 0, 0.4), 0.045, 0.04, m.plastic, verts=14)
+    k.loft([(x, 0.44, 0.53 + 0.01 * (1 - abs(x) / 0.25), 0.25) for x in [-0.25 + 0.5 * i / 8 for i in range(9)]], m.fabric, segs=24, power=3.0)
+    k.tube([(-0.2, 0.0, 0.46), (-0.28, 0.0, 0.5), (-0.29, 0.0, 0.62)], 0.025, m.plastic, segs=8)
+    k.loft([(x, 0.6, 1.12, 0.23 - 0.03 * abs(x + 0.3) / 0.05) for x in (-0.33, -0.3, -0.27)], m.fabric, segs=24, power=3.2)
+    for y in (-0.27, 0.27):
+        k.tube([(-0.05, y * 0.85, 0.5), (-0.02, y, 0.6), (0.02, y, 0.66)], 0.015, m.plastic, segs=6)
+        k.loft([(-0.12, 0.65, 0.69, 0.03), (0.0, 0.65, 0.69, 0.03), (0.12, 0.65, 0.685, 0.03)], m.plastic, segs=14, power=3.0, y0=y)
 
 
 @prop
