@@ -43,12 +43,20 @@ void AGSShortFX::SpawnImpact(UWorld* World, const FVector& Location, const FVect
 	GSAudio::PlayAt(World, GSAudio::Variant(TEXT("Impact"), 3), Location, 0.7f, 25.f, FMath::FRandRange(0.85f, 1.15f));
 	FActorSpawnParameters P;
 	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AGSShortFX* FX = World->SpawnActor<AGSShortFX>(Location + Normal * 2.f, Normal.Rotation(), P);
+	// Bullet hole: a thin dark chip flush with the surface, turned randomly, stays for a while.
+	FRotator HoleRot = Normal.Rotation();
+	HoleRot.Roll = FMath::FRandRange(0.f, 360.f);
+	AGSShortFX* FX = World->SpawnActor<AGSShortFX>(Location + Normal * 0.15f, HoleRot, P);
 	if (!FX) return;
 	FX->Mesh->SetStaticMesh(GSUtils::Cube());
-	FX->Mesh->SetWorldScale3D(FVector(0.02f, 0.08f, 0.08f));
-	GSUtils::SetColor(FX->Mesh, FLinearColor(0.05f, 0.05f, 0.05f));
-	FX->SetLifeSpan(6.f);
+	const float Size = FMath::FRandRange(0.03f, 0.045f);
+	FX->Mesh->SetWorldScale3D(FVector(0.002f, Size, Size * FMath::FRandRange(0.8f, 1.2f)));
+	FX->Mesh->SetCastShadow(false);
+	GSUtils::SetColor(FX->Mesh, FLinearColor(0.015f, 0.014f, 0.013f));
+	FX->SetLifeSpan(40.f);
+	// Spark and a puff of dust off the wall
+	SpawnBlob(World, Location + Normal * 3.f, FVector(0.03f), FLinearColor(1.f, 0.6f, 0.2f) * 8.f, 0.05f);
+	SpawnBlob(World, Location + Normal * 12.f, FVector(0.18f, 0.18f, 0.14f), FLinearColor(0.35f, 0.33f, 0.3f), 0.18f);
 }
 
 AGSShortFX* AGSShortFX::SpawnBlob(UWorld* World, const FVector& Location, const FVector& Scale, const FLinearColor& Color, float LifeSeconds)

@@ -253,5 +253,7 @@ Nyeste runde øverst.
 231. Innendørs demper vind og fugler
 232. Alle lyder kan byttes ut med ekte opptak med samme navn
 233. Kameraet rykker bare til ved skade, ikke når du heles
+234. Kulehull som ligger flatt i veggen og blir værende i 40 sekunder
+235. Gnist og støvsky der kula treffer
 
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*
