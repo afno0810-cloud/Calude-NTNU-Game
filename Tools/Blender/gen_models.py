@@ -203,14 +203,21 @@ def build_pistol(p, m):
         box(f"RailSlot{i}", (0.004, 0.021, 0.004), (s * 0.62 - 0.075 + i * 0.012, 0, -0.016), m["dark"], bevel=0)
     box("Beavertail", (0.025, 0.026, 0.01), (-0.07, 0, 0.0), frame, rot=(0, 15, 0))
     box("MagRelease", (0.008, 0.004, 0.008), (-0.004, -0.0145, -0.015), m["steel"])
+    # raked grip (about 18 degrees) with a finger-groove front strap, rounded backstrap and stippled side panels
+    k = math.tan(math.radians(18))
+    front = [(0.0 - k * z, -z) for z in (0.0, 0.018, 0.03, 0.042, 0.055, 0.068, 0.082, 0.096, 0.108)]
+    front = [(x + (0.003 if i in (2, 4, 6) else 0.0), z) for i, (x, z) in enumerate(front)]
+    back = [(-0.056 - k * z, -z) for z in (0.108, 0.08, 0.04, 0.012)]
+    prism("Grip", front + back + [(-0.066, 0.004), (-0.05, 0.006)], 0.029, frame, bevel=0.005)
     for side in (-1, 1):
-        prism(f"GripPanel{side}", [(-0.058, -0.012), (-0.008, -0.012), (-0.024, -0.098), (-0.074, -0.094)], 0.003,
-              m["rubber"], y=side * 0.0155)
+        prism(f"GripPanel{side}", [(-0.012 - k * 0.02, -0.02), (-0.016 - k * 0.092, -0.092), (-0.048 - k * 0.092, -0.092), (-0.048 - k * 0.02, -0.02)],
+              0.002, m["rubber"], y=side * 0.0148, bevel=0.0008)
     cyl("Bore", 0.006, 0.01, (s - 0.06, 0, 0.012 + h * 0.6), m["dark"])
-    prism("Grip", [(-0.06, 0.0), (0.0, 0.0), (-0.02, -0.11), (-0.08, -0.105)], 0.03, frame)
-    box("MagBase", (0.05, 0.031, 0.01), (-0.05, 0, -0.108), m["dark"], rot=(0, -15, 0))
-    box("TriggerGuard", (0.05, 0.01, 0.005), (0.015, 0, -0.035), frame)
-    box("Trigger", (0.005, 0.005, 0.02), (0.008, 0, -0.022), m["steel"])
+    box("MagBase", (0.05, 0.031, 0.01), (-0.028 - k * 0.112, 0, -0.112), m["dark"], rot=(0, -18, 0), bevel=0.003)
+    # trigger guard loop (squared front for a support finger) and a curved trigger
+    tube("TriggerGuard", [(0.008, 0, -0.004), (0.052, 0, -0.006), (0.056, 0, -0.012), (0.052, 0, -0.03), (0.042, 0, -0.04), (0.005, 0, -0.04), (-0.012, 0, -0.028)],
+         [0.003] * 7, frame, segs=8)
+    prism("Trigger", [(0.017, -0.004), (0.023, -0.004), (0.021, -0.016), (0.016, -0.03), (0.012, -0.029), (0.015, -0.016)], 0.006, m["steel"], bevel=0.0006)
     top = 0.012 + h
     box("FrontSight", (0.006, 0.004, 0.006), (s - 0.07, 0, top + 0.003), m["dark"])
     box("RearSight", (0.008, 0.02, 0.007), (-0.045, 0, top + 0.0035), m["dark"])
