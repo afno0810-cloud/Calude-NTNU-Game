@@ -1417,25 +1417,53 @@ def _(p, m):
 
 @item("suppressor")
 def _(p, m):
-    cyl("Can", 0.018, 0.17, (0, 0, 0), m["poly"])
-    cyl("Mount", 0.012, 0.03, (-0.095, 0, 0), m["dark"])
+    # can centred on the bore axis (z = 0); the mount starts 11 cm behind the centre
+    o = lathe("Can", [(0.0, -0.085), (0.015, -0.085), (0.018, -0.08), (0.018, 0.078), (0.016, 0.085), (0.005, 0.087), (0.005, 0.083), (0.0, 0.083)], m["poly"], segs=32)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o = lathe("Mount", [(0.0, -0.112), (0.0105, -0.112), (0.0125, -0.105), (0.0125, -0.084), (0.0, -0.084)], m["dark"], segs=24)
+    o.rotation_euler = (0, math.radians(90), 0)
+    for k in range(6):
+        o = lathe(f"Band{k}", [(0.0183, -0.06 + k * 0.025), (0.0183, -0.055 + k * 0.025)], m["dark"], segs=32)
+        o.rotation_euler = (0, math.radians(90), 0)
+    for k in range(8):
+        a = k * math.pi / 4
+        box(f"Flat{k}", (0.012, 0.006, 0.003), (-0.098, math.cos(a) * 0.0125, math.sin(a) * 0.0125), m["steel"], rot=(math.degrees(a) + 90, 0, 0), bevel=0.0005)
 
 
 @item("reddot")
 def _(p, m):
-    box("Base", (0.05, 0.03, 0.012), (0, 0, 0.006), m["dark"])
-    cyl("Tube", 0.017, 0.055, (0, 0, 0.032), m["poly"])
-    cyl("Lens", 0.014, 0.057, (0, 0, 0.032), m["lens"])
+    # optical axis 3.2 cm above the base
+    box("Base", (0.05, 0.03, 0.01), (0, 0, 0.005), m["dark"], bevel=0.002)
+    box("Clamp", (0.02, 0.006, 0.014), (0, -0.017, 0.007), m["dark"], bevel=0.001)
+    cyl("Knob", 0.005, 0.008, (0, -0.021, 0.006), m["steel"], axis="Y", verts=12)
+    o = lathe("Tube", [(0.0145, -0.028), (0.017, -0.026), (0.017, 0.026), (0.0185, 0.028), (0.0185, 0.032), (0.0155, 0.032), (0.0145, 0.03)], m["poly"], segs=28)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0, 0, 0.032)
+    box("Saddle", (0.04, 0.022, 0.014), (0, 0, 0.016), m["poly"], bevel=0.003)
+    cyl("Lens", 0.0145, 0.002, (0.02, 0, 0.032), m["lens"], verts=28)
+    cyl("Turret", 0.007, 0.012, (0.0, 0.019, 0.032), m["dark"], axis="Y", verts=16)
+    cyl("TurretTop", 0.007, 0.01, (0.0, 0, 0.051), m["dark"], axis="Z", verts=16)
+    sph("Dot", 0.0012, (0.0, 0, 0.032), col((1, 0.05, 0.05)))
 
 
 @item("scope")
 def _(p, m):
-    cyl("Tube", 0.014, 0.26, (0, 0, 0.04), m["poly"])
-    cone("Front", 0.014, 0.024, 0.07, (0.16, 0, 0.04), m["poly"], axis="X")
-    cone("Rear", 0.021, 0.014, 0.05, (-0.145, 0, 0.04), m["poly"], axis="X")
-    for x in (-0.06, 0.06):
-        box(f"Ring{x}", (0.015, 0.03, 0.035), (x, 0, 0.0175), m["dark"])
-    cyl("Turret", 0.01, 0.02, (0, 0, 0.06), m["poly"], axis="Z")
+    # 4x: axis 4 cm above the base
+    o = lathe("Tube", [(0.02, -0.15), (0.021, -0.145), (0.021, -0.1), (0.0135, -0.08), (0.0135, 0.08), (0.022, 0.12), (0.022, 0.16), (0.0195, 0.163)], m["poly"], segs=32)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0, 0, 0.04)
+    cyl("LensF", 0.0195, 0.002, (0.162, 0, 0.04), m["lens"], verts=32)
+    cyl("LensR", 0.018, 0.002, (-0.15, 0, 0.04), m["lens"], verts=32)
+    for x in (-0.05, 0.05):
+        box(f"RingBase{x}", (0.018, 0.026, 0.02), (x, 0, 0.01), m["dark"], bevel=0.002)
+        o = lathe(f"Ring{x}", [(0.0138, -0.009), (0.0165, -0.009), (0.0165, 0.009), (0.0138, 0.009)], m["dark"], segs=28)
+        o.rotation_euler = (0, math.radians(90), 0)
+        o.location = (x, 0, 0.04)
+    cyl("TurretTop", 0.011, 0.016, (0, 0, 0.06), m["dark"], axis="Z", verts=20)
+    cyl("TurretSide", 0.011, 0.016, (0, 0.02, 0.04), m["dark"], axis="Y", verts=20)
+    o = lathe("Zoom", [(0.022, -0.1), (0.022, -0.085)], m["rubber"], segs=32)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0, 0, 0.04)
 
 
 @item("extmag")
@@ -1465,9 +1493,14 @@ def _(p, m):
 
 @item("laser")
 def _(p, m):
-    box("Body", (0.06, 0.03, 0.03), (0, 0, 0.015), m["poly"], bevel=0.004)
-    cyl("Emitter", 0.006, 0.01, (0.033, 0.006, 0.015), m["red"])
-    cyl("Flash", 0.009, 0.01, (0.033, -0.006, 0.015), m["glass"])
+    box("Body", (0.06, 0.03, 0.026), (0, 0, 0.013), m["poly"], bevel=0.005)
+    box("Clamp", (0.04, 0.034, 0.006), (0, 0, 0.028), m["dark"], bevel=0.0015)
+    o = lathe("Bezel", [(0.0, 0.0), (0.009, 0.0), (0.0095, 0.008), (0.008, 0.01), (0.0, 0.01)], m["dark"], segs=20)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0.03, -0.006, 0.013)
+    cyl("Emitter", 0.004, 0.002, (0.041, -0.006, 0.013), col((1, 0.05, 0.05)), verts=16)
+    cyl("Light", 0.0085, 0.002, (0.031, 0.008, 0.013), m["glass"], verts=20)
+    box("Switch", (0.012, 0.006, 0.01), (-0.024, 0.0175, 0.012), m["rubber"], bevel=0.002)
 
 
 @item("compass")
@@ -1656,23 +1689,43 @@ def _(p, m):
 
 @item("holo")
 def _(p, m):
-    box("Base", (0.07, 0.035, 0.012), (0, 0, 0.006), m["dark"])
-    box("Body", (0.045, 0.04, 0.03), (-0.012, 0, 0.027), m["poly"], bevel=0.004)
-    box("Hood", (0.012, 0.046, 0.045), (0.028, 0, 0.035), m["poly"], bevel=0.003)
-    box("Window", (0.003, 0.034, 0.03), (0.028, 0, 0.037), m["lens"], bevel=0)
-    box("Reticle", (0.0035, 0.004, 0.004), (0.028, 0, 0.04), col((1, 0.1, 0.1)), bevel=0)
+    # window centre 3.7 cm above the base
+    box("Base", (0.075, 0.036, 0.012), (0, 0, 0.006), m["dark"], bevel=0.002)
+    box("Body", (0.05, 0.04, 0.022), (-0.012, 0, 0.022), m["poly"], bevel=0.004)
+    box("Battery", (0.03, 0.044, 0.016), (-0.022, 0, 0.012), m["poly"], bevel=0.004)
+    for sy in (-1, 1):
+        prism(f"Hood{sy}", [(-0.01, 0.028), (0.035, 0.028), (0.035, 0.06), (0.02, 0.062), (-0.01, 0.05)], 0.004, m["poly"], y=sy * 0.021, bevel=0.001)
+    box("HoodTop", (0.045, 0.046, 0.004), (0.012, 0, 0.061), m["poly"], bevel=0.0015)
+    box("Window", (0.002, 0.038, 0.03), (0.03, 0, 0.044), m["lens"], bevel=0)
+    box("WindowR", (0.002, 0.038, 0.026), (-0.006, 0, 0.044), m["lens"], bevel=0)
+    for k in range(3):
+        box(f"Button{k}", (0.006, 0.004, 0.004), (-0.025 + k * 0.009, -0.0205, 0.025), m["rubber"], bevel=0.0008)
+    cyl("Lever", 0.004, 0.01, (0.02, 0.022, 0.006), m["steel"], axis="Y", verts=10)
+    box("Reticle", (0.0006, 0.004, 0.004), (0.031, 0, 0.037), col((1, 0.1, 0.1)), bevel=0)
 
 
 @item("scope8")
 def _(p, m):
-    cyl("Tube", 0.016, 0.36, (0, 0, 0.05), m["poly"])
-    cone("Objective", 0.016, 0.03, 0.09, (0.22, 0, 0.05), m["poly"], axis="X")
-    cyl("Ocular", 0.02, 0.06, (-0.2, 0, 0.05), m["poly"])
-    cyl("Turret", 0.01, 0.03, (0.0, 0, 0.072), m["dark"], axis="Z")
-    cyl("TurretSide", 0.01, 0.03, (0.0, 0.026, 0.05), m["dark"], axis="Y")
-    for x in (-0.08, 0.08):
-        box(f"Ring{x}", (0.02, 0.04, 0.045), (x, 0, 0.03), m["dark"])
-    cyl("Lens", 0.028, 0.002, (0.266, 0, 0.05), m["lens"])
+    # 8x: axis 5 cm above the base
+    o = lathe("Tube", [(0.021, -0.21), (0.022, -0.205), (0.022, -0.14), (0.015, -0.115), (0.015, 0.1), (0.029, 0.17), (0.029, 0.26), (0.026, 0.264)], m["poly"], segs=36)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0, 0, 0.05)
+    cyl("Lens", 0.027, 0.002, (0.263, 0, 0.05), m["lens"], verts=32)
+    cyl("LensR", 0.019, 0.002, (-0.21, 0, 0.05), m["lens"], verts=32)
+    o = lathe("Shade", [(0.0295, 0.26), (0.0295, 0.32), (0.028, 0.322)], m["poly"], segs=36)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0, 0, 0.05)
+    for x in (-0.07, 0.07):
+        box(f"RingBase{x}", (0.022, 0.032, 0.03), (x, 0, 0.015), m["dark"], bevel=0.002)
+        o = lathe(f"Ring{x}", [(0.0152, -0.011), (0.0185, -0.011), (0.0185, 0.011), (0.0152, 0.011)], m["dark"], segs=28)
+        o.rotation_euler = (0, math.radians(90), 0)
+        o.location = (x, 0, 0.05)
+    cyl("TurretTop", 0.013, 0.022, (0.0, 0, 0.074), m["dark"], axis="Z", verts=24)
+    cyl("TurretSide", 0.013, 0.022, (0.0, 0.026, 0.05), m["dark"], axis="Y", verts=24)
+    cyl("Parallax", 0.011, 0.016, (0.0, -0.024, 0.05), m["dark"], axis="Y", verts=24)
+    for k in range(12):
+        a = k * math.pi / 6
+        box(f"Click{k}", (0.0015, 0.0015, 0.02), (math.cos(a) * 0.0132, math.sin(a) * 0.0132, 0.074), m["steel"], bevel=0)
 
 
 @item("drum")
@@ -1684,17 +1737,23 @@ def _(p, m):
 
 @item("comp")
 def _(p, m):
-    cyl("Body", 0.013, 0.06, (0, 0, 0.013), m["dark"], verts=16)
+    o = lathe("Body", [(0.0058, -0.03), (0.0125, -0.03), (0.0135, -0.026), (0.0135, 0.026), (0.012, 0.03), (0.0058, 0.03)], m["dark"], segs=24)
+    o.rotation_euler = (0, math.radians(90), 0)
+    o.location = (0, 0, 0.013)
     for i in range(3):
-        box(f"Port{i}", (0.006, 0.02, 0.006), (-0.012 + i * 0.012, 0, 0.026), m["steel"], bevel=0)
+        for sy in (-1, 1):
+            box(f"Port{i}{sy}", (0.006, 0.006, 0.012), (-0.01 + i * 0.012, sy * 0.0115, 0.017), m["poly"], bevel=0.0008)
+        box(f"TopPort{i}", (0.006, 0.01, 0.006), (-0.01 + i * 0.012, 0, 0.0262), m["poly"], bevel=0.0008)
 
 
 @item("vgrip")
 def _(p, m):
-    box("Clamp", (0.05, 0.03, 0.015), (0, 0, 0.1), m["dark"])
-    cyl("Grip", 0.015, 0.1, (0, 0, 0.045), m["poly"], axis="Z", verts=16)
+    box("Clamp", (0.05, 0.03, 0.012), (0, 0, 0.1015), m["dark"], bevel=0.002)
+    cyl("Screw", 0.004, 0.034, (0.0, 0, 0.1), m["steel"], axis="Y", verts=10)
+    lathe("Grip", [(0.0, 0.0), (0.016, 0.0), (0.0175, 0.004), (0.0165, 0.03), (0.0145, 0.06), (0.014, 0.09), (0.0155, 0.096), (0.0, 0.096)], m["poly"], segs=24)
     for i in range(4):
-        cyl(f"Ridge{i}", 0.0155, 0.004, (0, 0, 0.015 + i * 0.02), m["rubber"], axis="Z", verts=16)
+        lathe(f"Ridge{i}", [(0.0168 - i * 0.0006, 0.012 + i * 0.02), (0.0168 - i * 0.0006, 0.018 + i * 0.02)], m["rubber"], segs=24)
+    cyl("Cap", 0.012, 0.003, (0, 0, -0.0005), m["dark"], axis="Z", verts=20)
 
 
 @item("spool")
