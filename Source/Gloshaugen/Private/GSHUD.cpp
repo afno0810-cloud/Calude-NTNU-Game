@@ -592,6 +592,19 @@ void AGSHUD::DrawScope(AGSCharacter* C)
 		}
 	}
 	Box(CX - 1.5f, CY - 1.5f, 3.f, 3.f, FLinearColor(1.f, 0.1f, 0.1f, 0.9f));
+	// breath: hint, and a bar that empties while you hold it
+	const float Held = C->GetBreathHeld();
+	const float BY = CY + R * 0.8f;
+	if (Held <= 0.01f)
+	{
+		Text(TEXT("Shift: hold pusten"), CX, BY, FLinearColor(0.8f, 0.8f, 0.8f, 0.7f), 0.9f, true);
+	}
+	else
+	{
+		const float Left = FMath::Clamp(1.f - Held / 4.f, 0.f, 1.f);
+		Box(CX - 80.f, BY, 160.f, 6.f, FLinearColor(0.f, 0.f, 0.f, 0.6f));
+		Box(CX - 80.f, BY, 160.f * Left, 6.f, Left > 0.25f ? FLinearColor(0.8f, 0.9f, 1.f, 0.85f) : FLinearColor(1.f, 0.3f, 0.2f, 0.9f));
+	}
 	// hit marker still shows when scoped
 	const float SinceHit = GetWorld()->GetTimeSeconds() - C->GetLastHitMarkerTime();
 	if (SinceHit < 0.18f)

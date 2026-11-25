@@ -2602,6 +2602,37 @@ void AGSCharacter::TickSurvival(float DeltaSeconds)
 	}
 }
 
+void AGSCharacter::TickScopeSway(float Dt)
+{
+	AController* C = GetController();
+	if (!C) return;
+	const bool bScoped = IsScopedIn() && !bDead;
+	// Holding breath (Shift while scoped) steadies the aim for 4 seconds, then you have to breathe and it shakes more
+	const bool bHolding = bScoped && bWantsSprint && BreathHeld < 4.f;
+	if (bHolding) BreathHeld += Dt;
+	else BreathHeld = FMath::Max(0.f, BreathHeld - Dt * (bWantsSprint ? 0.f : 1.5f));
+	float Target = 0.f;
+	if (bScoped)
+	{
+		Target = bIsCrouched ? 0.18f : 0.32f;
+		if (GetVelocity().Size2D() > 50.f) Target *= 1.8f;
+		if (bHolding) Target *= 0.12f;
+		else if (BreathHeld >= 4.f) Target *= 1.7f;
+	}
+	ScopeSwayAmp = FMath::FInterpTo(ScopeSwayAmp, Target, Dt, 3.f);
+	const float T = GetWorld()->GetTimeSeconds();
+	const FVector2D Off(FMath::Sin(T * 0.9f) * ScopeSwayAmp, FMath::Sin(T * 1.7f + 0.8f) * ScopeSwayAmp * 0.6f);
+	const FVector2D Delta = Off - ScopeSwayPrev;
+	ScopeSwayPrev = Off;
+	if (!Delta.IsNearlyZero(1e-5f))
+	{
+		FRotator R = C->GetControlRotation();
+		R.Yaw += Delta.X;
+		R.Pitch += Delta.Y;
+		C->SetControlRotation(R);
+	}
+}
+
 void AGSCharacter::UpdateLocalVisuals(float DeltaSeconds)
 {
 	const FGSEffectMods Mods = GetMods();
@@ -2824,6 +2855,7 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		if (bNightVisionGoggles && !HasItemKind(KindNightVision)) bNightVisionGoggles = false;
 
 		TickRecoil(DeltaSeconds);
+		TickScopeSway(DeltaSeconds);
 		UpdateWeaponAnimation(DeltaSeconds);
 	}
 }

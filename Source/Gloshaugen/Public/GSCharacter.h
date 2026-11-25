@@ -80,6 +80,7 @@ public:
 	/** Aiming through a magnified scope (4x / 8x or a sniper): the HUD draws the scope and the gun is hidden. */
 	bool IsScopedIn() const;
 	float GetAimBlend() const { return AimBlend; }
+	float GetBreathHeld() const { return BreathHeld; }
 	/** Where the last hit on you came from (world), and when (local time), for the HUD damage indicator. */
 	FVector LastDamageFrom = FVector::ZeroVector;
 	float LastDamageFromTime = -100.f;
@@ -288,6 +289,11 @@ protected:
 	int32 MeleeVariant = 0;
 	/** When you last climbed a ledge: the gun tucks down out of the way while you vault. */
 	float MantleStart = -100.f;
+	/** Scope sway: the crosshair drifts slowly through a scope; hold Shift to hold your breath for a few seconds. */
+	float ScopeSwayAmp = 0.f;
+	float BreathHeld = 0.f;
+	FVector2D ScopeSwayPrev = FVector2D::ZeroVector;
+	void TickScopeSway(float Dt);
 	float FireAnimStart = -100.f;
 	float LastShotTime = -100.f;
 	float CycleStart = -100.f;   // pump or bolt cycle after a shot
