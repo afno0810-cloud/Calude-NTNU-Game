@@ -302,5 +302,11 @@ Nyeste runde øverst.
 277. Andre spillere ser sikte, lyddemper, laser og grep på våpenet ditt
 278. Avrundede kolber og forskjefter på alle rifler, hagler og repetergevær
 279. Trommemagasin og kompass med detaljer
+280. Tre ulike nærkampslag etter hverandre (hogg, bakhånd, ovenfra), kniver stikker
+281. Andre spillere ser at du slår og lader om
+282. Våpenet senkes og trekkes inn når du klatrer over kanter
+283. Siktet svaier i kikkertsikte; hold Shift for å holde pusten i 4 sekunder (pustemåler i siktet)
+284. Avrundede pistolgrep, håndvern og mottakere; ekte rakett- og pileammo
+285. Ny sykkel med eiker, ramme og kurv, og skap med ventiler og hengelås
 
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*
