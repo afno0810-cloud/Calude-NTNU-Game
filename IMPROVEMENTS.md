@@ -259,4 +259,40 @@ Nyeste runde øverst.
 237. Skannede teksturer beholder vått føre, snø og riktig fliselegging på bakken
 238. Skannede steinblokker (Poly Haven) erstatter våre steiner når de finnes
 
+## Runde 5: grafikk, animasjoner, lobby og minimap
+
+239. Ny valnøtt-tekstur på alle trekolber; mørkere stål og matt polymer på våpen
+240. Riflene har delelinje, boltflate, forward assist, pinner, ladehåndtak, sikring, magasinutløser, M-LOK-spor og munningskrone
+241. Pistolene har utkastport med messing, fremre riller, sleidestopp, skinne, beavertail og gummigrep
+242. Buede magasiner er nå én glatt bue med ribber og bunnplate
+243. Fem ulike skyteanimasjoner per våpen (rett bakover, vri høyre, vri venstre, munningsrykk, inn i skulderen), aldri samme to ganger på rad
+244. Ekte rekyl med eget mønster per våpen som klatrer i salver og trekker seg delvis tilbake
+245. Pumpehagle pumper og boltrifle sykler bolten etter hvert skudd, med lyd og hylse
+246. Hylser spretter ut og klirrer mot bakken
+247. Egne armer og hansker i førsteperson, høyre hånd på grepet og venstre på håndvernet
+248. Reload med hånd: magasin ut, hånd til lomma, nytt magasin inn, ladehåndtak
+249. Hagle og boltrifle lades ett skudd om gangen
+250. Animasjoner for å bruke ting: granat (sikring, sving, kast), drikke, spise, piller, bandasje, sprøyte
+251. Du ser dine egne bein når du ser ned
+252. Minimap som roterer med deg, med veier, bygg med navn, loot og nord
+253. Lobby: spillerliste, klar-knapp (Enter), nedtelling, kampklokke og vinnerskjerm med resultattavle
+254. Kikkertsikte med svarte kanter, mil-dots og rødt punkt; våpenet skjules når du ser gjennom
+255. Rød pil viser hvor skaden kom fra
+256. Andre spillere bærer våpenet ved skulderen, sikter opp/ned og senker det når de løper
+257. Nye glatte modeller for pilleglass med riflet kork, glasskrukke, kaffekopp og vannflaske med grepsringer
+258. Ny kebab, pølse i lompe med ketchup og sennep, buet banan, baguett, hjertevaffel, sjokoladekjeks, eple, plaster og bandasje
+259. Snusboks, sprøyter med skala, blisterpakker, pipette, bokser med kant og fliplokk, ampuller, lattergassbeholder og nikotinplaster
+260. Matpakke i matpapir, Grandiosa, taco, nudelbeger, røkelaks, brunost med ostehøvel, skolebolle og kanelbolle
+261. Nye granater (splint, røyk, blend) med bøyle, splint og ring; molotov med fille; retningsmine; kikkert; nattsyn; walkie-talkie; ekstra magasin; pokal; kompass
+262. Taktisk reload (ingen lading) og tom reload (lader våpenet)
+263. Klikk og liten rykk når du trykker på et tomt våpen
+264. Våpenet løftes opp når du står nær en vegg, så det aldri går gjennom
+265. Våpenet henger etter når du hopper, tilter når du går sidelengs og dupper når du huker deg
+266. Står du stille lenge, ser figuren på våpenet sitt
+267. Myke røyk- og flamme-effekter i stedet for kuler: munningsflamme, gnister og støv ved treff, eksplosjoner med ildkule og røyk
+268. Røykgranaten lager en ekte sky, blendgranaten et hvitt glimt, brann har flammer og svart røyk, raketter har røykspor
+269. Lysende lysspor (tracere)
+270. Varm løp ryker etter lange salver
+271. Vindbevegelse i blader uten feilmelding i UE 5.8
+
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*
