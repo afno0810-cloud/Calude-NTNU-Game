@@ -133,6 +133,25 @@ class MeshKit:
             self.bm.faces.new(rings[0][::-1]).material_index = mi
             self.bm.faces.new(rings[-1]).material_index = mi
 
+    def loft(self, stations, mi, segs=24, power=4.0):
+        """Rounded solid along X from (x, z_bottom, z_top, half_width) stations (superellipse sections)."""
+        e = 2.0 / power
+        rings = []
+        for x, zb, zt, hw in stations:
+            zc, hh = (zb + zt) / 2, (zt - zb) / 2
+            ring = []
+            for k in range(segs):
+                a = 2 * math.pi * k / segs
+                c, sn = math.cos(a), math.sin(a)
+                ring.append(self.bm.verts.new((x, hw * math.copysign(abs(c) ** e, c), zc + hh * math.copysign(abs(sn) ** e, sn))))
+            rings.append(ring)
+        for a_, b_ in zip(rings, rings[1:]):
+            for k in range(segs):
+                j = (k + 1) % segs
+                self.bm.faces.new((a_[k], a_[j], b_[j], b_[k])).material_index = mi
+        self.bm.faces.new(rings[0][::-1]).material_index = mi
+        self.bm.faces.new(rings[-1]).material_index = mi
+
     def ring_y(self, c, R, r, mi, n=28, segs=8):
         """Torus standing in the XZ plane (wheel, tyre) centred on c."""
         self.tube([(c[0] + R * math.cos(2 * math.pi * i / n), c[1], c[2] + R * math.sin(2 * math.pi * i / n)) for i in range(n)], r, mi, segs, closed=True)

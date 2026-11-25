@@ -26,32 +26,55 @@ def car(name, L, W, body, cabin, wheel_r=0.33, wheelbase=None, clearance=0.22, r
     plate = k.mat("Plate", (0.95, 0.95, 0.95))
     wb = wheelbase or L * 0.6
     hw = W / 2
-    # body and cabin
-    k.prism_y(-hw, hw, body, paint)
-    cw = hw - 0.12
-    k.prism_y(-cw, cw, cabin, paint)
-    # glass: side windows (shrunk cabin profile, a little wider than the cabin), windscreen, rear window
-    cx = sum(p[0] for p in cabin) / len(cabin)
-    cz = sum(p[1] for p in cabin) / len(cabin)
-    shrunk = [(cx + (x - cx) * 0.86, cz + (z - cz) * 0.8) for x, z in cabin]
-    k.prism_y(-cw - 0.015, cw + 0.015, shrunk, glass)
-    # front and rear glass follow the sloped edges of the cabin
-    pts = cabin
-    zmin = min(p[1] for p in pts)
-    front = [p for p in pts if p[0] > cx]
-    rear = [p for p in pts if p[0] < cx]
-    for grp, sgn in ((front, 1), (rear, -1)):
-        lo = max((p for p in grp if abs(p[1] - zmin) < 0.05), key=lambda p: sgn * p[0], default=None)
-        hi = max((p for p in grp if p[1] > zmin + 0.1), key=lambda p: sgn * p[0], default=None)
-        if lo and hi:
-            mx, mz = (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2
-            length = math.hypot(hi[0] - lo[0], hi[1] - lo[1])
-            pitch = math.degrees(math.atan2(hi[1] - lo[1], hi[0] - lo[0]))
-            k.box((mx + sgn * 0.012, 0, mz + 0.012), (length * 0.92, cw * 2 - 0.1, 0.02), glass, rot=(0, -pitch, 0))
+    # body and cabin: lofted with rounded superellipse sections instead of flat extrusions
+    def interp(pts, x):
+        pts = sorted(pts)
+        if x <= pts[0][0]:
+            return pts[0][1]
+        for (xa, va), (xb, vb) in zip(pts, pts[1:]):
+            if x <= xb:
+                return va + (vb - va) * (x - xa) / max(xb - xa, 1e-9)
+        return pts[-1][1]
+
+    xf = max(p[0] for p in body)
+    xr = min(p[0] for p in body)
+    zbot = min(p[1] for p in body)
+    top_chain = [p for p in body if p[1] > zbot + 0.05]
+    n = 28
+    st = []
+    for i in range(n + 1):
+        x = xr + (xf - xr) * i / n
+        endk = min((x - xr) / 0.35, (xf - x) / 0.35, 1.0)
+        st.append((x, zbot, interp(top_chain, x), hw * (0.94 + 0.06 * math.sqrt(max(endk, 0.0)))))
+    k.loft(st, paint, segs=28, power=5.0)
+    cw = hw - 0.1
+    cab_x0, cab_x1 = min(p[0] for p in cabin), max(p[0] for p in cabin)
+    belt = min(p[1] for p in cabin)
+    ctop = [p for p in cabin if p[1] > belt + 0.1]
+    rear_low = min(cabin, key=lambda p: p[0])
+    front_low = max(cabin, key=lambda p: p[0])
+    chain = sorted([rear_low] + ctop + [front_low])
+    # glass greenhouse, then a painted roof panel and pillars over it
+    st = [(x, belt - 0.12, interp(chain, x), cw) for x in [cab_x0 + (cab_x1 - cab_x0) * i / 24 for i in range(25)]]
+    k.loft(st, glass, segs=24, power=5.0)
+    rx0, rx1 = min(p[0] for p in ctop), max(p[0] for p in ctop)
+    st = [(x, interp(chain, x) - 0.035, interp(chain, x) + 0.012, cw * 0.97) for x in [rx0 - 0.04 + (rx1 - rx0 + 0.08) * i / 10 for i in range(11)]]
+    k.loft(st, paint, segs=20, power=5.0)
+    for y in (-cw + 0.03, cw - 0.03):
+        front_top = max(ctop, key=lambda p: p[0])
+        rear_top = min(ctop, key=lambda p: p[0])
+        k.tube([(front_low[0] - 0.05, y, belt), (front_top[0] - 0.02, y, front_top[1] - 0.045)], 0.03, paint, segs=6)
+        k.tube([(rear_low[0] + 0.08, y, belt), (rear_top[0] + 0.03, y, rear_top[1] - 0.06)], 0.045, paint, segs=6)
+        xb = (front_top[0] + rear_top[0]) / 2 + 0.1
+        k.tube([(xb, y * 1.005, belt), (xb, y * 0.99, interp(chain, xb) - 0.02)], 0.035, paint, segs=6)
+    cx = (cab_x0 + cab_x1) / 2
+    zmin = belt
     # wheels with rims and wheel-arch shadows
     for x in (-wb / 2, wb / 2):
         for y in (-hw + 0.13, hw - 0.13):
-            k.cyl_axis((x, y, wheel_r), wheel_r, 0.24, rubber, axis="Y", verts=22)
+            k.cyl_axis((x, y, wheel_r), wheel_r - 0.035, 0.24, rubber, axis="Y", verts=24)
+            for yy in (y - 0.085, y + 0.085):
+                k.ring_y((x, yy, wheel_r), wheel_r - 0.04, 0.04, rubber, n=28, segs=8)
             s = 1 if y > 0 else -1
             k.cyl_axis((x, y + s * 0.11, wheel_r), wheel_r * 0.66, 0.04, rim, axis="Y", verts=22)
             for i in range(5):
