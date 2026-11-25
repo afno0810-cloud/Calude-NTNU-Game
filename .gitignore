@@ -9,3 +9,6 @@ Saved/
 *.opensdf
 *.sdf
 *.suo
+
+# Model import markers (local only)
+*.imported

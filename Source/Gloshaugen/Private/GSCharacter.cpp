@@ -428,7 +428,8 @@ void AGSCharacter::FireOnce()
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSFireLocal), true, this);
 	const FVector End = Start + Dir * S.Range;
 	const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
-	const FVector MuzzleStart = FPWeaponMesh->GetComponentLocation() + Camera->GetForwardVector() * (S.MeshScale.X * 50.f);
+	const float MuzzleDist = GSWeapons::GetMesh(W->Id) ? S.MuzzleX : S.MeshScale.X * 50.f;
+	const FVector MuzzleStart = FPWeaponMesh->GetComponentLocation() + Camera->GetForwardVector() * MuzzleDist;
 	SpawnTracer(MuzzleStart, bHit ? Hit.ImpactPoint : End);
 	if (bHit && !Cast<AGSCharacter>(Hit.GetActor()))
 	{
@@ -540,10 +541,25 @@ void AGSCharacter::ApplyWeaponVisuals()
 	TPWeaponMesh->SetVisibility(bHas);
 	if (!bHas) return;
 	const FGSWeaponStats& S = GSWeapons::Get(W->Id);
-	FPWeaponMesh->SetRelativeScale3D(S.MeshScale);
-	TPWeaponMesh->SetRelativeScale3D(S.MeshScale);
-	GSUtils::SetColor(FPWeaponMesh, S.Color);
-	GSUtils::SetColor(TPWeaponMesh, S.Color);
+	if (UStaticMesh* Model = GSWeapons::GetMesh(W->Id))
+	{
+		// Real model from Blender (with its own materials)
+		for (UStaticMeshComponent* C : { FPWeaponMesh.Get(), TPWeaponMesh.Get() })
+		{
+			C->SetStaticMesh(Model);
+			C->SetRelativeScale3D(FVector::OneVector);
+			C->EmptyOverrideMaterials();
+		}
+	}
+	else
+	{
+		for (UStaticMeshComponent* C : { FPWeaponMesh.Get(), TPWeaponMesh.Get() })
+		{
+			C->SetStaticMesh(GSUtils::Cube());
+			C->SetRelativeScale3D(S.MeshScale);
+			GSUtils::SetColor(C, S.Color);
+		}
+	}
 }
 
 void AGSCharacter::OnRep_Weapons() { ApplyWeaponVisuals(); }
@@ -663,12 +679,17 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		FVector WeaponPos(38.f, 16.f, -16.f);
 		if (const FGSWeaponSlot* W = GetCurrentWeapon())
 		{
+			const FGSWeaponStats& S = GSWeapons::Get(W->Id);
+			WeaponPos = S.FPHip;
 			if (bAiming)
 			{
-				TargetFOV = GSWeapons::Get(W->Id).AimFOV;
-				WeaponPos = FVector(32.f, 0.f, -9.f);
+				TargetFOV = S.AimFOV;
+				WeaponPos = S.FPAim;
 			}
 		}
+		// Weapon sway and kick
+		WeaponPos.X -= CurrentRecoil * 1.5f;
+		WeaponPos.Z += FMath::Sin(GetWorld()->GetTimeSeconds() * (bSprinting ? 12.f : 7.f)) * FMath::Min(GetVelocity().Size2D() / 600.f, 1.f) * (bAiming ? 0.2f : 1.2f);
 		if (bSprinting) TargetFOV += 6.f;
 		if (bSliding) TargetFOV += 10.f;
 		if (bReloading) WeaponPos += FVector(-8.f, 0.f, -14.f);

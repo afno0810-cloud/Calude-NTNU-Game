@@ -65,8 +65,17 @@ void AGSPickup::Tick(float DeltaSeconds)
 void AGSPickup::OnRep_State()
 {
 	const FGSWeaponStats& S = GSWeapons::Get(WeaponId);
-	Mesh->SetRelativeScale3D(S.MeshScale);
-	GSUtils::SetColor(Mesh, S.Color);
+	if (UStaticMesh* Model = GSWeapons::GetMesh(WeaponId))
+	{
+		Mesh->SetStaticMesh(Model);
+		Mesh->SetRelativeScale3D(FVector(1.2f));
+		Mesh->EmptyOverrideMaterials();
+	}
+	else
+	{
+		Mesh->SetRelativeScale3D(S.MeshScale);
+		GSUtils::SetColor(Mesh, S.Color);
+	}
 	// Color of the ring shows how valuable it is (rarity system comes later).
 	GSUtils::SetColor(Glow, WeaponId == EGSWeaponId::AG3 ? FLinearColor(0.1f, 0.5f, 1.f) : FLinearColor(0.6f, 0.6f, 0.6f));
 	Mesh->SetVisibility(bAvailable);

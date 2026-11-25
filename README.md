@@ -60,3 +60,14 @@ Grafikken er bevisst enkel (blokker) til vi har kartdata og modeller på plass, 
 - `GSCampusBuilder`: bygger campus fra dataene ved oppstart
 - `GSEnvironment`: sol, måne, himmel, tåke, regn og snø
 - `GSGameMode` / `GSGameState`: respawn, kills, vær og klokke
+
+## 3D-modeller (Blender)
+
+Modellene lages med Python-skript i `Tools/Blender/` og ligger ferdig eksportert i `SourceArt/Models/` (`.fbx` for Unreal, `.blend` for Blender og `.glb` for forhåndsvisning).
+
+- **Automatisk import:** Hver gang du åpner prosjektet i Unreal, kjører `Content/Python/init_unreal.py` og importerer nye eller endrede modeller til `Content/Models`. Du trenger ikke gjøre noe.
+- Finnes ikke modellen ennå, bruker spillet en enkel boks i stedet.
+- Vil du se eller endre en modell: åpne `.blend`-filen i Blender.
+- Lage modellene på nytt: `blender --background --python Tools/Blender/weapon_ag3.py`
+
+Modeller så langt: AG3 og pistol (M1911).

@@ -2,17 +2,43 @@
 	"FileVersion": 3,
 	"EngineAssociation": "5.8",
 	"Category": "",
-	"Description": "Gløshaugen Strike – online FPS på NTNU Gløshaugen",
+	"Description": "Gl\u00f8shaugen Strike \u2013 online FPS p\u00e5 NTNU Gl\u00f8shaugen",
 	"Modules": [
 		{
 			"Name": "Gloshaugen",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
-			"AdditionalDependencies": [ "Engine", "EnhancedInput" ]
+			"AdditionalDependencies": [
+				"Engine",
+				"EnhancedInput"
+			]
 		}
 	],
 	"Plugins": [
-		{ "Name": "EnhancedInput", "Enabled": true },
-		{ "Name": "ModelingToolsEditorMode", "Enabled": true, "TargetAllowList": [ "Editor" ] }
+		{
+			"Name": "EnhancedInput",
+			"Enabled": true
+		},
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "PythonScriptPlugin",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "EditorScriptingUtilities",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		}
 	]
 }
