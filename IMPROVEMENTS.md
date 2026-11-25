@@ -255,5 +255,8 @@ Nyeste runde øverst.
 233. Kameraet rykker bare til ved skade, ikke når du heles
 234. Kulehull som ligger flatt i veggen og blir værende i 40 sekunder
 235. Gnist og støvsky der kula treffer
+236. Poly Haven-fototeksturer tas inn i våre egne materialer (stein, skifer, puss, marmor, terrazzo, parkett, betong, asfalt, belegningsstein, gress)
+237. Skannede teksturer beholder vått føre, snø og riktig fliselegging på bakken
+238. Skannede steinblokker (Poly Haven) erstatter våre steiner når de finnes
 
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*

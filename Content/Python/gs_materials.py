@@ -473,37 +473,92 @@ def build_instances(force):
 
 # ------------------------------------------------------------------ apply to models
 # Our slot name -> words to look for in scanned materials you added (Poly Haven, Megascans, Fab).
+# Scanned materials that REPLACE ours by name (whole material swap). Only for slots with nothing better below.
 SCANNED_KEYWORDS = {
-    "Stone": ["castle_wall", "stone_wall", "stonewall", "granite_wall", "stone_brick", "rough_block_wall", "granite"],
-    "StoneDark": ["granite", "basalt", "dark_stone", "rock_wall", "stone_wall"],
-    "Trim": ["sandstone", "limestone", "plastered_stone", "concrete_wall"],
-    "Slate": ["slate", "roof_tiles", "rooftiles", "roof_slate", "clay_roof", "roof"],
-    "Plaster": ["plaster", "stucco", "painted_plaster", "white_plaster"],
-    "PlasterWhite": ["white_plaster", "plaster", "stucco"],
-    "Marble": ["marble", "terrazzo"],
-    "Terrazzo": ["terrazzo", "floor_tiles", "tiles"],
-    "Floor": ["parquet", "wood_floor", "laminate", "floor"],
-    "Wood": ["oak", "wood_planks", "plywood", "wood"],
-    "WoodLight": ["light_wood", "plywood", "birch", "wood"],
     "Copper": ["copper", "patina"],
-    "Metal": ["metal_plate", "brushed", "steel", "metal"],
-    "Concrete": ["concrete_wall", "concrete", "cement"],
-    "ConcreteSmooth": ["concrete_floor", "smooth_concrete", "concrete"],
+    "Brick": ["red_brick", "brick_wall"],
+    "BrickBrown": ["dark_brick", "brown_brick"],
+    "BrickYellow": ["yellow_brick"],
     "Fabric": ["fabric", "denim", "cloth"],
-    "Brick": ["red_brick", "brick_wall", "brick"],
-    "BrickBrown": ["dark_brick", "brown_brick", "brick"],
-    "BrickYellow": ["yellow_brick", "beige_wall", "brick"],
-    "Asphalt": ["asphalt", "road"],
-    "Paving": ["paving", "pavement", "cobblestone", "patterned_paving", "sidewalk"],
-    "Gravel": ["gravel", "aerial_ground", "coast_sand"],
-    "W_Grass": ["grass", "aerial_grass", "forest_ground", "lawn"],
-    "W_Asphalt": ["asphalt", "road"],
-    "W_Paving": ["paving", "pavement", "cobblestone", "sidewalk"],
     "Bark": ["bark", "pine_bark", "tree_bark"],
     "M_Wood": ["walnut", "dark_wood", "wood_table"],
     "M_Leather": ["leather"],
     "Leather": ["leather"],
 }
+
+# Scanned TEXTURES adopted into our own instances (Poly Haven on Andreas' PC, /Game/PolyHaven/Materials).
+# We keep our masters, so world-space tiling on the ground, wet streets, snow and tint still work;
+# only the photo textures change. First name that exists wins.
+ADOPT = {
+    "Stone": ["mi_granite_wall", "mi_stone_wall_04", "mi_castle_wall_slates"],
+    "StoneDark": ["mi_stone_wall_04", "mi_castle_wall_slates", "mi_granite_wall"],
+    "Trim": ["mi_granite_tile", "mi_grey_plaster"],
+    "Slate": ["mi_roof_slates_02"],
+    "Plaster": ["mi_painted_plaster_wall", "mi_grey_plaster"],
+    "PlasterWhite": ["mi_white_plaster_rough_01", "mi_painted_plaster_wall"],
+    "Marble": ["mi_marble_01", "mi_marble_tiles"],
+    "Terrazzo": ["mi_terrazzo_tiles"],
+    "Floor": ["mi_herringbone_parquet", "mi_wood_floor", "mi_laminate_floor"],
+    "Metal": ["mi_metal_plate"],
+    "Concrete": ["mi_concrete_wall_008"],
+    "ConcreteSmooth": ["mi_smooth_concrete_floor"],
+    "Asphalt": ["mi_asphalt_02", "mi_clean_asphalt"],
+    "Paving": ["mi_brick_pavement", "mi_cobblestone_floor_01"],
+    "Soil": ["mi_forest_ground_04"],
+    "W_Grass": ["mi_grass_ground", "mi_sparse_grass", "mi_leafy_grass"],
+    "W_Asphalt": ["mi_clean_asphalt", "mi_asphalt_02"],
+    "W_Paving": ["mi_brick_pavement", "mi_cobblestone_floor_01"],
+    "W_Concrete": ["mi_smooth_concrete_floor", "mi_concrete_wall_008"],
+}
+# Parameter names scanned masters use (Poly Haven M_PH_Base: BaseColor / Normal / ARM).
+_SCAN_PARAMS = {
+    "BaseColorTex": ["BaseColor", "Base Color", "Albedo", "Diffuse", "Color"],
+    "NormalTex": ["Normal", "NormalMap"],
+    "ARMTex": ["ARM", "ORM", "Packed"],
+}
+
+
+def adopt_scanned_textures(scanned):
+    by_name = {}
+    for low, path, is_mi in scanned:
+        if is_mi:
+            by_name.setdefault(low, path)
+    n = 0
+    for name, candidates in ADOPT.items():
+        src_path = next((by_name[c] for c in candidates if c in by_name), None)
+        if not src_path:
+            continue
+        src = eal.load_asset(src_path)
+        mi = eal.load_asset(f"{MAT}/MI_GS_{name}")
+        if not src or not mi:
+            continue
+        changed = False
+        got = 0
+        for ours, theirs in _SCAN_PARAMS.items():
+            tex_val = None
+            for pn in theirs:
+                try:
+                    tex_val = mel.get_material_instance_texture_parameter_value(src, pn)
+                except Exception:
+                    tex_val = None
+                if tex_val:
+                    break
+            if not tex_val:
+                continue
+            got += 1
+            cur = mel.get_material_instance_texture_parameter_value(mi, ours)
+            if not cur or cur.get_path_name() != tex_val.get_path_name():
+                mel.set_material_instance_texture_parameter_value(mi, ours, tex_val)
+                changed = True
+        if changed and got:
+            # photo textures carry their own colour: neutral tint, no extra roughness scaling
+            mel.set_material_instance_vector_parameter_value(mi, "Tint", unreal.LinearColor(1, 1, 1, 1))
+            mel.set_material_instance_scalar_parameter_value(mi, "RoughnessScale", 1.0)
+            eal.save_loaded_asset(mi)
+            n += 1
+            log(f"{name}: bruker teksturene fra {src_path}")
+    if n:
+        log(f"{n} materialer bruker nå skannede teksturer")
 
 
 def _scanned_materials():
@@ -596,4 +651,8 @@ def run():
     import_textures()
     forced = build_masters()
     build_instances(forced)
+    try:
+        adopt_scanned_textures(_scanned_materials())
+    except Exception as e:  # never block the rest
+        unreal.log_warning(f"Gloshaugen: skannede teksturer feilet: {e}")
     apply_to_models()

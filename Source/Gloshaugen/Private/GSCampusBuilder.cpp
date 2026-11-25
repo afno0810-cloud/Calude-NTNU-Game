@@ -635,7 +635,19 @@ UStaticMesh* AGSCampusBuilder::ModelMesh(const TCHAR* Name)
 		if (Found->IsValid()) return Found->Get();
 	}
 	if (Missing.Contains(Key)) return nullptr;
-	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Models/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	// Scanned Poly Haven models (imported on the PC into /Game/PolyHaven) win over ours where the shape
+	// does not care about facing direction.
+	static const TMap<FString, FString> Scanned = {
+		{ TEXT("SM_Rock_A"), TEXT("boulder_01") },
+		{ TEXT("SM_Rock_B"), TEXT("rock_07") },
+	};
+	UStaticMesh* Mesh = nullptr;
+	if (const FString* Id = Scanned.Find(Key))
+	{
+		Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/PolyHaven/Models/%s/%s_1k/StaticMeshes/%s_1k.%s_1k"),
+			**Id, **Id, **Id, **Id), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	}
+	if (!Mesh) Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Models/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	if (!Mesh)
 	{
 		Missing.Add(Key);
