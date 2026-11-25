@@ -94,6 +94,7 @@ class Mats:
         self.copper = k.mat("Copper", (0.3, 0.55, 0.45), metallic=0.4)
         self.brick = k.mat("Brick", col["Brick"])
         self.rubber = k.mat("Rubber", (0.05, 0.05, 0.05))
+        self.light = k.mat("LightPanel", (1.0, 0.98, 0.92))
 
 
 class Building:
@@ -194,7 +195,7 @@ class Building:
                     inset(s, WINDOW_W, zd - 0.1, zd, 0.15, 0.1, m.frame)
                     self.pane(P(s, zd - 0.35), WINDOW_W - 0.2, 0.45, along_x, outward, 0.1)
                     proud(s, WINDOW_W + 1.6, zd + 0.3, zd + 0.48, 1.6, m.dark)
-                    proud(s, 0.3, zd + 0.05, zd + 0.15, 0.08, m.metal)
+                    proud(s, 0.3, zd + 0.05, zd + 0.15, 0.08, m.light)
                     proud(s, WINDOW_W + 0.6, 0.0, 0.02, 1.2, m.rubber)
             piece(0, length, zlin, zt)
             if self.st["bands"] and f > 0:
@@ -261,7 +262,7 @@ class Building:
                 y = iy0 + 3
                 while y < iy1 - 2:
                     if not (stairs and x > ox0 - 1 and y > oy0 - 1):
-                        k.box((x, y, zc), (1.2, 0.3, 0.03), m.frame)
+                        k.box((x, y, zc), (1.2, 0.3, 0.03), m.light)
                     y += 5
                 x += 5
 

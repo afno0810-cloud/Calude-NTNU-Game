@@ -510,6 +510,25 @@ def p_StreetSign(k, m):
     k.box((0.04, 0, 1.7), (0.02, 0.9, 0.25), m.white)
 
 
+@prop
+def p_StreetLamp(k, m):
+    """6 m street lamp: tapered pole on a concrete foot, curved arm, flat LED head over +X."""
+    k.cyl((0, 0, 0), 0.25, 0.3, m.concrete, verts=12)
+    k.cyl((0, 0, 0.3), 0.09, 5.6, m.dark, verts=12, r_top=0.055)
+    k.cyl((0, 0, 0.3), 0.12, 0.6, m.dark, verts=12, r_top=0.1)
+    k.ramp((0, 0, 5.8), (0.6, 0, 6.05), 0.07, 0.07, m.dark)
+    k.ramp((0.6, 0, 6.05), (1.2, 0, 6.1), 0.07, 0.07, m.dark)
+    k.box((1.45, 0, 6.08), (0.7, 0.3, 0.1), m.dark)
+    k.box((1.45, 0, 6.02), (0.6, 0.24, 0.02), m.white)
+    k.box((0.0, 0, 2.6), (0.03, 0.2, 0.3), m.paper)
+
+
+@prop
+def p_Bollard_Light(k, m):
+    k.cyl((0, 0, 0), 0.1, 0.9, m.dark, verts=12)
+    k.cyl((0, 0, 0.7), 0.105, 0.15, m.white, verts=12)
+
+
 # ------------------------------------------------------------------ robots (static shells; Isaac Lab animation later)
 @prop
 def p_RobotDog(k, m):

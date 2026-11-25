@@ -20,7 +20,7 @@ GS = "/Game/GS"
 TEX = GS + "/Textures"
 MAT = GS + "/Materials"
 MODELS = "/Game/Models"
-VERSION = 3  # bump to rebuild the master materials
+VERSION = 4  # bump to rebuild the master materials
 
 mel = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -164,6 +164,15 @@ def _surface_master(name, world):
     mel.connect_material_expressions(ns, "", nl, "Alpha")
     mel.connect_material_property(nl, "", unreal.MaterialProperty.MP_NORMAL)
 
+    # emissive (ceiling light panels, screens): colour x strength, 0 by default
+    ec = _expr(m, unreal.MaterialExpressionVectorParameter, -650, 650, parameter_name="EmissiveColor",
+               default_value=unreal.LinearColor(1, 0.95, 0.85, 1))
+    es = _expr(m, unreal.MaterialExpressionScalarParameter, -650, 750, parameter_name="EmissiveStrength", default_value=0.0)
+    em = _expr(m, unreal.MaterialExpressionMultiply, -500, 680)
+    mel.connect_material_expressions(ec, "", em, "A")
+    mel.connect_material_expressions(es, "", em, "B")
+    mel.connect_material_property(em, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+
     m.set_editor_property("used_with_instanced_static_meshes", True)
     m.set_editor_property("used_with_nanite", True)
     mel.recompile_material(m)
@@ -306,6 +315,10 @@ INSTANCES = {
     "Soil": ("Gravel", (0.45, 0.32, 0.22), 2, 1, 0, "Surface"),
     "Bark": ("Bark", (1, 1, 1), 1, 1, 0, "Surface"),
     "BirchBark": ("BirchBark", (1, 1, 1), 1, 1, 0, "Surface"),
+    # lights and screens (glow; Lumen uses them to light the rooms)
+    "LightPanel": ("Plastic", (1.2, 1.2, 1.2), 1, 1, 0, "Surface", 12.0),
+    "ScreenOn": ("Plastic", (0.1, 0.3, 0.8), 1, 0.3, 0, "Surface", 3.0, (0.25, 0.55, 1.0)),
+    "Bulb": ("Plastic", (1.2, 1.1, 0.9), 1, 1, 0, "Surface", 20.0, (1.0, 0.85, 0.6)),
     # car paint (GSCampusBuilder picks one per parked car)
     "CarPaint_Red": ("PaintedMetal", (0.55, 0.03, 0.03), 4, 0.35, 0, "Surface"),
     "CarPaint_Black": ("PaintedMetal", (0.02, 0.02, 0.022), 4, 0.3, 0, "Surface"),
@@ -327,7 +340,10 @@ INSTANCES = {
 
 def build_instances(force):
     made = 0
-    for name, (texset, tint, tiling, rough, metal, master) in INSTANCES.items():
+    for name, spec in INSTANCES.items():
+        texset, tint, tiling, rough, metal, master = spec[:6]
+        glow = spec[6] if len(spec) > 6 else 0.0
+        glow_col = spec[7] if len(spec) > 7 else (1.0, 0.95, 0.85)
         path = f"{MAT}/MI_GS_{name}"
         if eal.does_asset_exist(path) and not force:
             continue
@@ -347,6 +363,9 @@ def build_instances(force):
         mel.set_material_instance_scalar_parameter_value(mi, "TileCm" if master == "World" else "Tiling", float(tiling))
         mel.set_material_instance_scalar_parameter_value(mi, "RoughnessScale", float(rough))
         mel.set_material_instance_scalar_parameter_value(mi, "MetallicScale", float(metal))
+        if master == "Surface":
+            mel.set_material_instance_scalar_parameter_value(mi, "EmissiveStrength", float(glow))
+            mel.set_material_instance_vector_parameter_value(mi, "EmissiveColor", unreal.LinearColor(glow_col[0], glow_col[1], glow_col[2], 1))
         eal.save_loaded_asset(mi)
         made += 1
     for name, master, extra in (("Glass", "Glass", None), ("GlassDark", "Glass", (0.02, 0.03, 0.035)),

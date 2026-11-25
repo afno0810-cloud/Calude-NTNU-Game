@@ -649,13 +649,25 @@ void AGSCampusBuilder::BuildStreetLights()
 			for (const FBox2D& Box : Footprints) if (Box.ExpandBy(1.f).IsInside(P)) bBlocked = true;
 			if (bBlocked) continue;
 
-			AddMesh(GSUtils::Cylinder(), FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, 3.f * M), FVector(0.15f, 0.15f, 6.f)), Pole, true);
-			AddBox(FVector(P.X * M, P.Y * M, 6.1f * M), FRotator::ZeroRotator, FVector(0.6f, 0.6f, 0.2f), Lamp, false);
+			FVector LightPos(P.X * M, P.Y * M, 5.7f * M);
+			if (PropMesh(TEXT("StreetLamp")))
+			{
+				// lamp head reaches 1.45 m over the road
+				const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(-Side.Y, -Side.X));
+				AddProp(TEXT("StreetLamp"), FTransform::Identity, P.X, P.Y, 0.f, Yaw, true);
+				const FVector2D Head = P - Side * 1.45f;
+				LightPos = FVector(Head.X * M, Head.Y * M, 5.85f * M);
+			}
+			else
+			{
+				AddMesh(GSUtils::Cylinder(), FTransform(FRotator::ZeroRotator, FVector(P.X * M, P.Y * M, 3.f * M), FVector(0.15f, 0.15f, 6.f)), Pole, true);
+				AddBox(FVector(P.X * M, P.Y * M, 6.1f * M), FRotator::ZeroRotator, FVector(0.6f, 0.6f, 0.2f), Lamp, false);
+			}
 
 			UPointLightComponent* L = NewObject<UPointLightComponent>(this);
 			L->SetupAttachment(RootComponent);
 			L->SetMobility(EComponentMobility::Movable);
-			L->SetWorldLocation(FVector(P.X * M, P.Y * M, 5.7f * M));
+			L->SetWorldLocation(LightPos);
 			L->SetIntensityUnits(ELightUnits::Lumens);
 			L->SetIntensity(6000.f);
 			L->SetAttenuationRadius(2200.f);

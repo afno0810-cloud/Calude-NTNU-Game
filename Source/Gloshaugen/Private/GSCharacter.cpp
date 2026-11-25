@@ -12,6 +12,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SpotLightComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
+#include "Animation/AnimInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
@@ -235,6 +238,7 @@ void AGSCharacter::BeginPlay()
 	const FLinearColor BodyColor = FLinearColor::MakeFromHSV8(uint8(Hash % 255), 120, 150);
 	GSUtils::SetColor(BodyMesh, BodyColor);
 	GSUtils::SetColor(HeadMesh, FLinearColor(0.85f, 0.68f, 0.55f));
+	SetupHumanBody();
 
 	if (HasAuthority() && Weapons.Num() == 0)
 	{
@@ -1838,6 +1842,53 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 	SetLifeSpan(15.f);
 }
 
+void AGSCharacter::SetupHumanBody()
+{
+	// Paths of the standard Unreal characters (Third Person template / content pack, older templates).
+	static const TCHAR* MeshPaths[] = {
+		TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny.SKM_Manny"),
+		TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple"),
+		TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn.SKM_Quinn"),
+		TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple.SKM_Quinn_Simple"),
+		TEXT("/Game/Mannequin/Character/Mesh/SK_Mannequin.SK_Mannequin"),
+	};
+	static const TCHAR* AnimPaths[] = {
+		TEXT("/Game/Characters/Mannequins/Anims/Unarmed/ABP_Unarmed.ABP_Unarmed_C"),
+		TEXT("/Game/Characters/Mannequins/Animations/ABP_Manny.ABP_Manny_C"),
+		TEXT("/Game/Characters/Mannequins/Animations/ABP_Quinn.ABP_Quinn_C"),
+		TEXT("/Game/Mannequin/Animations/ThirdPerson_AnimBP.ThirdPerson_AnimBP_C"),
+	};
+	USkeletalMesh* Body = nullptr;
+	// Mix Manny and Quinn between players
+	const int32 First = (GetTypeHash(GetName()) % 2 == 0) ? 0 : 2;
+	const int32 NumMeshes = static_cast<int32>(UE_ARRAY_COUNT(MeshPaths));
+	for (int32 I = 0; I < NumMeshes && !Body; ++I)
+	{
+		Body = LoadObject<USkeletalMesh>(nullptr, MeshPaths[(First + I) % NumMeshes], nullptr, LOAD_NoWarn | LOAD_Quiet);
+	}
+	UClass* Anim = nullptr;
+	for (const TCHAR* Path : AnimPaths)
+	{
+		Anim = LoadClass<UAnimInstance>(nullptr, Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (Anim) break;
+	}
+	USkeletalMeshComponent* Skel = GetMesh();
+	if (!Body || !Skel) return;
+
+	Skel->SetSkeletalMesh(Body);
+	if (Anim) Skel->SetAnimInstanceClass(Anim);
+	Skel->SetRelativeLocation(FVector(0.f, 0.f, -GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight()));
+	Skel->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+	Skel->SetOwnerNoSee(true);
+	Skel->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Skel->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+	Skel->SetVisibility(true);
+	bHumanBody = true;
+	// keep the old shapes as invisible hitboxes
+	BodyMesh->SetVisibility(false);
+	HeadMesh->SetVisibility(false);
+}
+
 void AGSCharacter::OnRep_Dead()
 {
 	if (!bDead) return;
@@ -1845,7 +1896,18 @@ void AGSCharacter::OnRep_Dead()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HeadMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	// Simple "fall over" until we have real ragdolls.
+	if (bHumanBody)
+	{
+		// Real ragdoll: the body falls the way physics says (local only, it is just for looks)
+		USkeletalMeshComponent* Skel = GetMesh();
+		Skel->SetCollisionProfileName(TEXT("Ragdoll"));
+		Skel->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+		Skel->SetAllBodiesSimulatePhysics(true);
+		Skel->SetSimulatePhysics(true);
+		Skel->WakeAllRigidBodies();
+		Skel->AddImpulse(GetActorForwardVector() * -4000.f + FVector(0.f, 0.f, 1500.f), NAME_None, false);
+	}
+	// Simple "fall over" for the old shapes (hidden when the human body is used)
 	BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, -80.f));
 	BodyMesh->SetRelativeRotation(FRotator(90.f, 0.f, 0.f));
 	HeadMesh->SetRelativeLocation(FVector(95.f, 0.f, -80.f));
@@ -1970,8 +2032,9 @@ void AGSCharacter::Tick(float DeltaSeconds)
 	if (!IsLocallyControlled() && !bDead)
 	{
 		const bool bVisible = !Mods.bGhost || FMath::Frac(GetWorld()->GetTimeSeconds() * 2.5f) < 0.12f;
-		BodyMesh->SetVisibility(bVisible);
-		HeadMesh->SetVisibility(bVisible);
+		BodyMesh->SetVisibility(bVisible && !bHumanBody);
+		HeadMesh->SetVisibility(bVisible && !bHumanBody);
+		if (bHumanBody) GetMesh()->SetVisibility(bVisible);
 		TPWeaponMesh->SetVisibility(bVisible && GetCurrentWeapon() != nullptr);
 		VestMesh->SetVisibility(bVisible && !BodyArmor.IsNone());
 		HelmetMesh->SetVisibility(bVisible && !Helmet.IsNone());

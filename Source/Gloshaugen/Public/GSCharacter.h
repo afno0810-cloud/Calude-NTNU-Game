@@ -134,6 +134,10 @@ protected:
 	void SetSprinting(bool bNew);
 	void ApplyWeaponVisuals();
 	void ApplyGearVisuals();
+	/** Uses a real animated human (the Unreal mannequin from the Third Person content pack, or Fab/Lyra characters)
+	 *  for the body others see, if one is in the project. The cylinder and sphere stay as invisible hitboxes. */
+	void SetupHumanBody();
+	bool bHumanBody = false;
 	void UpdateFocusPickup();
 	void UpdateLocalVisuals(float DeltaSeconds);
 	void UpdateWeaponAnimation(float DeltaSeconds);

@@ -131,61 +131,73 @@ Nyeste runde øverst.
 117. Bilene står parkert ved fortauskanten, ikke oppå den
 118. 60 biler i stedet for 36, uten at de står oppå hverandre eller i kryss
 
+### Mennesker og lys
+119. Andre spillere er ekte animerte mennesker (Unreal-mannekengen Manny/Quinn) i stedet for sylindre, når Third Person-pakken er i prosjektet
+120. Manny og Quinn fordeles mellom spillerne
+121. Ekte ragdoll når noen dør
+122. Sylinder og kule er igjen som usynlige treffbokser, så treff virker som før
+123. Lyspaneler i taket i alle etasjer i alle bygg som lyser opp rommene med Lumen (og om natta)
+124. Lys over hver inngang
+125. PC-skjermer lyser
+126. Lysekronene i Lysgården lyser
+127. Ekte gatelykter med stolpe, arm og lampehode over veien
+128. Gatelyset kommer fra lampehodet, ikke fra stolpen
+
 ### Ytelse
-119. Møbler og ting ute bruker hierarkisk instansiering (HISM), så de som ikke synes tegnes ikke
-120. Trær, busker og biler bruker også HISM med avstandsgrense
-121. Ingen .glb-forhåndsvisninger av store modeller i repoet (mindre nedlasting)
+129. Møbler og ting ute bruker hierarkisk instansiering (HISM), så de som ikke synes tegnes ikke
+130. Trær, busker og biler bruker også HISM med avstandsgrense
+131. Ingen .glb-forhåndsvisninger av store modeller i repoet (mindre nedlasting)
 
 ## Runde 3 (25. nov. ettermiddag)
-122. Hovedbygningen som ekte 3D-modell med Lysgården, trapp, scene og gallerier
-123. Tårnet med spiralrampe opp til klokketårnet
-124. 43 møbler, utendørsting og roboter
-125. Møbler i alle rom: klasserom, kontor, lab, kantine, bibliotek, salong, serverrom, lager
-126. Benker, sykkelstativ, sparkesykler, busskur, søppelkasser, containere, piknikbord, byggegjerder, NTNU-skilt
-127. Robothund, vaktrobot og leveringsrobot
-128. PC-er med overvåkningskamera
-129. Sporing av alle spillere på kart fra PC
-130. 3D-printere som lager 13 ting av filament
-131. 38 overvåkningskameraer
-132. Ammo per kaliber (15 kalibre)
-133. Panserbrytende ammo
-134. Hulspissammo
-135. Brannammo
-136. Sporlysammo
-137. Sjokkammo
-138. Holo-sikte
-139. 8x kikkertsikte
-140. Trommelmagasin
-141. Kompensator
-142. Grep
-143. Modifikasjoner som erstatter hverandre i samme spor
-144. Over/under-hagle
-145. M72 LAW (engangs)
-146. Mosin
-147. Remington 700
-148. M14
-149. G36
-150. SCAR
-151. UMP
-152. P90
-153. Vector
-154. Signalpistol
-155. Langbue
-156. Printet pistol
-157. Tobladet vikingøks
-158. Spyd
-159. Printet kniv
-160. Printet hjelm
-161. Ladeanimasjon med magasin ut, magasin inn og sleide
-162. Patron-for-patron lading på hagler
-163. Magasinet faller ut og blir liggende
-164. Inspisering av våpenet (T)
-165. Pust, skritt og sprint-stilling
-166. Rekyl med fjær
-167. Nærkamp med oppsving og slag
-168. Lefse, fårikål, pinnekjøtt, julebrus, risgrøt, tran, Kvikk Lunsj, solbærtoddy, rakfisk og sodd
-169. Volumetriske skyer
-170. Fargekorrigering etter vær og tid på døgnet
-171. Konsollkommandoene `Grafikk` og `Opplosning`
+132. Hovedbygningen som ekte 3D-modell med Lysgården, trapp, scene og gallerier
+133. Tårnet med spiralrampe opp til klokketårnet
+134. 43 møbler, utendørsting og roboter
+135. Møbler i alle rom: klasserom, kontor, lab, kantine, bibliotek, salong, serverrom, lager
+136. Benker, sykkelstativ, sparkesykler, busskur, søppelkasser, containere, piknikbord, byggegjerder, NTNU-skilt
+137. Robothund, vaktrobot og leveringsrobot
+138. PC-er med overvåkningskamera
+139. Sporing av alle spillere på kart fra PC
+140. 3D-printere som lager 13 ting av filament
+141. 38 overvåkningskameraer
+142. Ammo per kaliber (15 kalibre)
+143. Panserbrytende ammo
+144. Hulspissammo
+145. Brannammo
+146. Sporlysammo
+147. Sjokkammo
+148. Holo-sikte
+149. 8x kikkertsikte
+150. Trommelmagasin
+151. Kompensator
+152. Grep
+153. Modifikasjoner som erstatter hverandre i samme spor
+154. Over/under-hagle
+155. M72 LAW (engangs)
+156. Mosin
+157. Remington 700
+158. M14
+159. G36
+160. SCAR
+161. UMP
+162. P90
+163. Vector
+164. Signalpistol
+165. Langbue
+166. Printet pistol
+167. Tobladet vikingøks
+168. Spyd
+169. Printet kniv
+170. Printet hjelm
+171. Ladeanimasjon med magasin ut, magasin inn og sleide
+172. Patron-for-patron lading på hagler
+173. Magasinet faller ut og blir liggende
+174. Inspisering av våpenet (T)
+175. Pust, skritt og sprint-stilling
+176. Rekyl med fjær
+177. Nærkamp med oppsving og slag
+178. Lefse, fårikål, pinnekjøtt, julebrus, risgrøt, tran, Kvikk Lunsj, solbærtoddy, rakfisk og sodd
+179. Volumetriske skyer
+180. Fargekorrigering etter vær og tid på døgnet
+181. Konsollkommandoene `Grafikk` og `Opplosning`
 
 *(Rundene før dette: 43 våpen, sjeldenhet, overlevelse, boosts, rustning, granater og utstyr, loot, vær og dag/natt; se README.)*
