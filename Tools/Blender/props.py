@@ -215,14 +215,25 @@ def p_Whiteboard(k, m):
 
 @prop
 def p_Plant(k, m):
-    k.cyl((0, 0, 0), 0.22, 0.45, m.white, verts=16, r_top=0.26)
-    k.cyl((0, 0, 0.42), 0.24, 0.02, m.soil, verts=16)
-    k.cyl((0, 0, 0.42), 0.025, 0.7, m.wood, verts=6)
-    for i in range(14):
-        a = i * 2.4
-        z = 0.7 + (i % 5) * 0.12
-        r = 0.18 + (i % 3) * 0.08
-        k.box((math.cos(a) * r, math.sin(a) * r, z), (0.32, 0.12, 0.02), m.leaf, rot=(0, -25 - (i % 3) * 10, math.degrees(a)))
+    """Office plant (rubber fig): tapered pot with rim and soil, a few stems and broad pointed leaves."""
+    from mathutils import Matrix
+    k.cyl((0, 0, 0), 0.2, 0.42, m.white, verts=28, r_top=0.25)
+    k.cyl((0, 0, 0.42), 0.26, 0.04, m.white, verts=28)
+    k.cyl((0, 0, 0.44), 0.235, 0.005, m.soil, verts=28)
+    outline = [(0.0, 0.0), (0.06, 0.035), (0.16, 0.045), (0.26, 0.03), (0.32, 0.0), (0.26, -0.03), (0.16, -0.045), (0.06, -0.035)]
+    n = len(outline)
+    verts = [(x, y, 0.002) for x, y in outline] + [(x, y, -0.002) for x, y in outline]
+    faces = [tuple(range(n)), tuple(range(2 * n - 1, n - 1, -1))] + [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
+    stems = [(0.0, 0.0, 1.35), (0.06, 0.04, 1.1), (-0.05, -0.03, 0.95)]
+    for si, (sx, sy, top) in enumerate(stems):
+        k.tube([(0, 0, 0.44), (sx * 0.5, sy * 0.5, 0.7), (sx, sy, top)], 0.012, m.wood, segs=6)
+        for i in range(7):
+            a = i * 2.4 + si
+            z = 0.62 + (top - 0.62) * i / 6
+            pitch = 25 + (i % 3) * 12
+            mat = Matrix.Translation((sx * z / top, sy * z / top, z)) @ Matrix.Rotation(a, 4, "Z") @ Matrix.Rotation(math.radians(pitch), 4, "Y")
+            k._add(verts, faces, m.leaf, mat)
+            k.tube([(sx * z / top, sy * z / top, z), (sx * z / top + math.cos(a) * 0.04, sy * z / top + math.sin(a) * 0.04, z - 0.01)], 0.004, m.leaf, segs=4)
 
 
 @prop
