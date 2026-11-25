@@ -451,7 +451,11 @@ def build_rifle(p, m):
             for side in (-1, 1):
                 box(f"MLok{i}_{side}", (0.03, 0.004, 0.009), (x1 + 0.03 + i * 0.045, side * 0.027, bz), m["dark"], bevel=0)
     elif hstyle == "round":
-        cyl("Handguard", 0.026, hlen, (x1 + hlen / 2, 0, bz), hmat, verts=16)
+        # tapered, slightly flared tropical handguard with finger grooves
+        loft("Handguard", [(x1 + hlen * t, bz - 0.027 + 0.004 * t + (0.003 if t > 0.9 else 0.0), bz + 0.02 - 0.002 * t, 0.025 - 0.003 * t + (0.002 if t > 0.9 else 0.0))
+                           for t in [i / 12 for i in range(13)]], hmat, segs=20, power=2.4)
+        for k in range(4):
+            box(f"HgFinger{k}", (0.012, 0.047, 0.006), (x1 + hlen * (0.2 + 0.17 * k), 0, bz - 0.018), m["dark"], bevel=0.002)
     elif hstyle == "ak":
         loft("HandguardLow", [(x1 + hlen * t, bz - 0.032, bz + 0.012, 0.025 - 0.002 * math.sin(t * math.pi)) for t in [i / 8 for i in range(9)]], hmat, segs=18, power=2.6)
         for k in range(3):
