@@ -604,17 +604,32 @@ def build_m79(p, m):
 
 
 def build_crossbow(p, m):
-    prism("Stock", [(-0.38, -0.13), (-0.1, -0.06), (0.0, -0.1), (0.04, -0.03), (0.42, -0.0), (0.42, 0.03), (-0.38, 0.015)],
-          0.045, m["wood"], bevel=0.006)
-    box("Rail", (0.45, 0.012, 0.01), (0.2, 0, 0.035), m["steel"])
+    prism("Stock", [(-0.38, -0.13), (-0.34, -0.135), (-0.1, -0.06), (-0.06, -0.1), (-0.02, -0.105), (0.04, -0.03), (0.42, -0.0), (0.42, 0.03), (-0.38, 0.015)],
+          0.045, m["wood"], bevel=0.008)
+    box("ButtPad", (0.012, 0.047, 0.15), (-0.386, 0, -0.06), m["rubber"], bevel=0.004)
+    box("Rail", (0.45, 0.014, 0.01), (0.2, 0, 0.035), m["steel"], bevel=0.002)
+    box("Latch", (0.05, 0.03, 0.03), (0.0, 0, 0.04), m["dark"], bevel=0.005)
+    # recurve limbs bent forward, with the string drawn back to the latch
     for side in (-1, 1):
-        box(f"Limb{side}", (0.03, 0.27, 0.02), (0.38, side * 0.14, 0.025), m["poly"], rot=(0, 0, side * 15))
-        box(f"String{side}", (0.003, 0.3, 0.003), (0.27, side * 0.13, 0.035), m["fabric"], rot=(0, 0, side * -28), bevel=0)
-    cyl("Bolt", 0.004, 0.36, (0.25, 0, 0.045), m["steel"])
-    cone("Tip", 0.007, 0.0, 0.03, (0.44, 0, 0.045), m["steel"], axis="X")
-    box("Stirrup", (0.01, 0.1, 0.06), (0.43, 0, 0.0), m["steel"])
+        pts = [(0.4, side * 0.02, 0.025), (0.41, side * 0.1, 0.025), (0.43, side * 0.19, 0.025), (0.415, side * 0.27, 0.025), (0.4, side * 0.3, 0.025)]
+        tube(f"Limb{side}", pts, [0.016, 0.014, 0.012, 0.01, 0.008], m["poly"], segs=10, squash=(0.5, 1.2))
+        tube(f"String{side}", [(0.4, side * 0.3, 0.032), (0.02, side * 0.012, 0.042)], [0.0018, 0.0018], m["fabric"], segs=6)
+        tube(f"Stirrup{side}", [(0.42, side * 0.0, 0.0), (0.46, side * 0.04, -0.03), (0.49, side * 0.035, -0.02)], [0.005] * 3, m["steel"], segs=8)
+    box("Riser", (0.05, 0.06, 0.04), (0.4, 0, 0.02), m["dark"], bevel=0.008)
+    cyl("Bolt", 0.004, 0.36, (0.22, 0, 0.047), m["steel"])
+    cone("Tip", 0.008, 0.0, 0.035, (0.415, 0, 0.047), m["steel"], axis="X")
+    for k in range(3):
+        rotated(box(f"Fletch{k}", (0.05, 0.001, 0.012), (0.07, 0, 0.047), m["red"], bevel=0), (k * 120, 0, 0))
+    tube("Guard", [(-0.02, 0, -0.03), (0.02, 0, -0.04), (0.02, 0, -0.07), (-0.03, 0, -0.07)], [0.004] * 4, m["steel"], segs=8, squash=(1.6, 1.0))
+    box("Trigger", (0.006, 0.006, 0.025), (-0.0, 0, -0.05), m["steel"], rot=(0, -12, 0), bevel=0.001)
     cyl("Scope", 0.012, 0.16, (0.05, 0, 0.075), m["poly"])
+    cyl("ScopeEye", 0.016, 0.03, (-0.035, 0, 0.075), m["poly"])
+    cyl("ScopeObj", 0.017, 0.035, (0.135, 0, 0.075), m["poly"])
+    for x in (0.0, 0.1):
+        box(f"Ring{x}", (0.012, 0.02, 0.03), (x, 0, 0.058), m["dark"], bevel=0.002)
     return dict(muzzle=0.45, sight=0.075)
+
+
 
 
 # ------------------------------------------------------------------ melee
@@ -1867,18 +1882,27 @@ def build_m72(p, m):
 def build_daneaxe(p, m):
     """Double-bladed battle axe with leather wrapped handle."""
     h = p.get("handle", 0.85)
-    cyl("Handle", 0.017, h, (h / 2 - 0.15, 0, 0), col((0.25, 0.14, 0.07), 0, 0.6), verts=12)
-    for i in range(8):
-        rotated(cyl(f"Leather{i}", 0.0195, 0.025, (-0.13 + i * 0.026, 0, 0), col((0.18, 0.09, 0.04), 0, 0.9), verts=12), (0, 0, 0))
     end = h - 0.15
+    xlathe("Handle", [(0.0, -0.17), (0.019, -0.168), (0.017, -0.14), (0.016, end * 0.5), (0.018, end), (0.0, end + 0.01)], col((0.25, 0.14, 0.07), 0, 0.6), segs=14)
+    for i in range(8):
+        tube(f"Leather{i}", [(-0.13 + i * 0.026, 0.0, -0.02), (-0.118 + i * 0.026, 0.0, 0.02)], [0.0195, 0.0195], col((0.18, 0.09, 0.04), 0, 0.9), segs=10)
     steel = col((0.55, 0.56, 0.58), 1, 0.25)
-    for s in (1, -1):
-        prism(f"Blade{s}", [(end - 0.03, 0.0), (end + 0.03, 0.0), (end + 0.09, s * 0.19), (end - 0.1, s * 0.19), (end - 0.05, s * 0.04)][::s],
-              0.01, steel, bevel=0.002)
-    box("Socket", (0.08, 0.04, 0.05), (end, 0, 0.0), m["dark"])
+    for s_ in (1, -1):
+        prof = [(end - 0.03, 0.0), (end + 0.03, 0.0), (end + 0.028, 0.04), (end + 0.06, 0.1), (end + 0.09, 0.165), (end + 0.06, 0.185), (end + 0.0, 0.195),
+                (end - 0.06, 0.188), (end - 0.1, 0.168), (end - 0.07, 0.1), (end - 0.035, 0.04)]
+        prof = [(x, s_ * z) for (x, z) in prof]
+        if s_ < 0:
+            prof = prof[::-1]
+        prism(f"Blade{s_}", prof, 0.01, steel, bevel=0.002)
+        prism(f"Edge{s_}", [(x, s_ * z) for (x, z) in ([(end + 0.09, 0.165), (end + 0.06, 0.185), (end + 0.0, 0.195), (end - 0.06, 0.188), (end - 0.1, 0.168),
+                                                        (end - 0.095, 0.16), (end - 0.055, 0.177), (end + 0.0, 0.183), (end + 0.055, 0.174), (end + 0.08, 0.157)][::s_])],
+              0.005, col((0.8, 0.8, 0.82), 1, 0.15), bevel=0.0008)
+    box("Socket", (0.08, 0.04, 0.05), (end, 0, 0.0), m["dark"], bevel=0.008)
     cone("Spike", 0.016, 0.0, 0.08, (end + 0.08, 0, 0.0), m["dark"], axis="X")
-    sph("Pommel", 0.022, (-0.16, 0, 0), m["dark"])
+    sph("Pommel", 0.022, (-0.17, 0, 0), m["dark"])
     return dict(muzzle=end + 0.1, sight=0.0)
+
+
 
 
 def build_spear(p, m):
@@ -1897,26 +1921,43 @@ def build_spear(p, m):
 def build_bow(p, m):
     """Recurve longbow lying along X with the string towards -X."""
     wood = col((0.4, 0.22, 0.1), 0, 0.5)
-    for s in (-1, 1):
-        rotated(box(f"Limb{s}", (0.022, 0.03, 0.62), (0.03, 0, s * 0.36), wood, bevel=0.006), (0, s * -10, 0))
-        rotated(box(f"Tip{s}", (0.03, 0.02, 0.08), (0.1, 0, s * 0.69), wood, bevel=0.004), (0, s * 35, 0))
-    box("Grip", (0.04, 0.035, 0.14), (0.0, 0, 0.0), m["fabric"], bevel=0.008)
-    box("String", (0.002, 0.002, 1.36), (-0.03, 0, 0.0), m["white"], bevel=0)
+    for s_ in (-1, 1):
+        pts = []
+        for k in range(9):
+            t = k / 8
+            z = s_ * (0.07 + 0.62 * t)
+            x = 0.03 + 0.06 * math.sin(t * math.pi * 0.8) - (0.05 * max(0.0, t - 0.8) / 0.2) * -1.0
+            pts.append((x, 0.0, z))
+        tube(f"Limb{s_}", pts, [0.016 - 0.009 * k / 8 for k in range(9)], wood, segs=10, squash=(0.55, 1.0))
+    box("Grip", (0.04, 0.035, 0.14), (0.0, 0, 0.0), m["fabric"], bevel=0.01)
+    box("ArrowRest", (0.012, 0.012, 0.008), (0.02, 0, 0.03), m["dark"], bevel=0.002)
+    tube("String", [(0.068, 0, -0.69), (-0.03, 0, 0.0), (0.068, 0, 0.69)], [0.0015] * 3, m["white"], segs=6)
     cyl("Arrow", 0.004, 0.75, (0.3, 0, 0.02), m["lwood"])
-    cone("ArrowTip", 0.008, 0.0, 0.04, (0.69, 0, 0.02), m["steel"], axis="X")
+    cone("ArrowTip", 0.009, 0.0, 0.045, (0.695, 0, 0.02), m["steel"], axis="X")
+    for k in range(3):
+        rotated(box(f"Feather{k}", (0.07, 0.001, 0.014), (-0.03, 0, 0.02), m["red"], bevel=0), (k * 120, 0, 0))
     return dict(muzzle=0.7, sight=0.03)
 
 
+
+
 def build_flare(p, m):
-    """Orange signal pistol with a fat barrel."""
+    """Orange signal pistol with a fat break-open barrel."""
     org = col((0.95, 0.35, 0.05), 0, 0.4)
-    cyl("Barrel", 0.02, 0.18, (0.08, 0, 0.03), org, verts=20)
-    cyl("Bore", 0.015, 0.182, (0.08, 0, 0.03), m["dark"], verts=20)
-    box("Frame", (0.08, 0.035, 0.05), (-0.03, 0, 0.02), org, bevel=0.006)
-    prism("Grip", [(-0.06, 0.0), (0.0, 0.0), (-0.02, -0.11), (-0.08, -0.1)], 0.032, org)
-    box("Hammer", (0.02, 0.01, 0.02), (-0.07, 0, 0.05), m["dark"], rot=(0, 30, 0))
-    box("TriggerGuard", (0.05, 0.01, 0.005), (0.0, 0, -0.02), org)
+    xlathe("Barrel", [(0.0, -0.01), (0.022, -0.01), (0.022, 0.16), (0.025, 0.165), (0.025, 0.18), (0.016, 0.18), (0.016, 0.17), (0.0, 0.17)], org, segs=28, z0=0.03)
+    xlathe("Bore", [(0.0, 0.17), (0.016, 0.17), (0.016, 0.172), (0.0, 0.172)], m["dark"], segs=20, z0=0.03)
+    box("Frame", (0.08, 0.036, 0.05), (-0.03, 0, 0.02), org, bevel=0.012)
+    cyl("Hinge", 0.008, 0.04, (0.0, 0, 0.005), m["dark"], axis="Y", verts=12)
+    prism("Grip", [(-0.06, 0.0), (0.0, 0.0), (-0.012, -0.05), (-0.022, -0.105), (-0.074, -0.1), (-0.068, -0.04)], 0.034, org, bevel=0.008)
+    for sy in (-1, 1):
+        prism(f"Panel{sy}", [(-0.055, -0.012), (-0.008, -0.012), (-0.02, -0.095), (-0.068, -0.09)], 0.003, m["poly"], y=sy * 0.0175, bevel=0.001)
+    box("Hammer", (0.016, 0.01, 0.024), (-0.07, 0, 0.05), m["dark"], rot=(0, 30, 0), bevel=0.003)
+    tube("Guard", [(0.0, 0, -0.005), (0.035, 0, -0.012), (0.036, 0, -0.04), (-0.005, 0, -0.045)], [0.004] * 4, org, segs=8, squash=(1.6, 1.0))
+    box("Trigger", (0.006, 0.006, 0.022), (0.012, 0, -0.024), m["dark"], rot=(0, -12, 0), bevel=0.001)
+    tube("Lanyard", [(-0.06, 0, -0.1), (-0.07, 0, -0.115), (-0.05, 0, -0.12), (-0.045, 0, -0.105)], [0.003] * 4, m["dark"], segs=6)
     return dict(muzzle=0.17, sight=0.055)
+
+
 
 
 def build_printed(p, m):
