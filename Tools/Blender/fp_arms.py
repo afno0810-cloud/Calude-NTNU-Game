@@ -38,12 +38,47 @@ def knuckle(name, loc, r, mat):
     return o
 
 
+def sleeve_details(prefix, wrist, elbow, shoulder, m, side, watch=False):
+    """Folds that follow the arm, a velcro cuff strap, a shoulder flag patch and (left) a watch."""
+    w, e, sh = Vector(wrist), Vector(elbow), Vector(shoulder)
+    d = (e - w).normalized()
+    for i, t in enumerate((0.22, 0.5, 0.74)):
+        # soft, slightly off-centre folds (fabric bunches on one side)
+        p = w.lerp(e, t) + Vector((0, side * 0.002, 0.002 * (1 if i % 2 else -1)))
+        rr = 0.042 + 0.008 * t + 0.0012
+        limb(f"{prefix}Fold{i}", p - d * 0.01, p + d * 0.01, rr * 0.99, rr, m["sleeve"], verts=20)
+    # cuff strap with velcro tab
+    c = w.lerp(e, 0.06)
+    limb(f"{prefix}Strap", c - d * 0.009, c + d * 0.009, 0.0445, 0.0445, m["strap"], verts=20)
+    box(f"{prefix}Tab", (0.022, 0.012, 0.006), tuple(c + Vector((0, side * 0.04, 0.02))), m["strap"], bevel=0.002)
+    # folds at the elbow and a flag patch on the upper arm
+    de = (sh - e).normalized()
+    for i, t in enumerate((0.08, 0.2)):
+        p = e.lerp(sh, t)
+        limb(f"{prefix}EFold{i}", p - de * 0.01, p + de * 0.01, 0.0515 + t * 0.006, 0.052 + t * 0.006, m["sleeve"], verts=20)
+    pp = e.lerp(sh, 0.55) + Vector((0, side * 0.052, 0.01))
+    box(f"{prefix}Flag", (0.05, 0.004, 0.034), tuple(pp), m["flagred"], bevel=0.001)
+    box(f"{prefix}FlagV", (0.008, 0.0045, 0.034), tuple(pp + Vector((-0.006, 0, 0))), m["flagwhite"], bevel=0)
+    box(f"{prefix}FlagH", (0.05, 0.0045, 0.008), tuple(pp), m["flagwhite"], bevel=0)
+    box(f"{prefix}FlagV2", (0.004, 0.005, 0.034), tuple(pp + Vector((-0.006, 0, 0))), m["flagblue"], bevel=0)
+    box(f"{prefix}FlagH2", (0.05, 0.005, 0.004), tuple(pp), m["flagblue"], bevel=0)
+    if watch:
+        c2 = w.lerp(e, -0.02)
+        limb(f"{prefix}WatchBand", c2 - d * 0.009, c2 + d * 0.009, 0.0275, 0.0275, m["knuckle"], verts=20)
+        box(f"{prefix}WatchFace", (0.03, 0.03, 0.01), tuple(c2 + Vector((0, 0, 0.026))), m["watch"], bevel=0.004)
+
+
 def mats():
     return dict(
         glove=material("M_Glove", (0.03, 0.03, 0.03), roughness=0.8),
         knuckle=material("M_Rubber", (0.02, 0.02, 0.02), roughness=0.95),
         sleeve=material("M_Sleeve", (0.18, 0.2, 0.13), roughness=1.0),
         cuff=material("M_Leather", (0.08, 0.06, 0.04), roughness=0.6),
+        strap=material("M_Fabric", (0.1, 0.1, 0.1), roughness=1.0),
+        watch=material("M_DarkSteel", (0.02, 0.02, 0.022), metallic=0.7, roughness=0.55),
+        flagred=material("M_C_7202015_0", (0.73, 0.02, 0.15), roughness=0.8),
+        flagwhite=material("M_White", (0.9, 0.9, 0.9), roughness=0.6),
+        flagblue=material("M_C_0012645_0", (0.0, 0.13, 0.46), roughness=0.8),
     )
 
 
@@ -74,10 +109,11 @@ def right_arm():
     limb("Wrist", (-0.05, R * 0.022, -0.07), wrist, 0.026, 0.024, m["glove"])
     limb("Cuff", wrist, (-0.1, R * 0.036, -0.095), 0.03, 0.031, m["cuff"])
     limb("Forearm", (-0.095, R * 0.034, -0.093), elbow, 0.042, 0.05, m["sleeve"], verts=20)
-    limb("Upper", elbow, (-0.6, R * 0.2, -0.3), 0.05, 0.058, m["sleeve"], verts=20)
-    for t in (0.35, 0.6):  # fabric folds
-        p = Vector(wrist).lerp(Vector(elbow), t)
-        limb(f"Fold{t}", p - Vector((0.008, 0, 0)), p + Vector((0.008, 0, 0)), 0.046 + t * 0.006, 0.046 + t * 0.006, m["sleeve"])
+    shoulder = (-0.6, R * 0.2, -0.3)
+    limb("Upper", elbow, shoulder, 0.05, 0.058, m["sleeve"], verts=20)
+    sleeve_details("R", wrist, elbow, shoulder, m, R)
+    # glove: padded back of the hand and fingertips
+    box("BackPad", (0.05, 0.006, 0.06), (-0.035, R * 0.038, -0.058), m["knuckle"], rot=(0, -15, 0), bevel=0.004)
     join_all("SM_FPArm_R")
     export("SM_FPArm_R", also_glb=False)
 
@@ -100,10 +136,10 @@ def left_arm():
     limb("Wrist", (-0.035, L * 0.006, -0.04), wrist, 0.026, 0.024, m["glove"])
     limb("Cuff", wrist, (-0.085, L * 0.022, -0.075), 0.03, 0.031, m["cuff"])
     limb("Forearm", (-0.08, L * 0.02, -0.073), elbow, 0.042, 0.05, m["sleeve"], verts=20)
-    limb("Upper", elbow, (-0.55, L * 0.27, -0.33), 0.05, 0.058, m["sleeve"], verts=20)
-    for t in (0.35, 0.6):
-        p = Vector(wrist).lerp(Vector(elbow), t)
-        limb(f"Fold{t}", p - Vector((0.008, 0, 0)), p + Vector((0.008, 0, 0)), 0.046 + t * 0.006, 0.046 + t * 0.006, m["sleeve"])
+    shoulder = (-0.55, L * 0.27, -0.33)
+    limb("Upper", elbow, shoulder, 0.05, 0.058, m["sleeve"], verts=20)
+    sleeve_details("L", wrist, elbow, shoulder, m, L, watch=True)
+    box("BackPad", (0.06, 0.035, 0.006), (-0.008, L * 0.004, -0.044), m["knuckle"], bevel=0.003)
     join_all("SM_FPArm_L")
     export("SM_FPArm_L", also_glb=False)
 
