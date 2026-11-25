@@ -110,6 +110,11 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPArmR;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPArmL;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPMag;
+	/** Attachments shown on the first-person gun: optic, muzzle device, laser, foregrip. */
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPAttSight;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPAttMuzzle;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPAttLaser;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPAttGrip;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPItemMesh;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPItemHand;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> FPLegs;
@@ -148,6 +153,7 @@ protected:
 	void FireOnce();
 	void SetSprinting(bool bNew);
 	void ApplyWeaponVisuals();
+	void ApplyAttachmentVisuals(const struct FGSWeaponSlot* W);
 	void ApplyGearVisuals();
 	/** Uses a real animated human (the Unreal mannequin from the Third Person content pack, or Fab/Lyra characters)
 	 *  for the body others see, if one is in the project. The cylinder and sphere stay as invisible hitboxes. */

@@ -5,6 +5,7 @@
   "sight": 0.065
  },
  "AK47": {
+  "bore": 0.009,
   "mesh": "SM_AK47",
   "muzzle": 0.515,
   "sight": 0.05
@@ -94,11 +95,13 @@
   "mesh": "SM_Bandage"
  },
  "Barrett": {
+  "bore": 0.0432,
   "mesh": "SM_Barrett",
   "muzzle": 1.2539999999999998,
   "sight": 0.15
  },
  "BaseballBat": {
+  "bore": 0.0,
   "mesh": "SM_BaseballBat",
   "muzzle": 0.7,
   "sight": 0.0
@@ -133,6 +136,7 @@
   "mesh": "SM_C4"
  },
  "CarlGustaf": {
+  "bore": 0.07,
   "mesh": "SM_CarlGustaf",
   "muzzle": 0.57,
   "sight": 0.14
@@ -153,16 +157,19 @@
   "mesh": "SM_Compensator"
  },
  "Crossbow": {
+  "bore": 0.045,
   "mesh": "SM_Crossbow",
   "muzzle": 0.45,
   "sight": 0.075
  },
  "Crowbar": {
+  "bore": 0.0542,
   "mesh": "SM_Crowbar",
   "muzzle": 0.62,
   "sight": 0.0
  },
  "DaneAxe": {
+  "bore": -0.0,
   "mesh": "SM_DaneAxe",
   "muzzle": 0.85,
   "sight": 0.0
@@ -171,11 +178,13 @@
   "mesh": "SM_Defib"
  },
  "DesertEagle": {
+  "bore": 0.0365,
   "mesh": "SM_DesertEagle",
   "muzzle": 0.21000000000000002,
   "sight": 0.063
  },
  "DoubleBarrel": {
+  "bore": 0.0292,
   "mesh": "SM_DoubleBarrel",
   "muzzle": 0.65,
   "sight": 0.045
@@ -199,6 +208,7 @@
   "mesh": "SM_ExtMag"
  },
  "FAL": {
+  "bore": 0.012,
   "mesh": "SM_FAL",
   "muzzle": 0.5750000000000001,
   "sight": 0.09000000000000001
@@ -213,6 +223,7 @@
   "mesh": "SM_FishBalls"
  },
  "FlareGun": {
+  "bore": 0.03,
   "mesh": "SM_FlareGun",
   "muzzle": 0.17,
   "sight": 0.055
@@ -230,16 +241,19 @@
   "mesh": "SM_FragGrenade"
  },
  "FryingPan": {
+  "bore": 0.0,
   "mesh": "SM_FryingPan",
   "muzzle": 0.37,
   "sight": 0.0
  },
  "G36": {
+  "bore": 0.015,
   "mesh": "SM_G36",
   "muzzle": 0.47500000000000003,
   "sight": 0.095
  },
  "Garand": {
+  "bore": 0.003,
   "mesh": "SM_Garand",
   "muzzle": 0.5800000000000001,
   "sight": 0.04
@@ -248,6 +262,7 @@
   "mesh": "SM_Ghost"
  },
  "Glock17": {
+  "bore": 0.0295,
   "mesh": "SM_Glock17",
   "muzzle": 0.13,
   "sight": 0.053
@@ -265,6 +280,7 @@
   "mesh": "SM_GronnJar"
  },
  "HK416": {
+  "bore": 0.012,
   "mesh": "SM_HK416",
   "muzzle": 0.475,
   "sight": 0.08000000000000002
@@ -288,6 +304,7 @@
   "mesh": "SM_Kanelbolle"
  },
  "Kar98k": {
+  "bore": 0.025,
   "mesh": "SM_Kar98k",
   "muzzle": 0.7400000000000001,
   "sight": 0.05
@@ -304,11 +321,13 @@
   "mesh": "SM_Keycard"
  },
  "Knife": {
+  "bore": 0.0047,
   "mesh": "SM_Knife",
   "muzzle": 0.19,
   "sight": 0.0
  },
  "Krag": {
+  "bore": 0.025,
   "mesh": "SM_Krag",
   "muzzle": 0.84,
   "sight": 0.05
@@ -317,6 +336,7 @@
   "mesh": "SM_Kvikklunsj"
  },
  "L96": {
+  "bore": 0.025,
   "mesh": "SM_L96",
   "muzzle": 0.84,
   "sight": 0.08
@@ -334,6 +354,7 @@
   "mesh": "SM_Lockpick"
  },
  "Longbow": {
+  "bore": 0.02,
   "mesh": "SM_Longbow",
   "muzzle": 0.7,
   "sight": 0.03
@@ -350,6 +371,7 @@
   "mesh": "SM_Lynet"
  },
  "M14": {
+  "bore": 0.006,
   "mesh": "SM_M14",
   "muzzle": 0.6350000000000001,
   "sight": 0.045
@@ -360,11 +382,13 @@
   "sight": 0.045
  },
  "M72": {
+  "bore": 0.06,
   "mesh": "SM_M72",
   "muzzle": 0.6,
   "sight": 0.14
  },
  "M79": {
+  "bore": 0.035,
   "mesh": "SM_M79",
   "muzzle": 0.42,
   "sight": 0.075
@@ -380,16 +404,19 @@
   "sight": 0.035
  },
  "MP5": {
+  "bore": 0.006,
   "mesh": "SM_MP5",
   "muzzle": 0.24000000000000002,
   "sight": 0.05
  },
  "Machete": {
+  "bore": 0.0074,
   "mesh": "SM_Machete",
   "muzzle": 0.44,
   "sight": 0.0
  },
  "Makarov": {
+  "bore": 0.029,
   "mesh": "SM_Makarov",
   "muzzle": 0.1,
   "sight": 0.047999999999999994
@@ -401,6 +428,7 @@
   "mesh": "SM_Milk"
  },
  "Minimi": {
+  "bore": 0.018,
   "mesh": "SM_Minimi",
   "muzzle": 0.655,
   "sight": 0.065
@@ -412,11 +440,13 @@
   "mesh": "SM_Morphine"
  },
  "Mosin": {
+  "bore": 0.025,
   "mesh": "SM_Mosin",
   "muzzle": 0.87,
   "sight": 0.05
  },
  "Musket": {
+  "bore": 0.025,
   "mesh": "SM_Musket",
   "muzzle": 1.05,
   "sight": 0.04
@@ -440,6 +470,7 @@
   "mesh": "SM_OrangeSoda"
  },
  "OverUnder": {
+  "bore": 0.03,
   "mesh": "SM_OverUnder",
   "muzzle": 0.78,
   "sight": 0.055
@@ -448,6 +479,7 @@
   "mesh": "SM_Oyet"
  },
  "P90": {
+  "bore": 0.022,
   "mesh": "SM_P90",
   "muzzle": 0.235,
   "sight": 0.115
@@ -458,6 +490,7 @@
   "sight": 0.06
  },
  "PPSh": {
+  "bore": 0.003,
   "mesh": "SM_PPSh",
   "muzzle": 0.36,
   "sight": 0.04
@@ -475,6 +508,7 @@
   "mesh": "SM_Pinnekjott"
  },
  "PistolKnife": {
+  "bore": -0.0002,
   "mesh": "SM_PistolKnife",
   "muzzle": 0.15,
   "sight": 0.045
@@ -492,16 +526,19 @@
   "mesh": "SM_PrintHelmet"
  },
  "PrintKnife": {
+  "bore": 0.0039,
   "mesh": "SM_PrintKnife",
   "muzzle": 0.18,
   "sight": 0.0
  },
  "PrintPistol": {
+  "bore": 0.04,
   "mesh": "SM_PrintPistol",
   "muzzle": 0.15,
   "sight": 0.06
  },
  "Pump": {
+  "bore": 0.023,
   "mesh": "SM_Pump",
   "muzzle": 0.615,
   "sight": 0.04
@@ -519,11 +556,13 @@
   "mesh": "SM_Regenerator"
  },
  "Rem700": {
+  "bore": 0.025,
   "mesh": "SM_Rem700",
   "muzzle": 0.7200000000000001,
   "sight": 0.08
  },
  "Revolver": {
+  "bore": 0.0391,
   "mesh": "SM_Revolver",
   "muzzle": 0.208,
   "sight": 0.064
@@ -532,16 +571,19 @@
   "mesh": "SM_Risgrot"
  },
  "SCAR": {
+  "bore": 0.015,
   "mesh": "SM_SCAR",
   "muzzle": 0.515,
   "sight": 0.08499999999999999
  },
  "SVD": {
+  "bore": 0.009,
   "mesh": "SM_SVD",
   "muzzle": 0.745,
   "sight": 0.08
  },
  "Saiga": {
+  "bore": 0.012,
   "mesh": "SM_Saiga",
   "muzzle": 0.52,
   "sight": 0.05500000000000001
@@ -559,6 +601,7 @@
   "mesh": "SM_Skolebolle"
  },
  "Sledgehammer": {
+  "bore": -0.0,
   "mesh": "SM_Sledgehammer",
   "muzzle": 0.7,
   "sight": 0.0
@@ -582,6 +625,7 @@
   "mesh": "SM_Solbaer"
  },
  "Spear": {
+  "bore": 0.0,
   "mesh": "SM_Spear",
   "muzzle": 1.6,
   "sight": 0.0
@@ -610,6 +654,7 @@
   "mesh": "SM_Taco"
  },
  "Thompson": {
+  "bore": 0.006,
   "mesh": "SM_Thompson",
   "muzzle": 0.43500000000000005,
   "sight": 0.045
@@ -627,6 +672,7 @@
   "mesh": "SM_TurboPill"
  },
  "UMP": {
+  "bore": 0.012,
   "mesh": "SM_UMP",
   "muzzle": 0.24,
   "sight": 0.05500000000000001
@@ -637,11 +683,13 @@
   "sight": 0.07
  },
  "Vector": {
+  "bore": 0.0279,
   "mesh": "SM_Vector",
   "muzzle": 0.23,
   "sight": 0.1
  },
  "VikingAxe": {
+  "bore": 0.1686,
   "mesh": "SM_VikingAxe",
   "muzzle": 0.6,
   "sight": 0.0

@@ -93,6 +93,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 8000.0f; W.HipSpread = 1.6f; W.AimSpread = 0.35f; W.RecoilPitch = 1.4f; W.AimFOV = 75.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("45acp"));
+		W.BoreZ = -0.5f; W.SightZ = 4.5f;
 		W.MuzzleX = 17.0f; W.FPHip = FVector(32.f, 12.f, -15.f); W.FPAim = FVector(26.f, 0.f, -4.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Glock17")); D.Name = TEXT("Glock 17");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Common;
@@ -103,6 +104,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 7000.0f; W.HipSpread = 1.8f; W.AimSpread = 0.4f; W.RecoilPitch = 1.1f; W.AimFOV = 75.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("9mm"));
+		W.BoreZ = 2.95f; W.SightZ = 5.3f;
 		W.MuzzleX = 13.0f; W.FPHip = FVector(32.f, 12.f, -15.f); W.FPAim = FVector(26.f, 0.f, -5.3f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Makarov")); D.Name = TEXT("Makarov PM");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Common;
@@ -113,6 +115,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 6000.0f; W.HipSpread = 1.8f; W.AimSpread = 0.45f; W.RecoilPitch = 1.2f; W.AimFOV = 75.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("9mm"));
+		W.BoreZ = 2.9f; W.SightZ = 4.8f;
 		W.MuzzleX = 10.0f; W.FPHip = FVector(32.f, 12.f, -15.f); W.FPAim = FVector(26.f, 0.f, -4.8f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Luger")); D.Name = TEXT("Luger P08");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -123,6 +126,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 8000.0f; W.HipSpread = 1.6f; W.AimSpread = 0.35f; W.RecoilPitch = 1.3f; W.AimFOV = 75.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("9mm"));
+		W.BoreZ = -1.8f; W.SightZ = 3.2f;
 		W.MuzzleX = 15.0f; W.FPHip = FVector(32.f, 12.f, -15.f); W.FPAim = FVector(26.f, 0.f, -3.2f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Revolver")); D.Name = TEXT(".357 Revolver");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -133,6 +137,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 9000.0f; W.HipSpread = 1.8f; W.AimSpread = 0.3f; W.RecoilPitch = 3.2f; W.AimFOV = 72.0f;
 		W.HeadshotMultiplier = 2.2f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("357"));
+		W.BoreZ = 3.91f; W.SightZ = 6.4f;
 		W.MuzzleX = 20.8f; W.FPHip = FVector(32.f, 12.f, -15.f); W.FPAim = FVector(26.f, 0.f, -6.4f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("DesertEagle")); D.Name = TEXT("Desert Eagle");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -143,6 +148,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 10000.0f; W.HipSpread = 2.2f; W.AimSpread = 0.35f; W.RecoilPitch = 4.2f; W.AimFOV = 72.0f;
 		W.HeadshotMultiplier = 2.2f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("357"));
+		W.BoreZ = 3.65f; W.SightZ = 6.3f;
 		W.MuzzleX = 21.0f; W.FPHip = FVector(32.f, 12.f, -15.f); W.FPAim = FVector(26.f, 0.f, -6.3f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("PistolKnife")); D.Name = TEXT("Pistolkniv");
 		D.Desc = TEXT("Kniv og pistol i ett. Slag med V gj\u00F8r ekstra mye skade."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -153,6 +159,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 4000.0f; W.HipSpread = 2.0f; W.AimSpread = 0.6f; W.RecoilPitch = 1.5f; W.AimFOV = 78.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 70.0f;
 		W.Caliber = FName(TEXT("9mm"));
+		W.BoreZ = -0.02f; W.SightZ = 4.5f;
 		W.MuzzleX = 15.0f; W.FPHip = FVector(32.f, 12.f, -15.f); W.FPAim = FVector(26.f, 0.f, -4.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("MP40")); D.Name = TEXT("MP40");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -163,6 +170,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 6000.0f; W.HipSpread = 2.6f; W.AimSpread = 0.7f; W.RecoilPitch = 0.7f; W.AimFOV = 70.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("9mm"));
+		W.BoreZ = -1.5f; W.SightZ = 3.5f;
 		W.MuzzleX = 34.0f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -3.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Uzi")); D.Name = TEXT("Uzi");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Common;
@@ -173,6 +181,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 5000.0f; W.HipSpread = 3.0f; W.AimSpread = 0.9f; W.RecoilPitch = 0.7f; W.AimFOV = 72.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("9mm"));
+		W.BoreZ = 2.0f; W.SightZ = 7.0f;
 		W.MuzzleX = 26.0f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -7.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Suomi")); D.Name = TEXT("Suomi KP/-31");
 		D.Desc = TEXT("Finsk trommemagasin med 70 skudd."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -183,6 +192,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 6000.0f; W.HipSpread = 2.6f; W.AimSpread = 0.7f; W.RecoilPitch = 0.6f; W.AimFOV = 70.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("9mm"));
+		W.BoreZ = -1.0f; W.SightZ = 4.0f;
 		W.MuzzleX = 50.0f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -4.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("MP5")); D.Name = TEXT("MP5");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -193,6 +203,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 7000.0f; W.HipSpread = 2.4f; W.AimSpread = 0.5f; W.RecoilPitch = 0.6f; W.AimFOV = 68.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("9mm"));
+		W.BoreZ = 0.6f; W.SightZ = 5.0f;
 		W.MuzzleX = 24.0f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -5.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Thompson")); D.Name = TEXT("Thompson M1928");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -203,6 +214,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 6500.0f; W.HipSpread = 2.6f; W.AimSpread = 0.6f; W.RecoilPitch = 0.8f; W.AimFOV = 68.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("45acp"));
+		W.BoreZ = 0.6f; W.SightZ = 4.5f;
 		W.MuzzleX = 43.5f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -4.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("PPSh")); D.Name = TEXT("PPSh-41");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -213,6 +225,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 5500.0f; W.HipSpread = 3.0f; W.AimSpread = 0.8f; W.RecoilPitch = 0.6f; W.AimFOV = 70.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("9mm"));
+		W.BoreZ = 0.3f; W.SightZ = 4.0f;
 		W.MuzzleX = 36.0f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -4.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("AG3")); D.Name = TEXT("AG3");
 		D.Desc = TEXT("Forsvarets gamle trofaste. Sl\u00E5r hardt."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -223,6 +236,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 30000.0f; W.HipSpread = 3.0f; W.AimSpread = 0.25f; W.RecoilPitch = 1.1f; W.AimFOV = 55.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762nato"));
+		W.BoreZ = 1.5f; W.SightZ = 6.5f;
 		W.MuzzleX = 90.0f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -6.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("AK47")); D.Name = TEXT("AK-47");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -233,6 +247,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 28000.0f; W.HipSpread = 3.2f; W.AimSpread = 0.35f; W.RecoilPitch = 1.0f; W.AimFOV = 58.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762x39"));
+		W.BoreZ = 0.9f; W.SightZ = 5.0f;
 		W.MuzzleX = 51.5f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -5.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("HK416")); D.Name = TEXT("HK416");
 		D.Desc = TEXT("Forsvarets standardgev\u00E6r i dag."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -243,6 +258,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 30000.0f; W.HipSpread = 2.8f; W.AimSpread = 0.2f; W.RecoilPitch = 0.8f; W.AimFOV = 55.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("556"));
+		W.BoreZ = 1.2f; W.SightZ = 8.0f;
 		W.MuzzleX = 47.5f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -8.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Garand")); D.Name = TEXT("M1 Garand");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -253,6 +269,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 35000.0f; W.HipSpread = 2.4f; W.AimSpread = 0.2f; W.RecoilPitch = 1.8f; W.AimFOV = 50.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762nato"));
+		W.BoreZ = 0.3f; W.SightZ = 4.0f;
 		W.MuzzleX = 58.0f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -4.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("FAL")); D.Name = TEXT("FN FAL");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -263,6 +280,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 32000.0f; W.HipSpread = 3.0f; W.AimSpread = 0.25f; W.RecoilPitch = 1.3f; W.AimFOV = 52.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762nato"));
+		W.BoreZ = 1.2f; W.SightZ = 9.0f;
 		W.MuzzleX = 57.5f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -9.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Kar98k")); D.Name = TEXT("Mauser Kar98k");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -273,6 +291,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 40000.0f; W.HipSpread = 2.2f; W.AimSpread = 0.15f; W.RecoilPitch = 3.0f; W.AimFOV = 45.0f;
 		W.HeadshotMultiplier = 2.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762x54"));
+		W.BoreZ = 2.5f; W.SightZ = 5.0f;
 		W.MuzzleX = 74.0f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -5.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Krag")); D.Name = TEXT("Krag-J\u00F8rgensen");
 		D.Desc = TEXT("Norskutviklet gev\u00E6rklassiker fra 1890-tallet."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -283,6 +302,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 40000.0f; W.HipSpread = 2.2f; W.AimSpread = 0.15f; W.RecoilPitch = 3.0f; W.AimFOV = 45.0f;
 		W.HeadshotMultiplier = 2.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762x54"));
+		W.BoreZ = 2.5f; W.SightZ = 5.0f;
 		W.MuzzleX = 84.0f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -5.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Musket")); D.Name = TEXT("Flintl\u00E5smusket");
 		D.Desc = TEXT("Fra f\u00F8r 1859. Ett skudd, s\u00E5 en evighet med lading. Men for et skudd."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Legendary;
@@ -293,6 +313,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 12000.0f; W.HipSpread = 3.5f; W.AimSpread = 1.0f; W.RecoilPitch = 5.0f; W.AimFOV = 60.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("ball"));
+		W.BoreZ = 2.5f; W.SightZ = 4.0f;
 		W.MuzzleX = 105.0f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -4.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("SVD")); D.Name = TEXT("Dragunov SVD");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -303,6 +324,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 60000.0f; W.HipSpread = 4.0f; W.AimSpread = 0.1f; W.RecoilPitch = 2.6f; W.AimFOV = 25.0f;
 		W.HeadshotMultiplier = 2.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762x54"));
+		W.BoreZ = 0.9f; W.SightZ = 8.0f;
 		W.MuzzleX = 74.5f; W.FPHip = FVector(22.f, 12.f, -21.f); W.FPAim = FVector(9.f, 0.f, -8.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("L96")); D.Name = TEXT("L96 AWM");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Legendary;
@@ -313,6 +335,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 80000.0f; W.HipSpread = 5.0f; W.AimSpread = 0.05f; W.RecoilPitch = 4.0f; W.AimFOV = 15.0f;
 		W.HeadshotMultiplier = 2.6f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762nato"));
+		W.BoreZ = 2.5f; W.SightZ = 8.0f;
 		W.MuzzleX = 84.0f; W.FPHip = FVector(22.f, 12.f, -21.f); W.FPAim = FVector(9.f, 0.f, -8.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Barrett")); D.Name = TEXT("Barrett M82");
 		D.Desc = TEXT("Gjennom vegger nesten."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Mythic;
@@ -323,6 +346,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 100000.0f; W.HipSpread = 6.0f; W.AimSpread = 0.08f; W.RecoilPitch = 6.0f; W.AimFOV = 18.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("50bmg"));
+		W.BoreZ = 4.32f; W.SightZ = 15.0f;
 		W.MuzzleX = 125.4f; W.FPHip = FVector(22.f, 12.f, -21.f); W.FPAim = FVector(9.f, 0.f, -15.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Pump")); D.Name = TEXT("Pumpehagle");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -333,6 +357,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 4000.0f; W.HipSpread = 5.0f; W.AimSpread = 3.5f; W.RecoilPitch = 3.5f; W.AimFOV = 70.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 9; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("12g"));
+		W.BoreZ = 2.3f; W.SightZ = 4.0f;
 		W.MuzzleX = 61.5f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -4.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("DoubleBarrel")); D.Name = TEXT("Dobbeltl\u00F8pet hagle");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Common;
@@ -343,6 +368,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 3500.0f; W.HipSpread = 5.5f; W.AimSpread = 4.0f; W.RecoilPitch = 4.0f; W.AimFOV = 72.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 9; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("12g"));
+		W.BoreZ = 2.92f; W.SightZ = 4.5f;
 		W.MuzzleX = 65.0f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -4.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Saiga")); D.Name = TEXT("Saiga-12");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -353,6 +379,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 4000.0f; W.HipSpread = 5.0f; W.AimSpread = 3.5f; W.RecoilPitch = 2.8f; W.AimFOV = 70.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 8; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("12g"));
+		W.BoreZ = 1.2f; W.SightZ = 5.5f;
 		W.MuzzleX = 52.0f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -5.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("MG3")); D.Name = TEXT("MG3");
 		D.Desc = TEXT("Hitlers beltesag, fortsatt i Forsvaret. 1200 skudd i minuttet."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Legendary;
@@ -363,6 +390,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 30000.0f; W.HipSpread = 4.5f; W.AimSpread = 1.2f; W.RecoilPitch = 0.9f; W.AimFOV = 58.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762nato"));
+		W.BoreZ = 1.0f; W.SightZ = 6.0f;
 		W.MuzzleX = 82.0f; W.FPHip = FVector(22.f, 14.f, -24.f); W.FPAim = FVector(16.f, 0.f, -6.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Bren")); D.Name = TEXT("Bren");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -373,6 +401,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 30000.0f; W.HipSpread = 4.0f; W.AimSpread = 0.8f; W.RecoilPitch = 1.0f; W.AimFOV = 58.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762nato"));
+		W.BoreZ = 1.0f; W.SightZ = 6.0f;
 		W.MuzzleX = 73.0f; W.FPHip = FVector(22.f, 14.f, -24.f); W.FPAim = FVector(16.f, 0.f, -6.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("PKM")); D.Name = TEXT("PKM");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Legendary;
@@ -383,6 +412,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 30000.0f; W.HipSpread = 4.2f; W.AimSpread = 1.0f; W.RecoilPitch = 1.0f; W.AimFOV = 58.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762x54"));
+		W.BoreZ = 1.0f; W.SightZ = 6.0f;
 		W.MuzzleX = 77.0f; W.FPHip = FVector(22.f, 14.f, -24.f); W.FPAim = FVector(16.f, 0.f, -6.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Minimi")); D.Name = TEXT("FN Minimi");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -393,6 +423,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 28000.0f; W.HipSpread = 4.0f; W.AimSpread = 1.0f; W.RecoilPitch = 0.8f; W.AimFOV = 58.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("556"));
+		W.BoreZ = 1.8f; W.SightZ = 6.5f;
 		W.MuzzleX = 65.5f; W.FPHip = FVector(22.f, 14.f, -24.f); W.FPAim = FVector(16.f, 0.f, -6.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("CarlGustaf")); D.Name = TEXT("Carl Gustaf M4");
 		D.Desc = TEXT("Rekylfri kanon. Bl\u00E5ser opp alt innen 6 meter."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Mythic;
@@ -404,6 +435,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.ProjSpeed = 9000.0f; W.ProjGravity = 0.1f; W.Radius = 600.0f;
 		W.Caliber = FName(TEXT("rocket"));
+		W.BoreZ = 7.0f; W.SightZ = 14.0f;
 		W.MuzzleX = 57.0f; W.FPHip = FVector(14.f, 16.f, -16.f); W.FPAim = FVector(6.f, 0.f, -14.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("M79")); D.Name = TEXT("M79 granatkaster");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Legendary;
@@ -415,6 +447,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.ProjSpeed = 6000.0f; W.ProjGravity = 1.0f; W.Radius = 500.0f;
 		W.Caliber = FName(TEXT("40mm"));
+		W.BoreZ = 3.5f; W.SightZ = 7.5f;
 		W.MuzzleX = 42.0f; W.FPHip = FVector(14.f, 16.f, -16.f); W.FPAim = FVector(6.f, 0.f, -7.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Crossbow")); D.Name = TEXT("Armbr\u00F8st");
 		D.Desc = TEXT("Lydl\u00F8s. Pilene faller med avstand."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -427,6 +460,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.ProjSpeed = 8000.0f; W.ProjGravity = 0.5f; W.Radius = 0.0f;
 		W.bSilent = true;
 		W.Caliber = FName(TEXT("arrow"));
+		W.BoreZ = 4.5f; W.SightZ = 7.5f;
 		W.MuzzleX = 45.0f; W.FPHip = FVector(22.f, 12.f, -20.f); W.FPAim = FVector(14.f, 0.f, -7.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Knife")); D.Name = TEXT("Kampkniv");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Common;
@@ -436,6 +470,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 160.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = 0.47f; W.SightZ = 0.0f;
 		W.MuzzleX = 19.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Machete")); D.Name = TEXT("Machete");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -445,6 +480,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 180.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = 0.74f; W.SightZ = 0.0f;
 		W.MuzzleX = 44.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Katana")); D.Name = TEXT("Katana");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Legendary;
@@ -454,6 +490,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 220.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = -5.0f; W.SightZ = 0.0f;
 		W.MuzzleX = 80.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("VikingSword")); D.Name = TEXT("Vikingsverd");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -463,6 +500,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 200.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = -5.0f; W.SightZ = 0.0f;
 		W.MuzzleX = 80.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("VikingAxe")); D.Name = TEXT("Vikings\u00F8ks");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -472,6 +510,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 190.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = 16.86f; W.SightZ = 0.0f;
 		W.MuzzleX = 60.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("BaseballBat")); D.Name = TEXT("Baseballk\u00F8lle");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Common;
@@ -481,6 +520,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 190.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = 0.0f; W.SightZ = 0.0f;
 		W.MuzzleX = 70.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Crowbar")); D.Name = TEXT("Brekkjern");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Common;
@@ -490,6 +530,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 180.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = 5.42f; W.SightZ = 0.0f;
 		W.MuzzleX = 62.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Sledgehammer")); D.Name = TEXT("Slegge");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -499,6 +540,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 200.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = -0.0f; W.SightZ = 0.0f;
 		W.MuzzleX = 70.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("FryingPan")); D.Name = TEXT("Stekepanne");
 		D.Desc = TEXT("Klonk."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -508,6 +550,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 170.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = 0.0f; W.SightZ = 0.0f;
 		W.MuzzleX = 37.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("SoftVest")); D.Name = TEXT("Myk vest");
 		D.Desc = TEXT("Kevlar under jakka. Tar av for pistoler."); D.Cat = EGSItemCat::Armor; D.Rarity = EGSRarity::Common;
@@ -901,6 +944,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 4500.0f; W.HipSpread = 4.5f; W.AimSpread = 2.8f; W.RecoilPitch = 3.8f; W.AimFOV = 70.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 10; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("12g"));
+		W.BoreZ = 3.0f; W.SightZ = 5.5f;
 		W.MuzzleX = 78.0f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -5.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("M72")); D.Name = TEXT("M72 LAW");
 		D.Desc = TEXT("Engangs rakettgev\u00E6r fra Forsvaret. Ett skudd, s\u00E5 kaster du det."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -911,6 +955,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 30000.0f; W.HipSpread = 3.0f; W.AimSpread = 0.6f; W.RecoilPitch = 7.0f; W.AimFOV = 55.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.ProjSpeed = 11000.0f; W.ProjGravity = 0.15f; W.Radius = 500.0f;
+		W.BoreZ = 6.0f; W.SightZ = 14.0f;
 		W.MuzzleX = 60.0f; W.FPHip = FVector(14.f, 16.f, -16.f); W.FPAim = FVector(6.f, 0.f, -14.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Mosin")); D.Name = TEXT("Mosin-Nagant");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -921,6 +966,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 40000.0f; W.HipSpread = 2.2f; W.AimSpread = 0.15f; W.RecoilPitch = 3.0f; W.AimFOV = 45.0f;
 		W.HeadshotMultiplier = 2.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762x54"));
+		W.BoreZ = 2.5f; W.SightZ = 5.0f;
 		W.MuzzleX = 87.0f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -5.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Rem700")); D.Name = TEXT("Jaktrifle med kikkert");
 		D.Desc = TEXT("Elgjakt-favoritten. Treffer det du sikter p\u00E5."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -931,6 +977,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 60000.0f; W.HipSpread = 4.0f; W.AimSpread = 0.08f; W.RecoilPitch = 3.2f; W.AimFOV = 22.0f;
 		W.HeadshotMultiplier = 2.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762nato"));
+		W.BoreZ = 2.5f; W.SightZ = 8.0f;
 		W.MuzzleX = 72.0f; W.FPHip = FVector(22.f, 12.f, -21.f); W.FPAim = FVector(9.f, 0.f, -8.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("M14")); D.Name = TEXT("M14");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -941,6 +988,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 35000.0f; W.HipSpread = 3.0f; W.AimSpread = 0.2f; W.RecoilPitch = 1.4f; W.AimFOV = 50.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762nato"));
+		W.BoreZ = 0.6f; W.SightZ = 4.5f;
 		W.MuzzleX = 63.5f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -4.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("G36")); D.Name = TEXT("G36");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -951,6 +999,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 30000.0f; W.HipSpread = 3.0f; W.AimSpread = 0.25f; W.RecoilPitch = 0.85f; W.AimFOV = 56.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("556"));
+		W.BoreZ = 1.5f; W.SightZ = 9.5f;
 		W.MuzzleX = 47.5f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -9.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("SCAR")); D.Name = TEXT("SCAR-H");
 		D.Desc = TEXT("Tung 7,62 med r\u00F8dpunkt fra fabrikken."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Legendary;
@@ -961,6 +1010,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 35000.0f; W.HipSpread = 2.8f; W.AimSpread = 0.2f; W.RecoilPitch = 1.1f; W.AimFOV = 52.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("762nato"));
+		W.BoreZ = 1.5f; W.SightZ = 8.5f;
 		W.MuzzleX = 51.5f; W.FPHip = FVector(24.f, 12.f, -21.f); W.FPAim = FVector(16.f, 0.f, -8.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("UMP")); D.Name = TEXT("UMP45");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -971,6 +1021,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 6000.0f; W.HipSpread = 2.6f; W.AimSpread = 0.6f; W.RecoilPitch = 0.8f; W.AimFOV = 70.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("45acp"));
+		W.BoreZ = 1.2f; W.SightZ = 5.5f;
 		W.MuzzleX = 24.0f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -5.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("P90")); D.Name = TEXT("P90");
 		D.Desc = TEXT("50 skudd p\u00E5 toppen av v\u00E5penet."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Epic;
@@ -981,6 +1032,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 6000.0f; W.HipSpread = 2.6f; W.AimSpread = 0.6f; W.RecoilPitch = 0.5f; W.AimFOV = 70.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("57"));
+		W.BoreZ = 2.2f; W.SightZ = 11.5f;
 		W.MuzzleX = 23.5f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -11.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Vector")); D.Name = TEXT("Kriss Vector");
 		D.Desc = TEXT("Nesten ingen rekyl."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Legendary;
@@ -991,6 +1043,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 5500.0f; W.HipSpread = 2.4f; W.AimSpread = 0.5f; W.RecoilPitch = 0.35f; W.AimFOV = 70.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("45acp"));
+		W.BoreZ = 2.79f; W.SightZ = 10.0f;
 		W.MuzzleX = 23.0f; W.FPHip = FVector(26.f, 12.f, -18.f); W.FPAim = FVector(18.f, 0.f, -10.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("FlareGun")); D.Name = TEXT("Signalpistol");
 		D.Desc = TEXT("Lyser opp himmelen. Og setter fyr p\u00E5 folk."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -1002,6 +1055,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.ProjSpeed = 4500.0f; W.ProjGravity = 0.6f; W.Radius = 200.0f;
 		W.Caliber = FName(TEXT("flare"));
+		W.BoreZ = 3.0f; W.SightZ = 5.5f;
 		W.MuzzleX = 17.0f; W.FPHip = FVector(14.f, 16.f, -16.f); W.FPAim = FVector(6.f, 0.f, -5.5f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Longbow")); D.Name = TEXT("Langbue");
 		D.Desc = TEXT("Lydl\u00F8s og rask \u00E5 lade."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -1014,6 +1068,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.ProjSpeed = 6500.0f; W.ProjGravity = 0.7f; W.Radius = 0.0f;
 		W.bSilent = true;
 		W.Caliber = FName(TEXT("arrow"));
+		W.BoreZ = 2.0f; W.SightZ = 3.0f;
 		W.MuzzleX = 70.0f; W.FPHip = FVector(22.f, 12.f, -20.f); W.FPAim = FVector(14.f, 0.f, -3.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("PrintPistol")); D.Name = TEXT("3D-printet pistol");
 		D.Desc = TEXT("Laget p\u00E5 en 3D-printer p\u00E5 NTNU. Holder kanskje."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Uncommon;
@@ -1024,6 +1079,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.Range = 2500.0f; W.HipSpread = 3.5f; W.AimSpread = 1.2f; W.RecoilPitch = 2.5f; W.AimFOV = 78.0f;
 		W.HeadshotMultiplier = 2.0f; W.Pellets = 1; W.MeleeDamage = 25.0f;
 		W.Caliber = FName(TEXT("9mm"));
+		W.BoreZ = 4.0f; W.SightZ = 6.0f;
 		W.MuzzleX = 15.0f; W.FPHip = FVector(32.f, 12.f, -15.f); W.FPAim = FVector(26.f, 0.f, -6.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("DaneAxe")); D.Name = TEXT("Tobladet strids\u00F8ks");
 		D.Desc = TEXT("Dobbelt s\u00E5 mange blader. Dobbelt s\u00E5 mye vikinger."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Legendary;
@@ -1033,6 +1089,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 220.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = -0.0f; W.SightZ = 0.0f;
 		W.MuzzleX = 85.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Spear")); D.Name = TEXT("Spyd");
 		D.Desc = TEXT("Lengst rekkevidde av alt."); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Rare;
@@ -1042,6 +1099,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 280.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = 0.0f; W.SightZ = 0.0f;
 		W.MuzzleX = 160.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("PrintKnife")); D.Name = TEXT("3D-printet kniv");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Weapon; D.Rarity = EGSRarity::Common;
@@ -1051,6 +1109,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		W.MagSize = 0; W.StartReserve = 0; W.MaxReserve = 0; W.ReloadTime = 0.0f;
 		W.Range = 150.0f; W.HipSpread = 0.0f; W.AimSpread = 0.0f; W.RecoilPitch = 0.4f; W.AimFOV = 85.0f;
 		W.HeadshotMultiplier = 1.5f; W.Pellets = 1; W.MeleeDamage = 25.0f;
+		W.BoreZ = 0.39f; W.SightZ = 0.0f;
 		W.MuzzleX = 18.0f; W.FPHip = FVector(36.f, 20.f, -24.f); W.FPAim = FVector(36.f, 14.f, -20.0f); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("PrintHelmet")); D.Name = TEXT("3D-printet hjelm");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Helmet; D.Rarity = EGSRarity::Uncommon;

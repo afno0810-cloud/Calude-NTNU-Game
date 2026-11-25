@@ -69,6 +69,8 @@ struct FGSWeaponStats
 	bool bSilent = false;
 	FName Caliber;                  // ammo type it uses ("556", "12g" ...). None = no reloads from boxes
 	float MuzzleX = 50.f;           // cm from model origin to muzzle
+	float BoreZ = 0.f;              // cm, height of the barrel axis at the muzzle (suppressors, lasers)
+	float SightZ = 5.f;             // cm, height of the iron-sight line (optics sit on it)
 	FVector FPHip = FVector(30.f, 12.f, -18.f);  // first person position relative to camera
 	FVector FPAim = FVector(20.f, 0.f, -6.f);
 

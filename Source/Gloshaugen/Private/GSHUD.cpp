@@ -838,7 +838,7 @@ void AGSHUD::DrawHelp()
 	const float CX = Canvas->SizeX * 0.5f, Y = Canvas->SizeY * 0.5f + 150.f;
 	Text(TEXT("WASD g\u00E5 \u00B7 Shift l\u00F8p \u00B7 Space hopp/klatre \u00B7 C huk (l\u00F8p+C = skli) \u00B7 Mus1 skyt \u00B7 Mus2 sikt \u00B7 R lad \u00B7 V slag"),
 		CX, Y, FLinearColor(1.f, 1.f, 1.f, A), 0.9f, true);
-	Text(TEXT("1-4 v\u00E5pen \u00B7 E plukk opp \u00B7 F bruk \u00B7 Q neste ting \u00B7 G slipp \u00B7 I inventar \u00B7 Tab poeng"),
+	Text(TEXT("1-4 v\u00E5pen \u00B7 E plukk opp \u00B7 F bruk \u00B7 Q neste ting \u00B7 G slipp \u00B7 I inventar \u00B7 T se p\u00E5 v\u00E5penet \u00B7 Tab poeng \u00B7 Esc/F10 meny"),
 		CX, Y + 22.f, FLinearColor(1.f, 1.f, 1.f, A), 0.9f, true);
 	Text(TEXT("Alt du finner har en farge: gr\u00E5 vanlig, gr\u00F8nn uvanlig, bl\u00E5 sjelden, lilla episk, gull legendarisk, r\u00F8d mytisk."),
 		CX, Y + 44.f, FLinearColor(0.8f, 0.9f, 1.f, A), 0.85f, true);

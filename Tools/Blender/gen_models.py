@@ -1740,6 +1740,15 @@ def build(it, metrics):
         ITEM_BUILDERS[arch](p, m)
         met = None
     met = finish(it["id"], p.get("scale", 1.0), met)
+    if met is not None and "muzzle" in met:
+        # barrel axis height at the muzzle: centre of the vertices at the very front of the gun
+        obj = bpy.data.objects.get(f"SM_{it['id']}")
+        if obj is not None:
+            xs = [v.co.x for v in obj.data.vertices]
+            front = max(xs)
+            tip = [v.co.z for v in obj.data.vertices if v.co.x > front - 0.012]
+            if tip:
+                met["bore"] = round((max(tip) + min(tip)) / 2, 4)
     metrics[it["id"]] = dict(mesh=f"SM_{it['id']}", **(met or {}))
 
 

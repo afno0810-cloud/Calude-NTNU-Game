@@ -164,6 +164,10 @@ AGSCharacter::AGSCharacter()
 	FPArmR = FPPart(TEXT("FPArmR"), FPWeaponMesh);
 	FPArmL = FPPart(TEXT("FPArmL"), FPWeaponMesh);
 	FPMag = FPPart(TEXT("FPMag"), FPArmL);
+	FPAttSight = FPPart(TEXT("FPAttSight"), FPWeaponMesh);
+	FPAttMuzzle = FPPart(TEXT("FPAttMuzzle"), FPWeaponMesh);
+	FPAttLaser = FPPart(TEXT("FPAttLaser"), FPWeaponMesh);
+	FPAttGrip = FPPart(TEXT("FPAttGrip"), FPWeaponMesh);
 	FPItemMesh = FPPart(TEXT("FPItem"), Camera);
 	FPItemHand = FPPart(TEXT("FPItemHand"), FPItemMesh);
 	FPLegs = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPLegs"));
@@ -1637,6 +1641,45 @@ void AGSCharacter::ApplyWeaponVisuals()
 		: S.Class == EGSWeaponClass::Melee ? FVector(0.7f, 0.03f, 0.05f) : FVector(0.95f, 0.05f, 0.11f);
 	ShowItemOn(FPWeaponMesh, W->Id, Fallback, 1.f);
 	ShowItemOn(TPWeaponMesh, W->Id, Fallback, 1.f, true);
+	ApplyAttachmentVisuals(W);
+}
+
+void AGSCharacter::ApplyAttachmentVisuals(const FGSWeaponSlot* W)
+{
+	UStaticMeshComponent* Parts[] = { FPAttSight, FPAttMuzzle, FPAttLaser, FPAttGrip };
+	for (UStaticMeshComponent* P : Parts) if (P) P->SetVisibility(false);
+	if (!W || W->Id.IsNone() || bDead || W->Attachments == 0) return;
+	const FGSWeaponStats& S = GSItems::Weapon(W->Id);
+	if (S.Mode == EGSFireMode::Melee) return;
+	const bool bPistol = S.Class == EGSWeaponClass::Pistol;
+	auto Show = [](UStaticMeshComponent* C, FName ItemId, const FVector& Loc)
+	{
+		UStaticMesh* M = GSItems::GetMesh(ItemId);
+		if (!C || !M) return;
+		C->SetStaticMesh(M);
+		C->SetRelativeLocation(Loc);
+		C->SetRelativeRotation(FRotator::ZeroRotator);
+		C->SetRelativeScale3D(FVector(1.f));
+		C->SetVisibility(true);
+	};
+	// Optics sit on the iron-sight line (their optical axis is this high above their base, in cm)
+	const float SightX = bPistol ? 1.f : 3.f;
+	if (W->Attachments & GSAttach::Scope8x)     Show(FPAttSight, TEXT("Scope8x"), FVector(SightX, 0.f, S.SightZ - 5.0f));
+	else if (W->Attachments & GSAttach::Scope)  Show(FPAttSight, TEXT("Scope"), FVector(SightX, 0.f, S.SightZ - 4.0f));
+	else if (W->Attachments & GSAttach::Holo)   Show(FPAttSight, TEXT("Holo"), FVector(SightX, 0.f, S.SightZ - 3.7f));
+	else if (W->Attachments & GSAttach::RedDot) Show(FPAttSight, TEXT("RedDot"), FVector(SightX, 0.f, S.SightZ - 3.2f));
+	// Muzzle devices on the bore axis, mount over the muzzle
+	if (W->Attachments & GSAttach::Suppressor)        Show(FPAttMuzzle, TEXT("Suppressor"), FVector(S.MuzzleX + 9.5f, 0.f, S.BoreZ));
+	else if (W->Attachments & GSAttach::Compensator)  Show(FPAttMuzzle, TEXT("Compensator"), FVector(S.MuzzleX + 2.5f, 0.f, S.BoreZ - 1.3f));
+	// Under the barrel: laser forward, grip behind it
+	if (W->Attachments & GSAttach::Laser)
+	{
+		Show(FPAttLaser, TEXT("Laser"), bPistol ? FVector(S.MuzzleX * 0.6f, 0.f, S.BoreZ - 4.5f) : FVector(S.MuzzleX * 0.62f, 0.f, S.BoreZ - 6.f));
+	}
+	if ((W->Attachments & GSAttach::Grip) && !bPistol)
+	{
+		Show(FPAttGrip, TEXT("Grip"), FVector(S.MuzzleX * 0.45f, 0.f, S.BoreZ - 4.f - 10.75f));
+	}
 }
 
 void AGSCharacter::ApplyGearVisuals()
@@ -2085,6 +2128,7 @@ void AGSCharacter::CompleteUse()
 				}
 				W->Attachments |= Bit;
 				W->Ammo = FMath::Min(W->Ammo, GetStats(*W).MagSize);
+				ApplyWeaponVisuals(); // listen-server host does not get OnRep
 				ClientToast(FString::Printf(TEXT("%s satt p\u00E5 %s"), *Def->Name, *GSItems::Name(W->Id)));
 			}
 		}

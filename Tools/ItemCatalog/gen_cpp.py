@@ -90,6 +90,8 @@ for it in catalog.ITEMS:
             L.append(f"W.Caliber = FName(TEXT(\"{it['caliber']}\"));")
         aimz = -sight if cls != "Melee" else -20
         aimy = 0 if cls != "Melee" else 14
+        bore = met.get("bore", met.get("sight", 0.05) - 0.05) * 100
+        L.append(f"W.BoreZ = {f(bore)}; W.SightZ = {f(sight)};")
         L.append(f"W.MuzzleX = {f(muzzle)}; W.FPHip = FVector({hip[0]}.f, {hip[1]}.f, {hip[2]}.f); W.FPAim = FVector({aimx}.f, {aimy}.f, {f(aimz)});")
     elif cat in ("Armor", "Helmet"):
         L.append(f"D.Armor = {f(it['armor'])}; D.Absorb = {f(it['absorb'])}; D.SpeedMul = {f(it['speed'])};")
