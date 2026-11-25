@@ -97,6 +97,7 @@ void AGSHUD::DrawHUD()
 		DrawPrompt(C);
 		DrawUseProgress(C);
 		DrawToast(C);
+		DrawMinimap(C);
 		if (C->HasItemKind(FName(TEXT("radio")))) DrawRadar(C);
 		if (C->HasItemKind(FName(TEXT("compass")))) DrawCompass(C);
 		if (PC && PC->bShowInventory) DrawInventory(C);
@@ -382,6 +383,126 @@ void AGSHUD::DrawRadar(AGSCharacter* C)
 		D = D.RotateAngleAxis(-Yaw - 90.f, FVector::UpVector);
 		const FVector2D P(D.X / 15000.f * R, D.Y / 15000.f * R);
 		Box(CX + P.X - 3.f, CY + P.Y - 3.f, 6.f, 6.f, FLinearColor(1.f, 0.3f, 0.2f, 1.f - Age / 6.f));
+	}
+}
+
+void AGSHUD::FillClipped(TArray<FVector2D> Poly, const FBox2D& Clip, const FLinearColor& Color)
+{
+	// Sutherland-Hodgman against the four edges, then a triangle fan.
+	auto ClipEdge = [](const TArray<FVector2D>& In, int32 Axis, float Value, bool bKeepGreater)
+	{
+		TArray<FVector2D> Out;
+		for (int32 i = 0; i < In.Num(); ++i)
+		{
+			const FVector2D A = In[i], B = In[(i + 1) % In.Num()];
+			const bool bA = bKeepGreater ? A[Axis] >= Value : A[Axis] <= Value;
+			const bool bB = bKeepGreater ? B[Axis] >= Value : B[Axis] <= Value;
+			if (bA) Out.Add(A);
+			if (bA != bB)
+			{
+				const float T = (Value - A[Axis]) / (B[Axis] - A[Axis]);
+				Out.Add(A + (B - A) * T);
+			}
+		}
+		return Out;
+	};
+	Poly = ClipEdge(Poly, 0, Clip.Min.X, true);
+	if (Poly.Num() >= 3) Poly = ClipEdge(Poly, 0, Clip.Max.X, false);
+	if (Poly.Num() >= 3) Poly = ClipEdge(Poly, 1, Clip.Min.Y, true);
+	if (Poly.Num() >= 3) Poly = ClipEdge(Poly, 1, Clip.Max.Y, false);
+	if (Poly.Num() < 3) return;
+	TArray<FCanvasUVTri> Tris;
+	for (int32 i = 1; i + 1 < Poly.Num(); ++i)
+	{
+		FCanvasUVTri T;
+		T.V0_Pos = Poly[0]; T.V1_Pos = Poly[i]; T.V2_Pos = Poly[i + 1];
+		T.V0_Color = T.V1_Color = T.V2_Color = Color;
+		Tris.Add(T);
+	}
+	Canvas->K2_DrawTriangle(nullptr, Tris);
+}
+
+void AGSHUD::DrawMinimap(AGSCharacter* C)
+{
+	const float Size = FMath::Clamp(Canvas->SizeY * 0.22f, 160.f, 260.f);
+	const float X0 = Canvas->SizeX - Size - 30.f, Y0 = 70.f;
+	const FBox2D Clip(FVector2D(X0, Y0), FVector2D(X0 + Size, Y0 + Size));
+	const FVector2D Mid(X0 + Size * 0.5f, Y0 + Size * 0.5f);
+	const float RangeM = 140.f;                       // meters across the map
+	const float PxPerM = Size / RangeM;
+	const FVector Me = C->GetActorLocation() / 100.f; // meters
+	const float Yaw = C->GetControlRotation().Yaw;
+	// world (m) -> screen, rotated so that where you look is up
+	const float Rad = FMath::DegreesToRadians(-Yaw - 90.f);
+	const float Cs = FMath::Cos(Rad), Sn = FMath::Sin(Rad);
+	auto ToScreen = [&](float WX, float WY)
+	{
+		const float DX = WX - Me.X, DY = WY - Me.Y;
+		return Mid + FVector2D(DX * Cs - DY * Sn, DX * Sn + DY * Cs) * PxPerM;
+	};
+
+	Box(X0 - 3.f, Y0 - 3.f, Size + 6.f, Size + 6.f, FLinearColor(0.f, 0.f, 0.f, 0.55f));
+	FillClipped({ Clip.Min, FVector2D(Clip.Max.X, Clip.Min.Y), Clip.Max, FVector2D(Clip.Min.X, Clip.Max.Y) }, Clip, FLinearColor(0.12f, 0.2f, 0.1f, 0.85f));
+	for (const GSCampus::FRoad& R : GSCampus::Roads())
+	{
+		const FVector2D D = (R.B - R.A).GetSafeNormal();
+		const FVector2D N(-D.Y, D.X);
+		const float HW = R.Width * 0.5f;
+		const FVector2D A = R.A - D * HW, B = R.B + D * HW;
+		FillClipped({ ToScreen(A.X + N.X * HW, A.Y + N.Y * HW), ToScreen(B.X + N.X * HW, B.Y + N.Y * HW),
+			ToScreen(B.X - N.X * HW, B.Y - N.Y * HW), ToScreen(A.X - N.X * HW, A.Y - N.Y * HW) }, Clip,
+			R.bPath ? FLinearColor(0.5f, 0.48f, 0.44f, 0.9f) : FLinearColor(0.22f, 0.22f, 0.24f, 0.95f));
+	}
+	const GSCampus::FBuilding* Here = nullptr;
+	float HereDist = 1e9f;
+	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+	{
+		const float BR = FMath::DegreesToRadians(B.Yaw);
+		const float BC = FMath::Cos(BR), BS = FMath::Sin(BR);
+		TArray<FVector2D> Q;
+		for (const FVector2D& Corner : { FVector2D(-1.f, -1.f), FVector2D(1.f, -1.f), FVector2D(1.f, 1.f), FVector2D(-1.f, 1.f) })
+		{
+			const float LX = Corner.X * B.SizeX * 0.5f, LY = Corner.Y * B.SizeY * 0.5f;
+			Q.Add(ToScreen(B.X + LX * BC - LY * BS, B.Y + LX * BS + LY * BC));
+		}
+		FillClipped(Q, Clip, B.bEnterable ? FLinearColor(0.62f, 0.6f, 0.55f, 0.95f) : FLinearColor(0.45f, 0.45f, 0.47f, 0.95f));
+		const float Dist = FVector2D::Distance(FVector2D(B.X, B.Y), FVector2D(Me.X, Me.Y)) - FMath::Max(B.SizeX, B.SizeY) * 0.5f;
+		if (Dist < HereDist) { HereDist = Dist; Here = &B; }
+		const FVector2D Centre = ToScreen(B.X, B.Y);
+		if (Clip.ExpandBy(-14.f).IsInside(Centre) && B.bEnterable)
+		{
+			Text(FString(B.Name).Replace(TEXT("_"), TEXT(" ")), Centre.X, Centre.Y - 6.f, FLinearColor(1.f, 1.f, 1.f, 0.85f), 0.55f, true);
+		}
+	}
+	// loot with a beam (epic and better) shows as a coloured dot
+	for (TActorIterator<AGSPickup> It(GetWorld()); It; ++It)
+	{
+		const AGSPickup* P = *It;
+		const FGSItemDef* Def = GSItems::Find(P->ItemId);
+		if (!Def || !P->bAvailable || Def->Rarity < EGSRarity::Epic) continue;
+		const FVector L = P->GetActorLocation() / 100.f;
+		const FVector2D S = ToScreen(L.X, L.Y);
+		if (!Clip.ExpandBy(-3.f).IsInside(S)) continue;
+		Box(S.X - 3.f, S.Y - 3.f, 6.f, 6.f, GSItems::RarityColor(Def->Rarity));
+	}
+	// you: an arrow pointing up
+	{
+		FCanvasUVTri T;
+		T.V0_Pos = Mid + FVector2D(0.f, -9.f); T.V1_Pos = Mid + FVector2D(6.f, 7.f); T.V2_Pos = Mid + FVector2D(-6.f, 7.f);
+		T.V0_Color = T.V1_Color = T.V2_Color = FLinearColor(0.3f, 0.75f, 1.f);
+		Canvas->K2_DrawTriangle(nullptr, TArray<FCanvasUVTri>{ T });
+	}
+	// north on the rim (world north is -Y)
+	const FVector2D North = ToScreen(Me.X, Me.Y - 1000.f) - Mid;
+	const FVector2D NDir = North.GetSafeNormal();
+	const float Edge = Size * 0.5f - 10.f;
+	const float K = Edge / FMath::Max(FMath::Abs(NDir.X), FMath::Abs(NDir.Y));
+	Text(TEXT("N"), Mid.X + NDir.X * K, Mid.Y + NDir.Y * K - 8.f, FLinearColor(1.f, 0.85f, 0.3f), 0.8f, true);
+	Frame(X0 - 3.f, Y0 - 3.f, Size + 6.f, Size + 6.f, FLinearColor(1.f, 1.f, 1.f, 0.35f), 1.f);
+	if (Here)
+	{
+		const FString Where = HereDist < 2.f ? FString::Printf(TEXT("I %s"), Here->Name) : FString::Printf(TEXT("Ved %s"), Here->Name);
+		Text(Where.Replace(TEXT("_"), TEXT(" ")), X0 + Size * 0.5f, Y0 + Size + 8.f, FLinearColor(0.9f, 0.95f, 1.f, 0.9f), 0.75f, true);
 	}
 }
 

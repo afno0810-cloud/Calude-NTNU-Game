@@ -30,6 +30,10 @@ protected:
 	void DrawWallhack(AGSCharacter* C, float Range);
 	void DrawRadar(AGSCharacter* C);
 	void DrawCompass(AGSCharacter* C);
+	/** Always-on minimap (player-up, rotates with you): roads, buildings with their names, loot beams, you. */
+	void DrawMinimap(AGSCharacter* C);
+	/** Fills a convex polygon (screen space) clipped to a rectangle. */
+	void FillClipped(TArray<FVector2D> Poly, const FBox2D& Clip, const FLinearColor& Color);
 	void DrawInventory(AGSCharacter* C);
 	void DrawBinoculars();
 	void DrawTopRight();
