@@ -243,6 +243,11 @@ protected:
 	float ReloadLength = 2.f;
 	bool bWasReloading = false;
 	bool bMagDropped = false;
+	bool bEmptyReload = false;    // reload from an empty mag: also racks the charging handle / slide
+	float DryFireStart = -100.f;  // trigger pulled on an empty gun
+	float WallBlend = 0.f;        // gun pulled back to high ready when you stand close to a wall
+	float IdleTime = 0.f;         // seconds without moving or shooting (idle fidget)
+	bool bAnimWasCrouched = false;
 	bool bWasFalling = false;
 	float InspectStart = -100.f;
 	float AimBlend = 0.f;

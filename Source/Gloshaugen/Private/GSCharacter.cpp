@@ -641,6 +641,12 @@ void AGSCharacter::FireOnce()
 	}
 	if (W->Ammo <= 0)
 	{
+		// Dry fire: click and a small trigger twitch, then reload if there is ammo
+		if (Now - DryFireStart > 0.35f)
+		{
+			DryFireStart = Now;
+			GSAudio::Play2D(this, TEXT("Dry_Fire"), 0.8f, FMath::FRandRange(0.95f, 1.05f));
+		}
 		StopFire();
 		Reload();
 		return;
@@ -1025,6 +1031,7 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 		ReloadStart = Now;
 		ReloadLength = W ? S.ReloadTime * GetMods().Reload : 2.f;
 		bMagDropped = false;
+		bEmptyReload = W && W->Ammo <= 0;
 		// mag out, mag in, charging handle (timed to the procedural reload animation)
 		const TCHAR* Steps[] = { TEXT("Reload_Out"), TEXT("Reload_In"), TEXT("Slide") };
 		const float At[] = { 0.25f, 0.6f, 0.8f };
@@ -1098,14 +1105,73 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 				Rot.Roll += Bump(T, 0.15f, 0.42f) * 10.f;
 				Pos.Z += Bump(T, 0.52f, 0.66f) * 4.f;                         // mag slammed in
 				Rot.Pitch += Bump(T, 0.55f, 0.66f) * 6.f;
-				Pos.X -= Bump(T, 0.72f, 0.86f) * 7.f;                         // charging handle
-				Rot.Yaw += Bump(T, 0.72f, 0.86f) * 14.f;
+				if (bEmptyReload)
+				{
+					Pos.X -= Bump(T, 0.72f, 0.86f) * 7.f;                     // charging handle / slide release
+					Rot.Yaw += Bump(T, 0.72f, 0.86f) * 14.f;
+				}
+				else
+				{
+					// tactical reload: tap the new mag and check it, no rack
+					Pos.Z += Bump(T, 0.7f, 0.78f) * 1.5f;
+					Rot.Roll -= Bump(T, 0.74f, 0.9f) * 8.f;
+				}
 				if (!bMagDropped && T > 0.25f)
 				{
 					bMagDropped = true;
 					DropMagazineFX();
 				}
 			}
+		}
+
+		// Jump: gun lags behind vertical motion
+		if (bFalling)
+		{
+			const float Vz = float(GetVelocity().Z);
+			Pos.Z += FMath::Clamp(-Vz * 0.005f, -3.f, 3.f) * (1.f - AimAlpha * 0.6f);
+			Rot.Pitch += FMath::Clamp(Vz * 0.006f, -4.f, 4.f) * (1.f - AimAlpha * 0.6f);
+		}
+		// Strafe tilt and forward push from movement relative to the view
+		{
+			const FVector V = GetVelocity();
+			const FRotator Yaw(0.f, GetControlRotation().Yaw, 0.f);
+			const float Side = FVector::DotProduct(V, FRotationMatrix(Yaw).GetUnitAxis(EAxis::Y));
+			const float Fwd = FVector::DotProduct(V, FRotationMatrix(Yaw).GetUnitAxis(EAxis::X));
+			Rot.Roll += FMath::Clamp(-Side * 0.008f, -5.f, 5.f) * (1.f - AimAlpha * 0.7f);
+			Pos.X -= FMath::Clamp(Fwd * 0.003f, -1.5f, 1.5f) * (1.f - AimAlpha);
+		}
+		// Crouch / stand: a short dip of the gun
+		{
+			const bool bCr = bIsCrouched;
+			if (bCr != bAnimWasCrouched) { KickVel += FVector(0.f, 0.f, bCr ? -140.f : 90.f); KickRotVel += FRotator(bCr ? -40.f : 30.f, 0.f, 0.f); }
+			bAnimWasCrouched = bCr;
+		}
+		// Close to a wall: pull the gun back to high ready (muzzle up) so it never clips through
+		{
+			FHitResult WallHit;
+			FCollisionQueryParams QP(SCENE_QUERY_STAT(GSWallCheck), false, this);
+			const FVector From = Camera->GetComponentLocation();
+			const bool bWall = !bAiming && GetWorld()->LineTraceSingleByChannel(WallHit, From, From + Camera->GetForwardVector() * 70.f, ECC_Visibility, QP);
+			const float WallTarget = bWall ? FMath::Clamp(1.f - (WallHit.Distance - 25.f) / 45.f, 0.f, 1.f) : 0.f;
+			WallBlend = FMath::FInterpTo(WallBlend, WallTarget, Dt, 10.f);
+			Pos += FVector(-14.f, -3.f, -4.f) * WallBlend;
+			Rot += FRotator(38.f, -12.f, -18.f) * WallBlend;
+		}
+		// Dry fire: trigger finger twitch, gun jolts a little
+		{
+			const float DT2 = Now - DryFireStart;
+			if (DT2 >= 0.f && DT2 < 0.3f)
+			{
+				const float B = Bump(DT2, 0.f, 0.3f);
+				Pos.X -= 0.6f * B;
+				Rot.Roll += 3.f * B;
+			}
+		}
+		// Idle fidget: after standing still for a while, glance at the gun
+		{
+			const bool bIdle = GetVelocity().Size2D() < 10.f && !bAiming && !bWantsFire && !bReloading && UseItemId.IsNone();
+			IdleTime = bIdle ? IdleTime + Dt : 0.f;
+			if (IdleTime > 14.f) { IdleTime = 0.f; if (Now - InspectStart > 3.2f) InspectStart = Now; }
 		}
 
 		// Inspect: turn the weapon to look at the side, then the top
