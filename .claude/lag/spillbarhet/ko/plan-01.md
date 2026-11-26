@@ -196,9 +196,17 @@ protected:
 `bool bSoloMatch = false;` · `FTransform PickSpawnTransform(const AController* For) const;` (erstatter den uten
 parameter) · `static constexpr int32 MaxPerTeam = 10;`
 
-- **`BasePointM`** (meter, foreløpig til Grafikk leverer det nye kartet – ETT sted å bytte):
-  rød `(-60, -80, 0)`, blå `(60, -80, 0)` (to av dagens spawnpunkter, på plassen foran Hovedbygningen, 120 m fra
-  hverandre). Skriv en `// TODO(Grafikk): GSCampus::CtfBases()`-kommentar.
+- **`BasePointM`** (meter) – ETT sted som vet hvor basene er. **Sjekk `GSCampus.h` rett før du skriver den:**
+  - Finnes `GSCampus::Bases()` (Grafikks runde 1 lover den, se bestillingen deres øverst i `bestillinger.md`:
+    indeks 0 «Vest» ved Gamle fysikk, flagg (−125, 10); indeks 1 «Øst» ved Gamle kjemi, flagg (125, 10); 7
+    spawnpunkter og `SpawnYaw` per base): les flaggpunkt fra den (rød = indeks 0, blå = indeks 1), og la
+    `PickSpawnTransform` bruke basens egne spawnpunkter og `SpawnYaw` som kandidater i stedet for viften under
+    (samme bakke-spor og ledig-sjekk). Les feltnavnene i headeren, ikke gjett.
+  - Finnes den ikke ennå: rød `(-60, -80, 0)`, blå `(60, -80, 0)` (to av dagens spawnpunkter, plassen foran
+    Hovedbygningen) og viften under. Skriv `// TODO: GSCampus::Bases()` og si fra i rapporten, så tas byttet i
+    neste runde.
+  - Finnes `GSCampus::PlayArea()`: bruk den (krympet 5 m) for utendørs loot i `SpawnPickups` i stedet for
+    `X −280…430, Y −110…520`, og legg ut 20 plasser ute i stedet for 60 (Grafikks ønske a).
 - **`SpawnFlags`** (kalles i `BeginPlay` etter `SpawnTerminals`): for lag 1 og 2: linjespor ned
   (`ECC_WorldStatic`, fra Z +300 til −300 cm) ved basepunktet; aktørens plass = treffpunkt (ellers Z 0);
   `SpawnActor<AGSFlag>`, sett `Team`. (Campus er bygget før `GameMode::BeginPlay`: `UGSWorldSubsystem::OnWorldBeginPlay`.)

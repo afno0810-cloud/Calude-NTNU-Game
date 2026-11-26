@@ -1,6 +1,8 @@
-# Plan – Spillbarhet runde 1: spillet forklarer seg selv (taster, hint, innføring) + ren kampstart
+# UTKAST (ikke i køen) – knappehjelp: H-oversikt, hint og innføring
 
-Prioritet 0a fra Andreas («vis spilleren hvilke knapper som gjør hva og hvordan man spiller»), pluss de små
+Skrevet før Andreas bestemte Capture the Flag. Tas som del av plan-03 (se `retning.md`): tekstene må oppdateres
+til CTF, `GSHelp.*` og kampstart-fiksene finnes da allerede fra plan-01, og IMPROVEMENTS-numrene under er brukt opp.
+
 feilene i lobby/kampstart fra `funn.md` (6, 7, 15) og bestillingen fra lag Kamp om å rydde prosjektiler.
 Hovedmenyen (0b) er plan-02. Bygger på koden slik den er i commit `55ca90f` + Kamps runde 3 (blod), som ikke
 rører filene under.
