@@ -43,29 +43,34 @@ spillet til kampen er over skal henge sammen, forklare seg selv og være rettfer
    `UGameViewportClient`-krokene (svelger alt mens menyen er åpen, funn I3 for våre flater), tekst via egen
    `UGSGameViewportClient::InputChar`. Bare én liten bestilling til Kamp (Esc-menyens knapper og hinttekster); menyen
    fanger klikkene deres til den er levert.
-3. **[plan-03] CTF ferdig for det nye kartet + knappehjelpen (0a).**
-   - Les baser, spawn og område fra `GSCampus::Bases()`/`PlayArea()` (hvis ikke gjort i plan-01). Regel for dem
-     som går ut av området (varsel, så skade) – Grafikks ønske c. Sidebytte mellom kampene (ønske e).
-   - Flaggbæreren blir synlig for motstanderne etter 20 s (Andreas' godkjente forslag). Flagg som ligger: eget lag
-     må stå ved det i 3 s for å hente det hjem (i stedet for berøring) hvis berøring føles for lett.
-   - Respawn i bølger (hvert 10. s) ved egen base, aldri i sikte av en fiende; kort venting vist på skjermen.
-   - **Vertsvalg i lagvalg-panelet** (flyttet fra plan-02): venneild av/på, kamplengde, antall erobringer, «Start nå»
-     (krever at `CaptureLimit`/`MatchMinutes` blir replikerte verdier i `GSGameState`).
-   - **Knappehjelpen**: H-oversikt over alle taster, hint første gang noe er aktuelt (loot, låst kasse, PC,
-     printer, skadet, sulten, tomt magasin, første gang du ser/tar/mister flagget). Utkastet ligger i
-     `ko/utkast-knappehjelp.md` – oppdater tekstene til CTF og bygg oppå `GSHelp.*` fra plan-01. Tastene leses fra
-     `GSMenu::Controls()`/`KeyName()` (plan-02), så hintene viser det spilleren faktisk har valgt.
-4. **[plan-04] Våpendata som følger virkeligheten (Kamps bestilling, funn R5–R7, R13) + loot for CTF.**
+3. **[plan-03, skrevet 26. nov.] Knappehjelp (0a) + CTF-regler som mangler.** Se `ko/plan-03.md`. Kort: H-oversikt
+   (taster fra `GSMenu::Controls`, CTF-reglene), 12 hint som vises høyst to ganger (loot, kasse, PC, printer, tomt
+   magasin, skadet, flagget) med tastene fra `GSMenu::KeyName`, flaggbæreren avsløres etter 20 s (markør «sist sett»,
+   oppdatert hvert 2. s), overtid (ønske 33: til flagget er erobret/hjemme, høyst 2 min, ingen nye flagg fra basen),
+   `Logout` legger ned flagget (C1), beskjed ved sen innkobling (C2), og Grafikks ytelsesbestilling for
+   `GSPickup`/`GSTerminal` (snurrer bare nær spilleren, ingen skygge, lys med avstandsgrense).
+4. **[plan-04] Vertsvalg og resten av CTF for det nye kartet.**
+   - **Vertsvalg i lagvalg-panelet** (`GSMenu`): venneild av/på, kamplengde, antall erobringer, «Start nå». Nye replikerte
+     `CaptureGoal`/`MatchLengthMinutes` i `GSGameState` (konstantene `CaptureLimit`/`MatchMinutes` blir standardverdier;
+     Kamp leser dem i dag, så de fjernes ikke). Verten er listen-server, så valget settes rett i `GSGameMode` uten RPC.
+   - Regel for dem som går ut av `GSCampus::PlayArea()` (varsel, så skade) – Grafikks ønske c. Sidebytte mellom
+     kampene (ønske e / ønskeliste 34). Utendørs loot innenfor området og færre plasser (Grafikks ønske a), hvis ikke gjort.
+   - Respawn i bølger (hvert 10. s) ved egen base, aldri i sikte av en fiende; kort spawnbeskyttelse.
+   - Når Kamp har levert `PawnLeavingGame`: drap til siste skytter og utstyr som blir liggende når noen kobler fra.
+     Lag som står tomt midt i en kamp (alle koblet fra): jevn ut eller avslutt.
+   - Eget lag må stå ved et mistet flagg i 3 s for å sende det hjem, hvis berøring viser seg for lett i testing.
+5. **[plan-05] Våpendata som følger virkeligheten (Kamps bestilling, funn R5–R7, R13) + loot for CTF.**
    - Kalibertabell i `catalog.py`: `MuzzleVelocity`, `BulletMassG`, `PenClass`, skade etter patron, riktige
      kalibre med egne ammoesker, `ProtClass` på vester og hjelmer, ekte prosjektilfarter.
    - `RandomLoot`: ammovekt per kaliber, sjeldenhet som ikke snus i små grupper, våpen oftere i låste kasser
      (Kamps kontroll-bestilling). Loot-tetthet for det lille kartet; det beste lootet i midtområdet, ikke i basene.
    - Medisin: «Skinne» og «Tourniquet»/trykkbandasje med `Kind` Kamp kan lese (avtales i `bestillinger.md`).
-5. **[plan-05] Utstyr/klasse før runden.** Velg startpakke i lobbyen (f.eks. gevær, sanitet, støtte, speider),
+     Kikkert-teksten «Hold F» rettes (funn G6).
+6. **[plan-06] Utstyr/klasse før runden.** Velg startpakke i lobbyen (f.eks. gevær, sanitet, støtte, speider),
    realistisk utstyr og vekt; loot blir tillegg, ikke grunnlag.
-6. **[plan-06] Invitere venner, steg 1 (0c):** «Finn spill på nettverket» (LAN-søk) og kode/IP man kan kopiere;
+7. **[plan-07] Invitere venner, steg 1 (0c):** «Finn spill på nettverket» (LAN-søk) og kode/IP man kan kopiere;
    koden legges opp mot OnlineSubsystem-sesjoner så Steam/EOS kan komme når Andreas har konto.
-7. **[plan-07] Lagverktøy:** markere fiender og ping for laget; kart/minikart med flagg, baser og lagkamerater
+8. **[plan-08] Lagverktøy:** markere fiender og ping for laget; kart/minikart med flagg, baser og lagkamerater
    (egne filer + ett bestilt tegnekall); nærradio/stemmechat (Unreal VoIP) som egen runde.
 
 ### Deretter
@@ -83,6 +88,11 @@ spillet til kampen er over skal henge sammen, forklare seg selv og være rettfer
 - **Feiljakt som gjenstår i egne filer:** `GSTerminal` videre, lootplassering per bygg, til-/frakobling.
 
 ## Endringer i retningen
+- 2026-11-26 (plan-03): **Plan-03 er delt i to.** Knappehjelpen (0a) og de små CTF-reglene (avsløring etter 20 s,
+  overtid, frakobling, sen innkobling) tas nå; vertsvalg, regel utenfor området, sidebytte og respawn i bølger er ny
+  plan-04, fordi vertsvalget bygger på `GSMenu` som ennå ikke er kontrollert. Våpendata/loot flyttes til plan-05 og
+  resten ett hakk ned. Sult- og tørst-hint er droppet (systemet virker ikke i praksis, funn B2). Oppdaget i motorkoden:
+  pawnen slettes *før* `GameMode::Logout`, så død/drap/utstyr ved frakobling må gjøres i Kamps `PawnLeavingGame` (bestilt).
 - 2026-11-26 (plan-02): **Taster lagres i `[Gloshaugen.Keys]` og settes rett inn i Kamps `UInputMappingContext`**
   (som lages i kode og er `public`), i stedet for Enhanced Input sine brukerinnstillinger. Brukerinnstillingene ville
   krevd `PlayerMappableKeySettings` på hver handling i Kamps fil, Config-endring og SaveGame (funn I2) – en stor

@@ -1,83 +1,72 @@
-# Plan – runde 5 (lag Kamp): ballistikk del 1. Kula har fart, faller og mister kraft
+# Plan 5a – runde 5 (lag Kamp): ballistikk del 1a. Kula har fart, faller og mister kraft
 
-Bygges oppå rettingene i `.claude/loop/rettinger.md` og runde 4 («kroppssoner», `ko/plan-04.md`). Planen er
-skrevet mot koden i commit `aaaab9d` pluss det rettingene og plan-04 legger til. **Linjenumrene flytter seg –
-bruk funksjonsnavn og tekstene som er sitert.** Følger `prioriteringer.md` (Kamp punkt 3: ballistikk, V2) og
-Andreas' godkjente forslag «kulefall» (del 1). Lagfeltene for CTF er ikke levert; denne runden trenger dem ikke.
+Skrevet om etter kontrollørens forhåndssjekk (`kontroll/forhand-plan-05.md`, BØR ENDRES). Den gamle planen er
+delt i to: denne (**5a, kjernen**) og `ko/plan-06.md` (**5b**: upålitelig ild for automatvåpen, flygende lysspor,
+overlydssmell/sus, holdemerker). Planen er skrevet mot `HEAD` (`a1e924d`): runde 4 (kroppssoner, `60a516c`) og
+venneild/bærerfart (`2f6f46b`) er inne. **Byggeren legger samtidig inn lagfarger og CTF-HUD i `GSCharacter`,
+`GSHUD` og `GSPlayerController` – denne planen rører ikke de delene** (ingen endring i `GSHUD.*` eller
+`GSPlayerController.*`, og i `BeginPlay` bare én ny linje). Linjenumre flytter seg: bruk funksjonsnavn og sitert tekst.
 
 ## Mål
-Kuler flyr med ekte fart og faller med tyngdekraften: treffet i veggen kommer litt etter smellet, på lang
-avstand må du holde over målet, skaden faller med avstanden, og kuler som går tett forbi hodet ditt smeller.
+Kuler flyr med ekte fart og faller med tyngdekraften: støvet i veggen kommer litt etter smellet, på lang avstand
+må du holde over målet, og skaden faller etter innskytingsavstanden. Serveren bestemmer spredningen.
 
 ## Forbedrer (gammelt)
-- **`ServerFire`** (funn V2, V7, R1, R2, funn 9): skrives om. Serveren legger på spredningen selv (en juksende
-  klient kan ikke lenger skyte uten spredning), avviser skudd i en retning spilleren ikke ser, starter ikke
-  skudd på andre siden av en vegg, og RPC-en blir upålitelig (MG3 med pakketap kan ikke lenger koble deg fra).
-- **Lysspor** (funn R12): vanlige kuler er usynlige; bare lysspor-ammo og hver femte kule fra maskingevær
-  lyser, og sporet flyr med kula i stedet for å være en strek som er der med en gang. Lysspor-ammo gir ikke
-  lenger bedre treff.
-- **Hagler**: hver hagl er en egen liten kule som bremses fort.
-- **Kikkertsiktet**: prikkene under midten byttes med holdemerker for 200, 300, 400 m … regnet ut fra patronen.
-- **Drapsloggen og hodeskudd-faktoren** bruker våpenet kula ble skutt med, ikke det skytteren holder når den
-  treffer (han kan ha byttet våpen eller være død).
+- **`ServerFire`** (funn V2, R1, R2, funn 9): serveren trekker spredningen selv fra en nøkkel og skuddnummeret,
+  avviser skudd i en retning spilleren ikke ser, og starter aldri et skudd bak en vegg. Forblir **pålitelig**.
+- **Hagler**: hvert hagl er en egen liten kule som bremses fort.
+- **Drapsloggen og hodeskudd-faktoren** følger våpenet kula ble skutt med, ikke det skytteren holder når den treffer.
+- **Retningskilen når du blir truffet** peker dit skuddet kom fra, også om skytteren har flyttet seg eller koblet fra.
 - **Rakett/granat/pil** starter ikke lenger på andre siden av en vegg (funn 9, delen i `ServerFire`).
+- **Fast «rekkevidde»** ved skyting er borte: kula flyr til den treffer noe.
 
 ## Nytt
-- **Kuler som ekte prosjektiler** på serveren (ny fil `GSBallistics.*`): munningsfart, luftmotstand og
-  tyngdekraft per kaliber, stegvis linjespor hvert 1/60 s, lever til de treffer noe (maks 3 s).
-- **Skadefall over avstand** etter farten kula har igjen.
-- **Innskyting**: siktene møter kula på 25 m (pistolkaliber), 50 m (5,7 mm, muskett) eller 100 m (rifler).
-- **Overlydssmell og sus** når en annen spillers kule passerer innen ca. 3 m av hodet ditt (to nye lyder).
-- **Holdemerker i kikkerten** (som på et ekte kampsikte).
-- Feilsøkingskommando **`gs.ShowBullets 1`**: tegner kulebanene (server) så Andreas og kontrolløren ser buen.
-- Reservetabell for kulefart per kaliber, klar til å byttes med lag Spillbarhets våpendata når de kommer.
+- **Kuler som ekte prosjektiler** (ny fil `GSBallistics.*`): munningsfart, luftmotstand og tyngdekraft per kaliber.
+- **Skadefall over avstand**, med full skade ut til innskytingsavstanden (25/50/100 m) så drap-tersklene i katalogen står.
+- **Innskyting**: siktene møter kula på 25 m (pistolkaliber, hagle), 50 m (5,7 mm, muskett) eller 100 m (rifler).
+- **Framspoling med ping**: serverens kule flyttes straks fram `min(ping/2, 0,1 s)`, så den flyr i takt med den klienten ser.
+- Feilsøkingskommando **`gs.ShowBullets 1`** (tegner banene til serverens kuler).
 
 ## Hvorfor nå
-- Punkt 3 i hovedagentens prioriteringer, og nest øverst i backlogen. Punkt 1 (lag i kamp/CTF) venter på
-  lagfeltene fra Spillbarhet, som ikke er levert.
-- V1 (sikting til serveren) kommer i runde 4; da kan serveren regne spredning selv (V2).
-- Grunnmur for ballistikk del 2 (gjennomslag), lyd på avstand (smell forsinket med 343 m/s) og vind.
-- Alt ligger i lagets egne filer og en ny fil laget eier. Ingen `.uasset`-filer (lydene importeres automatisk).
+Punkt 3 i hovedagentens prioriteringer (ballistikk + V2). V1 (sikting til serveren) kom i runde 4, så serveren kan
+regne spredning selv. Grunnmur for 5b, gjennomslag, lyd på avstand og vind. Alt ligger i Kamps egne filer.
 
-## Avgrensning (bevisst)
-- **Ingen gjennomslag** (del 2): kula stopper i første ting den treffer, som i dag.
-- **Ingen forsinkelseskompensasjon (V8)**: med flytid må man uansett sikte foran løpende mål; ping legges oppå.
-- **Ikke forsinket skuddlyd** (backlog punkt 8). Smellet når en kule passerer er med, fordi det hører til kula.
-- **Ingen nye våpendata.** Kulefart og luftmotstand ligger i en reservetabell i `GSBallistics.cpp`. Når lag
-  Spillbarhet leverer `MuzzleVelocity` (bestilling ligger inne), byttes én linje i `GSBallistics::ForWeapon`.
-- Rakettkaster, granatkaster, armbrøst og bue bruker fortsatt `AGSProjectile` (de har alt flytid og fall).
-- «Batching» av `ServerFire` trengs ikke: ett skudd er én liten upålitelig melding, og serveren tåler at de
-  kommer i feil rekkefølge (skuddnummer). V7 er løst med `Unreliable` alene.
+## Avgrensning (bevisst – resten er 5b eller senere)
+- `ServerFire` er fortsatt `Reliable` for alle våpen (V7 løses i 5b, bare for automatvåpen).
+- **Lysstreken ved skudd er som i dag** (en kort strek som er der med en gang), men den går høyst 50 m og viser
+  ikke lenger nedslaget – støvet kommer når kula kommer fram. Flygende lysspor og «vanlige kuler usynlige» er 5b.
+  Linja i `GetStats` om lysspor-ammo (× 0,85) står til 5b.
+- Ingen smell/sus, ingen holdemerker, ingen nye lyder, ingen endring i `GSHUD.*` (5b).
+- Ingen gjennomslag og ingen tilbakespoling av treffbokser (V8 – neste Kamp-runde etter 5b).
+- Rakettkaster, granatkaster, armbrøst og bue bruker fortsatt `AGSProjectile`.
+- Ingen nye våpendata: reservetabell per kaliber i `GSBallistics.cpp` til Spillbarhet leverer `MuzzleVelocity`.
 
-## Hensyn til lag (Capture the Flag)
-All skade fra kuler går fortsatt gjennom `AGSCharacter::TakeDamage` (med `FPointDamageEvent`), så lagsjekken
-som kommer med lagfeltet stopper kuler som før. Ikke lag noen annen vei til skade.
+## Hensyn til lag (CTF)
+All skade går fortsatt gjennom `AGSCharacter::TakeDamage` med `FPointDamageEvent` og kulas `Instigator`, så
+`IsSparedFrom` (venneild) virker som før. En kule stopper i en lagkamerat uten å skade, som i dag.
 
 ## Filer
-- **Nye:** `Source/Gloshaugen/Public/GSBallistics.h`, `Source/Gloshaugen/Private/GSBallistics.cpp` (lag Kamp eier dem).
-- `Source/Gloshaugen/Public/GSCharacter.h`, `Private/GSCharacter.cpp` – skyting, `TakeDamage` (to små innskudd), `GetStats`.
-- `Source/Gloshaugen/Private/GSHUD.cpp` – `DrawScope` (holdemerker).
-- `Tools/Audio/gen_sounds.py` + to nye filer i `SourceArt/Sounds/` (`S_GS_Bullet_Crack.wav`, `S_GS_Bullet_Whiz.wav`).
-- `IMPROVEMENTS.md` (linje 386–401), `.claude/lag/bestillinger.md` (én linje, steg 33).
+- **Nye:** `Source/Gloshaugen/Public/GSBallistics.h`, `Source/Gloshaugen/Private/GSBallistics.cpp`.
+- `Source/Gloshaugen/Public/GSCharacter.h`, `Private/GSCharacter.cpp` – bare skytefunksjonene, tre små innskudd i
+  `TakeDamage`, én linje i `GetLifetimeReplicatedProps` og én i `BeginPlay`.
+- `IMPROVEMENTS.md` (linje 386–401), `.claude/lag/bestillinger.md` (én linje, steg 27).
 
-Ikke rør `GSTypes.h`, `GSItems.*`, `catalog.py`, `GSProjectile.*`, `GSEffects.*`, `GSAudio.*`, `Gloshaugen.Build.cs`.
-Stage kun filene over, med navn (aldri `git add -A` / `git add .`).
+Ikke rør `GSHUD.*`, `GSPlayerController.*`, `GSTypes.h`, `GSItems.*`, `catalog.py`, `GSProjectile.*`, `GSEffects.*`,
+`GSAudio.*`, `GSCampus.h` (bare les `PlayArea()`), `Gloshaugen.Build.cs`. Stage filene med navn.
 
 ## Steg
 
 ### 0. Forberedelse
-1. `git log --oneline -5`: rettingene og runde 4 («Combat: body hit zones …») skal være committet. Er runde 4 ikke
-   det, vent. Les på nytt: `FireOnce`, `ServerFire_Implementation`, `MulticastShotFX_Implementation` (runde 4 har
-   gitt den `uint8 Flags`: bit 1 = lyddempet, bit 2 = uten lysspor), `MulticastPelletFX_Implementation`,
-   `DrawPellets`, `GetCurrentSpread`, `TakeDamage` og `GetStats`. Runde 4 har også lagt inn skuddkontoen
-   (`ShotCredit`) og `* (1.f + 0.5f * GetArmPain())` i rekylen – begge skal stå.
-2. `Get-Process UnrealEditor` – kjører editoren: ikke bygg (be om Ctrl+Alt+F11 eller lukking).
-3. Gjør `GSCharacter.h` ferdig i ett (andre lag bygger samtidig). Lag `GSBallistics.h` før `.cpp`-filene.
+1. Lagfarge/CTF-HUD-arbeidet skal være bygget og committet først (`git status --short Source` tom). Les på nytt:
+   `FireOnce`, `DrawPellets`, `ServerFire_Implementation`, `MulticastShotFX_Implementation`,
+   `MulticastPelletFX_Implementation`, `GetCurrentSpread`, `TakeDamage`. Skuddkontoen (`ShotCredit`) og
+   `* (1.f + 0.5f * GetArmPain())` i rekylen skal stå.
+2. `Get-Process UnrealEditor` – kjører editoren: ikke bygg.
+3. Gjør `GSCharacter.h` ferdig i ett. Lag `GSBallistics.h` før `.cpp`.
 
-### A. Ny fil `Public/GSBallistics.h`
+### A. `Public/GSBallistics.h`
 4. ```cpp
    #pragma once
-
    #include "CoreMinimal.h"
    #include "Subsystems/WorldSubsystem.h"
    #include "GSBallistics.generated.h"
@@ -91,34 +80,35 @@ Stage kun filene over, med navn (aldri `git add -A` / `git add .`).
    {
    	float MuzzleVelocity = 400.f;  // m/s
    	float Drag = 0.0015f;          // 1/m: the speed falls as v0 * exp(-Drag * distance)
-   	float ZeroM = 25.f;            // the sights meet the bullet at this distance
+   	float ZeroM = 25.f;            // the sights meet the bullet at this distance; full damage out to here
    };
 
    namespace GSBallistics
    {
-   	/** Reserve table per caliber until the item catalog carries muzzle velocity (order to team Gameplay). */
    	GLOSHAUGEN_API FGSBallistic ForCaliber(FName Caliber);
    	GLOSHAUGEN_API FGSBallistic ForWeapon(const FGSWeaponStats& S);
-   	/** Seconds to fly DistM metres along the bore. */
    	GLOSHAUGEN_API float TimeTo(const FGSBallistic& B, float DistM);
-   	/** Radians the barrel points above the line of sight so the two meet at ZeroM. */
-   	GLOSHAUGEN_API float ZeroAngle(const FGSBallistic& B);
-   	/** Radians below the line of sight the bullet hits at DistM (positive = low). For scope hold marks. */
-   	GLOSHAUGEN_API float HoldUnder(const FGSBallistic& B, float DistM);
-   	/** Same number on server and owner: the owner predicts exactly the spread the server will use. */
+   	GLOSHAUGEN_API float ZeroAngle(const FGSBallistic& B);                  // radians the barrel points above the sight line
+   	GLOSHAUGEN_API float HoldUnder(const FGSBallistic& B, float DistM);     // radians below the sight line at DistM (5b: scope marks)
    	GLOSHAUGEN_API int32 ShotSeed(int32 Key, int32 ShotIndex);
-   	/** Where the bullet leaves the barrel: AimDir, a random point in a cone of SpreadDeg (full angle), lifted by ZeroRad. */
-   	GLOSHAUGEN_API FVector ShotDirection(const FVector& AimDir, float SpreadDeg, int32 Seed, float ZeroRad);
-   	/** Damage left in a bullet that has slowed from Muzzle to Speed (1 at the muzzle, never below 0.2). */
-   	GLOSHAUGEN_API float DamageScale(float Speed, float Muzzle);
+   	GLOSHAUGEN_API FVector Lift(const FVector& Dir, float ZeroRad);         // tilt Dir up by the zero angle
+   	/** One bullet: AimDir, a random point in a cone of SpreadDeg (full angle), lifted by the zero angle. */
+   	GLOSHAUGEN_API FVector ShotDirection(const FVector& AimDir, float SpreadDeg, int32 Seed, const FGSBallistic& B);
+   	/** A shotgun blast. The one place pellet directions are drawn, for server and every client alike. */
+   	GLOSHAUGEN_API void PelletDirections(const FVector& AimDir, float ConeDeg, int32 Seed, int32 Pellets, const FGSBallistic& B, TArray<FVector>& Out);
+   	/** Damage left after DistM metres: 1 out to the zero distance, then with the energy left, never below 0.2. */
+   	GLOSHAUGEN_API float DamageScale(const FGSBallistic& B, float DistM);
+   	/** Spread in 0.1 degree steps for the fire RPC. Owner and server both use the unpacked value. */
+   	GLOSHAUGEN_API uint8 PackSpread(float Deg);
+   	GLOSHAUGEN_API float UnpackSpread(uint8 Q);
    }
 
    struct FGSBullet
    {
    	FVector Pos = FVector::ZeroVector;
    	FVector Vel = FVector::ZeroVector;   // cm/s
-   	float Muzzle = 0.f;                  // cm/s
-   	float DragCm = 0.f;                  // 1/cm
+   	FVector Origin = FVector::ZeroVector; // where it was fired from (hit direction, also if the shooter is gone)
+   	FGSBallistic Ball;
    	float Age = 0.f;
    	float Travelled = 0.f;               // cm
    	float Damage = 0.f;                  // at the muzzle
@@ -126,9 +116,7 @@ Stage kun filene over, med navn (aldri `git add -A` / `git add .`).
    	uint8 AmmoType = 0;
    	TWeakObjectPtr<AGSCharacter> Shooter;
    	TWeakObjectPtr<AController> Instigator;
-   	bool bReal = false;                  // server bullet that does damage; otherwise only shows
-   	bool bTracer = false;
-   	bool bPassedEar = false;
+   	bool bReal = false;                  // server bullet that does damage; otherwise it only shows
    };
 
    /** Every bullet in flight in this world. Server: real bullets. Each player's machine: bullets that only show. */
@@ -137,8 +125,9 @@ Stage kun filene over, med navn (aldri `git add -A` / `git add .`).
    {
    	GENERATED_BODY()
    public:
-   	void FireReal(AGSCharacter* Shooter, const FVector& Start, const FVector& Dir, const FGSBallistic& B, float Damage, FName WeaponId, uint8 AmmoType);
-   	void FireShown(const AGSCharacter* Shooter, const FVector& Start, const FVector& Dir, const FGSBallistic& B, bool bTracer);
+   	/** Server. AdvanceSeconds: fly this far at once (half the shooter's ping), so it keeps pace with what he sees. */
+   	void FireReal(AGSCharacter* Shooter, const FVector& Start, const FVector& Dir, const FGSBallistic& B, float Damage, FName WeaponId, uint8 AmmoType, float AdvanceSeconds);
+   	void FireShown(const AGSCharacter* Shooter, const FVector& Start, const FVector& Dir, const FGSBallistic& B);
    	virtual void Tick(float DeltaTime) override;
    	virtual TStatId GetStatId() const override { RETURN_QUICK_DECLARE_CYCLE_STAT(UGSBallistics, STATGROUP_Tickables); }
    protected:
@@ -148,26 +137,27 @@ Stage kun filene over, med navn (aldri `git add -A` / `git add .`).
    	}
    private:
    	TArray<FGSBullet> Bullets;
-   	float LastCrackTime = -100.f;
-   	/** Moves one bullet Dt seconds. Returns false when it is done (hit something, too slow, too old). */
-   	bool Step(FGSBullet& B, float Dt);
+   	TArray<FGSBullet> Pending;   // bullets fired while Tick walks Bullets
+   	bool bStepping = false;
+   	void Add(const FGSBullet& B);
+   	/** Moves one bullet Dt seconds. False when it is done (hit something, spent, too old, left the map). */
+   	bool Step(FGSBullet& B, float Dt, FCollisionQueryParams& Params);
    };
    ```
 
-### B. Ny fil `Private/GSBallistics.cpp`
-5. Includes: `GSBallistics.h`, `GSCharacter.h`, `GSItems.h`, `GSEffects.h`, `GSAudio.h`, `Engine/World.h`,
-   `Engine/DamageEvents.h`, `GameFramework/PlayerController.h`, `Camera/PlayerCameraManager.h`,
-   `DrawDebugHelpers.h`, `HAL/IConsoleManager.h`.
-6. Reservetabellen (kilde: vanlige fabrikkpatroner; luftmotstanden er satt så farten på 100 m stemmer):
+### B. `Private/GSBallistics.cpp`
+5. Includes: `GSBallistics.h`, `GSCharacter.h`, `GSItems.h`, `GSEffects.h`, `GSCampus.h`, `Engine/World.h`,
+   `Engine/DamageEvents.h`, `GameFramework/Controller.h`, `DrawDebugHelpers.h`, `HAL/IConsoleManager.h`.
+6. Tabell og grenser:
    ```cpp
    namespace
    {
    	struct FCalRow { const TCHAR* Caliber; float V0; float Drag; float ZeroM; };
    	const FCalRow CalTable[] = {
-   		{ TEXT("9mm"),     360.f, 0.0015f,  25.f },   // 9x19: ca. 315 m/s at 100 m
+   		{ TEXT("9mm"),     360.f, 0.0015f,  25.f },
    		{ TEXT("45acp"),   260.f, 0.0009f,  25.f },   // subsonic
    		{ TEXT("357"),     440.f, 0.0022f,  25.f },
-   		{ TEXT("57"),      715.f, 0.0018f,  50.f },   // 5.7x28 (P90)
+   		{ TEXT("57"),      715.f, 0.0018f,  50.f },
    		{ TEXT("556"),     940.f, 0.0009f, 100.f },
    		{ TEXT("762x39"),  730.f, 0.0013f, 100.f },
    		{ TEXT("762nato"), 840.f, 0.00074f, 100.f },
@@ -177,390 +167,332 @@ Stage kun filene over, med navn (aldri `git add -A` / `git add .`).
    		{ TEXT("ball"),    450.f, 0.0035f,  50.f },   // musket ball
    	};
    	constexpr float GravityCm = 980.f;
-   	constexpr float MaxLife = 3.f;          // s (a .50 BMG goes ~2 km in that time)
-   	constexpr float MinSpeedCm = 8000.f;    // 80 m/s: spent
+   	constexpr float MaxLife = 1.5f;           // s
+   	constexpr float MaxTravelCm = 60000.f;    // 600 m: the map is 330 x 265 m
+   	constexpr float MaxHeightCm = 15000.f;    // 150 m up: gone
+   	constexpr float AreaMarginM = 50.f;       // outside the play area by this much: gone
+   	constexpr float MinSpeedCm = 8000.f;      // 80 m/s: spent
    	constexpr float StepSeconds = 1.f / 60.f;
-   	constexpr int32 MaxBullets = 600;       // oldest shown bullets go first
+   	constexpr int32 MaxBullets = 600;         // oldest shown bullets go first
    	TAutoConsoleVariable<int32> CVarShowBullets(TEXT("gs.ShowBullets"), 0, TEXT("1 = draw the path of every real bullet (server)"));
    }
    ```
-7. Funksjonene i `GSBallistics` (regnet i meter, sekunder og radianer):
-   ```cpp
-   FGSBallistic GSBallistics::ForCaliber(FName Caliber)
-   {
-   	for (const FCalRow& R : CalTable)
-   	{
-   		if (Caliber == FName(R.Caliber)) return FGSBallistic{ R.V0, R.Drag, R.ZeroM };
-   	}
-   	return FGSBallistic{ 400.f, 0.002f, 25.f };
-   }
-
-   FGSBallistic GSBallistics::ForWeapon(const FGSWeaponStats& S)
-   {
-   	FGSBallistic B = ForCaliber(S.Caliber);
-   	// When the catalog carries it (order to team Gameplay): if (S.MuzzleVelocity > 0.f) B.MuzzleVelocity = S.MuzzleVelocity;
-   	return B;
-   }
-
-   float GSBallistics::TimeTo(const FGSBallistic& B, float DistM)
-   {
-   	// v = v0 * exp(-k x)  =>  t = (exp(k x) - 1) / (k v0)
-   	return B.Drag > 0.f ? (FMath::Exp(B.Drag * DistM) - 1.f) / (B.Drag * B.MuzzleVelocity) : DistM / B.MuzzleVelocity;
-   }
-
-   float GSBallistics::ZeroAngle(const FGSBallistic& B)
-   {
-   	const float T = TimeTo(B, B.ZeroM);
-   	return FMath::Atan(0.5f * 9.81f * T * T / B.ZeroM);
-   }
-
-   float GSBallistics::HoldUnder(const FGSBallistic& B, float DistM)
-   {
-   	const float T = TimeTo(B, DistM);
-   	const float Drop = 0.5f * 9.81f * T * T - FMath::Tan(ZeroAngle(B)) * DistM;
-   	return FMath::Atan(Drop / DistM);
-   }
-
-   int32 GSBallistics::ShotSeed(int32 Key, int32 ShotIndex)
-   {
-   	return static_cast<int32>(HashCombine(GetTypeHash(Key), GetTypeHash(ShotIndex)));
-   }
-
-   FVector GSBallistics::ShotDirection(const FVector& AimDir, float SpreadDeg, int32 Seed, float ZeroRad)
-   {
-   	FRandomStream Rng(Seed);
-   	const FVector D = Rng.VRandCone(AimDir, FMath::DegreesToRadians(FMath::Max(SpreadDeg, 0.f) * 0.5f));
-   	// The barrel points a little above the line of sight, so bullet and sights meet at the zero distance.
-   	const FVector Up = (FVector::UpVector - D * FVector::DotProduct(D, FVector::UpVector)).GetSafeNormal();
-   	return Up.IsNearlyZero() ? D : (D + Up * FMath::Tan(ZeroRad)).GetSafeNormal();
-   }
-
-   float GSBallistics::DamageScale(float Speed, float Muzzle)
-   {
-   	const float R = Muzzle > 0.f ? FMath::Clamp(Speed / Muzzle, 0.f, 1.f) : 1.f;
-   	return FMath::Clamp(0.2f + 0.8f * R * R, 0.2f, 1.f);   // energy left, but a slow bullet still hurts
-   }
-   ```
-   (Eksempler som kontrolløren kan regne etter: 9 mm faller ca. 19 cm under siktepunktet på 80 m; 7,62 NATO
-   ca. 56 cm på 300 m; skadefaktor for 9 mm på 100 m ≈ 0,76, for 7,62 NATO på 300 m ≈ 0,71.)
-8. `FireReal` og `FireShown` legger en `FGSBullet` i `Bullets` med `Vel = Dir * B.MuzzleVelocity * 100.f`,
-   `Muzzle = B.MuzzleVelocity * 100.f`, `DragCm = B.Drag / 100.f`. `FireReal` setter `bReal = true`, `Damage`,
-   `WeaponId`, `AmmoType`, `Shooter` og `Instigator = Shooter ? Shooter->GetController() : nullptr`.
-   `FireShown` returnerer med en gang på `NM_DedicatedServer`. Er `Bullets.Num() >= MaxBullets`: fjern den eldste
-   *viste* kula (`!bReal`); finnes ingen, legg likevel til (ekte kuler skal aldri forsvinne).
-9. `Tick(DeltaTime)`: for hver kule baklengs: del `FMath::Min(DeltaTime, 0.1f)` i steg på høyst `StepSeconds`, kall
-   `Step`, og fjern kula (`RemoveAtSwap`) når den returnerer `false`.
-10. `Step(FGSBullet& B, float Dt)`:
+   Sjekk i `catalog.py` (kalibertabellen ved linje ca. 383) at alle kaliber-navn i bruk står i tabellen; mangler
+   ett, legg det til med fornuftige tall og skriv det i rapporten.
+7. Funksjonene (meter, sekunder, radianer):
+   - `ForCaliber`: slå opp i tabellen, ellers `{ 400.f, 0.002f, 25.f }`. `ForWeapon(S)`: `ForCaliber(S.Caliber)` med
+     kommentaren `// When the catalog carries it: if (S.MuzzleVelocity > 0.f) B.MuzzleVelocity = S.MuzzleVelocity;`
+   - `TimeTo`: `Drag > 0 ? (Exp(Drag * DistM) - 1) / (Drag * MuzzleVelocity) : DistM / MuzzleVelocity`.
+   - `ZeroAngle`: `T = TimeTo(B, B.ZeroM); return Atan(0.5f * 9.81f * T * T / B.ZeroM);`
+   - `HoldUnder`: `T = TimeTo(B, DistM); Drop = 0.5f * 9.81f * T * T - Tan(ZeroAngle(B)) * DistM; return Atan(Drop / DistM);`
+   - `ShotSeed`: `static_cast<int32>(HashCombine(GetTypeHash(Key), GetTypeHash(ShotIndex)))`.
+   - `Lift(Dir, ZeroRad)`: `Up = (FVector::UpVector - Dir * Dot(Dir, UpVector)).GetSafeNormal(); return Up.IsNearlyZero() ? Dir : (Dir + Up * Tan(ZeroRad)).GetSafeNormal();`
+   - `ShotDirection`: `FRandomStream Rng(Seed); return Lift(Rng.VRandCone(AimDir, DegreesToRadians(Max(SpreadDeg, 0) * 0.5f)), ZeroAngle(B));`
+   - `PelletDirections`: `Out.Reset(); FRandomStream Rng(Seed); const FVector Axis = Lift(AimDir, ZeroAngle(B));` så
+     `Pellets` ganger `Out.Add(Rng.VRandCone(Axis, DegreesToRadians(ConeDeg * 0.5f)))`.
+   - `DamageScale(B, DistM)`: `R = Exp(-B.Drag * Max(0, DistM - B.ZeroM)); return Clamp(0.2f + 0.8f * R * R, 0.2f, 1.f);`
+     (Regnes fra **avstanden**, ikke fra kulas utregnede fart: da er faktoren nøyaktig 1,0 ut til innskytingsavstanden,
+     og små regnefeil i banen kan ikke gjøre 100 til 99,5. Fysikken er den samme: farten er `v0 · exp(−Drag · x)`.)
+   - `PackSpread`: `static_cast<uint8>(Clamp(RoundToInt(Deg * 10.f), 0, 255))`; `UnpackSpread`: `Q * 0.1f`.
+   Kontrolltall: 9 mm treffer ca. 19 cm lavt på 80 m; 7,62 NATO ca. 56 cm lavt på 300 m. Skadefaktor: 9 mm 1,00 på
+   25 m, 0,94 på 50 m, 0,84 på 100 m; 7,62 NATO 1,00 på 100 m, 0,80 på 300 m; hagl 1,00 på 25 m, 0,86 på 40 m.
+8. `Add(B)`: er `bStepping`, legg i `Pending`, ellers i `Bullets`. Er `Bullets.Num() >= MaxBullets`: fjern først den
+   eldste **viste** kula (`!bReal`); finnes ingen, legg likevel til (ekte kuler forsvinner aldri).
+9. `FireShown`: returner på `NM_DedicatedServer`. Lag kule (`Pos = Origin = Start`, `Vel = Dir * B.MuzzleVelocity * 100.f`,
+   `Ball = B`, `Shooter`), `Add`.
+   `FireReal`: samme + `bReal = true`, `Damage`, `WeaponId`, `AmmoType`, `Instigator = Shooter ? Shooter->GetController() : nullptr`.
+   **Framspoling:** før `Add`, flytt kula `Clamp(AdvanceSeconds, 0, 0.1)` sekunder i delsteg på høyst `StepSeconds`
+   med `Step` (egne `FCollisionQueryParams` med skytteren ignorert). Returnerer `Step` `false`, er kula ferdig: ikke `Add`.
+   Kula er en lokal variabel her, så `TakeDamage` kan ikke gjøre referansen ugyldig.
+10. `Tick(DeltaTime)`: lag `FCollisionQueryParams Params(SCENE_QUERY_STAT(GSBullet), true);` **én gang**. Sett
+    `bStepping = true`. Gå baklengs gjennom `Bullets`: **kopier** kula (`FGSBullet B = Bullets[I];`), bytt ignorert aktør
+    (`Params.ClearIgnoredSourceObjects(); if (B.Shooter.IsValid()) Params.AddIgnoredActor(B.Shooter.Get());` – sjekk
+    navnet i `CollisionQueryParams.h`; `ClearIgnoredActors` er avviklet i 5.5+). `Dt = Min(DeltaTime, 0.1f)`.
+    - Ekte kule: delsteg på høyst `StepSeconds` til `Dt` er brukt eller `Step` gir `false`.
+    - Vist kule: **ett** `Step(B, Dt, Params)` per `Tick` (den gjør ingen skade; ett spor per bilde er nok).
+    Lever den: `Bullets[I] = B;`, ellers `Bullets.RemoveAtSwap(I)`. Etter løkka: `bStepping = false;
+    Bullets.Append(Pending); Pending.Reset();`.
+11. `Step(B, Dt, Params)`:
     ```cpp
     UWorld* World = GetWorld();
     const float Speed = B.Vel.Size();
-    // Air drag (slows the bullet with the square of its speed) and gravity.
-    const FVector NewVel = B.Vel + (FVector(0.f, 0.f, -GravityCm) - B.Vel * (B.DragCm * Speed)) * Dt;
+    const float DragCm = B.Ball.Drag / 100.f;
+    // Air drag (with the square of the speed) and gravity.
+    const FVector NewVel = B.Vel + (FVector(0.f, 0.f, -GravityCm) - B.Vel * (DragCm * Speed)) * Dt;
     const FVector NewPos = B.Pos + (B.Vel + NewVel) * 0.5f * Dt;
-    FCollisionQueryParams Params(SCENE_QUERY_STAT(GSBullet), true, B.Shooter.Get());
     FHitResult Hit;
     const bool bHit = World->LineTraceSingleByChannel(Hit, B.Pos, NewPos, ECC_Visibility, Params);
     const FVector End = bHit ? FVector(Hit.ImpactPoint) : NewPos;
     ```
-    Deretter, i denne rekkefølgen:
-    - **Feilsøking** (bare `bReal`, ikke i Shipping): `if (CVarShowBullets…) DrawDebugLine(World, B.Pos, End, bHit ? FColor::Red : FColor::Yellow, false, 4.f, 0, 1.5f);`
-    - **Vist kule:** lysspor `if (B.bTracer && B.Travelled > 300.f) AGSShortFX::SpawnTracer(World, B.Pos, End);`
-      (eksisterende funksjon: tegner siste del av strekket i 0,05 s – med ett steg per bilde blir det en lysende
-      strek som flyr). Overlydssmell: finn lokal spiller
-      (`World->GetFirstPlayerController()`, `PC->PlayerCameraManager->GetCameraLocation()`). Er `!B.bPassedEar`,
-      `PC->GetPawn() != B.Shooter.Get()`, og `FMath::PointDistToSegment(Ear, B.Pos, End) < 300.f`: sett
-      `bPassedEar = true`, og hvis `World->GetTimeSeconds() - LastCrackTime > 0.05f` (hagl: ett smell, ikke ni):
-      `LastCrackTime = …;` og `GSAudio::PlayAt(World, Speed > 34300.f ? TEXT("Bullet_Crack") : TEXT("Bullet_Whiz"),
-      FMath::ClosestPointOnSegment(Ear, B.Pos, End), Speed > 34300.f ? 0.9f : 0.6f, 30.f, FMath::FRandRange(0.92f, 1.08f));`
-      Langsomme kuler (under lydfarten) suser bare når de er nærmere enn 150 cm.
-    - **Treff:** `if (bHit)`:
+    Kanalen skal være `ECC_Visibility` og et linjespor (treffboksene fra runde 4 ligger der; ikke sveip). Deretter:
+    - Feilsøking (bare `bReal`, `#if !UE_BUILD_SHIPPING`): `if (CVarShowBullets.GetValueOnGameThread()) DrawDebugLine(World, B.Pos, End, bHit ? FColor::Red : FColor::Yellow, false, 4.f, 0, 1.5f);`
+    - Treff (`bHit`):
       - `bReal` og `AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor())`:
         ```cpp
-        const float Dmg = B.Damage * GSBallistics::DamageScale(Speed, B.Muzzle);
+        const float DistM = (B.Travelled + FVector::Dist(B.Pos, End)) / 100.f;
+        const float Dmg = B.Damage * GSBallistics::DamageScale(B.Ball, DistM);
         FPointDamageEvent Event(Dmg, Hit, B.Vel.GetSafeNormal(), nullptr);
         Victim->IncomingAmmoType = B.AmmoType;
         Victim->IncomingWeaponId = B.WeaponId;
+        Victim->IncomingOrigin = B.Origin;
         Victim->TakeDamage(Dmg, Event, B.Instigator.Get(), B.Shooter.Get());
         Victim->IncomingAmmoType = GSAmmoType::Normal;
         Victim->IncomingWeaponId = NAME_None;
         ```
-        (Skytteren sendes som `DamageCauser` også om han er død: kroppen ligger i 90 s, og drapskortet skal vise
-        der han sto. Drapet går til `Instigator`, samme mønster som `OwnerController` i `GSProjectile`.)
+        (`Hit.GetComponent()` er treffboksen, så `ZoneOf` virker som før.)
       - `!bReal` og ikke `AGSCharacter`: `AGSShortFX::SpawnImpact(World, Hit.ImpactPoint, Hit.ImpactNormal);`
-        (blod ved treff i kropp kommer fra `MulticastWoundFX` som før).
+        (blod i kropp kommer fra `MulticastWoundFX` som før).
       - `return false;`
-    - Ellers: `B.Travelled += FVector::Dist(B.Pos, NewPos); B.Pos = NewPos; B.Vel = NewVel; B.Age += Dt;`
-      `return B.Age < MaxLife && NewVel.SizeSquared() > FMath::Square(MinSpeedCm) && NewPos.Z > -20000.f;`
+    - Ellers: `B.Travelled += FVector::Dist(B.Pos, NewPos); B.Pos = NewPos; B.Vel = NewVel; B.Age += Dt;` og returner
+      `false` hvis noe av dette slår til: `B.Age >= MaxLife`, `B.Travelled >= MaxTravelCm`,
+      `NewVel.SizeSquared() < Square(MinSpeedCm)`, `NewPos.Z > MaxHeightCm`, `NewPos.Z < -2000.f`, eller kula er utenfor
+      `GSCampus::PlayArea().ExpandBy(AreaMarginM)` (området er i meter: test `FVector2D(NewPos.X, NewPos.Y) / 100.f`;
+      lag boksen én gang som `static const`). Ellers `true`.
 
 ### C. `GSCharacter.h` (i ett)
-11. Public, rett under `uint8 IncomingAmmoType = 0;`:
-    `/** Server: the weapon the bullet hitting us right now was fired from (it may be gone from the shooter's hands). */`
-    `FName IncomingWeaponId;`
-12. `ServerFire`: `UFUNCTION(Server, Unreliable) void ServerFire(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex);`
-13. `MulticastShotFX`: `UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, uint8 Flags);`
-    med kommentar `/** Flags: 1 = suppressed, 2 = no bullet (rocket/grenade/bolt is its own actor), 4 = tracer round. */`
-14. Ved `ServerLastFireTime`:
+12. Øverst blant forward-deklarasjonene: `struct FGSBallistic;`. Under `uint8 IncomingAmmoType = 0;`:
+    ```cpp
+    /** Server: the weapon and the firing point of the bullet hitting us right now (the shooter may have switched, moved or left). */
+    FName IncomingWeaponId;
+    FVector IncomingOrigin = FVector::ZeroVector;
+    ```
+13. `UFUNCTION(Server, Reliable) void ServerFire(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex, uint8 SpreadQ);`
+    med kommentar `/** AimDir has no spread: the server draws it. SpreadQ: the spread the owner used (GSBallistics::PackSpread). */`
+14. `UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, uint8 Flags);`
+    Kommentar: `// Flags: 1 = suppressed, 2 = no bullet (rocket/grenade/bolt is its own actor), 4 = launcher`. Bit 8 er ledig til 5b.
+15. `void DrawPellets(const FVector& Start, const FVector& Dir, int32 Seed, int32 Pellets, float ConeDeg, bool bFromMuzzle, const FGSBallistic& B);`
+16. Ved `ServerLastFireTime`:
     ```cpp
     // Spread: the server draws it from SpreadKey and the shot number; the owner knows the key and predicts the same.
     UPROPERTY(Replicated) int32 SpreadKey = 0;
     int32 LocalShotIndex = 0;        // owner: shots sent
-    int32 LastServerShotIndex = 0;   // server: newest shot accepted (older ones arrived late and are dropped)
-    float LastLocalSpread = 0.f;     // listen-server host: the spread FireOnce used
+    int32 LastServerShotIndex = 0;   // server: newest shot accepted
     ```
 
 ### D. Skyting (`GSCharacter.cpp`)
-15. `#include "GSBallistics.h"`. `GetLifetimeReplicatedProps`: `DOREPLIFETIME_CONDITION(AGSCharacter, SpreadKey, COND_OwnerOnly);`
-    `BeginPlay`: `if (HasAuthority()) SpreadKey = FMath::Rand();` (bare på serveren – lærdom: `BeginPlay` skal ikke
-    overskrive replikert tilstand hos klienten).
-16. Ny liten hjelper (static, over `FireOnce`): `static bool GSIsTracer(const FGSWeaponStats& S, uint8 AmmoType, int32 ShotIndex)`
-    `{ return AmmoType == GSAmmoType::Tracer || (S.Class == EGSWeaponClass::LMG && ShotIndex % 5 == 0); }`
-    (maskingeværbelter og -magasiner har vanligvis hver femte kule som sporlys).
-17. `FireOnce` – bytt alt fra `const FVector Start = Camera->GetComponentLocation();` til og med
+17. `#include "GSBallistics.h"`. `GetLifetimeReplicatedProps`: `DOREPLIFETIME_CONDITION(AGSCharacter, SpreadKey, COND_OwnerOnly);`
+    `BeginPlay`, **én ny linje rett etter `Super::BeginPlay();`** (ikke rør fargelinjene under – de er i arbeid):
+    `if (HasAuthority()) SpreadKey = FMath::RandHelper(MAX_int32);   // FMath::Rand() has only 15 bits`
+18. Liten filstatisk hjelper over `FireOnce` (lysstreken «som i dag», men kort og uten nedslag):
+    ```cpp
+    // The muzzle streak: straight, at most 50 m. Where the bullet lands is shown by the bullet itself (GSBallistics).
+    static void GSDrawShotStreak(UWorld* World, const AActor* Ignore, const FVector& From, const FVector& Start, const FVector& Dir)
+    {
+    	FHitResult Hit;
+    	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSStreak), true, Ignore);
+    	const FVector End = Start + Dir * 5000.f;
+    	AGSShortFX::SpawnTracer(World, From, World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params) ? FVector(Hit.ImpactPoint) : End);
+    }
+    ```
+19. `FireOnce` – bytt alt fra `const FVector Start = Camera->GetComponentLocation();` til og med
     `else if (S.Mode == EGSFireMode::Pellets) { DrawPellets(…); }` med:
     ```cpp
     const FVector Start = Camera->GetComponentLocation();
     const FVector Aim = Camera->GetForwardVector();
     const int32 ShotIndex = ++LocalShotIndex;
     const int32 Seed = GSBallistics::ShotSeed(SpreadKey, ShotIndex);
-    LastLocalSpread = GetCurrentSpread();
+    const FGSBallistic Ball = GSBallistics::ForWeapon(S);
+    // The spread we use is sent along (0.1 degree steps); we use the packed value ourselves so both sides agree exactly.
+    const uint8 SpreadQ = GSBallistics::PackSpread(S.Mode == EGSFireMode::Pellets ? (bAiming ? S.AimSpread : S.HipSpread) : GetCurrentSpread());
+    const float Spread = GSBallistics::UnpackSpread(SpreadQ);
     const float MuzzleDist = GSItems::GetMesh(W->Id) ? S.MuzzleX : 50.f;
     const FVector MuzzleStart = FPWeaponMesh->GetComponentLocation() + Aim * MuzzleDist;
 
     // Local, instant feedback: our own copy of the bullet flies and shows where it lands (the server's decides the hit).
     if (S.Mode == EGSFireMode::Hitscan)
     {
-    	if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>())
-    	{
-    		const FGSBallistic B = GSBallistics::ForWeapon(S);
-    		Ballistics->FireShown(this, Start, GSBallistics::ShotDirection(Aim, LastLocalSpread, Seed, GSBallistics::ZeroAngle(B)), B,
-    			GSIsTracer(S, W->AmmoType, ShotIndex));
-    	}
+    	const FVector D = GSBallistics::ShotDirection(Aim, Spread, Seed, Ball);
+    	if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>()) Ballistics->FireShown(this, Start, D, Ball);
+    	GSDrawShotStreak(GetWorld(), this, MuzzleStart, Start, D);
     }
     else if (S.Mode == EGSFireMode::Pellets)
     {
-    	DrawPellets(Start, Aim, Seed, S.Pellets, bAiming ? S.AimSpread : S.HipSpread, true);
+    	DrawPellets(Start, Aim, Seed, S.Pellets, Spread, true, Ball);
     }
     ```
-    Bytt `ServerFire(Start, S.Mode == EGSFireMode::Hitscan ? Dir : Camera->GetForwardVector(), Seed);` med
-    `ServerFire(Start, Aim, ShotIndex);`. Sjekk at `Dir` ikke brukes lenger i `FireOnce`.
-18. `DrawPellets` – ny kropp (signaturen beholdes; `bFromMuzzle` brukes ikke lenger):
+    Bruk `Aim` der resten av funksjonen har `Camera->GetForwardVector()`. Nederst: `ServerFire(Start, Aim, ShotIndex, SpreadQ);`.
+    `SpreadQ` må regnes **før** `CurrentRecoil += Recoil` (som i dag). `Dir` og `S.Range` skal ikke stå igjen i `FireOnce`.
+20. `DrawPellets` – ny kropp:
     ```cpp
+    TArray<FVector> Dirs;
+    GSBallistics::PelletDirections(Dir, ConeDeg, Seed, Pellets, B, Dirs);
     UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>();
-    if (!Ballistics) return;
-    const FGSBallistic B = GSBallistics::ForCaliber(TEXT("12g"));
-    FRandomStream Rng(Seed);
-    for (int32 I = 0; I < Pellets; ++I)
+    const FVector From = bFromMuzzle ? FPWeaponMesh->GetComponentLocation() + Dir * 60.f : TPWeaponMesh->GetComponentLocation();
+    for (const FVector& D : Dirs)
     {
-    	Ballistics->FireShown(this, Start, Rng.VRandCone(Dir, FMath::DegreesToRadians(ConeDeg * 0.5f)), B, false);
+    	if (Ballistics) Ballistics->FireShown(this, Start, D, B);
+    	GSDrawShotStreak(GetWorld(), this, From, Start, D);
     }
     ```
-    (Samme `FRandomStream(Seed).VRandCone`-rekkefølge som serveren bruker i steg 19, så haglene lander likt.)
-19. `ServerFire_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex)` – bytt
-    toppen og de tre grenene, men behold runde 4 sin skuddkonto og `CancelUse()`/`W.Ammo--`. Rekkefølgen:
+21. `ServerFire_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex, uint8 SpreadQ)`.
+    Toppen (til og med `W.Ammo <= 0`-linja) står. Bytt startpunkt-sjekken og legg til, **før** skuddkontoen:
     ```cpp
-    if (bDead || bReloading || !Weapons.IsValidIndex(CurrentSlot)) return;
-    FGSWeaponSlot& W = Weapons[CurrentSlot];
-    const FGSWeaponStats S = GetStats(W);
-    const float Now = GetWorld()->GetTimeSeconds();
-    if (S.Mode == EGSFireMode::Melee || W.Ammo <= 0) return;
-    // Unreliable: a shot can arrive late or twice. Only newer shots count.
-    if (ShotIndex <= LastServerShotIndex) return;
-    const FVector Eye = Camera->GetComponentLocation();
-    // Basic anti-cheat: the shot must start close to where we really are ...
-    if (FVector::DistSquared(Start, Eye) > FMath::Square(250.f)) return;
-    // ... and go roughly where we look (35 degrees leaves room for fast turns and network delay).
+    // The owner numbers his shots. Older or repeated numbers are dropped.
+    const int64 Jump = int64(ShotIndex) - int64(LastServerShotIndex);
+    if (Jump <= 0) return;
     const FVector Aim = FVector(AimDir).GetSafeNormal();
-    if (FVector::DotProduct(Aim, GetBaseAimRotation().Vector()) < 0.82f) return;
+    if (Aim.IsNearlyZero()) return;
+    // The shot must go roughly where we look (35 degrees leaves room for fast turns and network delay).
+    if (!IsLocallyControlled() && FVector::DotProduct(Aim, GetBaseAimRotation().Vector()) < 0.82f)
+    {
+    #if !UE_BUILD_SHIPPING
+    	UE_LOG(LogTemp, Warning, TEXT("ServerFire: shot %d from %s rejected, %.0f degrees off"), ShotIndex, *GetName(),
+    		FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(Aim, GetBaseAimRotation().Vector()))));
+    #endif
+    	return;
+    }
     ```
-    Så runde 4 sin skuddkonto (`MaxCredit` … `ShotCredit -= 1.f;`) uendret, deretter:
+    Skuddkontoen (`MaxCredit` … `ShotCredit -= 1.f;`) uendret. Deretter (bytter `ServerLastFireTime = Now;` … `const FVector D = …;`):
     ```cpp
-    LastServerShotIndex = ShotIndex;
+    LastServerShotIndex = ShotIndex;   // only shots that passed every check move the number
     ServerLastFireTime = Now;
     W.Ammo--;
     CancelUse();
     const FGSEffectMods Mods = GetMods();
+    // Where it starts: the owner's eye as he saw it, if that is close to where we have him (120 cm = a sprint for
+    // 0.2 s) and no wall lies between. Otherwise our own eye. The shot is never thrown away for this.
+    const FVector Eye = Camera->GetComponentLocation();
     FCollisionQueryParams WallParams(SCENE_QUERY_STAT(GSFireStart), false, this);
-    // Never start a shot on the far side of a wall (funn 9): if the claimed start is behind one, start at our eye.
     FHitResult Wall;
-    const FVector From = GetWorld()->LineTraceSingleByChannel(Wall, Eye, Start, ECC_WorldStatic, WallParams) ? Eye : FVector(Start);
-    const int32 Seed = GSBallistics::ShotSeed(SpreadKey, ShotIndex);
-    // The spread is decided here. The host's own FireOnce already added this shot's recoil, so use what it used.
-    const float Spread = IsLocallyControlled() ? LastLocalSpread : GetCurrentSpread();
+    const bool bStartOk = FVector::DistSquared(Start, Eye) <= FMath::Square(120.f)
+    	&& !GetWorld()->LineTraceSingleByChannel(Wall, Eye, Start, ECC_WorldStatic, WallParams);
+    const FVector From = bStartOk ? FVector(Start) : Eye;
+    // Spread. The size: what the owner used, held within 15 % of what we get ourselves (so an honest player hits
+    // exactly where he saw it, and a cheat gains at most 15 %). The host's own FireOnce already added this shot's recoil.
+    const bool bPellets = S.Mode == EGSFireMode::Pellets;
+    const float Own = bPellets ? (bAiming ? S.AimSpread : S.HipSpread) : GetCurrentSpread();
+    const float Claimed = GSBallistics::UnpackSpread(SpreadQ);
+    const float Spread = IsLocallyControlled() ? Claimed : FMath::Clamp(Claimed, Own * 0.85f, Own * 1.15f);
     if (!IsLocallyControlled()) CurrentRecoil += S.RecoilPitch * Mods.Recoil * (1.f + 0.5f * GetArmPain());   // same as FireOnce
+    // The pattern: from the key and the shot number, so the owner sees the same. He picks the number himself, so
+    // only small jumps (lost packets) are trusted; after a bigger jump we draw our own.
+    const int32 Seed = Jump <= 3 ? GSBallistics::ShotSeed(SpreadKey, ShotIndex) : FMath::RandHelper(MAX_int32);
+    const FGSBallistic Ball = GSBallistics::ForWeapon(S);
+    const APlayerState* PS = GetPlayerState();
+    const float Advance = IsLocallyControlled() || !PS ? 0.f : FMath::Min(PS->GetPingInMilliseconds() * 0.0005f, 0.1f);   // half the round trip
+    UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>();
     ```
-    - **Prosjektilgrenen:** `D` → `Aim`, og startpunktet
+    (Sjekk i motorens `PlayerState.h`/`.cpp` at `GetPingInMilliseconds()` er tur-retur-tiden; skriv i rapporten hva du fant.)
+    - **Prosjektilgrenen:** `D` → `Aim`; startpunkt
       `FVector Spawn = From + Aim * 80.f; if (GetWorld()->LineTraceSingleByChannel(Wall, From, Spawn, ECC_WorldStatic, WallParams)) Spawn = FVector(Wall.ImpactPoint) - Aim * 15.f;`
-      brukes i `AGSProjectile::Launch(…)`. `MulticastShotFX(From, Aim, static_cast<uint8>(2 | (S.bSilent || S.Class == EGSWeaponClass::Bow ? 1 : 0)));`
-      (runde 4 sitt flagg-uttrykk, nå med retning i stedet for endepunkt). Resten av grenen (engangsrør) uendret.
-    - **Hagl:** `FCollisionQueryParams Params…` og hele løkka med `LineTraceSingleByChannel`/`TakeDamage` byttes med
+      brukes i `AGSProjectile::Launch`. `MulticastShotFX(From, Aim, <samme flagg-uttrykk som i dag>);`. Resten (engangsrør) uendret.
+    - **Hagl** (bytter `FCollisionQueryParams Params…` og hele løkka):
       ```cpp
-      if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>())
-      {
-      	const FGSBallistic B = GSBallistics::ForWeapon(S);
-      	const float Cone = bAiming ? S.AimSpread : S.HipSpread;
-      	FRandomStream Rng(Seed);
-      	for (int32 I = 0; I < S.Pellets; ++I)
-      	{
-      		Ballistics->FireReal(this, From, Rng.VRandCone(Aim, FMath::DegreesToRadians(Cone * 0.5f)), B, S.Damage * Mods.Damage, W.Id, W.AmmoType);
-      	}
-      	MulticastPelletFX(From, Aim, Seed, S.Pellets, Cone);
-      }
+      TArray<FVector> Dirs;
+      GSBallistics::PelletDirections(Aim, Spread, Seed, S.Pellets, Ball, Dirs);
+      if (Ballistics) { for (const FVector& PD : Dirs) Ballistics->FireReal(this, From, PD, Ball, S.Damage * Mods.Damage, W.Id, W.AmmoType, Advance); }
+      MulticastPelletFX(From, Aim, Seed, S.Pellets, Spread);
       NoteShotForRadio(From);
       return;
       ```
-    - **Vanlig skudd** (alt fra `FHitResult Hit;` til slutten av funksjonen) byttes med
+    - **Vanlig skudd** (alt fra `FHitResult Hit;` og ut):
       ```cpp
-      const FGSBallistic B = GSBallistics::ForWeapon(S);
-      const FVector D = GSBallistics::ShotDirection(Aim, Spread, Seed, GSBallistics::ZeroAngle(B));
-      if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>())
-      {
-      	Ballistics->FireReal(this, From, D, B, S.Damage * Mods.Damage, W.Id, W.AmmoType);
-      }
-      MulticastShotFX(From, D, static_cast<uint8>((S.bSilent || Mods.bSilent ? 1 : 0) | (GSIsTracer(S, W.AmmoType, ShotIndex) ? 4 : 0)));
+      const FVector D = GSBallistics::ShotDirection(Aim, Spread, Seed, Ball);
+      if (Ballistics) Ballistics->FireReal(this, From, D, Ball, S.Damage * Mods.Damage, W.Id, W.AmmoType, Advance);
+      MulticastShotFX(From, D, static_cast<uint8>(S.bSilent || Mods.bSilent ? 1 : 0));
       ```
-    `S.Range` brukes ikke lenger ved skyting (bare som nærkamprekkevidde i `DoMeleeHit`). `grep -n "S.Range"` skal
-    bare vise `DoMeleeHit`.
-20. `MulticastShotFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, uint8 Flags)`:
+    Merk: `W` er en referanse inn i `Weapons`. Kopier `W.Id` og `W.AmmoType` til lokale variabler før `FireReal`
+    (framspolingen kan kalle `TakeDamage`), og bruk kopiene etterpå.
+    `grep -n "S.Range"` skal etterpå bare vise `DoMeleeHit`.
+22. `MulticastShotFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, uint8 Flags)`: alt til og med
+    `GSAudio::PlayShotFor(…)`-blokka står som i dag. Bytt resten (`const FVector From = …` og ut) med:
     ```cpp
-    const bool bSilent = (Flags & 1) != 0;
-    if (!bSilent) NoteShotForRadio(Start);
-    if (IsLocallyControlled()) return;   // the shooter already fired his own copy
-    LastRemoteShotTime = GetWorld()->GetTimeSeconds();
+    if (bNoTracer) return;   // rockets, grenades and bolts fly as their own actors
     const FGSWeaponSlot* W = GetCurrentWeapon();
     const FGSWeaponStats S = W ? GetStats(*W) : GSItems::Weapon(NAME_None);
-    GSAudio::PlayShotFor(this, W ? S.Class : EGSWeaponClass::Rifle, bSilent, Start);
-    if ((Flags & 2) != 0) return;        // rockets, grenades and bolts fly as their own actors
-    if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>())
-    {
-    	Ballistics->FireShown(this, Start, FVector(Dir), GSBallistics::ForWeapon(S), (Flags & 4) != 0);
-    }
+    if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>()) Ballistics->FireShown(this, Start, FVector(Dir), GSBallistics::ForWeapon(S));
+    if (!bSilent) GSDrawShotStreak(GetWorld(), this, TPWeaponMesh->GetComponentLocation(), Start, FVector(Dir));
     ```
-    Den gamle lysspor-linja og nedslagssporet (`FxTrace` … `SpawnImpact`) forsvinner – den viste kula lager nedslaget
-    når den kommer fram. `MulticastPelletFX_Implementation` er uendret (den kaller `DrawPellets`, som nå skyter viste hagl).
-    `grep -n "MulticastShotFX("` – alle kall skal ha retning og `uint8`.
-21. `GetStats`: fjern linja `if (Slot.AmmoType == GSAmmoType::Tracer) { S.HipSpread *= 0.85f; S.AimSpread *= 0.85f; }`
-    (sporlys gjør ikke kula mer presis; den viser bare hvor den går).
+    `MulticastPelletFX_Implementation`: `DrawPellets(Start, Dir, Seed, Pellets, ConeDeg, false, B)` der `B` er
+    `GSBallistics::ForWeapon(GetStats(*W))` hvis nåværende våpen finnes og har `Mode == Pellets`, ellers
+    `GSBallistics::ForCaliber(TEXT("12g"))`. `grep -n "MulticastShotFX(\|DrawPellets(\|ServerFire("` – alle kall skal ha ny form.
 
-### E. `TakeDamage` – våpenet kula kom fra (to innskudd)
-22. Rett etter `if (Shooter) WeaponName = Shooter->CurrentWeaponName();`:
-    `if (!IncomingWeaponId.IsNone()) WeaponName = GSItems::Name(IncomingWeaponId);   // the bullet's own gun`
-23. I hodeskudd-blokka (etter runde 4: `if (Zone == GSZone::Head)` … `bHeadshot = true;`): bytt
-    `if (const AGSCharacter* S = Cast<AGSCharacter>(DamageCauser))` med
-    `if (!IncomingWeaponId.IsNone()) Damage *= GSItems::Weapon(IncomingWeaponId).HeadshotMultiplier;`
-    `else if (const AGSCharacter* S = Cast<AGSCharacter>(DamageCauser))` (resten av kjeden uendret).
-24. «Blodtorst»-blokka: `if (Shooter && Shooter != this)` → `if (Shooter && Shooter != this && !Shooter->bDead)`
-    (en kule som treffer etter at skytteren døde, skal ikke gi liv til liket).
-    Ikke endre noe annet i `TakeDamage`; runde 3 og 4 sin kode står.
-
-### F. Kikkerten (`GSHUD.cpp`, `DrawScope`)
-25. `#include "GSBallistics.h"`. I prikk-løkka: tegn ikke prikkene under midten (`FVector2D(CX, CY + D)` tas ut av
-    listen). Rett etter løkka:
+### E. `TakeDamage` – tre små innskudd (ikke rør lagsjekken øverst eller noe annet)
+23. Rett etter `if (Shooter) WeaponName = Shooter->CurrentWeaponName();`:
     ```cpp
-    // Hold marks below the centre, like the drop stadia on a real combat scope: where to hold at 200, 300, 400 ... m
-    // with the cartridge in this gun (from the same numbers the bullets fly by).
-    if (const FGSWeaponSlot* W = C->GetCurrentWeapon())
-    {
-    	const FGSBallistic B = GSBallistics::ForWeapon(C->GetStats(*W));
-    	const float FOV = PlayerOwner && PlayerOwner->PlayerCameraManager ? PlayerOwner->PlayerCameraManager->GetFOVAngle() : 25.f;
-    	const float PxPerRad = (Canvas->SizeX * 0.5f) / FMath::Tan(FMath::DegreesToRadians(FOV * 0.5f));
-    	for (int32 M = 200; M <= 1000; M += 100)
-    	{
-    		const float Dy = FMath::Tan(GSBallistics::HoldUnder(B, float(M))) * PxPerRad;
-    		if (Dy > R * 0.85f) break;
-    		if (Dy < 6.f) continue;
-    		const bool bMajor = M % 200 == 0;
-    		const float Half = bMajor ? 14.f : 7.f;
-    		Box(CX - Half, CY + Dy - 1.f, Half * 2.f, 2.f, Ink);
-    		if (bMajor) Text(FString::FromInt(M / 100), CX + Half + 5.f, CY + Dy - 9.f, Ink, 0.7f);
-    	}
-    }
+    const bool bBullet = !IncomingWeaponId.IsNone();   // a bullet from GSBallistics: it knows its own gun and where it was fired
+    if (bBullet) WeaponName = GSItems::Name(IncomingWeaponId);
     ```
+    I hodeskudd-blokka: `if (const AGSCharacter* S = Cast<AGSCharacter>(DamageCauser))` →
+    `if (bBullet) Damage *= GSItems::Weapon(IncomingWeaponId).HeadshotMultiplier;` `else if (const AGSCharacter* S = …)` (resten uendret).
+24. I `ClientTookHit`-blokka: `bHasFrom = Proj ? !bOwnProjectile : (bBullet || (Shooter && Shooter != this));` og i `From`-uttrykket
+    siste ledd `: bBullet ? IncomingOrigin : Shooter->GetActorLocation();`. Blod-blokka: `if (DamageCauser && !bBurn)` →
+    `if ((DamageCauser || bBullet) && !bBurn)` (linja `if (!bPointHit) WoundDir = … DamageCauser->…` er trygg: en kule er alltid et punkttreff).
+25. «Blodtorst»-blokka: `if (Shooter && Shooter != this && bShooterThrewIt)` → legg til `&& !Shooter->bDead`.
 
-### G. Lydene (`Tools/Audio/gen_sounds.py`)
-26. Ny funksjon `bullet_sounds()` (før `loop_save`):
-    - `Bullet_Crack`: overlydssmellet (en «N-bølge»): 0,35 s; et skarpt, nesten symmetrisk trykkfall på ca. 1 ms
-      (`np.sin`/sagtann over ~45 samples) fulgt av høypassfiltrert støy med 4 ms forfall, så `reverb(x, 0.3, 0.25)`
-      for et kort ekko. `save("Bullet_Crack", x, 0.9)`.
-    - `Bullet_Whiz`: 0,3 s båndpass-støy (`highpass(lowpass(noise, 3000), 600)`) med `env(n, 0.08, 0.1)` og en
-      tonehøyde som synker (dopplereffekt: multipliser med `np.sin(2π f(t) t)` der f går fra 1400 til 700 Hz,
-      blandet 30 %). `save("Bullet_Whiz", x, 0.6)`.
-27. I `__main__`: `if len(sys.argv) > 1 and sys.argv[1] == "bullet": bullet_sounds(); raise SystemExit` (ved siden av
-    `hurt`), og `bullet_sounds()` nederst i fulle kjøringen.
-28. Kjør `python Tools/Audio/gen_sounds.py bullet`. Sjekk at `SourceArt/Sounds/S_GS_Bullet_Crack.wav` og
-    `S_GS_Bullet_Whiz.wav` finnes (editoren importerer dem selv neste gang den åpnes, via `gs_sounds.py`; til da
-    er lydene stille – `GSAudio::Get` gir `nullptr` uten feil).
-
-### H. Bygg, logg og bestilling
-29. `grep -n "LineTraceSingleByChannel" Source/Gloshaugen/Private/GSCharacter.cpp` – ingen spor i `FireOnce`,
-    `ServerFire_Implementation` (bortsett fra de to vegg-sjekkene), `DrawPellets` eller `MulticastShotFX_Implementation`.
-30. Bygg med kommandoen i `CLAUDE.md` (`-WaitMutex`, editoren lukket). Feiler bygget i en fil laget ikke eier:
-    vent og prøv igjen (inntil 4 ganger), ikke rett den.
-31. `IMPROVEMENTS.md`: ny overskrift øverst med linjene under (386–401).
-32. Commit på grenen: `Combat: ballistics part 1 - bullets with velocity, drop and damage falloff, server-side spread, unreliable fire, scope hold marks, bullet crack`.
-33. Legg én linje øverst i `.claude/lag/bestillinger.md`:
-    `- <dato> · Kamp (bygger) → Spillbarhet · catalog.py · (1) Teksten til «Lysspor» sier «Litt bedre treff»; fra Kamps runde 5 gir sporlys ikke bedre treff, bare synlige kuler (og alle ser deg) – endre teksten. (2) Kolonnen range brukes ikke lenger til skyting (kula flyr til den treffer noe); den kan bli «effektiv rekkevidde» i beskrivelsen eller fjernes. (3) Når MuzzleVelocity kommer i FGSWeaponStats, si fra: Kamp bytter én linje i GSBallistics::ForWeapon. · ballistikk del 1 · ÅPEN`
+### F. Bygg, logg, bestilling
+26. `grep -n "LineTraceSingleByChannel" Source/Gloshaugen/Private/GSCharacter.cpp`: i skytefunksjonene skal det bare stå
+    `GSDrawShotStreak` og de to vegg-sjekkene i `ServerFire`. Bygg (`-WaitMutex`, editoren lukket; feil i andres fil:
+    vent og prøv igjen, inntil 4 ganger). `IMPROVEMENTS.md`: ny overskrift øverst med linjene under.
+    Commit: `Combat: ballistics part 1a - bullets with velocity, drop and damage falloff, server-side spread, start and aim checks`.
+27. Én linje øverst i `.claude/lag/bestillinger.md`:
+    `- <dato> · Kamp (bygger) → Spillbarhet · catalog.py · (1) Kolonnen range brukes ikke lenger til skyting (kula flyr til den treffer noe; bare nærkamp bruker den) – den kan bli «effektiv rekkevidde» i beskrivelsen. (2) Når MuzzleVelocity kommer i FGSWeaponStats, si fra: Kamp bytter én linje i GSBallistics::ForWeapon. · ballistikk 5a · ÅPEN`
+28. **I rapporten** (kontrollørens krav): tabell med skade per treff i brystet på 25/50/100 m for Garand, MP40, Pump
+    (per hagl) og L96, før og etter, og antall treff for å drepe (100 liv). Forventet: uendret på 25 m for alle, og på
+    100 m for Garand og L96; MP40 20 → 18,8 på 50 m og 16,8 på 100 m; Pump 13 → 10,2 på 50 m.
 
 ## Ferdig når
 - `Build.bat` går gjennom uten feil.
-- Kode-sjekk: `ServerFire` er `Unreliable`, tar `ShotIndex`, og retningen klienten sender har ingen spredning
-  (`FireOnce` kaller `ServerFire(Start, Aim, ShotIndex)`). Spredningen regnes i `ServerFire` med `GetCurrentSpread()`.
-- Kode-sjekk: ingen `S.Range` ved skyting; `GSItems::Weapon(W.Id).Range` styrer ikke lenger hvor langt kula går.
-- Kode-sjekk: `UGSBallistics::Step` kaller `TakeDamage` bare for `bReal`-kuler og bare via `FPointDamageEvent`.
-- Kode-sjekk: `IncomingWeaponId` settes og nullstilles rundt `TakeDamage`, som `IncomingAmmoType`.
-- Runde 3 og 4 sin kode i `TakeDamage` (`MulticastWoundFX`, `ZoneOf`, lemskade) står urørt.
-- I spillet (Andreas, «Number of Players: 2», Net Mode «Play As Listen Server», etter kampstart):
-  - Skriv `gs.ShowBullets 1` i konsollen og skyt et gevær langt bortover: en gul bue tegnes og faller tydelig mot
-    slutten. Med pistol faller buen mye tidligere.
-  - Skyt mot en vegg 150–250 m unna: støvet i veggen kommer et lite øyeblikk etter skuddet, ikke i samme øyeblikk.
-  - Pistol mot et merke på en vegg ca. 80 m unna: kula treffer omtrent en håndbredd under der du siktet.
-  - Med 4x eller 8x kikkert: små streker under midten merket 2, 4, 6 … (hundre meter). Sikt med 4-streken på et
-    mål 400 m unna (f.eks. en vegg tvers over kartet) og treff.
-  - Vanlige kuler er usynlige i lufta. Bytt til lysspor-ammo, eller skyt MG3: kula vises som en lysende strek som
-    flyr bortover i en bue.
-  - La den andre spilleren skyte forbi hodet ditt (litt til siden): du hører et skarpt smell rett ved deg, i tillegg
-    til skuddet. Med Thompson/UMP (.45, under lydfarten) hører du et sus i stedet.
-  - Hagle på 5 m dreper som før; på 40 m gjør hvert hagl tydelig mindre skade.
-  - I klientvinduet: skyt mens du løper – kulene spres som før, og nedslagene du ser stemmer med der serveren
-    sier du traff (blodet kommer der støvet ville kommet).
+- **Juks (V2):** `FireOnce` sender `Aim` uten spredning. `ServerFire` bruker frøet fra `ShotIndex` bare når
+  `ShotIndex − LastServerShotIndex` er 1–3; ved større hopp trekker serveren sitt eget (`FMath::RandHelper`).
+  `LastServerShotIndex` settes først etter retningskravet og skuddkontoen.
+- **Spredningens størrelse:** klientens verdi brukes, klemt til 0,85–1,15 × serverens egen (ikke klemt for verten).
+- **Skadefall:** `DamageScale` gir nøyaktig 1,0 ut til `ZeroM`. Rapporten har tabellen fra steg 28, og ingen våpen
+  trenger flere treff enn før innenfor innskytingsavstanden.
+- **Start:** startpunktet brukes bare innen 120 cm fra serverens øye og uten vegg imellom; ellers øyet. Ingen skudd kastes for dette.
+- **Levetid:** kuler fjernes etter 1,5 s, 600 m, over 150 m høyde eller 50 m utenfor `PlayArea()`. Viste kuler: ett spor per `Tick`.
+- **Framspoling:** `FireReal` flytter kula `min(ping/2, 0,1 s)` for fjerne klienter, 0 for verten.
+- `ServerFire` er fortsatt `Reliable`. `UGSBallistics` kaller `TakeDamage` bare for `bReal`, bare med `FPointDamageEvent`,
+  og holder ingen referanse inn i `Bullets` mens `TakeDamage` kjører. `FCollisionQueryParams` lages én gang per `Tick`.
+- `TakeDamage`: lagsjekken, `ZoneOf`, lemskade og `MulticastWoundFX` står urørt. `GSHUD.*`, `GSPlayerController.*`,
+  `GSEffects.*`, `GSAudio.*`, `GSTypes.h` er ikke endret.
+- I spillet (Andreas: «Number of Players: 2», «Play As Listen Server», etter kampstart):
+  - `gs.ShowBullets 1` i konsollen, skyt et gevær bortover plassen: en gul bue tegnes og faller mot slutten. Med pistol faller den mye før.
+  - Skyt mot en vegg 150–250 m unna (fra den ene basen mot den andre): støvet kommer et øyeblikk etter skuddet.
+  - Pistol mot et merke ca. 80 m unna: kula treffer omtrent en håndbredd under der du siktet.
+  - Hagle på 5 m dreper som før; på 40 m gjør hvert hagl mindre skade.
+  - I klientvinduet: skyt automatild mens du går – støvet du ser i veggen, og blodet på den andre spilleren, kommer der du så kula gå.
   - Skyt den andre og bytt våpen rett etter: drapsloggen viser våpenet du skjøt med.
+  - Still deg bak et hjørne og bli truffet av en som så løper vekk: retningskilen peker dit skuddet kom fra.
 
 ## Risiko
-- **Treff på løpende mål blir vanskeligere** (flytid + ping, ingen V8). På dette kartet (≤ 330 m) er flytiden for
-  gevær under 0,4 s, for pistol under 0,25 s på 80 m. Nært hold merkes nesten ikke. V8 ligger i backlogen.
-- **Klienten kjenner `SpreadKey`** og kan i teorien regne ut hvor neste kule går og vente med å skyte. Det er langt
-  mindre enn i dag (null spredning ved å sende ren retning). Fullt sikkert krever serverens egen tilfeldighet og
-  at klientens nedslag tegnes ut fra serverens svar – vurderes i del 2.
-- **Retningskravet (35°)** kan avvise et skudd under en ekstremt rask vending med høy ping. Det rettes av ammo-
-  replikeringen ved neste skudd (klienten har trukket ett skudd for mye i noen hundredeler). Avvises legitime skudd
-  i testen: øk til 45° (`0.82f` → `0.7f`) og skriv det i rapporten.
-- **Upålitelig `ServerFire`:** et tapt skudd bruker ikke ammo på serveren; klientens forutsagte tall rettes neste
-  gang serveren endrer ammoen. Siste skudd i et magasin kan da vise 0 mens serveren har 1 – lading retter det.
-- **Ytelse:** en kule koster ett linjespor per 1/60 s. 20 spillere med MG3 (20 skudd/s) og kuler som lever ca. 0,5 s
-  før de treffer noe på det lille kartet gir noen hundre spor per sekund på serveren – lite. Viste kuler har tak (600).
-- **`UTickableWorldSubsystem` i UE 5.8:** finnes som før (`Subsystems/WorldSubsystem.h`). Krever motoren andre
-  overstyringer (f.eks. `GetTickableTickType`), legg dem til og skriv det i rapporten.
-- **Rettingene og runde 4 endrer de samme funksjonene** (`ServerFire`, `MulticastShotFX`, `TakeDamage`). Stegene her
-  er skrevet som bytter av hele grener med tydelig start og slutt; les funksjonene på nytt før du begynner.
-- **Kroppen andre ser** skyter fortsatt ut fra øyet (som i dag), ikke fra våpenets munning; avviket er 10–20 cm.
+- **Treff på løpende mål blir vanskeligere for klienter** (flytid + at du ser målet ca. 0,1 s + ping/2 forsinket; verten
+  har ingen forsinkelse). På 20–80 m: rifle 0,03–0,1 s, 9 mm 0,24 s på 80 m. Framspolingen fjerner serverens del.
+  Resten er V8 (tilbakespoling av treffbokser), som er **neste Kamp-runde etter 5b**, ikke backlog.
+- **Restjuks:** en klient kan velge beste av tre mønstre (hopp ≤ 3) og 15 % mindre kjegle. Mye mindre enn i dag (null spredning).
+- **Retningskravet (35°)** kan avvise et ekte skudd ved lynrask vending med høy ping; da er skuddet tapt for klienten
+  (han hørte smellet). Loggen fra steg 21 viser vinkelen. Avvises ekte skudd i test: øk til 45° (`0.82f` → `0.7f`) og skriv det i rapporten.
+- **Klemmen 0,85–1,15** treffer når serverens sikte-/farttilstand henger etter klientens (f.eks. `bAiming` kommer etter
+  skuddet): da lander serverens kule litt utenfor det klienten så, for det ene skuddet.
+- **Ytelse, server:** en ekte kule = ett linjespor per 1/60 s. Verste tilfelle 20 × MG3 (400 kuler/s): rett opp i
+  lufta lever kula ca. 0,2 s (150 m høyde), bortover høyst ca. 0,5 s før den er ute av området → 100–200 kuler i
+  lufta → 6 000–12 000 spor i sekundet. I vanlig spill (kuler treffer vegger etter 0,05–0,2 s) noen hundre. Viste
+  kuler: ett spor per bilde, tak 600. Lysstreken koster ett spor per skudd, som i dag.
+- **`UTickableWorldSubsystem` i UE 5.8:** krever motoren flere overstyringer, legg dem til og skriv det i rapporten.
+- **Verten har to kuler per skudd** (ekte + vist). Bare den viste lager støv; bare den ekte skader. Ikke bland.
+- **Våpenbytte hos andre:** den viste kula hos andre maskiner bruker kaliberet til våpenet skytteren holder når
+  meldingen kommer. Byttet han i samme øyeblikk, får den ene viste kula feil bue. Bare utseende.
+- **Frakoblet skytter:** kula skader fortsatt, med blod og riktig retning, men drapet går ikke til noen.
+- **Ammotelleren** hos klienten kan vise ett skudd for lite etter et avvist skudd, til neste lading (som i dag).
 
 ## IMPROVEMENTS-linjer
 ```
-## Runde 10 (Kamp): ballistikk del 1 – kuler med fart og fall (26. nov.)
+## Runde 10 (Kamp): ballistikk 1a – kuler med fart og fall (26. nov.)
 
 386. Kuler er ekte prosjektiler med flytid og sin egen fart per kaliber (9 mm ca. 360 m/s, 5,56 mm ca. 940 m/s, .50 BMG ca. 890 m/s), i stedet for å treffe i samme øyeblikk
 387. Kuler faller med tyngdekraften: på lang avstand må du holde over målet, mest med pistol og hagle
-388. Luftmotstand bremser kula, og skaden faller med farten den har igjen når den treffer
+388. Luftmotstand bremser kula, og skaden faller med avstanden – men først etter innskytingsavstanden, så våpnene dreper på like mange treff som før på vanlig hold
 389. Kula flyr til den treffer noe, i stedet for å forsvinne ved en fast «rekkevidde» (en Makarov er ikke lenger helt ufarlig på 61 m)
-390. Siktene er innskutt som på ekte våpen: pistol og maskinpistol på 25 m, P90 og muskett på 50 m, rifler på 100 m
+390. Siktene er innskutt som på ekte våpen: pistol, maskinpistol og hagle på 25 m, P90 og muskett på 50 m, rifler på 100 m
 391. Hvert hagl er en egen liten kule som bremses fort, så haglen er dødelig på nært hold og svak på avstand
-392. Kikkertsiktene har holdemerker for 200, 300, 400 m og videre, regnet ut fra patronen i våpenet
-393. Vanlige kuler er usynlige i lufta; bare lysspor-ammo og hver femte kule fra maskingevær lyser
-394. Lysspor flyr med kula i dens egen fart og bue, i stedet for å være en strek som er der med en gang
-395. Støv og lyd i veggen kommer når kula kommer fram, ikke i det du trykker
-396. Kuler som passerer nær hodet ditt gir et skarpt overlydssmell; langsomme kuler (.45) suser
-397. Serveren bestemmer spredningen selv, så en juksende klient kan ikke lenger skyte helt uten spredning
-398. Serveren avviser skudd i en retning spilleren ikke ser, og skudd eller raketter som starter på andre siden av en vegg
-399. Skudd sendes som raske meldinger som kan gå tapt, så maskingevær med pakketap ikke lenger kan koble deg fra serveren, og gamle skudd som kommer for sent forkastes
-400. Drapsloggen og hodeskuddskaden følger våpenet kula ble skutt med, også når skytteren rakk å bytte våpen eller døde før kula traff
-401. Lysspor-ammo gir ikke lenger bedre treff, bare synlige kuler
+392. Støvet i veggen kommer når kula kommer fram, ikke i det du trykker
+393. Serveren trekker spredningen selv, så en juksende klient kan ikke lenger skyte helt uten spredning eller velge seg et heldig skudd
+394. Du treffer der du ser kula gå også som klient: spredningen du ser og den serveren bruker er den samme
+395. Serveren avviser skudd i en retning spilleren ikke ser
+396. Skudd, raketter og granater kan ikke lenger starte på andre siden av en vegg eller flere meter fra der skytteren står
+397. Serverens kule spoles fram med halve pingen, så den flyr i takt med kula du ser hos deg selv
+398. Drapsloggen og hodeskuddskaden følger våpenet kula ble skutt med, også når skytteren rakk å bytte våpen eller døde før kula traff
+399. Retningskilen når du blir truffet peker dit skuddet ble avfyrt, også om skytteren har flyttet seg eller koblet fra
+400. Blodtørst gir ikke lenger liv til en skytter som døde før kula hans traff
+401. Kuler som forlater banen ryddes bort med en gang, så serveren holder følge når mange skyter maskingevær samtidig
 ```
