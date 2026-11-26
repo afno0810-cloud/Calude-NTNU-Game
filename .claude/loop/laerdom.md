@@ -27,3 +27,10 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Store planer forhåndssjekkes av kontrolløren før bygging; det er billigere å rette en plan enn kode. (plan 5)
 - Alt klienten selv velger (indekser, nøkler, tidspunkter) kan velges for å jukse: serveren må begrense eller trekke selv. (plan 5)
 - Endringer i skade må regnes mot katalogens drap-terskler (antall treff for å drepe) før de planlegges. (plan 5)
+- Kanalspor på `ECC_WorldStatic` treffer også spillerkapsler; bruk objektspor når bare verden skal blokkere. (Spillbarhet runde 1)
+- Planer som tegner på skjermen må liste hva andre lag tegner samme sted. (Spillbarhet runde 1)
+- Nye server-RPC-er som lager eller flytter figurer trenger tidssperre per spiller. (Spillbarhet runde 1)
+- Tidssjekker på serveren må regnes mot serverens bildetid og vanlig jitter; en konto må alltid romme minst to hendelser i samme serverbilde. (runde 4)
+- Følger som ganges inn i fart må ganges inn i alle fartsverdiene (gå, huk, sikte). (runde 4)
+- Effekter som utløses per treff trenger en «én gang per øyeblikk»-vakt (hagl). (runde 4)
+
