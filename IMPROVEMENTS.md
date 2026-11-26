@@ -3,6 +3,23 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 8 (Kamp): blod og kropper (26. nov.)
+
+318. Skudd som treffer en spiller gir en sky av blod ved såret, synlig for alle i nærheten
+319. Kuler som går gjennom kroppen spruter blod på veggen bak, eller på bakken noen meter bortenfor når det ikke er noen vegg
+320. Blodspruten blir avlang når den treffer veggen på skrå, og mindre jo lenger unna veggen er
+321. Bloddråper faller og lager flekker på gulvet under den som blir truffet
+322. Hodeskudd gir mer blod i lufta og større sprut bak
+323. Stopper vesten eller hjelmen kula, spruter det støv og fiber i stedet for blod
+324. Eksplosjoner og nærkampvåpen gir egne blodmønstre
+325. En blodpøl vokser sakte under døde kropper, under hodet ved hodeskudd, og renner ikke utover kanter og trapper
+326. Blodet er blankt og vått med ujevn kant, tørker inn og blir mørkere, og forsvinner til slutt
+327. Dør du av sult, tørst, gift eller brann blir det ikke noe blod
+328. Kropper blir liggende i 90 sekunder i stedet for 15
+329. Kroppen segner sammen den veien kula traff i stedet for å bli kastet bakover og opp i lufta
+330. Alle i nærheten hører når en kule treffer en kropp eller en vest, ikke bare den som blir truffet
+331. Tak på antall blodflekker og kropper, og mindre blod per treff når mange treffes samtidig, så spillet ikke hakker i store skuddvekslinger
+
 ## Feilrettinger etter feiljakt (26. nov.)
 
 313. Drap med granat, mine, molotov, rakett og pil telles nå også når den som kastet eller skjøt er død før det smeller

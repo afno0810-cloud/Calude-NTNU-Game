@@ -894,7 +894,9 @@ void AGSCharacter::DoMeleeHit(bool bQuick)
 		if (AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor()))
 		{
 			FPointDamageEvent Event(Damage, Hit, Camera->GetForwardVector(), nullptr);
+			Victim->bIncomingMelee = true;
 			Victim->TakeDamage(Damage * GetMods().Damage, Event, GetController(), this);
+			Victim->bIncomingMelee = false;
 		}
 		else
 		{
@@ -909,6 +911,29 @@ void AGSCharacter::MulticastMeleeFX_Implementation()
 	if (IsLocallyControlled()) return;
 	LastMeleeTime = GetWorld()->GetTimeSeconds();
 	GSAudio::PlayAt(this, TEXT("Melee_Swing"), GetActorLocation(), 0.8f, 15.f, FMath::FRandRange(0.9f, 1.1f));
+}
+
+void AGSCharacter::MulticastWoundFX_Implementation(FVector_NetQuantize Point, FVector_NetQuantizeNormal Dir, uint8 Kind, uint8 Strength)
+{
+	if (GetNetMode() == NM_DedicatedServer) return;
+	const float Now = GetWorld()->GetTimeSeconds();
+	LastWoundPoint = Point;
+	LastWoundDir = FVector(Dir);
+	LastWoundKind = Kind;
+	LastWoundStrength = Strength / 255.f;
+	LastWoundTime = Now;
+	const bool bOwnView = IsLocallyControlled() && !bDead;
+	AGSShortFX::SpawnBloodHit(GetWorld(), LastWoundPoint, LastWoundDir, Kind, LastWoundStrength, this, bOwnView);
+	// The one who was hit already has his own 2D sounds (ClientTookHit); everyone else hears it from the body.
+	// Shotgun pellets landing together are one sound.
+	if (!bOwnView && Now - LastWoundSoundTime > 0.06f)
+	{
+		LastWoundSoundTime = Now;
+		const TCHAR* Snd = Kind == GSWound::Armor ? TEXT("Hit_Armor") : Kind == GSWound::Head ? TEXT("Hit_Head") : TEXT("Hit_Body");
+		GSAudio::PlayAt(this, Snd, LastWoundPoint, 0.55f, 14.f, FMath::FRandRange(0.9f, 1.1f));
+	}
+	// The death may have reached this machine before the wound that caused it.
+	if (bDead) ApplyDeathImpulse();
 }
 
 void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantize End, bool bSilent)
@@ -2502,6 +2527,11 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	}
 
 	bool bHeadshot = false;
+	// Where and from which way the body was hit, for the blood everyone sees (MulticastWoundFX below)
+	FVector WoundPoint = GetActorLocation() + FVector(0.f, 0.f, 30.f);
+	FVector WoundDir = FVector::ZeroVector;
+	bool bPointHit = false;
+	bool bBurn = false;
 	float Damage = DamageAmount;
 	AGSCharacter* Shooter = Cast<AGSCharacter>(DamageCauser);
 	FString WeaponName = TEXT("Verden");
@@ -2510,11 +2540,15 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	{
 		WeaponName = GSItems::Name(Proj->ItemId);
 		Shooter = Cast<AGSCharacter>(Proj->GetOwner());
+		bBurn = Proj->Kind == FName(TEXT("fire"));   // standing in molotov fire: burns, does not bleed
 	}
 
 	if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
 	{
 		const FPointDamageEvent& PE = static_cast<const FPointDamageEvent&>(DamageEvent);
+		WoundPoint = PE.HitInfo.ImpactPoint;
+		WoundDir = FVector(PE.ShotDirection);
+		bPointHit = true;
 		if (PE.HitInfo.GetComponent() == HeadMesh)
 		{
 			bHeadshot = true;
@@ -2574,6 +2608,27 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 			: bArmorHit ? GSHurtKind::Armor : GSHurtKind::Body;
 		const bool bHasFrom = Shooter && Shooter != this;
 		ClientTookHit(bHasFrom ? Shooter->GetActorLocation() : GetActorLocation(), bHasFrom, HealthBefore - Health, Kind);
+	}
+	// Everyone nearby sees the wound. Only real hits: hunger, thirst and poison never come through here, and fire
+	// burns without blood. Sent before Die() below, so a listen-server host knows the wound when the body falls.
+	if (DamageCauser && !bBurn)
+	{
+		const float Lost = HealthBefore - Health;
+		if (!bPointHit) WoundDir = (GetActorLocation() - DamageCauser->GetActorLocation()).GetSafeNormal();
+		if (WoundDir.IsNearlyZero()) WoundDir = FVector::DownVector;   // own grenade at your feet
+		uint8 Wound = GSWound::Blast;
+		if (bArmorHit && Lost < 12.f) Wound = GSWound::Armor;
+		else if (bHeadshot) Wound = GSWound::Head;
+		else if (bIncomingMelee) Wound = GSWound::Blade;
+		else if (bPointHit) Wound = Lost >= 18.f ? GSWound::Through : GSWound::Flesh;
+		if (Lost > 0.f || bArmorHit)
+		{
+			if (WoundFrame != GFrameCounter) { WoundFrame = GFrameCounter; WoundsThisFrame = 0; }
+			if (++WoundsThisFrame <= 3)
+			{
+				MulticastWoundFX(WoundPoint, WoundDir, Wound, static_cast<uint8>(FMath::Clamp(Lost / 60.f, 0.f, 1.f) * 255.f));
+			}
+		}
 	}
 	LastDamageWeapon = WeaponName;
 	LastDamageInstigator = EventInstigator;
@@ -2689,7 +2744,19 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 		VictimPC->SetViewTarget(this);
 		VictimPC->ClientDeathCam(this, KillerPawn, Info);
 	}
-	SetLifeSpan(15.f);
+	// Never more than 12 bodies lying around: the oldest goes first.
+	{
+		int32 Bodies = 0;
+		AGSCharacter* Oldest = nullptr;
+		for (TActorIterator<AGSCharacter> It(GetWorld()); It; ++It)
+		{
+			if (!It->bDead || *It == this || It->GetLifeSpan() <= 0.f) continue;
+			++Bodies;
+			if (!Oldest || It->GetLifeSpan() < Oldest->GetLifeSpan()) Oldest = *It;
+		}
+		if (Bodies >= 12 && Oldest) Oldest->SetLifeSpan(0.5f);
+	}
+	SetLifeSpan(BodyLifeSeconds);
 }
 
 void AGSCharacter::SetupHumanBody()
@@ -2786,7 +2853,7 @@ void AGSCharacter::OnRep_Dead()
 		Skel->SetAllBodiesSimulatePhysics(true);
 		Skel->SetSimulatePhysics(true);
 		Skel->WakeAllRigidBodies();
-		Skel->AddImpulse(GetActorForwardVector() * -4000.f + FVector(0.f, 0.f, 1500.f), NAME_None, false);
+		ApplyDeathImpulse();
 	}
 	// Simple "fall over" for the old shapes (hidden when the human body is used)
 	BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, -80.f));
@@ -2794,6 +2861,51 @@ void AGSCharacter::OnRep_Dead()
 	HeadMesh->SetRelativeLocation(FVector(95.f, 0.f, -80.f));
 	ApplyWeaponVisuals();
 	ApplyGearVisuals();
+	// The pool forms once the body has come to rest.
+	if (GetNetMode() != NM_DedicatedServer)
+	{
+		GetWorldTimerManager().SetTimer(DeathPoolTimer, this, &AGSCharacter::SpawnDeathPool, 1.6f, false);
+	}
+}
+
+void AGSCharacter::ApplyDeathImpulse()
+{
+	// A bullet does not throw a body: a small push where it hit, and the body collapses. Blasts push harder.
+	if (!bDead || !bHumanBody || bDeathImpulseDone) return;
+	if (GetWorld()->GetTimeSeconds() - LastWoundTime > 0.8f) return;   // no hit (hunger...) or the wound has not arrived yet
+	bDeathImpulseDone = true;
+	USkeletalMeshComponent* Skel = GetMesh();
+	if (LastWoundKind == GSWound::Blast)
+	{
+		Skel->AddImpulse((LastWoundDir + FVector(0.f, 0.f, 0.35f)) * (3000.f + 9000.f * LastWoundStrength), NAME_None, false);
+		return;
+	}
+	// The part that was hit takes as much of the push as it can without being flung (a head snaps back, an arm
+	// is knocked away); the rest goes into the body as a whole.
+	const float Push = LastWoundKind == GSWound::Blade ? 2200.f : 2800.f;
+	float BonePush = 0.f;
+	const FName Bone = Skel->FindClosestBone(LastWoundPoint, nullptr, 0.f, true);
+	if (!Bone.IsNone())
+	{
+		BonePush = FMath::Min(Push, Skel->GetBoneMass(Bone) * 400.f);
+		if (BonePush > 0.f) Skel->AddImpulseAtLocation(LastWoundDir * BonePush, LastWoundPoint, Bone);
+	}
+	if (Push - BonePush > 1.f) Skel->AddImpulseAtLocation(LastWoundDir * (Push - BonePush), LastWoundPoint);
+}
+
+void AGSCharacter::SpawnDeathPool()
+{
+	if (!bDead || GetNetMode() == NM_DedicatedServer) return;
+	if (GetWorld()->GetTimeSeconds() - LastWoundTime > 8.f) return;   // not a violent death: no blood
+	FVector From = GetActorLocation() - FVector(0.f, 0.f, 60.f);
+	if (bHumanBody) From = GetMesh()->GetSocketLocation(LastWoundKind == GSWound::Head ? TEXT("head") : TEXT("spine_02"));
+	FHitResult Floor;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSDeathPool), true, this);
+	if (GetWorld()->LineTraceSingleByChannel(Floor, From + FVector(0.f, 0.f, 30.f), From - FVector(0.f, 0.f, 160.f), ECC_Visibility, Params)
+		&& !Cast<APawn>(Floor.GetActor()) && Floor.ImpactNormal.Z > 0.5f)
+	{
+		AGSShortFX::SpawnBloodPool(GetWorld(), Floor.ImpactPoint, Floor.ImpactNormal, FMath::FRandRange(95.f, 135.f), this);
+	}
 }
 
 void AGSCharacter::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)

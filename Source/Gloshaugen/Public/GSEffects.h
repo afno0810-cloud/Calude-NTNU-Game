@@ -30,6 +30,17 @@ public:
 	static void SpawnSmokeCloud(UWorld* World, const FVector& Location, float Radius, const FLinearColor& Color, float LifeSeconds, int32 Count);
 	/** Thin wisp of smoke from a hot barrel after a long burst. */
 	static void SpawnBarrelSmoke(UWorld* World, const FVector& Location, const FVector& Dir);
+	/** Blood stain lying flat on a surface. Grows to Size (cm, across) over GrowSeconds, dries, erodes away at the
+	 *  end of LifeSeconds. Stretch > 1 makes it long along Along (spatter that hit at an angle). Delay = seconds
+	 *  before it shows (a falling drop). */
+	static AGSShortFX* SpawnBloodStain(UWorld* World, const FVector& Location, const FVector& Normal, float Size,
+		float GrowSeconds, float LifeSeconds, const FVector& Along = FVector::ZeroVector, float Stretch = 1.f, float Delay = 0.f);
+	/** A hit on a body (GSWound kind): mist and drops at the wound, spatter behind, drops on the floor. Strength 0..1.
+	 *  bOwnView: the local player is the victim (no mist in his own face). */
+	static void SpawnBloodHit(UWorld* World, const FVector& Point, const FVector& Dir, uint8 Kind, float Strength,
+		const AActor* Victim, bool bOwnView);
+	/** Pool that slowly spreads under a body. Shrinks to fit the floor it lies on (ledges, stairs). */
+	static void SpawnBloodPool(UWorld* World, const FVector& Location, const FVector& Normal, float Size, const AActor* Body);
 
 	virtual void Tick(float DeltaSeconds) override;
 
@@ -49,4 +60,11 @@ protected:
 	float RiseAccel = 0.f;
 	float DragK = 1.5f;
 	FVector Vel = FVector::ZeroVector;
+	// Blood stain (lies on a surface instead of facing the camera)
+	bool bStain = false;
+	float GrowTime = 0.1f;
+	float StretchK = 1.f;
+	float ErodeTime = 5.f;
+	/** Stain: erode away now (the oldest stains make room for new ones). */
+	void RetireStain();
 };

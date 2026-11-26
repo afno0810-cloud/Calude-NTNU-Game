@@ -142,3 +142,14 @@ namespace GSNames
 		}
 	}
 }
+
+/** What a hit did to the body, for the blood everyone sees (AGSCharacter::MulticastWoundFX). */
+namespace GSWound
+{
+	constexpr uint8 Flesh = 0;    // bullet stayed in the body: blood at the wound, drops on the floor
+	constexpr uint8 Through = 1;  // went through: also spatter on whatever is behind
+	constexpr uint8 Head = 2;     // head, through
+	constexpr uint8 Armor = 3;    // stopped by vest/helmet: dust and fibre, no blood
+	constexpr uint8 Blast = 4;    // explosion / fragments
+	constexpr uint8 Blade = 5;    // melee
+}

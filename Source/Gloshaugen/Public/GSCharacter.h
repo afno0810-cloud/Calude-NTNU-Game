@@ -77,6 +77,7 @@ public:
 	void ApplyFlash(const FVector& Location, float Radius);
 	/** Server: special rounds of the shot that is hitting us right now (GSAmmoType). */
 	uint8 IncomingAmmoType = 0;
+	bool bIncomingMelee = false;   // server: the hit being applied is a blade/fist
 	/** Owner gets a short text message on screen. */
 	UFUNCTION(Client, Reliable) void ClientToast(const FString& Message);
 
@@ -259,6 +260,12 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantize End, bool bSilent);
 	UFUNCTION(NetMulticast, Unreliable) void MulticastPelletFX(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed, int32 Pellets, float ConeDeg);
 	UFUNCTION(NetMulticast, Unreliable) void MulticastMeleeFX();
+	/** Everyone: this body was just hit here, from this direction (GSWound kind, strength 0..255). */
+	UFUNCTION(NetMulticast, Unreliable) void MulticastWoundFX(FVector_NetQuantize Point, FVector_NetQuantizeNormal Dir, uint8 Kind, uint8 Strength);
+	/** Local: push the ragdoll the way the last wound says (once; safe to call before or after the wound arrives). */
+	void ApplyDeathImpulse();
+	/** Local: the pool of blood under the body, once it has come to rest. */
+	void SpawnDeathPool();
 	UFUNCTION(Client, Unreliable) void ClientHitMarker(bool bKill, bool bHeadshot, bool bArmor);
 
 	UFUNCTION() void OnRep_Health();
@@ -384,7 +391,20 @@ protected:
 	FTimerHandle ReloadTimer;
 	FString LastDamageWeapon;
 	TWeakObjectPtr<AController> LastDamageInstigator;
+	// Local on every machine: the last wound this body took (ragdoll push, where the pool forms)
+	FVector LastWoundPoint = FVector::ZeroVector;
+	FVector LastWoundDir = FVector::ZeroVector;
+	float LastWoundTime = -100.f;
+	float LastWoundSoundTime = -100.f;
+	uint8 LastWoundKind = 0;
+	float LastWoundStrength = 0.f;
+	bool bDeathImpulseDone = false;
+	FTimerHandle DeathPoolTimer;
+	// Server: at most 3 wound effects per frame per body (a shotgun blast is 8-9 hits at once)
+	uint64 WoundFrame = 0;
+	int32 WoundsThisFrame = 0;
 
+	static constexpr float BodyLifeSeconds = 90.f;   // how long a dead body stays
 	static constexpr float WalkSpeed = 420.f;
 	static constexpr float SprintSpeed = 680.f;
 	static constexpr float AimSpeed = 260.f;
