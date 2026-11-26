@@ -94,22 +94,43 @@ def p_OfficeChair(k, m):
 
 @prop
 def p_PC(k, m):
-    """Workstation used as a terminal: desk, two monitors, keyboard, mouse, tower and office chair."""
-    k.box((0, 0, 0.73), (0.8, 1.6, 0.03), m.white)
+    """Workstation used as a terminal: desk, two slim monitors on stands, keyboard, mouse, tower, mug."""
+    k.loft([(x, 0.715, 0.745, 0.8) for x in [-0.4 + 0.8 * i / 6 for i in range(7)]], m.white, segs=24, power=8.0)
     for y in (-0.75, 0.75):
         k.box((0, y, 0.36), (0.7, 0.04, 0.72), m.dark)
-    for y, yaw in ((-0.28, 12), (0.28, -12)):
-        k.box((-0.22, y, 0.76), (0.18, 0.22, 0.02), m.plastic)
-        k.box((-0.24, y, 0.88), (0.05, 0.05, 0.22), m.plastic)
-        k.box((-0.2, y, 1.06), (0.03, 0.55, 0.34), m.plastic, rot=(0, 0, yaw))
-        k.box((-0.183, y, 1.06), (0.005, 0.52, 0.3), m.screen_on, rot=(0, 0, yaw))
-    k.box((0.12, 0, 0.755), (0.16, 0.45, 0.02), m.plastic)
-    for i in range(5):
-        k.box((0.12, -0.2 + i * 0.1, 0.767), (0.12, 0.08, 0.004), m.dark)
-    k.box((0.12, 0.35, 0.755), (0.1, 0.06, 0.02), m.plastic)
-    k.box((-0.1, 0.62, 0.25), (0.45, 0.2, 0.45), m.plastic)
-    k.box((0.126, 0.62, 0.35), (0.004, 0.02, 0.02), m.screen_on)
-    k.box((-0.3, -0.6, 0.79), (0.08, 0.08, 0.1), m.white)
+        k.box((0, y, 0.02), (0.72, 0.06, 0.04), m.rubber)
+    k.box((-0.33, 0, 0.45), (0.02, 1.46, 0.4), m.dark)
+    for y, yaw in ((-0.29, 14), (0.29, -14)):
+        k.cyl((-0.24, y, 0.745), 0.11, 0.012, m.dark, verts=24)
+        k.tube([(-0.25, y, 0.75), (-0.26, y, 0.92), (-0.235, y, 1.0)], 0.02, m.dark, segs=10)
+        mat = math.radians(yaw)
+        c, s = math.cos(mat), math.sin(mat)
+        # thin bezel: rounded back shell with a screen inset
+        k.box((-0.215, y, 1.07), (0.035, 0.56, 0.34), m.plastic, rot=(0, 0, yaw))
+        k.box((-0.197, y, 1.072), (0.004, 0.54, 0.31), m.screen_on, rot=(0, 0, yaw))
+        k.box((-0.198 + 0.0, y + 0.0, 0.905), (0.006, 0.08, 0.008), m.dark, rot=(0, 0, yaw))
+    # keyboard with key rows, mouse and pad
+    k.loft([(0.07, 0.745, 0.755, 0.23), (0.17, 0.745, 0.767, 0.23)], m.plastic, segs=16, power=8.0)
+    for r in range(5):
+        for i in range(14):
+            k.box((0.085 + r * 0.019, -0.205 + i * 0.0315, 0.758 + r * 0.0022), (0.016, 0.027, 0.008), m.dark)
+    k.box((0.13, 0.36, 0.746), (0.22, 0.24, 0.003), m.rubber)
+    k.sphere((0.13, 0.36, 0.756), 0.032, m.plastic, n=8, segs=14, scale=(1.0, 0.65, 0.4))
+    k.tube([(0.098, 0.36, 0.752), (-0.05, 0.33, 0.75), (-0.3, 0.3, 0.75)], 0.003, m.dark, segs=4)
+    # tower with front panel, vents and power light
+    k.box((-0.1, 0.6, 0.255), (0.45, 0.21, 0.45), m.plastic)
+    k.box((0.126, 0.6, 0.255), (0.004, 0.19, 0.43), m.dark)
+    for i in range(8):
+        k.box((0.129, 0.6, 0.1 + i * 0.03), (0.002, 0.14, 0.008), m.plastic)
+    k.cyl_axis((0.13, 0.6, 0.44), 0.008, 0.004, m.screen_on, axis="X", verts=10)
+    for x in (-0.28, 0.08):
+        for y in (0.52, 0.68):
+            k.box((x, y, 0.015), (0.04, 0.03, 0.03), m.rubber)
+    # mug and a few papers
+    k.cyl((-0.05, -0.6, 0.745), 0.04, 0.1, m.white, verts=18)
+    k.cyl((-0.05, -0.6, 0.835), 0.034, 0.002, m.soil, verts=18)
+    k.tube([(-0.05, -0.64, 0.82), (-0.05, -0.67, 0.81), (-0.05, -0.67, 0.77), (-0.05, -0.64, 0.765)], 0.006, m.white, segs=6)
+    k.box((0.02, 0.62, 0.746), (0.21, 0.297, 0.003), m.paper, rot=(0, 0, 8))
 
 
 @prop
@@ -199,18 +220,35 @@ def p_Bookshelf(k, m):
 
 @prop
 def p_Whiteboard(k, m):
-    """Wall whiteboard, board surface facing +X, bottom at 0.9 m."""
-    k.box((0, 0, 1.5), (0.03, 2.4, 1.2), m.white)
-    k.box((0.016, 0, 1.5), (0.002, 2.3, 1.1), m.paper)
-    k.box((0.05, 0, 0.9), (0.08, 2.4, 0.02), m.metal)
-    for i, c in enumerate((m.blue, m.red, m.dark)):
-        k.cyl_axis((0.05, -0.3 + i * 0.12, 0.915), 0.008, 0.12, c, axis="Y", verts=8)
-    # some scribbles: an equation, a graph
-    k.box((0.018, -0.6, 1.75), (0.002, 0.7, 0.02), m.blue)
-    k.box((0.018, -0.7, 1.6), (0.002, 0.5, 0.02), m.blue)
-    k.box((0.018, 0.6, 1.4), (0.002, 0.02, 0.6), m.dark)
-    k.box((0.018, 0.85, 1.11), (0.002, 0.5, 0.02), m.dark)
-    k.box((0.018, 0.8, 1.4), (0.002, 0.45, 0.02), m.red, rot=(35, 0, 0))
+    """Wall whiteboard with an aluminium frame, marker tray, magnets, a pinned sheet and some maths on it."""
+    k.box((-0.005, 0, 1.5), (0.02, 2.4, 1.2), m.white)
+    k.box((0.008, 0, 1.5), (0.002, 2.34, 1.14), m.paper)
+    for z in (0.9, 2.1):
+        k.loft([(x, z - 0.015, z + 0.015, 1.2) for x in (-0.012, 0.022)], m.metal, segs=12, power=4.0)
+    for y in (-1.2, 1.2):
+        k.box((0.005, y, 1.5), (0.034, 0.03, 1.23), m.metal)
+    k.box((0.05, 0, 0.895), (0.09, 2.2, 0.012), m.metal)
+    k.box((0.093, 0, 0.91), (0.004, 2.2, 0.03), m.metal)
+    for i, c in enumerate((m.blue, m.red, m.dark, m.green)):
+        k.cyl_axis((0.05, -0.4 + i * 0.12, 0.915), 0.009, 0.13, m.white, axis="Y", verts=10)
+        k.cyl_axis((0.05, -0.4 + i * 0.12 + 0.07, 0.915), 0.0095, 0.03, c, axis="Y", verts=10)
+    k.box((0.05, 0.4, 0.92), (0.05, 0.12, 0.03), m.dark)
+    k.box((0.05, 0.4, 0.94), (0.05, 0.12, 0.01), m.fabric)
+    # a sine curve with axes, an equation-ish scribble and a boxed answer
+    k.box((0.011, 0.2, 1.5), (0.002, 0.012, 0.6), m.dark)
+    k.box((0.011, 0.6, 1.5), (0.002, 0.8, 0.012), m.dark)
+    k.tube([(0.011, 0.22 + i * 0.025, 1.5 + 0.18 * math.sin(i * 0.4)) for i in range(32)], 0.004, m.blue, segs=4)
+    for row in range(4):
+        z = 1.9 - row * 0.12
+        pts = [(0.011, -1.0 + i * 0.03, z + 0.025 * math.sin(i * 1.7 + row)) for i in range(14 + row * 3)]
+        k.tube(pts, 0.003, m.blue if row < 3 else m.red, segs=4)
+    k.tube([(0.011, -0.95, 1.4), (0.011, -0.4, 1.4), (0.011, -0.4, 1.28), (0.011, -0.95, 1.28)], 0.003, m.red, segs=4, closed=True)
+    # pinned A4 sheet with magnets
+    k.box((0.011, 0.95, 1.8), (0.002, 0.21, 0.297), m.white, rot=(3, 0, 0))
+    for y, c in ((0.88, m.red), (1.02, m.blue)):
+        k.cyl_axis((0.018, y, 1.93), 0.014, 0.012, c, axis="X", verts=12)
+    for i in range(6):
+        k.box((0.0125, 0.95, 1.86 - i * 0.03), (0.001, 0.15, 0.004), m.dark)
 
 
 @prop
@@ -238,28 +276,79 @@ def p_Plant(k, m):
 
 @prop
 def p_VendingMachine(k, m):
-    k.box((0, 0, 0.95), (0.8, 1.0, 1.9), m.red)
-    k.box((0.405, -0.1, 1.1), (0.01, 0.7, 1.3), m.glass)
+    """Drinks vending machine: rounded cabinet, glass door with lit shelves of bottles and cans, keypad, pickup flap."""
+    k.loft([(x, 0.06, 1.9, 0.5) for x in [-0.4 + 0.8 * i / 6 for i in range(7)]], m.red, segs=24, power=10.0)
+    k.box((0, 0, 0.03), (0.76, 0.96, 0.06), m.dark)
+    k.box((0.405, -0.1, 1.12), (0.012, 0.72, 1.36), m.dark)
+    k.box((0.36, -0.1, 1.12), (0.06, 0.68, 1.32), m.white)
     for r in range(5):
-        for c in range(5):
-            col = (m.blue, m.yellow, m.green, m.orange, m.white)[(r + c) % 5]
-            k.box((0.3, -0.38 + c * 0.14, 0.6 + r * 0.25), (0.12, 0.08, 0.16), col)
-    k.box((0.405, 0.38, 1.3), (0.01, 0.15, 0.3), m.dark)
-    k.box((0.41, 0.38, 1.0), (0.01, 0.1, 0.1), m.screen_on)
-    k.box((0.405, -0.1, 0.25), (0.02, 0.6, 0.2), m.dark)
+        z = 0.6 + r * 0.26
+        k.box((0.33, -0.1, z - 0.005), (0.12, 0.66, 0.01), m.metal)
+        for c in range(6):
+            y = -0.39 + c * 0.116
+            col = (m.blue, m.yellow, m.green, m.orange, m.red, m.ntnu)[(r * 2 + c) % 6]
+            if r % 2 == 0:
+                k.cyl((0.33, y, z), 0.03, 0.15, col, verts=14)
+                k.cyl((0.33, y, z + 0.15), 0.03, 0.05, col, verts=14, r_top=0.012)
+                k.cyl((0.33, y, z + 0.2), 0.013, 0.015, m.white, verts=10)
+            else:
+                k.cyl((0.33, y, z), 0.032, 0.12, col, verts=14)
+                k.cyl((0.33, y, z + 0.12), 0.029, 0.006, m.metal, verts=14)
+            k.box((0.395, y, z - 0.02), (0.01, 0.06, 0.018), m.paper)
+    k.box((0.414, -0.1, 1.12), (0.004, 0.7, 1.34), m.glass)
+    # side panel: price display, keypad, coin slot, card reader
+    k.box((0.405, 0.38, 1.12), (0.012, 0.18, 1.36), m.dark)
+    k.box((0.414, 0.38, 1.55), (0.004, 0.13, 0.07), m.screen_on)
+    for r in range(4):
+        for c in range(3):
+            k.box((0.415, 0.34 + c * 0.04, 1.42 - r * 0.045), (0.008, 0.03, 0.032), m.metal)
+    k.box((0.415, 0.38, 1.18), (0.01, 0.1, 0.07), m.plastic)
+    k.box((0.42, 0.38, 1.18), (0.002, 0.06, 0.004), m.dark)
+    k.box((0.415, 0.38, 1.05), (0.01, 0.06, 0.012), m.metal)
+    # pickup flap and logo strip
+    k.box((0.41, -0.05, 0.28), (0.02, 0.62, 0.26), m.dark)
+    k.box((0.42, -0.05, 0.3), (0.012, 0.56, 0.18), m.plastic, rot=(0, -12, 0))
+    k.box((0.405, 0, 1.84), (0.012, 0.9, 0.08), m.white)
 
 
 @prop
 def p_CoffeeMachine(k, m):
-    """Counter with a coffee machine and cups."""
-    k.box((0, 0, 0.45), (0.6, 1.4, 0.9), m.lwood)
-    k.box((0, 0, 0.915), (0.62, 1.42, 0.03), m.dark)
-    k.box((-0.05, -0.3, 1.18), (0.4, 0.32, 0.5), m.dark)
-    k.box((0.16, -0.3, 1.1), (0.04, 0.12, 0.08), m.metal)
-    k.box((0.155, -0.3, 1.33), (0.01, 0.2, 0.08), m.screen_on)
+    """Kitchen counter with an espresso machine (portafilter, steam wand, cup tray), grinder, cups and napkins."""
+    k.box((0, 0, 0.45), (0.6, 1.4, 0.88), m.lwood)
+    k.box((0.302, 0, 0.45), (0.004, 1.38, 0.002), m.dark)
+    for y in (-0.35, 0.35):
+        k.box((0.302, y, 0.45), (0.004, 0.002, 0.86), m.dark)
+        k.box((0.31, y + (-0.05 if y < 0 else 0.05), 0.75), (0.015, 0.015, 0.14), m.metal)
+    k.box((0, 0, 0.03), (0.56, 1.36, 0.06), m.dark)
+    k.loft([(x, 0.9, 0.93, 0.72) for x in [-0.31 + 0.62 * i / 6 for i in range(7)]], m.dark, segs=24, power=10.0)
+    # espresso machine body
+    k.loft([(x, 0.93, 1.4, 0.2) for x in [-0.22 + 0.4 * i / 6 for i in range(7)]], m.metal, segs=24, power=8.0, y0=-0.3)
+    k.box((0.18, -0.3, 1.33), (0.01, 0.34, 0.1), m.dark)
+    k.box((0.186, -0.3, 1.33), (0.002, 0.14, 0.05), m.screen_on)
+    for y in (-0.42, -0.18):
+        k.cyl((0.18, y, 1.3), 0.012, 0.01, m.metal, verts=10)
+    k.box((0.14, -0.3, 0.945), (0.16, 0.3, 0.03), m.dark)
+    for i in range(6):
+        k.box((0.14, -0.42 + i * 0.048, 0.962), (0.15, 0.006, 0.004), m.metal)
+    k.cyl((0.16, -0.3, 1.14), 0.035, 0.05, m.metal, verts=16)
+    k.cyl_axis((0.25, -0.3, 1.155), 0.01, 0.14, m.rubber, axis="X", verts=8)
+    k.tube([(0.18, -0.08, 1.25), (0.22, -0.06, 1.15), (0.23, -0.06, 1.02)], 0.006, m.metal, segs=6)
+    k.cyl((0.14, -0.3, 0.96), 0.03, 0.06, m.white, verts=16, r_top=0.035)
+    k.box((-0.02, -0.3, 1.42), (0.3, 0.36, 0.02), m.metal)
+    for i in range(3):
+        k.cyl((-0.02 + (i - 1) * 0.08, -0.36, 1.43), 0.03, 0.06, m.white, verts=14, r_top=0.035)
+    # grinder with bean hopper
+    k.box((-0.05, 0.05, 1.05), (0.18, 0.14, 0.24), m.dark)
+    k.cyl((-0.05, 0.05, 1.17), 0.055, 0.14, m.glass, verts=16, r_top=0.075)
+    k.cyl((-0.05, 0.05, 1.18), 0.05, 0.07, m.soil, verts=16, r_top=0.06)
+    # cups, sugar, napkins
     for i in range(4):
-        k.cyl((0.05, 0.1 + i * 0.1, 0.93), 0.035, 0.1, m.white, verts=12)
-    k.box((0, 0.5, 0.98), (0.3, 0.2, 0.12), m.paper)
+        k.cyl((0.12, 0.2 + i * 0.09, 0.93), 0.032, 0.09, m.white, verts=16, r_top=0.04)
+        k.cyl((0.12, 0.2 + i * 0.09, 1.018), 0.036, 0.002, m.soil, verts=16)
+    k.box((0.0, 0.5, 0.98), (0.2, 0.18, 0.1), m.paper)
+    k.box((0.0, 0.5, 1.035), (0.12, 0.12, 0.01), m.white)
+    k.cyl((-0.12, 0.32, 0.93), 0.05, 0.1, m.white, verts=16)
+    k.cyl((-0.12, 0.32, 1.03), 0.052, 0.015, m.metal, verts=16)
 
 
 @prop
@@ -278,9 +367,18 @@ def p_Sofa(k, m):
 
 @prop
 def p_TrashBin(k, m):
-    k.cyl((0, 0, 0), 0.2, 0.7, m.dark, verts=16, r_top=0.22)
-    k.cyl((0, 0, 0.7), 0.23, 0.04, m.metal, verts=16)
-    k.box((0.21, 0, 0.5), (0.01, 0.15, 0.08), m.green)
+    """Office recycling bin: tapered body with a rim, swing lid, coloured sorting label and a bag lip."""
+    k.cyl((0, 0, 0.0), 0.19, 0.04, m.rubber, verts=28, r_top=0.2)
+    k.cyl((0, 0, 0.04), 0.2, 0.62, m.dark, verts=28, r_top=0.225)
+    for i in range(8):
+        a = i * math.pi / 4
+        k.box((math.cos(a) * 0.207, math.sin(a) * 0.207, 0.36), (0.012, 0.012, 0.5), m.dark, rot=(0, 0, math.degrees(a)))
+    k.cyl((0, 0, 0.66), 0.235, 0.03, m.plastic, verts=28)
+    k.cyl((0, 0, 0.66), 0.228, 0.035, m.white, verts=28, r_top=0.2)
+    k.cyl((0, 0, 0.69), 0.235, 0.06, m.green, verts=28, r_top=0.2)
+    k.box((0.12, 0, 0.755), (0.1, 0.18, 0.012), m.dark, rot=(0, 18, 0))
+    k.box((0.218, 0, 0.45), (0.004, 0.16, 0.12), m.green)
+    k.box((0.221, 0, 0.45), (0.002, 0.1, 0.06), m.white)
 
 
 @prop
@@ -658,32 +756,63 @@ def p_RobotHumanoid(k, m):
 
 @prop
 def p_RobotGuard(k, m):
-    """Wheeled security robot (egg shape with a camera dome and lights)."""
+    """Wheeled security robot: smooth egg-shaped shell, sensor band, camera dome, light bar and bumpers."""
     shell = k.mat("RobotWhite", (0.88, 0.88, 0.9), rough=0.35)
-    for x in (-0.25, 0.25):
-        for y in (-0.28, 0.28):
-            k.cyl_axis((x, y, 0.13), 0.13, 0.08, m.rubber, axis="Y", verts=16)
-    k.cyl((0, 0, 0.12), 0.4, 0.7, shell, verts=24, r_top=0.32)
-    k.cyl((0, 0, 0.82), 0.32, 0.35, shell, verts=24, r_top=0.12)
-    k.cyl((0, 0, 0.5), 0.405, 0.06, m.ntnu, verts=24)
-    k.cyl((0, 0, 1.17), 0.12, 0.08, m.dark, verts=16)
-    k.cyl((0, 0, 1.25), 0.1, 0.1, m.screen, verts=16, r_top=0.0)
-    k.box((0.38, 0, 0.75), (0.02, 0.3, 0.06), m.screen_on)
-    k.box((0, 0, 0.92), (0.66, 0.05, 0.03), m.red)
+    for x in (-0.24, 0.24):
+        for y in (-0.3, 0.3):
+            k.cyl_axis((x, y, 0.13), 0.12, 0.08, m.rubber, axis="Y", verts=20)
+            k.cyl_axis((x, y * 1.15, 0.13), 0.07, 0.01, m.metal, axis="Y", verts=16)
+    st = []
+    for i in range(17):
+        t = i / 16
+        z = 0.08 + t * 1.1
+        r = 0.4 * (1 - 0.15 * t) * math.sqrt(max(1 - (max(t - 0.62, 0) / 0.38) ** 2, 0.04))
+        st.append((z, r))
+    for (za, ra), (zb, rb) in zip(st, st[1:]):
+        k.cyl((0, 0, za), ra, zb - za, shell, verts=32, r_top=rb)
+    k.cyl((0, 0, 0.5), 0.41, 0.07, m.ntnu, verts=32, r_top=0.405)
+    k.cyl((0, 0, 0.9), 0.335, 0.05, m.dark, verts=32, r_top=0.32)
+    for i in range(6):
+        a = i * math.pi / 3
+        k.cyl_axis((math.cos(a) * 0.335, math.sin(a) * 0.335, 0.925), 0.018, 0.02, m.screen, axis="X", verts=10) if i == 0 else \
+            k.sphere((math.cos(a) * 0.33, math.sin(a) * 0.33, 0.925), 0.02, m.screen, n=6, segs=10)
+    k.cyl((0, 0, 1.17), 0.1, 0.05, m.dark, verts=20)
+    k.sphere((0, 0, 1.23), 0.085, m.screen, n=10, segs=20, scale=(1.0, 1.0, 0.8))
+    k.box((0, 0, 1.06), (0.08, 0.36, 0.035), m.red)
+    k.box((0, 0, 1.06), (0.08, 0.1, 0.037), m.blue)
+    k.box((0.378, 0, 0.74), (0.03, 0.34, 0.12), m.dark, rot=(0, -10, 0))
+    k.box((0.394, 0, 0.74), (0.004, 0.3, 0.08), m.screen_on, rot=(0, -10, 0))
+    k.loft([(x, 0.1, 0.2, 0.42) for x in (0.32, 0.4, 0.44)], m.rubber, segs=16, power=4.0)
+    k.loft([(x, 0.1, 0.2, 0.42) for x in (-0.44, -0.4, -0.32)], m.rubber, segs=16, power=4.0)
+    k.cyl((-0.12, 0.12, 1.12), 0.006, 0.3, m.dark, verts=6)
 
 
 @prop
 def p_RobotDelivery(k, m):
-    """Six-wheeled sidewalk delivery robot with a flag."""
+    """Six-wheeled sidewalk delivery robot: rounded body, lid with seam and handle, sensors, lights and a flag."""
     shell = k.mat("RobotWhite", (0.88, 0.88, 0.9), rough=0.35)
-    for x in (-0.25, 0.0, 0.25):
-        for y in (-0.25, 0.25):
-            k.cyl_axis((x, y, 0.1), 0.1, 0.06, m.rubber, axis="Y", verts=14)
-    k.box((0, 0, 0.32), (0.7, 0.5, 0.34), shell)
-    k.box((0, 0, 0.51), (0.66, 0.46, 0.05), m.dark)
-    k.box((0.355, 0, 0.32), (0.01, 0.3, 0.08), m.screen_on)
-    k.cyl((-0.3, 0.2, 0.5), 0.008, 0.9, m.metal, verts=6)
-    k.box((-0.3, 0.27, 1.32), (0.01, 0.14, 0.1), m.orange)
+    for x in (-0.24, 0.0, 0.24):
+        for y in (-0.27, 0.27):
+            k.cyl_axis((x, y, 0.1), 0.1, 0.07, m.rubber, axis="Y", verts=20)
+            k.cyl_axis((x, y * 1.14, 0.1), 0.055, 0.01, m.dark, axis="Y", verts=16)
+        k.box((x, 0, 0.1), (0.04, 0.5, 0.03), m.dark)
+    k.loft([(x, 0.15, 0.5, 0.26) for x in [-0.36 + 0.72 * i / 8 for i in range(9)]], shell, segs=28, power=6.0)
+    k.loft([(x, 0.49, 0.58 - 0.02 * abs(x) / 0.34, 0.25) for x in [-0.34 + 0.68 * i / 8 for i in range(9)]], shell, segs=28, power=6.0)
+    k.loft([(x, 0.485, 0.495, 0.262) for x in [-0.35 + 0.7 * i / 4 for i in range(5)]], m.dark, segs=24, power=6.0)
+    k.loft([(x, 0.15, 0.24, 0.265) for x in [-0.37 + 0.74 * i / 8 for i in range(9)]], m.dark, segs=24, power=6.0)
+    k.tube([(-0.3, -0.06, 0.585), (-0.3, -0.06, 0.6), (-0.3, 0.06, 0.6), (-0.3, 0.06, 0.585)], 0.008, m.dark, segs=6)
+    # front face: sensor window with camera eyes, headlights; rear red lights
+    k.box((0.355, 0, 0.38), (0.012, 0.36, 0.1), m.screen)
+    for y in (-0.08, 0.08):
+        k.cyl_axis((0.363, y, 0.38), 0.022, 0.006, m.screen_on, axis="X", verts=14)
+    for y in (-0.19, 0.19):
+        k.box((0.358, y, 0.28), (0.01, 0.07, 0.03), m.white)
+        k.box((-0.358, y, 0.32), (0.01, 0.07, 0.03), m.red)
+    k.box((0.2, 0.262, 0.36), (0.18, 0.004, 0.05), m.ntnu)
+    k.box((0.2, -0.262, 0.36), (0.18, 0.004, 0.05), m.ntnu)
+    # flag on a whip antenna
+    k.tube([(-0.3, 0.2, 0.55), (-0.31, 0.2, 1.0), (-0.32, 0.2, 1.4)], 0.005, m.metal, segs=6)
+    k.box((-0.32, 0.27, 1.33), (0.006, 0.14, 0.1), m.orange)
 
 
 def build(name):
