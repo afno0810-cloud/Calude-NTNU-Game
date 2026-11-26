@@ -86,7 +86,9 @@ public:
 	/** Server: start a boost / side effect (refreshes it if already running). */
 	void AddEffect(FName EffectId);
 	/** Server: flashbang went off at Location. */
-	void ApplyFlash(const FVector& Location, float Radius);
+	void ApplyFlash(const FVector& Location, float Radius, const AController* Thrower = nullptr);
+	/** Server: true when From is another player on our own team and friendly fire is off. What you do to yourself always counts. */
+	bool IsSparedFrom(const AController* From) const;
 	/** Server: special rounds of the shot that is hitting us right now (GSAmmoType). */
 	uint8 IncomingAmmoType = 0;
 	bool bIncomingMelee = false;   // server: the hit being applied is a blade/fist

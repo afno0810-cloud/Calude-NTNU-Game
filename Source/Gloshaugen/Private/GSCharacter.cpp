@@ -2,6 +2,8 @@
 #include "Engine/StaticMeshActor.h"
 #include "GSPlayerController.h"
 #include "GSGameMode.h"
+#include "GSGameState.h"
+#include "GSPlayerState.h"
 #include "GSHUD.h"
 #include "GSPickup.h"
 #include "GSTerminal.h"
@@ -2613,9 +2615,19 @@ void AGSCharacter::TickEffects()
 	}
 }
 
-void AGSCharacter::ApplyFlash(const FVector& Location, float Radius)
+bool AGSCharacter::IsSparedFrom(const AController* From) const
 {
-	if (bDead) return;
+	if (!From || From == GetController()) return false;
+	const AGSGameState* GS = GetWorld()->GetGameState<AGSGameState>();
+	if (!GS || GS->bFriendlyFire) return false;
+	const AGSPlayerState* Mine = GetPlayerState<AGSPlayerState>();
+	const AGSPlayerState* Theirs = From->GetPlayerState<AGSPlayerState>();
+	return Mine && Theirs && Mine->Team != GSTeam::None && Mine->Team == Theirs->Team;
+}
+
+void AGSCharacter::ApplyFlash(const FVector& Location, float Radius, const AController* Thrower)
+{
+	if (bDead || IsSparedFrom(Thrower)) return;   // a teammate's flashbang does not blind you (your own does)
 	const FVector Eye = Camera->GetComponentLocation();
 	const float Dist = FVector::Dist(Location, Eye);
 	if (Dist > Radius || GetMods().bFlashImmune) return;
@@ -2643,6 +2655,9 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	{
 		if (!GM->DamageEnabled()) return 0.f;
 	}
+	// Same team and friendly fire off: nothing happens at all (no damage, limb injury, blood, hit marker or wedge).
+	// The controller is used, not the pawn, so a grenade from a teammate who has died since is covered too.
+	if (IsSparedFrom(EventInstigator)) return 0.f;
 
 	bool bHeadshot = false;
 	uint8 Zone = GSZone::None;
@@ -3467,7 +3482,10 @@ void AGSCharacter::Tick(float DeltaSeconds)
 	if (bSprinting && LegPain >= 0.5f && (HasAuthority() || IsLocallyControlled())) SetSprinting(false);
 	float Speed = bSprinting ? SprintSpeed : (bAiming ? AimSpeed : WalkSpeed);
 	if (!UseItemId.IsNone()) Speed = FMath::Min(Speed, AimSpeed);
-	Move->MaxWalkSpeed = Speed * Mods.Speed * GearSpeed * (1.f - 0.45f * LegPain);
+	// Carrying the flag slows you a little (the player state is replicated to everyone, so all machines agree).
+	const AGSPlayerState* FlagPS = bDead ? nullptr : GetPlayerState<AGSPlayerState>();
+	const float FlagSpeed = FlagPS && FlagPS->CarriedFlagTeam != GSTeam::None ? 0.85f : 1.f;
+	Move->MaxWalkSpeed = Speed * Mods.Speed * GearSpeed * (1.f - 0.45f * LegPain) * FlagSpeed;
 	Move->JumpZVelocity = 430.f * Mods.Jump * (1.f - 0.4f * LegPain);
 	if (Mods.bGlide && Move->IsFalling())
 	{

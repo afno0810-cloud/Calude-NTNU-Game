@@ -282,7 +282,7 @@ void AGSProjectile::Explode()
 
 	if (IsKind(TEXT("flash")))
 	{
-		for (TActorIterator<AGSCharacter> It(GetWorld()); It; ++It) It->ApplyFlash(Loc, Radius);
+		for (TActorIterator<AGSCharacter> It(GetWorld()); It; ++It) It->ApplyFlash(Loc, Radius, KillerController());
 		SetLifeSpan(1.f);
 	}
 	else if (IsKind(TEXT("smoke")))

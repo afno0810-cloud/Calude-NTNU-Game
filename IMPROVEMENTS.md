@@ -39,16 +39,16 @@ Nyeste runde øverst.
 
 ## Runde 9 (Kamp): kroppssoner (26. nov.)
 
-360. Kroppen har sju treffsoner med mål som en ekte kropp (hode, bryst, mage, to armer, to bein) i stedet for én sylinder og en kule; hodet er like stort som et ekte hode, før var treffområdet nesten dobbelt så stort
+360. Kroppen har sju treffsoner med mål som en ekte kropp (hode, bryst, mage, to armer, to bein) i stedet for én sylinder og en kule; hodet er like stort som et ekte hode, før var treffområdet nesten dobbelt så stort. Sonene følger med når du huker eller sklir
 361. Styreflate og mus med jevn rulling blar ett trinn per hele hakk i stedet for å rase gjennom alle våpnene, og ved 3D-printeren og kameraene på PC-en blar hjul opp oppover (før gikk begge veier nedover)
 362. Skudd i arm eller bein gjør mindre skade enn skudd i brystet, og mageskudd litt mindre
-363. Vesten beskytter bare overkroppen, ikke armer og bein
-364. Hjelmen beskytter skallen, ikke ansiktet når skuddet kommer forfra
+363. Vesten beskytter bare overkroppen, ikke armer og bein, og hjelmen bare skallen, ikke ansiktet når skuddet kommer forfra
+364. Du kan ikke skade lagkamerater: kuler, granater, miner, ild, nærkamp og blendgranater fra eget lag gjør ingenting (ingen blod, treffmerke eller retningspil), men dine egne granater skader fortsatt deg selv
 365. Skudd i beinet: du går saktere, hopper lavere, halter i bildet og kan ikke løpe når skaden er stor
 366. Skudd i armen: siktet vandrer og skjelver, rekylen blir verre og lading tar lengre tid
 367. Plaster, bandasje og førstehjelpsskrin behandler skadde armer og bein, og smertestillende demper følgene mens de virker
 368. Du kjenner hvor du ble truffet: kneet svikter ved beinskudd, våpenet rykker i hendene ved armskudd, og en liten tekst over helsa sier hva som er skadd
-369. Treffsonene følger med når du huker eller sklir
+369. Den som bærer flagget beveger seg litt saktere (85 % fart)
 370. Hodeskudd som knuser hjelmen gir fortsatt øresus og hardt rykk
 371. Sikting sendes til serveren: slutt på rykking når du går og sikter online, haglene treffer der du ser dem, og andre ser at du løfter våpenet til øyet
 372. Serveren godtar ikke lenger raskere skuddtakt enn våpenet har (før opptil 43 % for fort)
