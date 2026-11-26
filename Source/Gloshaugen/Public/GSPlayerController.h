@@ -55,7 +55,8 @@ public:
 	UPROPERTY() TObjectPtr<UInputAction> DropItemAction;
 	UPROPERTY() TObjectPtr<UInputAction> MeleeAction;
 	UPROPERTY() TObjectPtr<UInputAction> InventoryAction;
-	UPROPERTY() TObjectPtr<UInputAction> NextWeaponAction;
+	/** Mouse wheel as one axis (+ = up, - = down): flips through the backpack with the inventory open, else the weapons. */
+	UPROPERTY() TObjectPtr<UInputAction> ScrollAction;
 	UPROPERTY() TObjectPtr<UInputAction> ScoreboardAction;
 	UPROPERTY() TObjectPtr<UInputAction> InspectAction;
 	UPROPERTY() TObjectPtr<UInputAction> ReadyAction;

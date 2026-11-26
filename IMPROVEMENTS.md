@@ -3,6 +3,19 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Rettinger (Kamp) (26. nov.)
+
+376. Granater, miner, C4, raketter, 40 mm og piler flyr dit du sikter; før ble retningen dreid en gang til, så et kast mot øst gikk mot sør
+377. En mine eller C4 som ligger stille på en vegg eller i en skråning blir liggende der også hos spillere som kommer nærmere eller blir med senere, i stedet for å falle til gulvet
+378. Blir du drept av en granat eller mine fra en som har dødd og fått ny kropp, viser dødskortet avstanden fra der den ble kastet og «han er selv død», uten liv og rustning fra den nye kroppen
+379. Dødskameraet snur seg da mot stedet granaten eller minen ble kastet fra, ikke mot drapsmannens nye kropp et annet sted på campus
+380. Retningspilen når du blir truffet av en eksplosjon peker mot eksplosjonen (pil og rakett: mot der de ble skutt fra), ikke mot kasterens lik; treffmerket går til kasterens nye kropp, og Blodtørst heler bare kroppen som faktisk kastet
+381. Én regel for egne miner: den som la minen utløser den aldri selv, heller ikke i en ny kropp etter at han har dødd
+382. Hver spiller kan ha høyst 5 snubletrådminer ute; legger du en sjette, fjernes den eldste
+383. Musehjulet virker igjen: det leses som én akse i stedet for to «knapper» som spillet nesten aldri fikk med seg
+384. Med inventaret åpent blar musehjulet opp og ned i sekken (opp = forrige, ned = neste), og inventaret sier det; ellers bytter hjulet våpen begge veier
+385. Granater og miner kastes, og nærkampslag treffer, der spillere som er koblet til verten sikter opp eller ned, ikke alltid rett frem i vannrett
+
 ## Runde 8 (Kamp): blod og kropper (26. nov.)
 
 318. Skudd som treffer en spiller gir en sky av blod ved såret, synlig for alle i nærheten

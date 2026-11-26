@@ -38,6 +38,9 @@ AGSProjectile::AGSProjectile()
 	Movement->bRotationFollowsVelocity = true;
 	Movement->MaxSpeed = 20000.f;
 	Movement->InitialSpeed = 0.f;
+	// Launch() hands the velocity over in world space. With the engine default (true) InitializeComponent would turn
+	// it once more by the actor's rotation, so a throw to the east flew south, one to the south flew west, and so on.
+	Movement->bInitialVelocityInLocalSpace = false;
 	Movement->Bounciness = 0.3f;   // same on server and clients
 	Movement->Friction = 0.4f;
 }
@@ -56,6 +59,18 @@ AGSProjectile* AGSProjectile::Launch(UWorld* World, AGSCharacter* Owner, FName K
 	const FVector& Velocity, float GravityScale, float Damage, float Radius, float Fuse)
 {
 	if (!World) return nullptr;
+	AController* const ByController = Owner ? Owner->GetController() : nullptr;
+	// Trip mines: at most MaxMinesPerPlayer per player. Placing one more removes his oldest (it goes quietly, no blast).
+	if (Kind == FName(TEXT("mine")) && ByController)
+	{
+		TArray<AGSProjectile*> Mines;
+		for (TActorIterator<AGSProjectile> It(World); It; ++It)
+		{
+			if (!It->bExploded && It->IsKind(TEXT("mine")) && It->OwnerController.Get() == ByController && !It->IsActorBeingDestroyed()) Mines.Add(*It);
+		}
+		Mines.Sort([](const AGSProjectile& A, const AGSProjectile& B) { return A.SpawnTime < B.SpawnTime; });
+		for (int32 I = 0; I <= Mines.Num() - MaxMinesPerPlayer; ++I) Mines[I]->Destroy();
+	}
 	AGSProjectile* Proj = World->SpawnActorDeferred<AGSProjectile>(AGSProjectile::StaticClass(), FTransform(Velocity.Rotation(), Location), Owner, Owner,
 		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	if (!Proj) return nullptr;
@@ -64,7 +79,8 @@ AGSProjectile* AGSProjectile::Launch(UWorld* World, AGSCharacter* Owner, FName K
 	Proj->Damage = Damage;
 	Proj->Radius = Radius;
 	Proj->Fuse = Fuse;
-	Proj->OwnerController = Owner ? Owner->GetController() : nullptr;
+	Proj->OwnerController = ByController;
+	Proj->LaunchLocation = Location;
 	Proj->Movement->Velocity = Velocity;
 	Proj->NetGravityScale = GravityScale;
 	Proj->bNetBounce = Kind == FName(TEXT("frag")) || Kind == FName(TEXT("smoke")) || Kind == FName(TEXT("flash"));
@@ -96,11 +112,22 @@ AController* AGSProjectile::KillerController() const
 	return OwnerController.IsValid() ? OwnerController.Get() : GetInstigatorController();
 }
 
+AGSCharacter* AGSProjectile::GetThrowerNow(bool& bSameBody) const
+{
+	AController* C = KillerController();
+	AGSCharacter* Now = C ? Cast<AGSCharacter>(C->GetPawn()) : nullptr;
+	bSameBody = Now && Now == GetOwner();
+	return Now;
+}
+
 void AGSProjectile::OnRep_Flight()
 {
 	Movement->bShouldBounce = bNetBounce;
 	// Lying still or gone off: no gravity, or a client would pull it down between network updates.
-	const bool bResting = bExploded || (!HasAuthority() && HasActorBegunPlay() && !Movement->UpdatedComponent);
+	// A client that gets it while it already lies still on the server (comes into range, joins late) sees speed 0 in
+	// the replicated movement: it must not fall here, the server sends no more updates for something lying still.
+	const bool bResting = bExploded || (!HasAuthority() && ((HasActorBegunPlay() && !Movement->UpdatedComponent)
+		|| GetReplicatedMovement().LinearVelocity.IsNearlyZero(1.f)));
 	Movement->ProjectileGravityScale = bResting ? 0.f : NetGravityScale;
 }
 
@@ -190,12 +217,14 @@ void AGSProjectile::Tick(float DeltaSeconds)
 
 	if (!bExploded && Fuse > 0.f && Age >= Fuse) Explode();
 
-	// Trip mine: goes off when someone else walks past
+	// Trip mine: goes off when someone else walks past. The one who placed it never sets it off himself, also not in a
+	// new body after he has died (one rule: compare players, not bodies). He still gets hurt if someone else does.
 	if (bStuck && !bExploded && IsKind(TEXT("mine")) && Age > 2.f)
 	{
+		const AController* Placer = OwnerController.Get();
 		for (TActorIterator<AGSCharacter> It(GetWorld()); It; ++It)
 		{
-			if (*It == GetOwner() || It->bDead) continue;
+			if (It->bDead || *It == GetOwner() || (Placer && It->GetController() == Placer)) continue;
 			if (FVector::Dist(It->GetActorLocation(), GetActorLocation()) < 250.f) { Explode(); break; }
 		}
 	}

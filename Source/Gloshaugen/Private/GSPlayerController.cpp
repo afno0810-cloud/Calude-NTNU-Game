@@ -56,7 +56,7 @@ void AGSPlayerController::EnsureInputCreated()
 	DropItemAction = MakeAction(this, TEXT("IA_DropItem"), EInputActionValueType::Boolean);
 	MeleeAction = MakeAction(this, TEXT("IA_Melee"), EInputActionValueType::Boolean);
 	InventoryAction = MakeAction(this, TEXT("IA_Inventory"), EInputActionValueType::Boolean);
-	NextWeaponAction = MakeAction(this, TEXT("IA_NextWeapon"), EInputActionValueType::Boolean);
+	ScrollAction = MakeAction(this, TEXT("IA_Scroll"), EInputActionValueType::Axis1D);
 	ScoreboardAction = MakeAction(this, TEXT("IA_Scoreboard"), EInputActionValueType::Boolean);
 	InspectAction = MakeAction(this, TEXT("IA_Inspect"), EInputActionValueType::Boolean);
 	ReadyAction = MakeAction(this, TEXT("IA_Ready"), EInputActionValueType::Boolean);
@@ -102,8 +102,10 @@ void AGSPlayerController::EnsureInputCreated()
 	C->MapKey(DropItemAction, EKeys::G);
 	C->MapKey(MeleeAction, EKeys::V);
 	C->MapKey(InventoryAction, EKeys::I);
-	C->MapKey(NextWeaponAction, EKeys::MouseScrollDown);
-	C->MapKey(NextWeaponAction, EKeys::MouseScrollUp);
+	// The wheel as an axis, not as the two "buttons" MouseScrollUp/Down: those are pressed and released in the same
+	// frame, which Enhanced Input reports as already held, so the Started event bound to them hardly ever came. Both
+	// were also on the same action, so up and down did the same thing (and nothing at all with only one gun).
+	C->MapKey(ScrollAction, EKeys::MouseWheelAxis);
 	C->MapKey(ScoreboardAction, EKeys::Tab);
 	C->MapKey(InspectAction, EKeys::T);
 	C->MapKey(ReadyAction, EKeys::Enter);

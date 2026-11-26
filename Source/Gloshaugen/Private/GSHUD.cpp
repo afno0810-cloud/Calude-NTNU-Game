@@ -830,7 +830,7 @@ void AGSHUD::DrawInventory(AGSCharacter* C)
 	const float W = 620.f, X = (Canvas->SizeX - W) * 0.5f, Y = Canvas->SizeY * 0.12f;
 	const int32 Rows = 6 + C->Weapons.Num() + C->Backpack.Num();
 	Box(X, Y, W, 60.f + Rows * 22.f, FLinearColor(0.f, 0.f, 0.f, 0.72f));
-	Text(TEXT("INVENTAR  (I for \u00E5 lukke)"), X + W * 0.5f, Y + 10.f, FLinearColor::White, 1.1f, true);
+	Text(TEXT("INVENTAR  (I for \u00E5 lukke  \u00B7  musehjulet blar i sekken)"),X + W * 0.5f, Y + 10.f, FLinearColor::White, 1.1f, true);
 	float RY = Y + 44.f;
 	auto Row = [&](const FString& L, const FString& R, const FLinearColor& Col)
 	{
@@ -962,7 +962,9 @@ void AGSHUD::DrawDeathScreen()
 
 	// Killer card
 	const bool bKiller = !Info.Killer.IsEmpty();
-	const float W = 460.f, H = bKiller ? 118.f : 80.f, Pad = 18.f;
+	// No health row when the killer's body is not the one that killed you (his grenade/mine got you after he died)
+	const bool bKillerHealth = bKiller && Info.bHasKillerHealth;
+	const float W = 460.f, H = bKillerHealth ? 118.f : 80.f, Pad = 18.f;
 	const float X = CX - W * 0.5f, Y = SY * 0.68f;
 	Box(X, Y, W, H, FLinearColor(0.05f, 0.05f, 0.06f, 0.78f * FadeIn));
 	Frame(X, Y, W, H, FLinearColor(1.f, 1.f, 1.f, 0.25f * FadeIn), 2.f);
@@ -971,11 +973,15 @@ void AGSHUD::DrawDeathScreen()
 	{
 		Text(FString::Printf(TEXT("DREPT AV %s"), *Info.Killer.Left(24)), X + Pad, Y + 12.f, White, 1.4f);
 		// No position = the killer had already died himself (his bullet or grenade got you afterwards)
-		const FString Detail = Info.bHasKillerLocation ? FString::Printf(TEXT("%s  \u00B7  %d m"), *Info.Weapon, FMath::RoundToInt(Info.DistanceM))
-			: FString::Printf(TEXT("%s  \u00B7  han er selv d\u00F8d"), *Info.Weapon);
+		// Position but no health = thrown/fired from that far away by a body that has died since
+		const FString Detail = !Info.bHasKillerLocation ? FString::Printf(TEXT("%s  \u00B7  han er selv d\u00F8d"), *Info.Weapon)
+			: Info.bHasKillerHealth ? FString::Printf(TEXT("%s  \u00B7  %d m"), *Info.Weapon, FMath::RoundToInt(Info.DistanceM))
+			: FString::Printf(TEXT("%s  \u00B7  %d m  \u00B7  han er selv d\u00F8d"), *Info.Weapon, FMath::RoundToInt(Info.DistanceM));
 		Text(Detail, X + Pad, Y + 50.f, Grey, 1.f);
 		if (Info.bHeadshot) Text(TEXT("HODESKUDD"), X + W - Pad, Y + 50.f, Gold, 1.f, false, true);
-
+	}
+	if (bKillerHealth)
+	{
 		// How hurt the killer was: health (red -> green) and armor (blue, vest + helmet, max 200)
 		const float RowY = Y + 84.f, BarH = 8.f, Small = 0.85f;
 		const float HealthFrac = FMath::Clamp(Info.KillerHealth / FMath::Max(Info.KillerMaxHealth, 1.f), 0.f, 1.f);
@@ -996,7 +1002,7 @@ void AGSHUD::DrawDeathScreen()
 		Box(RX, RowY + 6.f, ArmorBarW * FMath::Clamp(Info.KillerArmor / 200.f, 0.f, 1.f), BarH, ArmorCol);
 		Text(FString::FromInt(FMath::CeilToInt(Info.KillerArmor)), X + W - Pad, RowY, White, Small, false, true);
 	}
-	else
+	if (!bKiller)
 	{
 		Text(TEXT("DU D\u00D8DE"), X + Pad, Y + 12.f, White, 1.4f);
 		Text(FString::Printf(TEXT("\u00C5rsak: %s"), *Info.Weapon), X + Pad, Y + 48.f, Grey, 1.f);

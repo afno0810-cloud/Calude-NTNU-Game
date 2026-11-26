@@ -42,6 +42,13 @@ public:
 
 	/** Who threw / fired it. Kept here because the pawn loses its controller when it dies. */
 	TWeakObjectPtr<AController> OwnerController;
+	/** Where it was thrown / fired from (server). Used for the death card and hit direction after the thrower has died. */
+	FVector LaunchLocation = FVector::ZeroVector;
+	/** The thrower's body right now, and whether it is still the body that threw this (false after death/respawn). */
+	class AGSCharacter* GetThrowerNow(bool& bSameBody) const;
+
+	/** Most trip mines one player can have lying out at once; placing one more removes his oldest. */
+	static constexpr int32 MaxMinesPerPlayer = 5;
 
 protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USphereComponent> Collision;

@@ -205,6 +205,8 @@ protected:
 	void SelectSlot3() { SelectSlot(2); }
 	void SelectSlot4() { SelectSlot(3); }
 	void NextWeapon();
+	/** Mouse wheel: inventory open = flip through the backpack, otherwise switch weapon. Up = previous, down = next. */
+	void Scroll(const FInputActionValue& Value);
 	void Interact();
 	void UseSelectedItem();
 	void NextItem();
@@ -288,7 +290,8 @@ protected:
 	float LastSlideTime = -100.f;
 
 	void FinishReload();
-	void Die(AController* Killer, bool bHeadshot, const FString& WeaponName);
+	/** KillingProjectile: the grenade/mine/rocket/bolt that did it, if any (death card uses where it was thrown from). */
+	void Die(AController* Killer, bool bHeadshot, const FString& WeaponName, const class AGSProjectile* KillingProjectile = nullptr);
 
 	bool bAiming = false;
 	bool bWantsFire = false;

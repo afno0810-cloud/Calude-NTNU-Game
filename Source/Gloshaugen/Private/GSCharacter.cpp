@@ -342,7 +342,7 @@ void AGSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	EIC->BindAction(PC->Slot2Action, ETriggerEvent::Started, this, &AGSCharacter::SelectSlot2);
 	EIC->BindAction(PC->Slot3Action, ETriggerEvent::Started, this, &AGSCharacter::SelectSlot3);
 	EIC->BindAction(PC->Slot4Action, ETriggerEvent::Started, this, &AGSCharacter::SelectSlot4);
-	EIC->BindAction(PC->NextWeaponAction, ETriggerEvent::Started, this, &AGSCharacter::NextWeapon);
+	EIC->BindAction(PC->ScrollAction, ETriggerEvent::Triggered, this, &AGSCharacter::Scroll);
 	EIC->BindAction(PC->InteractAction, ETriggerEvent::Started, this, &AGSCharacter::Interact);
 	EIC->BindAction(PC->UseItemAction, ETriggerEvent::Started, this, &AGSCharacter::UseSelectedItem);
 	EIC->BindAction(PC->NextItemAction, ETriggerEvent::Started, this, &AGSCharacter::NextItem);
@@ -542,6 +542,26 @@ void AGSCharacter::NextWeapon()
 	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("Q")); return; }
 	if (Weapons.Num() < 2) return;
 	SelectSlot((CurrentSlot + 1) % Weapons.Num());
+}
+
+void AGSCharacter::Scroll(const FInputActionValue& Value)
+{
+	const float Wheel = Value.Get<float>();
+	if (FMath::IsNearlyZero(Wheel)) return;
+	const int32 Step = Wheel > 0.f ? -1 : 1;   // wheel up = previous (up the list), wheel down = next
+	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("Q")); return; }
+	const AGSPlayerController* PC = Cast<AGSPlayerController>(GetController());
+	if (bDead || (PC && PC->bMenuOpen)) return;
+	if (PC && PC->bShowInventory)
+	{
+		const int32 N = Backpack.Num();
+		if (N == 0) { SelectedItem = 0; return; }
+		SelectedItem = ((SelectedItem + Step) % N + N) % N;
+		return;
+	}
+	const int32 N = Weapons.Num();
+	if (N < 2) return;
+	SelectSlot(((CurrentSlot + Step) % N + N) % N);
 }
 
 void AGSCharacter::ServerSelectSlot_Implementation(int32 Slot)
@@ -885,15 +905,18 @@ void AGSCharacter::DoMeleeHit(bool bQuick)
 	const float Reach = bMeleeWeapon ? S.Range : 160.f;
 	const float Damage = (bQuick && !bMeleeWeapon) ? S.MeleeDamage : S.Damage;
 
+	// The server only turns the camera of its own player up and down; for everyone else it stays level. The aim
+	// rotation (the controller's, sent with every move) is right on the server for all players.
+	const FVector Aim = GetBaseAimRotation().Vector();
 	const FVector Start = Camera->GetComponentLocation();
-	const FVector End = Start + Camera->GetForwardVector() * Reach;
+	const FVector End = Start + Aim * Reach;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSMelee), false, this);
 	FHitResult Hit;
 	if (GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(22.f), Params))
 	{
 		if (AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor()))
 		{
-			FPointDamageEvent Event(Damage, Hit, Camera->GetForwardVector(), nullptr);
+			FPointDamageEvent Event(Damage, Hit, Aim, nullptr);
 			Victim->bIncomingMelee = true;
 			Victim->TakeDamage(Damage * GetMods().Damage, Event, GetController(), this);
 			Victim->bIncomingMelee = false;
@@ -2397,7 +2420,8 @@ void AGSCharacter::CompleteUse()
 
 void AGSCharacter::ThrowItem(const FGSItemDef& Def)
 {
-	const FVector Fwd = Camera->GetForwardVector();
+	// Aim rotation, not the camera: on the server a client's camera never looks up or down (see DoMeleeHit).
+	const FVector Fwd = GetBaseAimRotation().Vector();
 	const bool bPlace = Def.Kind == FName(TEXT("mine")) || Def.Kind == FName(TEXT("c4"));
 	const FVector Vel = Fwd * (bPlace ? 700.f : 1500.f) + FVector(0.f, 0.f, bPlace ? 100.f : 250.f);
 	AGSProjectile::Launch(GetWorld(), this, Def.Kind, Def.Id, Camera->GetComponentLocation() + Fwd * 50.f, Vel + GetVelocity() * 0.5f,
@@ -2536,10 +2560,14 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	AGSCharacter* Shooter = Cast<AGSCharacter>(DamageCauser);
 	FString WeaponName = TEXT("Verden");
 	if (Shooter) WeaponName = Shooter->CurrentWeaponName();
-	if (const AGSProjectile* Proj = Cast<AGSProjectile>(DamageCauser))
+	// Grenades, mines, rockets, bolts: the thrower may have died and got a new body since. Shooter is then his new body
+	// (hit marker goes to him), but the direction and the life steal only count the body that actually threw it.
+	const AGSProjectile* Proj = Cast<AGSProjectile>(DamageCauser);
+	bool bShooterThrewIt = true;
+	if (Proj)
 	{
 		WeaponName = GSItems::Name(Proj->ItemId);
-		Shooter = Cast<AGSCharacter>(Proj->GetOwner());
+		Shooter = Proj->GetThrowerNow(bShooterThrewIt);
 		bBurn = Proj->Kind == FName(TEXT("fire"));   // standing in molotov fire: burns, does not bleed
 	}
 
@@ -2606,8 +2634,14 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		const uint8 Kind = bArmorBroke ? GSHurtKind::ArmorBroke
 			: bHeadshot ? (bArmorHit ? GSHurtKind::HeadArmor : GSHurtKind::Head)
 			: bArmorHit ? GSHurtKind::Armor : GSHurtKind::Body;
-		const bool bHasFrom = Shooter && Shooter != this;
-		ClientTookHit(bHasFrom ? Shooter->GetActorLocation() : GetActorLocation(), bHasFrom, HealthBefore - Health, Kind);
+		// Projectiles: from where it went off (blast) or where it was fired from (bolt, rocket hitting you), never
+		// from the thrower's new body or his corpse.
+		const bool bOwnProjectile = Proj && (Proj->GetOwner() == this || Shooter == this);
+		const bool bHasFrom = Proj ? !bOwnProjectile : (Shooter && Shooter != this);
+		const FVector From = !bHasFrom ? GetActorLocation()
+			: Proj ? (bPointHit ? Proj->LaunchLocation : Proj->GetActorLocation())
+			: Shooter->GetActorLocation();
+		ClientTookHit(From, bHasFrom, HealthBefore - Health, Kind);
 	}
 	// Everyone nearby sees the wound. Only real hits: hunger, thirst and poison never come through here, and fire
 	// burns without blood. Sent before Die() below, so a listen-server host knows the wound when the body falls.
@@ -2634,8 +2668,8 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	LastDamageInstigator = EventInstigator;
 	OnRep_Health();
 
-	// Blodtorst: the shooter heals from damage dealt.
-	if (Shooter && Shooter != this)
+	// Blodtorst: the shooter heals from damage dealt (not a new body healing from a mine the old one laid).
+	if (Shooter && Shooter != this && bShooterThrewIt)
 	{
 		const float Steal = Shooter->GetMods().Lifesteal;
 		if (Steal > 0.f)
@@ -2662,7 +2696,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	}
 	if (bKilled)
 	{
-		Die(EventInstigator, bHeadshot, WeaponName);
+		Die(EventInstigator, bHeadshot, WeaponName, Proj);
 	}
 	return Damage;
 }
@@ -2695,7 +2729,7 @@ void AGSCharacter::OnRep_Health()
 	LastSeenHealth = Health;
 }
 
-void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& WeaponName)
+void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& WeaponName, const AGSProjectile* KillingProjectile)
 {
 	if (bDead) return;
 	bDead = true;
@@ -2714,6 +2748,9 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 	AGSPlayerController* VictimPC = Cast<AGSPlayerController>(GetController());
 	APawn* KillerPawn = Killer ? Killer->GetPawn() : nullptr;
 	if (KillerPawn == this) KillerPawn = nullptr;
+	// A grenade or mine from a body that has died since: his new body is not the one who killed you (it may be
+	// across campus). Show where it was thrown from instead, without his health and armor.
+	if (KillingProjectile && KillerPawn && KillerPawn != KillingProjectile->GetOwner()) KillerPawn = nullptr;
 	FGSDeathInfo Info;
 	Info.Weapon = WeaponName;
 	Info.bHeadshot = bHeadshot;
@@ -2733,7 +2770,14 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 			Info.KillerHealth = K->Health;
 			Info.KillerMaxHealth = K->MaxHealth;
 			Info.KillerArmor = K->ArmorPoints + K->HelmetPoints;
+			Info.bHasKillerHealth = true;
 		}
+	}
+	else if (KillingProjectile && !Info.Killer.IsEmpty())
+	{
+		Info.KillerLocation = KillingProjectile->LaunchLocation;
+		Info.bHasKillerLocation = true;
+		Info.DistanceM = FVector::Dist(KillingProjectile->LaunchLocation, GetActorLocation()) / 100.f;
 	}
 
 	OnRep_Dead();

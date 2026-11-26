@@ -125,6 +125,8 @@ struct FGSDeathInfo
 	/** Where the killer stood when you died (the death cam turns there if his pawn is too far away to be seen). */
 	UPROPERTY() FVector_NetQuantize KillerLocation = FVector::ZeroVector;
 	UPROPERTY() bool bHasKillerLocation = false;
+	/** KillerHealth/MaxHealth/Armor are real (false: grenade or mine from a body that has died since). */
+	UPROPERTY() bool bHasKillerHealth = false;
 };
 
 namespace GSNames
