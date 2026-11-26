@@ -53,6 +53,14 @@ plukkes opp igjen. Første lag til 3 erobringer, eller flest når tiden går ut.
     mindre hakking – mål og logg før/etter); mer liv innvendig (rot, papirer, oppslag, skilt som på NTNU).
   - Spillbarhet: minikart/kart med flagg, baser og lagkamerater (bestill tegnekall i HUD fra Kamp, eller
     lag det i egne filer og bestill ett kall).
+- **Andreas' godkjente forslag, del 4 (26. nov.), fordelt:**
+  - Kamp: røyk og blend som fyller korridorer (følger rom og dører); nærkamp med kolbeslag og kniv;
+    taktisk sprint (kort fart, mer lyd); snubletråd/miner (finnes – gjør dem gode rundt flagget).
+  - Grafikk og kart: dører og vegger som kan sprenges og åpner nye ruter (bygg kartet med slike steder);
+    barrikader – flyttbare pulter og stoler (fysikk-møbler); sikkerhetskameraer plassert på campus.
+  - Spillbarhet: drone styrt fra PC-ene; hacking av kameraene (PC-ene og `GSTerminal` er lagets);
+    ta flagget tilbake i nærkamp (CTF-regel); radiomeldinger på norsk fra eget lag ved flaggendringer
+    (realistisk stil, ikke arkade-kommentator – lyd bestilles fra Kamp); tilskuermodus for døde.
   Q/E brukes i dag til annet (Q = neste ting i sekken, E = bruk). Spillbarhet foreslår ny tastefordeling
   i knappehjelp/keybinds; Kamp legger inn lene på de tastene som velges.
 - **Kamp:** lagtilhørighet i treff og HUD (ikke treffmarkør/blod-varsel på lagkamerater hvis venneild er

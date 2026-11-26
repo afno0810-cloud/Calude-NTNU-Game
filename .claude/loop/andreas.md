@@ -31,6 +31,18 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26: «legg det til» (del 4):
+  1. Drone styrt fra campus-PC-ene for å speide.
+  2. Barrikader: bære pulter og stoler foran dører.
+  3. Røyk- og blendgranater som fyller korridorer realistisk.
+  4. Snubletråd og miner ved flagget.
+  5. Nærkamp med kolbeslag og kniv; ta flagget tilbake i nærkamp.
+  6. Dører og vegger som kan sprenges og åpner nye ruter.
+  7. Sikkerhetskameraer på campus som kan hackes.
+  8. Taktisk sprint: kort ekstra fart, men mer lyd.
+  9. Kommentatorlyd på norsk («Flagget er tatt!») – gjøres som radiomeldinger fra eget lag, så det
+     holder seg realistisk.
+  10. Tilskuermodus for døde spillere.
 - 2026-11-26: «legg til» (forbedringer av det som finnes):
   1. Ekte våpenmodeller fra Fab-pakkene når Andreas har lagt dem til.
   2. Lyra-animasjoner på andre spillere.

@@ -49,6 +49,18 @@ hjelmen bare skallen – og treffområdene har størrelsen til en ekte kropp.
 - Ingen blødning i denne runden (neste store steg sammen med lag Spillbarhet).
 - V2 (klienten bestemmer spredning) tas i ballistikk-runden, der hele `ServerFire` skrives om likevel.
 
+## Hensyn til lag (Capture the Flag)
+Spillet får én modus, CTF, med to lag (prioriteringer 26. nov. kl. 17.20). Lagene finnes ikke i koden ennå
+(`GSPlayerState` har ikke noe lagfelt; lag Spillbarhet lager det – bestilling ligger i `bestillinger.md`).
+Denne runden bygges derfor uten lagsjekk, men slik at den ikke lager venneild-feil senere:
+- Alt nytt som skjer ved treff (sone, lemskade, `ClientTookHit` med sone) ligger **etter** de tidlige
+  `return 0.f`-linjene øverst i `TakeDamage` og **bare når liv faktisk gikk tapt** (`HealthBefore > Health`).
+  Når lagfeltet kommer, legges én linje rett etter `DamageEnabled()`-sjekken («samme lag og venneild av →
+  `return 0.f`»), og da stoppes skade, lemskade, blod, treffmarkør og skadevarsel samlet. Ikke legg noe av det
+  nye foran de tidlige returene.
+- Ikke lag egne veier til skade utenom `TakeDamage` (lemskade settes bare der og i `CompleteUse`).
+- Skadeteksten i HUD-en gjelder bare deg selv; ingen ny HUD-info om andre spillere i denne runden.
+
 ## Filer
 - `Source/Gloshaugen/Public/GSCharacter.h`, `Private/GSCharacter.cpp` – nesten alt.
 - `Source/Gloshaugen/Private/GSHUD.cpp` – skadetekst ved helsestolpen, tre ting fjernes.
@@ -60,6 +72,9 @@ Stage kun filene over, med navn (aldri `git add -A` / `git add .`).
 ## Steg
 
 ### 0. Forberedelse
+0. Rettingene i `.claude/loop/rettinger.md` (prosjektilretning, mine hos sene klienter, dødskort etter respawn,
+   mineregel, musehjul) tas **før** denne planen, i egen commit. De er ikke med her. Rettingen for musehjulet kan
+   ha endret input-oppsettet i `GSCharacter`/`GSPlayerController` – les `StartAim`/`StopAim` på nytt før steg 36.
 1. `git log --oneline -3`: runde 3 («Blood: …») skal være committet. Er den ikke det, vent. Les `TakeDamage`,
    `OnRep_Dead`, `Die` og `DoMeleeHit` på nytt – runde 3 har lagt til `bIncomingMelee`, `MulticastWoundFX`,
    `ApplyDeathImpulse` og `SpawnDeathPool`. Ingenting av det skal flyttes eller endres her.
