@@ -17,11 +17,15 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
+	/** Cleans the name (no control or URL characters, at most 20) and makes it unique among the players. */
+	virtual void ChangeName(AController* Controller, const FString& NewName, bool bNameChange) override;
 
 	void OnPlayerKilled(AController* Killer, AController* Victim, const FString& WeaponName, bool bHeadshot);
 
 	static constexpr float RespawnDelay = 4.f;
 	static constexpr int32 MaxPerTeam = 10;
+	/** Seconds between two accepted team switches for one player. */
+	static constexpr float TeamSwitchCooldown = 2.f;
 
 	virtual void Tick(float DeltaSeconds) override;
 	/** Lobby: a player toggles ready. */
@@ -56,6 +60,8 @@ protected:
 	/** Puts a player without a team on the smaller team. */
 	void AssignTeam(AGSPlayerState* PS);
 	int32 TeamCount(uint8 Team) const;
+	/** Server world time of each player's last accepted team switch. */
+	TMap<TWeakObjectPtr<AGSPlayerState>, float> LastTeamSwitch;
 	/** Match start: remove mines, fire, smoke, dropped items and bodies; refill all loot; flags home. */
 	void CleanWorldForMatch();
 };

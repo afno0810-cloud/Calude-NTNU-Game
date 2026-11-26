@@ -1,5 +1,6 @@
 #include "GSGameState.h"
 #include "GSHelp.h"
+#include "GSMenu.h"
 #include "GameFramework/PlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/World.h"
@@ -57,7 +58,11 @@ EGSWeather AGSGameState::RollWeather(EGSWeather Avoid) const
 
 void AGSGameState::BeginPlay()
 {
-	if (GetNetMode() != NM_DedicatedServer) GSHelp::EnsureHooked();
+	if (GetNetMode() != NM_DedicatedServer)
+	{
+		GSHelp::EnsureHooked();
+		GSMenu::EnsureHooked();   // after GSHelp: the menu is drawn on top
+	}
 	Super::BeginPlay();
 	if (HasAuthority())
 	{

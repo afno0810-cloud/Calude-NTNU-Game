@@ -230,6 +230,20 @@ void AGSGameMode::RequestTeam(AGSPlayerState* PS, uint8 NewTeam)
 	const int32 NewCount = TeamCount(NewTeam);
 	const int32 OldCount = Old == GSTeam::None ? TeamCount(GSTeam::Other(NewTeam)) + 1 : TeamCount(Old);
 	if (NewCount >= OldCount || NewCount >= MaxPerTeam) return;
+	// Every switch destroys and respawns the pawn: at most one accepted switch per player every TeamSwitchCooldown.
+	const float Now = GetWorld()->GetTimeSeconds();
+	if (const float* Last = LastTeamSwitch.Find(PS))
+	{
+		if (Now - *Last < TeamSwitchCooldown) return;
+	}
+	if (LastTeamSwitch.Num() > 64)
+	{
+		for (auto It = LastTeamSwitch.CreateIterator(); It; ++It)
+		{
+			if (!It.Key().IsValid()) It.RemoveCurrent();
+		}
+	}
+	LastTeamSwitch.Add(PS, Now);
 
 	PS->Team = NewTeam;
 	PS->bReady = false;
@@ -263,7 +277,7 @@ void AGSGameMode::SpawnFlags()
 		const FVector Base = BasePointM(Team) * 100.f;
 		FVector Loc(Base.X, Base.Y, Base.Z);
 		FHitResult Hit;
-		if (World->LineTraceSingleByChannel(Hit, Base + FVector(0.f, 0.f, 300.f), Base - FVector(0.f, 0.f, 300.f), ECC_WorldStatic))
+		if (World->LineTraceSingleByObjectType(Hit, Base + FVector(0.f, 0.f, 300.f), Base - FVector(0.f, 0.f, 300.f), FCollisionObjectQueryParams(ECC_WorldStatic)))
 		{
 			Loc = Hit.ImpactPoint;
 		}
@@ -575,4 +589,40 @@ void AGSGameMode::SpawnTerminals()
 			FString::Printf(TEXT("%s, utenfor"), *Name), 45.f);
 	}
 	UE_LOG(LogTemp, Log, TEXT("Gloshaugen: %d PC-er, %d 3D-printere, %d kameraer"), NumPC, NumPrinters, NumCams);
+}
+
+void AGSGameMode::ChangeName(AController* Controller, const FString& NewName, bool bNameChange)
+{
+	if (!Controller || !Controller->PlayerState) return;
+	// No control characters and nothing that means something in a travel URL.
+	FString Clean;
+	for (int32 I = 0; I < NewName.Len(); ++I)
+	{
+		const TCHAR Ch = NewName[I];
+		if (Ch < 32 || Ch == 127 || Ch == TEXT('"') || Ch == TEXT('?') || Ch == TEXT('=') || Ch == TEXT('#') || Ch == TEXT('\\')) continue;
+		Clean.AppendChar(Ch);
+	}
+	Clean.TrimStartAndEndInline();
+	Clean.LeftInline(20);
+	Clean.TrimEndInline();
+	if (Clean.IsEmpty()) return;   // keep the old name
+
+	// Unique among the players: "Kari", "Kari 2", "Kari 3" ...
+	const AGameStateBase* GS = GameState;
+	auto Taken = [&](const FString& Name)
+	{
+		if (!GS) return false;
+		for (const APlayerState* P : GS->PlayerArray)
+		{
+			if (P && P != Controller->PlayerState && P->GetPlayerName().Equals(Name, ESearchCase::IgnoreCase)) return true;
+		}
+		return false;
+	};
+	FString Final = Clean;
+	for (int32 N = 2; N < 100 && Taken(Final); ++N)
+	{
+		const FString Suffix = FString::Printf(TEXT(" %d"), N);
+		Final = Clean.Left(20 - Suffix.Len()).TrimEnd() + Suffix;
+	}
+	Super::ChangeName(Controller, Final, bNameChange);
 }

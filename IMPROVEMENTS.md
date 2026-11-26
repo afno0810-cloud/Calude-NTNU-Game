@@ -3,6 +3,43 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 2 (Spillbarhet): hovedmeny (26. nov.)
+
+402. Hovedmeny når spillet starter: Start spill, Bli med, Øv alene, Innstillinger, Kontroller og Avslutt, med campus som rolig, sakte dreiende bakgrunn
+403. Bli med: skriv vertens adresse med tastaturet eller lim den inn med Ctrl+V, og siste adresse huskes. Konsollen trengs ikke lenger, så det virker også i et ferdig pakket spill
+404. Start spill viser adressen vennene dine skal skrive inn, og forklarer brannmur og port
+405. Melding på skjermen når tilkoblingen feiler (ingen svar, avvist, ulik versjon, port i bruk) eller verten avslutter, og du kommer tilbake til hovedmenyen
+406. «Kobler til …» med sekunder og Avbryt, og forsøket gis opp etter 20 sekunder i stedet for å henge
+407. Bekreftelse før du forlater en kamp (ny kamp som vert, bli med i en annen, forlat kampen, avslutt), også fra Esc-menyen. Verten får vite at kampen avsluttes for alle
+408. Velg ditt eget spillernavn, også med æ, ø og å. Det huskes, og serveren rydder navnet og skiller like navn
+409. Innstillinger samlet på én side: grafikknivå, oppløsning, strålesporing, skjermmodus, V-sync og maks bildefrekvens, lagret mellom øktene
+410. Musfølsomhet med glidebryter i fine steg, og strålesporing huskes nå til neste gang du starter spillet
+411. Lydstyrke for hele spillet, lagret
+412. Tastene kan endres: klikk en handling og trykk ny tast. Tasten byttes med den som hadde den fra før, alt lagres, og «Tilbakestill» gir standardtastene
+413. Kontroller-oversikt i menyen med alle taster slik de faktisk er nå, og en kort forklaring av Capture the Flag
+414. Lagvalg med mus i lobbyen: begge lagene med navn og klar-merke, bytt lag med ett klikk, Klar-knapp og nedtelling. Åpnes av seg selv når du kommer inn, og med L
+415. Mens menyen, lagvalget eller en dialog er åpen, når ingen taster eller klikk spillet, så du ikke skyter, hopper eller slipper ting ved et uhell
+
+## Runde 11 (Kamp): Capture the Flag i HUD og på kroppen (26. nov.)
+
+Gammelt som er forbedret: kroppsfargen (432), poengtavla (435), sluttskjermen (436), kartet på PC-ene (442).
+Nytt: armbind (433), navn over lagkamerater (434), radiolyd og radiolinje ved flagghendelser (438, 439).
+
+432. Kroppen andre ser har lagets farge (dempet rød eller blå jakke, ikke lysende), og den er lik etter hver respawn (før: tilfeldig farge)
+433. Armbind i lagfarge på begge overarmer, som følger armen og blir med kroppen når den faller
+434. Lite navn over lagkamerater du faktisk ser innen 25 meter. Aldri noe over fiender, og ingen navn gjennom vegger
+435. Poengtavla (Tab) er delt i rødt og blått lag med lagets poeng, og viser erobringer, returer, drap, død og hvem som bærer flagget
+436. Sluttskjermen sier hvilket lag som vant (eller uavgjort) og om ditt lag vant, og poengtavla står under boksen i stedet for oppå den
+437. Lobbyen viser lagfarge foran hvert navn og Capture the Flag-regelen i stedet for «Først til 25 drap»
+438. Kort radiolyd når et flagg tas, mistes, hentes hjem eller erobres: fire nøkterne lyder, dypere når det er dårlig nytt for laget ditt
+439. Radiolinje under hendelseslista som sier hva flagghendelsen betyr for ditt lag («Flagget vårt er tatt av ...», «Dekk bæreren»)
+440. Statusstripa for Capture the Flag tegnes nå sammen med resten av skjermen, og den gamle hjelpeteksten som lå midt i bildet i 30 sekunder er borte
+441. Kompasset er flyttet ned over sekkelinja, så det ikke lenger ligger under statusstripa øverst
+442. Kartet på PC-ene fyller ruta med det nye, mindre kartet: bygg med navn, veier klippet i kanten, lagkamerater i grønt og fiender i rødt
+443. Flaggbæreren blir fortere sliten av å løpe og kan ikke sprinte lenge
+444. Tak på 60 bilder i sekundet, så laptopen ikke blir varm og klokker seg ned. Kan endres med «Bildefrekvens 30–240» i konsollen
+445. «Straaling 0» (og knappen i menyen) slår av hele strålesporingen, ikke bare Lumen sin del, så den faktisk frigjør ytelse
+
 ## Runde 1 (Grafikk og kart): CTF-kjernen rundt Hovedbygningen (26. nov.)
 
 332. Kartet er strammet inn til kjernen rundt Hovedbygningen (330 × 265 m), laget for Capture the Flag

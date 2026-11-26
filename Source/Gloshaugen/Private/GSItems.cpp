@@ -217,10 +217,10 @@ FName GSItems::RandomLoot(FRandomStream& Rng, EGSRarity MinRarity)
 	// (ammo boxes are gadgets in the catalog, but are needed far more often than other gadgets).
 	enum { GroupAmmo = (int32)EGSItemCat::MAX, NumGroups };
 	static const float GroupWeight[NumGroups] = { 20.f, 7.f, 5.f, 20.f, 8.f, 13.f, 7.f, 8.f, 12.f };
-	static const FName KindAmmo(TEXT("ammo"));
+	static const FName SortKindAmmo(TEXT("ammo"));
 	auto GroupOf = [](const FGSItemDef& D) -> int32
 	{
-		return (D.Kind == KindAmmo || D.Rounds > 0) ? (int32)GroupAmmo : (int32)D.Cat;
+		return (D.Kind == SortKindAmmo || D.Rounds > 0) ? (int32)GroupAmmo : (int32)D.Cat;
 	};
 
 	// 1) Group, among those that have anything at this rarity or better.

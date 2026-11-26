@@ -194,7 +194,9 @@ void AGSFlag::ServerStep()
 		// Not through a wall or a floor
 		FCollisionQueryParams Params(SCENE_QUERY_STAT(GSFlagTouch), false, C);
 		Params.AddIgnoredActor(this);
-		if (World->LineTraceTestByChannel(Loc, FlagLoc + FVector(0.f, 0.f, 60.f), ECC_WorldStatic, Params)) continue;
+		// Object trace against world geometry only: a channel trace also hits player capsules, so a defender
+		// standing on his own flag would make it impossible to take.
+		if (World->LineTraceTestByObjectType(Loc, FlagLoc + FVector(0.f, 0.f, 60.f), FCollisionObjectQueryParams(ECC_WorldStatic), Params)) continue;
 
 		if (PS->Team != Team)
 		{
@@ -240,7 +242,8 @@ void AGSFlag::Drop()
 	FHitResult Hit;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSFlagDrop), false, P);
 	Params.AddIgnoredActor(this);
-	if (GetWorld()->LineTraceSingleByChannel(Hit, From + FVector(0.f, 0.f, 50.f), From - FVector(0.f, 0.f, 600.f), ECC_WorldStatic, Params))
+	// World geometry only (not players), and far down: a carrier who dies in the air drops the flag to the ground.
+	if (GetWorld()->LineTraceSingleByObjectType(Hit, From + FVector(0.f, 0.f, 50.f), From - FVector(0.f, 0.f, 5000.f), FCollisionObjectQueryParams(ECC_WorldStatic), Params))
 	{
 		Floor = Hit.ImpactPoint;
 	}
@@ -253,7 +256,8 @@ void AGSFlag::Drop()
 		Old->ForceNetUpdate();
 	}
 	Carrier = nullptr;
-	Announce(GSFlagEvent::Dropped, Floor, Old, TEXT("mistet"));
+	// Carrier left the game: nobody to name, so the line reads "Det blå flagget [ligger ute]".
+	Announce(GSFlagEvent::Dropped, Floor, Old, Old ? TEXT("mistet") : TEXT("ligger ute"));
 }
 
 void AGSFlag::ReturnHome(AGSPlayerState* By)
@@ -295,7 +299,8 @@ void AGSFlag::Announce(uint8 Event, const FVector& Where, APlayerState* Who, con
 	{
 		GS->MulticastFlagEvent(Event, Team, FVector_NetQuantize(Where), Who);
 		// Also a line in the event list on the left, so it shows in today's HUD: "Kari  [tok]  det blaa flagget"
-		GS->AddKill(Who ? Who->GetPlayerName() : FString(GSTeam::Name(Team)), GSTeam::FlagName(Team), Verb, false);
+		if (Who) GS->AddKill(Who->GetPlayerName(), GSTeam::FlagName(Team), Verb, false);
+		else GS->AddKill(Team == GSTeam::Red ? TEXT("Det røde flagget") : TEXT("Det blå flagget"), FString(), Verb, false);
 	}
 	OnRep_Look();
 	ForceNetUpdate();

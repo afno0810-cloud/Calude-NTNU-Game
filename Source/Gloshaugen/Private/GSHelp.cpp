@@ -1,6 +1,7 @@
 #include "GSHelp.h"
 #include "GSFlag.h"
 #include "GSGameState.h"
+#include "GSMenu.h"
 #include "GSPlayerController.h"
 #include "GSPlayerState.h"
 #include "CanvasItem.h"
@@ -92,8 +93,6 @@ namespace
 		return Map;
 	}
 
-	uint64 LastTeamKeyFrame = 0;
-
 	void DrawImpl(AHUD* HUD, UCanvas* Canvas)
 	{
 		if (!HUD || !Canvas || Canvas->SizeX <= 0) return;
@@ -103,6 +102,7 @@ namespace
 		const AGSGameState* GS = World->GetGameState<AGSGameState>();
 		AGSPlayerState* PS = PC->GetPlayerState<AGSPlayerState>();
 		if (!GS) return;
+		if (GSMenu::IsFullscreen(PC)) return;   // the main menu covers the screen
 		if (const AGSPlayerController* GPC = Cast<AGSPlayerController>(PC))
 		{
 			if (GPC->bMenuOpen || GPC->IsOnTerminal()) return;
@@ -159,8 +159,9 @@ namespace
 					Col = TeamText(E.FlagTeam);
 					if (E.Who.IsEmpty())
 					{
-						Line = E.Event == GSFlagEvent::Returned
-							? FString::Printf(TEXT("%s er tilbake på basen"), *FlagNameCap(E.FlagTeam))
+						// Nobody to name: the flag went home by itself, or its carrier left the game.
+						Line = E.Event == GSFlagEvent::Returned ? FString::Printf(TEXT("%s er tilbake på basen"), *FlagNameCap(E.FlagTeam))
+							: E.Event == GSFlagEvent::Dropped ? FString::Printf(TEXT("%s ligger ute"), *FlagNameCap(E.FlagTeam))
 							: FlagNameCap(E.FlagTeam);
 					}
 					else
@@ -188,12 +189,15 @@ namespace
 		}
 
 		// --- 3. Lobby: what Capture the Flag is, which team you are on ---
-		if (bLobby && PS)
+		if (bLobby && PS && !GSMenu::IsModal(PC))
 		{
 			const float X = 28.f, W = 400.f, S = 0.8f, LH = LineHeight(S) + 4.f;
 			float Y = Canvas->SizeY * 0.30f;
 			TArray<TPair<FString, FLinearColor>> Lines;
-			Lines.Emplace(TEXT("L bytter lag (når det andre laget har færre)."), DimColor);
+			if (GS->Phase == EGSMatchPhase::Lobby)
+			{
+				Lines.Emplace(FString::Printf(TEXT("%s: velg lag."), *GSMenu::KeyName(PC, TEXT("GS_Team"))), DimColor);
+			}
 			Lines.Emplace(TEXT("Ta motstanderens flagg ved å gå bort til det,"), TextColor);
 			Lines.Emplace(TEXT("og bær det til din egen base."), TextColor);
 			Lines.Emplace(TEXT("Du får bare poeng når ditt eget flagg står hjemme."), TextColor);
@@ -201,7 +205,7 @@ namespace
 			Lines.Emplace(TEXT("hjem ved å gå bort til det."), TextColor);
 			Lines.Emplace(FString::Printf(TEXT("Første lag til %d erobringer vinner, ellers flest"), AGSGameState::CaptureLimit), TextColor);
 			Lines.Emplace(FString::Printf(TEXT("når %d minutter er gått."), int32(AGSGameState::MatchMinutes)), TextColor);
-			Lines.Emplace(TEXT("Oppvarming nå, ingen skade. Trykk Enter når du er klar."), DimColor);
+			Lines.Emplace(FString::Printf(TEXT("Oppvarming nå, ingen skade. Trykk %s når du er klar."), *GSMenu::KeyName(PC, TEXT("IA_Ready"))), DimColor);
 			if (GS->Phase == EGSMatchPhase::Lobby && GS->PhaseEndsAt > 0.f)
 			{
 				Lines.Emplace(FString::Printf(TEXT("Starter av seg selv om %d s."), FMath::CeilToInt(GS->PhaseSecondsLeft())), DimColor);
@@ -224,13 +228,7 @@ namespace
 				Y += LH;
 			}
 		}
-
-		// --- 5. L = switch team, lobby only ---
-		if (GS->Phase == EGSMatchPhase::Lobby && PS && GFrameCounter != LastTeamKeyFrame && PC->WasInputKeyJustPressed(EKeys::L))
-		{
-			LastTeamKeyFrame = GFrameCounter;
-			PS->ServerRequestTeam(GSTeam::Other(PS->Team));
-		}
+		// The team key (L) is taken by GSMenu, which opens the team panel.
 	}
 
 	void OnPostRender(AHUD* HUD, UCanvas* Canvas)
