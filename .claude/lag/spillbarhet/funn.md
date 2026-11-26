@@ -5,6 +5,14 @@ Den felles listen `.claude/loop/funn.md` har funnene om loot/pickups, prosjektil
 våpen/skyting. De gjentas ikke her.
 
 ## Områder som er gjennomgått
+- 2026-11-26 (commit f19d059), «Feiljakt 2»: **bevegelse** (gange, sprint, hopp, huk, glid, klatring:
+  `Move`, `StartJump`, `TryMantle`, `StartSlide`/`EndSlide`, `ToggleCrouch`, sprint/stamina i `Tick`),
+  **nærkamp** (`QuickMelee`, `ServerMelee`, `DoMeleeHit`), **gadgets** (gripekrok, fallskjerm, nattsyn,
+  kikkert, drone, lommelykt: `UseSelectedItem`, `ServerGrapple`, `CompleteUse`, `TickEffects`, `DrawWallhack`),
+  **tastebindinger/input** (`EnsureInputCreated`, `SetupInputComponent`, `SetupPlayerInputComponent`, meny-
+  og inventar-bryterne, `DefaultInput.ini`), **til-/frakobling midt i kamp** (`GSGameMode`), og **hva som
+  må endres for lagbasert CTF**.
+- Ikke gjennomgått ennå: lootplassering per bygg (venter på det mindre kartet), lyd/HUD-detaljer, ytelse.
 - 2026-11-26 (commit 55ca90f), «Feiljakt 1»: **PC-er, kameraer og 3D-printere** (`GSTerminal`, terminaldelen
   av `GSPlayerController`, `SpawnTerminals` i `GSGameMode`, terminalskjermene i `GSHUD`), **overlevelse**
   (sult, tørst, mat, medisin, boosts og bivirkninger: `TickSurvival`, `CompleteUse`, `AddEffect`,
@@ -12,17 +20,224 @@ våpen/skyting. De gjentas ikke her.
   `TakeFromPickup`, `GiveWeapon`, `DropEverything`), **lobby, klar-system og poengtavle** (`GSGameMode`,
   `GSGameState`, `GSPlayerState`, `DrawMatch`/`DrawScoreboard` i `GSHUD`), **meny og konsollkommandoer**
   (Host, Join, Grafikk, Opplosning, Straaling).
-- Ikke gjennomgått ennå: gadgets i detalj (gripekrok, fallskjerm, drone, kikkert, nattbriller), nærkamp,
-  bevegelse (mantle/skli), kontroller/tastebindinger, lootplassering per bygg, og hva som skjer når
-  spillere kobler til/fra midt i en kamp.
 
 ## Funn
 
 Alvorlighet: **Høy** = ødelegger kamper, gjør en hel funksjon ubrukelig eller kan utnyttes lett.
 **Middels** = merkes tydelig. **Lav** = pirk som tas når man likevel er i filen.
-Linjenumre gjelder commit 55ca90f. Alt er funnet ved å lese koden, ikke ved å spille.
+Linjenumrene står ved hver feiljakt. Alt er funnet ved å lese koden, ikke ved å spille.
 «Eier» sier hvilket lag som eier filen (se `.claude/lag/LAG.md`). Funn i andre lags filer må gå som
 bestilling i `.claude/lag/bestillinger.md`.
+
+### Feiljakt 2 (2026-11-26, commit f19d059)
+
+Linjenumre gjelder f19d059. Nesten alt her ligger i `GSCharacter.cpp` og `GSPlayerController.cpp`, som
+lag Kamp eier: lag Spillbarhet må bestille rettelsene (`.claude/lag/bestillinger.md`).
+
+#### A. Kontroller og input
+
+I1. **Musehjulet blar aldri i inventaret – det er bare koblet til «neste våpen»** – Høy (Andreas har meldt den)
+   - Fil: `GSPlayerController.cpp` linje 105–106 (`MapKey(NextWeaponAction, MouseScrollDown)` og
+     `MapKey(NextWeaponAction, MouseScrollUp)`), linje 101 (`NextItemAction` = bare Q), `GSPlayerController.h`
+     linje 134 (`ToggleInventory` snur bare `bShowInventory`); `GSCharacter.cpp` linje 345 (hjulet kaller
+     `NextWeapon`), `NextWeapon` linje 540–545, `NextItem` linje 2165–2170. Eier: Kamp → bestilling.
+   - Årsak: begge hjulretningene er bundet til samme handling, `NextWeaponAction`, som bytter våpen.
+     Ingenting kobler hjulet til valgt gjenstand i sekken (`SelectedItem`); det endres bare av Q. At
+     inventaret er åpent (I) endrer ikke hva hjulet gjør. Og `NextWeapon` gjør ingenting når man har færre
+     enn 2 våpen (`if (Weapons.Num() < 2) return;`) – alle starter med bare én pistol (`BeginPlay`
+     linje 296–301), så hjulet gjør **helt ingenting** til man har plukket opp et våpen til. Hjul opp og
+     hjul ned går dessuten begge «fremover»; det finnes ingen «forrige» (verken våpen eller gjenstand).
+   - Forslag: én akse-handling på `EKeys::MouseWheelAxis` (eller to handlinger, opp/ned) med retning.
+     Er inventaret åpent → `SelectedItem` ±1; ellers våpen ±1. Legg også til «forrige gjenstand», og vis
+     «hjul: bla» i inventarboksen og hurtiglinja (`GSHUD.cpp` linje 359 og 1024 sier bare «Q neste»).
+
+I2. **Taster kan ikke endres: alt er hardkodet og spilleren-innstillinger er ikke slått på** – Middels (blokkerer keybinds-oppgaven)
+   - Fil: `GSPlayerController.cpp` `EnsureInputCreated` linje 34–112 (handlinger og `MapKey` laget med
+     `NewObject` i kode, uten `PlayerMappableKeySettings`), `SetupInputComponent` linje 123 (`ClearAllMappings`
+     hver gang); `Config/DefaultInput.ini` (ingen `[/Script/EnhancedInput.EnhancedInputDeveloperSettings]`
+     med `bEnableUserSettings=True`). Eier: Kamp (filen) → bestilling; Config er felles.
+   - Hva: Enhanced Input sine brukerinnstillinger (som prioriteringene ber om) krever at handlingene har
+     et navn for omkobling, at konteksten registreres i `UEnhancedInputUserSettings`, og at brukerinnstillinger
+     er slått på. Ingenting av dette finnes. `ClearAllMappings` fjerner dessuten alle andre kontekster.
+   - Forslag: gi hver handling `PlayerMappableKeySettings` (navn + norsk visningsnavn), slå på
+     `bEnableUserSettings`, registrer konteksten, og la knappehjelpen lese tastene fra innstillingene i
+     stedet for faste tekster.
+
+I3. **Med menyen (Esc) åpen kan man fortsatt hoppe, lade, bytte våpen, slå, bruke og slippe ting** – Lav
+   - Fil: `GSPlayerController.cpp` `ToggleMenu` linje 138–151 (stopper bare se og gå); `GSCharacter.cpp`
+     bare `StartFire` (linje 634) og `Look` (linje 375) sjekker `bMenuOpen`. Eier: Kamp → bestilling.
+   - Hva: G med menyen åpen slipper valgt gjenstand, V slår, R lader, Space hopper. Lett å gjøre ved et
+     uhell når man skriver eller klikker i menyen (blir verre når hovedmenyen får tekstfelt).
+   - Forslag: legg til en egen meny-kontekst med høyere prioritet som «spiser» spilltastene, eller sjekk
+     `bMenuOpen` i én felles vakt.
+
+#### B. Bevegelse (glid og klatring – Andreas liker begge)
+
+M1. **Etter en glid står du fast i huk: Space hopper ikke, og sprinten må trykkes på nytt** – Middels
+   - Fil: `GSCharacter.cpp` `StartSlide` linje 436–452 (`Crouch()`), `EndSlide` linje 459–468 (ingen
+     `UnCrouch`), `StartJump` linje 383–389, `StartSprint` linje 471–475 (`!bIsCrouched`). Eier: Kamp → bestilling.
+   - Hva: glidningen legger figuren i huk og avslutter uten å reise seg. Motorens `Jump()` virker ikke i
+     huk (`CanJump` krever at man ikke er i huk), så Space under eller etter glid gjør ingenting med mindre
+     det er en kant å klatre på (`EndSlide` kalles, men figuren er fortsatt i huk). Sprinten er slått av
+     og startes bare når Shift trykkes ned på nytt, og nekter så lenge man er i huk. Resultat: sprint →
+     glid → man kryper i 2 m/s til man trykker C og så Shift igjen. Glidningen koster heller ingen stamina.
+   - Forslag: Space under/etter glid = reis deg og hopp (`UnCrouch` + hopp, kort «glidehopp»); holder du
+     fortsatt Shift når glidningen slutter, reis deg og sprint videre; ellers bli i huk. La glidningen
+     koste litt stamina.
+
+M2. **Glid og sprint endres utenfor bevegelseskomponentens forutsigelse (rykk på nett)** – Middels
+   - Fil: `GSCharacter.cpp` `StartSlide` linje 445–451 (endrer `GroundFriction`, `BrakingDecelerationWalking`,
+     `MaxWalkSpeedCrouched` og legger direkte til `Velocity`, på klienten nå og på serveren når RPC-en kommer),
+     `ServerSlide` linje 454–457 (serveren kjører hele `StartSlide` på nytt med egne vilkår), `EndSlide`
+     via egen timer på hver maskin; `Tick` linje 3229–3231 (`MaxWalkSpeed` fra `bSprinting` som serveren
+     får via RPC). Eier: Kamp → bestilling.
+   - Hva: Unreal sin `CharacterMovementComponent` spiller av klientens bevegelser på serveren og retter
+     klienten når resultatet avviker. Glid-verdiene settes på ulike tidspunkt på klient og server, og
+     serveren kan nekte glidningen (f.eks. `IsFalling()` eller 1,2 s-sperren slår ut annerledes), mens
+     klienten glir. Da blir spilleren dratt tilbake («rubber-banding»), mer jo høyere ping. `StartJump` på
+     klienten avslutter glidningen bare lokalt (ingen RPC), så serveren glir videre med lav friksjon.
+   - Forslag: glid og sprint som egne flagg i en egen `UGSCharacterMovementComponent` (`FSavedMove` med
+     `CompressedFlags`, fart/friksjon i `GetMaxSpeed`/`CalcVelocity`), slik Lyra og ALS gjør. Det er også
+     grunnmuren for tyngre, mer realistisk glid som Andreas ønsker.
+
+M3. **Klatringen stoler på klienten: serveren godtar et «hopp» opptil 12 m/s i hvilken som helst retning** – Middels (juks)
+   - Fil: `GSCharacter.cpp` `ServerMantle_Implementation` linje 430–434 (sjekker bare `bDead` og
+     `LaunchVelocity.Size() > 1200`). Eier: Kamp → bestilling.
+   - Hva: serveren sjekker ikke at det finnes en kant foran spilleren. En modifisert klient kan sende
+     `ServerMantle` når som helst, også i lufta, og løfte seg ca. 7 m (1200² / 2g) om og om igjen: opp på
+     tak, over murer, rett til flagget.
+   - Forslag: serveren gjør samme kantsjekk som `TryMantle` og regner ut farten selv (klienten sender
+     bare «jeg vil klatre»), med en kort sperre mellom klatringer.
+
+M4. **Klatring kan gjøres i lufta og har verken sperre, stamina eller ekte klatrebevegelse** – Lav (men viktig for Andreas)
+   - Fil: `GSCharacter.cpp` `StartJump` linje 383–389 og `TryMantle` linje 391–428 (ingen `IsFalling`-sjekk,
+     ingen stamina, ingen ventetid), `LaunchCharacter` linje 424. Eier: Kamp → bestilling.
+   - Hva: Space i lufta ved en kant gir et nytt «hopp» opp på kanten, så man når ca. 3,1 m (hopp 0,94 m +
+     kant 2,2 m). Klatringen er et kast i en bue (`LaunchCharacter` med 2,6 m/s fremover), ikke et grep og
+     en opptrekking; man kan skli av eller skyte over kanten. Den koster ingenting.
+   - Forslag: ekte klatring i trinn (grep kanten, trekk deg opp på 0,6–1,2 s med kamerabevegelse, styrt
+     posisjon i stedet for kast), med stamina-kost, slik prioriteringene beskriver (vinduer, tak, høye murer).
+
+M5. **Ingen fallskade: man kan hoppe fra taket på Sentralbygg 1 uten en skramme** – Middels (realisme, gjør fallskjermen meningsløs)
+   - Fil: ingen kode håndterer landing (ingen `Landed`/fallskade i `Source/`). Eier: Kamp → bestilling.
+   - Hva: fall fra hvilken som helst høyde, og gripekrok-kast i opptil 26 m/s, gir null skade. Fallskjermen
+     (som er laget for å «hoppe fra Sentralbygg 1») har derfor ingen nytte.
+   - Forslag: fallskade fra ca. 3–4 m, dødelig fra ca. 12–15 m, med halting (bein) som kroppssone-systemet
+     kan bruke; lyd og kameradump ved hard landing.
+
+#### C. Nærkamp og gadgets
+
+G1. **Klienters granater, miner og nærkampslag ser alltid rett frem i vannrett – serveren vet ikke hvor de ser opp/ned** – Høy
+   - Fil: `GSCharacter.cpp` `ThrowItem` linje 2398–2404 og `DoMeleeHit` linje 888–896 (bruker
+     `Camera->GetForwardVector()` på serveren), `Camera->bUsePawnControlRotation` linje 127. Eier: Kamp → bestilling.
+   - Hva: kameraets rotasjon oppdateres av motoren bare for den lokale spilleren (i `GetCameraView`). På
+     serveren har en tilkoblet spillers kamera samme retning som kroppen: riktig side-til-side, men alltid
+     vannrett. Granater kastes derfor alltid flatt (+2,5 m/s opp) uansett om man sikter opp på en balkong
+     eller ned en trapp, og et slag treffer bare i øyehøyde rett frem (en som ligger eller sitter i huk
+     foran deg treffes ikke). Verten (listen server) merker ingenting, så feilen synes ikke når man
+     tester alene.
+   - Forslag: bruk `GetBaseAimRotation()`/`GetControlRotation()` på serveren (eller send retningen med
+     RPC-en og sjekk den), slik `ServerFire` allerede gjør.
+
+G2. **Fallskjermen må brukes på bakken og forsvinner etter 2 sekunder** – Middels
+   - Fil: `GSCharacter.cpp` `CompleteUse` linje 2303 («Fallskjerm klar. Hopp!»), `TickEffects` linje
+     2491–2495 (fjernes når man ikke faller og det er gått mer enn 2 s). Eier: Kamp → bestilling.
+   - Hva: bruker du den mens du står på taket, har du 2 s på å hoppe før den er borte (og gjenstanden er
+     brukt opp). Bruker du den i lufta, tar den 0,5 s (bruketid i `catalog.py` linje 298) før den virker.
+     Mens den er aktiv på bakken gir vanlige hopp svev (0,9 luftkontroll).
+   - Forslag: fallskjermen bæres som utstyr og utløses med Space i fritt fall (over en viss fallhøyde),
+     slik ekte fallskjermer brukes. Med fallskade (M5) får den en ekte jobb.
+
+G3. **Speiderdronen er ingen drone: den gir deg veggsyn på alle innen 40 m rundt deg selv** – Middels (realisme, CTF)
+   - Fil: `GSCharacter.cpp` `CompleteUse` linje 2302 (`AddEffect(FxDrone)`), `catalog.py` linje 52
+     (`Avslort` = `wallhack`) og 296; `GSHUD.cpp` `DrawWallhack` linje 431–445 (røde rammer på alle, også
+     gjennom vegger). Eier: Spillbarhet (catalog) og Kamp (kode).
+   - Hva: ingen drone flyr, ingen kan se eller skyte den ned, og den «ser» gjennom vegger fra der du står.
+     I CTF blir den en 10-sekunders veggsynsjuks rundt flagget.
+   - Forslag: en ekte drone-aktør man styrer (eller som flyr opp over deg), som bare ser det den har
+     siktlinje til, lager lyd og kan skytes ned. Til den finnes: ta den ut av loot og printer.
+
+G4. **Lommelykten lyser gjennom vegger, og andre ser den alltid peke vannrett** – Lav/Middels
+   - Fil: `GSCharacter.cpp` linje 236–244 (`Flashlight->SetCastShadows(false)`, festet til `Camera`).
+     Eier: Kamp → bestilling.
+   - Hva: et lys uten skygger stopper ikke ved vegger: det lyser opp rommet bak veggen og avslører deg der.
+     Og fordi kameraet på andre maskiner ikke følger blikket opp/ned (se G1), peker strålen andre ser
+     alltid rett frem.
+   - Forslag: skygger på (bare dynamiske, kort rekkevidde), og la lykten følge `GetBaseAimRotation()`.
+
+G5. **Gripekroken: serveren godtar ethvert punkt innen 37 m, også gjennom vegger** – Lav (juks)
+   - Fil: `GSCharacter.cpp` `ServerGrapple_Implementation` linje 2215–2229 (bare avstand og at du har kroken).
+     Eier: Kamp → bestilling.
+   - Forslag: linjespor fra øyet til punktet på serveren. I CTF: ingen gripekrok mens man bærer flagget.
+
+G6. **Kikkerten sier «Hold F», men F slår av og på** – Lav
+   - Fil: `catalog.py` linje 294 (Eier: Spillbarhet); `GSCharacter.cpp` `UseSelectedItem` (bryter).
+   - Forslag: rett teksten til «Slå av og på med F» (kan gjøres av Spillbarhet alene).
+
+#### D. Til- og frakobling midt i en kamp
+
+C1. **Den som kobler fra midt i en skuddveksling forsvinner: ingen død, ingen drap, ingen loot** – Middels (blir Høy med flagg)
+   - Fil: `GSGameMode.h`/`.cpp` (ingen `Logout`-overstyring; søk etter `Logout`/`PawnLeavingGame`/`EndPlay`
+     i `Source/` gir ingen treff). Eier: Spillbarhet.
+   - Hva: når en spiller lukker spillet, ødelegger motoren figuren uten å kalle `Die`. Skytteren får
+     ikke drapet, ingenting slippes (`DropEverything` kjøres ikke), og killfeed sier ingenting. Å koble fra
+     når man taper er en gratis flukt. I CTF forsvinner et båret flagg sammen med figuren og kommer aldri
+     tilbake.
+   - Forslag: overstyr `Logout` i `GSGameMode`: slipp flagget (eller send det hjem), slipp utstyret, gi
+     drapet til siste som skadet (finnes som `LastDamageInstigator`), og skriv «X forlot kampen» i killfeed.
+
+C2. **Den som kommer inn midt i en kamp settes rett inn uten lag og uten beskjed** – Middels (CTF)
+   - Fil: `GSGameMode.cpp` (ingen `PostLogin`/`HandleStartingNewPlayer`; motorens standard kaller
+     `RestartPlayer` straks), `PickSpawnTransform` linje 229–257. Eier: Spillbarhet.
+   - Hva: i dag blir han en fiende til alle. I CTF må han få et lag (det med færrest), spawne ved lagets
+     base, og få en melding (se F3 i Feiljakt 1).
+
+#### E. Det som må endres for lagbasert Capture the Flag (dagens kode er «alle mot alle»)
+
+T1. **Det finnes ingen lag i koden** – Høy (grunnmur)
+   - Fil: `GSPlayerState.h` (bare `Kills`, `Deaths`, `bReady`), `GSGameState.h`, `GSGameMode.h` («Free roam
+     deathmatch»). Søk etter `Team` i `Source/` gir ingen treff. Eier: Spillbarhet (`GSTypes.h` felles).
+   - Forslag: `ETeam` i `GSTypes.h` (nederst), replikert `Team` i `GSPlayerState`, lagpoeng og erobringer i
+     `GSGameState`, lagvalg og utjevning i lobbyen.
+
+T2. **Venneild: alt skader alle, og lagkameratdrap gir poeng** – Høy
+   - Fil: `GSCharacter.cpp` `TakeDamage` linje 2520–2526 (sjekker bare `DamageEnabled()`), treffmarkør og
+     blodtørst linje 2637–2661 (gis for alle treff); `GSGameMode.cpp` `OnPlayerKilled` linje 265–275
+     (`Kills++` for ethvert drap som ikke er selvmord). Eier: Kamp (`TakeDamage`) → bestilling; Spillbarhet
+     (`OnPlayerKilled`, regelen «venneild av/på» i `GSGameMode`/`GSGameState`).
+   - Forslag: `GSGameMode::CanDamage(Instigator, Victim)` (Spillbarhet) som `TakeDamage` spør; lagdrap gir
+     −1 og egen tekst i killfeed. Husk granater, miner, brann og blitz (`ApplyFlash`), ikke bare kuler.
+
+T3. **Spawn velger punktet lengst unna alle levende – også lagkamerater – blant 16 punkter over hele det gamle kartet** – Høy (CTF)
+   - Fil: `GSGameMode.cpp` `PickSpawnTransform` linje 229–257, `GSCampus.h` `SpawnPoints` linje 82–91 (Eier:
+     Grafikk og kart). Eier: Spillbarhet.
+   - Hva: punktene ligger fra x −300 til +420 m og y −80 til +520 m, altså langt utenfor et mindre kart, og
+     tilfeldig retning (`Rot` med tilfeldig yaw). Kampstart (`StartMatch` linje 108–116) sprer alle på samme måte.
+   - Forslag: spawnsoner per lag ved egen base (bestill punktene fra Grafikk og kart sammen med basene),
+     med retning mot midten og kort spawnbeskyttelse.
+
+T4. **Poeng og kampslutt er drapsbasert** – Høy (CTF)
+   - Fil: `GSGameMode.cpp` `Tick` linje 68–76 (`KillLimit` 25), `EndMatch` linje 119–131 (vinner = flest drap,
+     lagret som spillernavn), `GSGameState.h` (`KillLimit`, `Winner` som `FString`). Eier: Spillbarhet.
+   - Forslag: 3 erobringer eller flest når tiden går ut, uavgjort håndtert, `WinningTeam` i stedet for et
+     navn. Poengtavla delt i to lag med lagfarger (`GSHUD`, bestilling).
+
+T5. **Ingen kan se hvem som er på hvilket lag** – Høy (CTF)
+   - Fil: `GSCharacter.cpp` `BeginPlay` linje 289–292 (kroppsfarge fra `GetName()` på figuren, altså ny
+     tilfeldig farge for hver respawn); `GSHUD.cpp` `DrawWallhack` (alle røde), killfeed og poengtavle uten
+     lag. Eier: Kamp → bestilling.
+   - Forslag: lagfarge på kropp/armbind (replikert fra `PlayerState`), navn over lagkamerater på kort hold.
+
+T6. **Boosts og gadgets gjør flaggløp trivielle** – Middels (CTF-balanse)
+   - Fil: `GSCharacter.cpp` `Tick` linje 3231 (`MaxWalkSpeed = Speed * Mods.Speed * GearSpeed`, ingen
+     plass for «bærer flagget»), `Spøkelse` (nesten usynlig, linje 3279 og utover), gripekrok 35 m, fallskjerm;
+     se også B3 i Feiljakt 1 (fart over 2×). Eier: Kamp (kode), Spillbarhet (data).
+   - Forslag: flaggbæreren får en egen fartsfaktor (Andreas: «går litt tregere») som ikke kan boostes over
+     vanlig gange, kan ikke bruke gripekrok/fallskjerm, og Spøkelse/usynlighet fjernes når flagget tas.
+
+T7. **PC-sporing og drone viser lagkamerater og fiender likt** – Lav (CTF)
+   - Fil: `GSPlayerController.cpp` `SendTrackPulse` linje 470–485, `GSHUD.cpp` `DrawWallhack`. Eier: Kamp → bestilling.
+   - Forslag: vis lag med farge, eller bare fiender.
 
 ### Feiljakt 1 (2026-11-26, commit 55ca90f)
 

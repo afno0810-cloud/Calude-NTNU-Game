@@ -73,6 +73,20 @@ Koordinater i meter, X = øst, Y = sør, origo midt i Hovedbygningen (som i `GSC
     møbelgrupper), trapper i stedet for ramper.
 14. **Kulissene:** enklere modeller uten innside (billigere), lys i noen vinduer om kvelden.
 15. **Flater for blod og kulehull** når lag Kamp bestiller.
+16. **Fra Andreas' godkjente lister (se `prioriteringer.md` og `.claude/lag/onskeliste.md`), tas inn der de
+    passer i rundene over:** vær som påvirker spillet (replikerte verdier for regn, tåke og vind som Kamp
+    kan lese); bygg man kan bruke (lysbrytere, heis, brannalarm); dører og vegger som kan sprenges og
+    åpner nye ruter; flyttbare pulter og stoler som barrikader; mer liv inne (rot, papirer, oppslag,
+    NTNU-skilt); flimrende lysrør og sollys gjennom vinduer; trær og gress i vind; ytelse på RTX 3050
+    (mål og logg før/etter), raskere oppstart.
+
+### Åpne funn fra kontrolløren (`funn.md`) som ikke er tatt i runde 1
+F3 (snø og regn inne – `gs_materials.py`, runde 2), F5 (dør foran tverrvegg i Hovedbygningen), F8 (sola
+flyttes hver frame – ytelse), F9 (lyktestolper forsvinner på 90 m), F10 (gatelys gjennom vegger – lysrunden),
+F11–F16, og realismehullene R1–R13 (R1/R2 innvendige rom og trapper = backlog 13, R3 like fasader, R4 flatt
+terreng = backlog 11, R5 tårnet bak Hovedbygningen finnes ikke i virkeligheten – spør hovedagenten før det
+fjernes, R7–R9 = lys og vær, R10 gul midtlinje og hydranter, R11 roboter som pynt – Andreas' eget innhold,
+spør før de fjernes, R12 glass uten kollisjon = backlog 7).
 
 ### Utredet: novemberkveld-lyset (til backlog 4)
 Funn fra gjennomgangen av `GSEnvironment.cpp` og gatelysene, så neste plan kan skrives raskt:
