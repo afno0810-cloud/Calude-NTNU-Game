@@ -200,22 +200,38 @@ def p_Locker(k, m):
 
 @prop
 def p_Bookshelf(k, m):
-    k.box((0, -0.5, 1.0), (0.35, 0.03, 2.0), m.wood)
-    k.box((0, 0.5, 1.0), (0.35, 0.03, 2.0), m.wood)
-    k.box((-0.17, 0, 1.0), (0.02, 1.0, 2.0), m.wood)
-    colors = [m.red, m.blue, m.green, m.yellow, m.paper, m.dark, m.orange]
-    for j, z in enumerate((0.02, 0.42, 0.82, 1.22, 1.62, 1.99)):
-        k.box((0, 0, z), (0.35, 1.0, 0.03), m.wood)
-        if z > 1.9:
-            continue
-        y = -0.46
-        i = j * 3
-        while y < 0.44:
-            w = 0.03 + ((i * 7) % 5) * 0.008
-            h = 0.25 + ((i * 3) % 4) * 0.025
-            k.box((0.0, y + w / 2, z + 0.015 + h / 2), (0.24, w, h), colors[i % len(colors)])
-            y += w + 0.004
+    """Wooden bookcase: sides, back, plinth and top moulding; books of varied size, some leaning, binders and a box."""
+    for y in (-0.5, 0.5):
+        k.box((0, y, 1.0), (0.35, 0.03, 2.0), m.wood)
+    k.box((-0.17, 0, 1.0), (0.015, 1.0, 2.0), m.lwood)
+    k.box((0.16, 0, 0.04), (0.02, 0.97, 0.08), m.wood)
+    k.loft([(x, 1.985, 2.03, 0.53) for x in (-0.18, 0.15, 0.19)], m.wood, segs=16, power=6.0)
+    colors = [m.red, m.blue, m.green, m.yellow, m.paper, m.dark, m.orange, m.ntnu, m.fabric_red]
+    for j, z in enumerate((0.08, 0.46, 0.84, 1.22, 1.6)):
+        k.box((0, 0, z - 0.015), (0.35, 0.97, 0.03), m.wood)
+        y = -0.47
+        i = j * 5 + 1
+        end = 0.47 - (0.22 if j in (1, 3) else 0.0)
+        while y < end - 0.06:
+            w = 0.022 + ((i * 7) % 5) * 0.007
+            h = 0.2 + ((i * 3) % 5) * 0.025
+            d = 0.17 + ((i * 5) % 3) * 0.025
+            col = colors[(i * 4) % len(colors)]
+            k.box((-0.15 + d / 2, y + w / 2, z + h / 2), (d, w, h), col)
+            k.box((-0.15 + d + 0.001, y + w / 2, z + h * 0.78), (0.002, w * 0.8, 0.012), m.paper)
+            y += w + 0.003
             i += 1
+        if j in (1, 3):
+            # a few books leaning and a stack lying flat
+            for t in range(2):
+                k.box((-0.05, end - 0.18 + t * 0.03, z + 0.12), (0.2, 0.025, 0.24), colors[(j + t) % len(colors)], rot=(-14, 0, 0))
+            for t in range(4):
+                k.box((-0.04, end + 0.1, z + 0.02 + t * 0.035), (0.22 - t * 0.01, 0.16 - t * 0.008, 0.033), colors[(j * 3 + t) % len(colors)])
+    # top shelf: binders and a storage box
+    for i in range(5):
+        k.box((-0.03, -0.44 + i * 0.07, 1.6 + 0.155), (0.26, 0.065, 0.31), m.ntnu if i % 2 else m.dark)
+        k.cyl_axis((0.1, -0.44 + i * 0.07, 1.67), 0.012, 0.004, m.white, axis="X", verts=10)
+    k.box((0, 0.25, 1.72), (0.28, 0.4, 0.24), m.paper)
 
 
 @prop
@@ -383,48 +399,111 @@ def p_TrashBin(k, m):
 
 @prop
 def p_FireExtinguisher(k, m):
-    k.box((-0.04, 0, 0.9), (0.02, 0.2, 0.3), m.dark)
-    k.cyl((0.06, 0, 0.6), 0.075, 0.5, m.red, verts=16)
-    k.cyl((0.06, 0, 1.1), 0.075, 0.06, m.red, verts=16, r_top=0.03)
-    k.box((0.06, 0, 1.18), (0.12, 0.03, 0.03), m.dark)
-    k.cyl_axis((0.15, 0, 1.12), 0.012, 0.12, m.rubber, axis="X", verts=8)
-    k.box((0.137, 0, 0.8), (0.004, 0.1, 0.12), m.paper)
+    """Wall-mounted extinguisher: bracket, round-shouldered cylinder, valve with lever and gauge, hose and label."""
+    k.box((-0.04, 0, 0.9), (0.012, 0.16, 0.3), m.dark)
+    k.box((0.0, 0, 0.82), (0.08, 0.12, 0.012), m.dark)
+    k.tube([(-0.035, -0.08, 0.95), (0.06, -0.085, 0.95), (0.15, 0, 0.95), (0.06, 0.085, 0.95), (-0.035, 0.08, 0.95)], 0.006, m.dark, segs=6)
+    k.cyl((0.06, 0, 0.6), 0.072, 0.02, m.dark, verts=24)
+    k.cyl((0.06, 0, 0.62), 0.076, 0.44, m.red, verts=24)
+    k.cyl((0.06, 0, 1.06), 0.076, 0.03, m.red, verts=24, r_top=0.07)
+    k.cyl((0.06, 0, 1.09), 0.07, 0.03, m.red, verts=24, r_top=0.045)
+    k.cyl((0.06, 0, 1.12), 0.022, 0.05, m.metal, verts=14)
+    k.box((0.04, 0, 1.19), (0.13, 0.026, 0.02), m.dark, rot=(0, 6, 0))
+    k.box((0.03, 0, 1.165), (0.12, 0.024, 0.016), m.dark, rot=(0, -8, 0))
+    k.cyl_axis((0.06, 0.025, 1.145), 0.018, 0.012, m.white, axis="Y", verts=14)
+    k.cyl_axis((0.06, 0.032, 1.145), 0.014, 0.002, m.green, axis="Y", verts=14)
+    k.tube([(0.07, -0.02, 1.13), (0.13, -0.05, 1.08), (0.15, -0.06, 0.9), (0.14, -0.05, 0.75)], 0.009, m.rubber, segs=8)
+    k.cyl((0.14, -0.05, 0.69), 0.014, 0.06, m.plastic, verts=10, r_top=0.011)
+    k.box((0.137, 0.02, 0.82), (0.004, 0.09, 0.16), m.paper, rot=(0, 0, 20))
+    k.box((0.139, 0.02, 0.88), (0.004, 0.08, 0.02), m.red, rot=(0, 0, 20))
 
 
 @prop
 def p_FilingCabinet(k, m):
-    k.box((0, 0, 0.66), (0.6, 0.47, 1.32), m.metal)
+    """Steel filing cabinet: rounded carcass, four inset drawers with recessed handles, label holders and a lock."""
+    k.loft([(x, 0.02, 1.32, 0.235) for x in [-0.3 + 0.6 * i / 6 for i in range(7)]], m.metal, segs=24, power=10.0)
+    k.box((0, 0, 0.02), (0.56, 0.42, 0.04), m.dark)
     for i in range(4):
-        z = 0.17 + i * 0.32
-        k.box((0.302, 0, z), (0.006, 0.44, 0.3), m.metal)
-        k.box((0.31, 0, z + 0.06), (0.02, 0.15, 0.02), m.dark)
+        z = 0.19 + i * 0.32
+        k.box((0.302, 0, z), (0.012, 0.43, 0.3), m.metal)
+        k.box((0.309, 0, z + 0.05), (0.004, 0.17, 0.035), m.dark)
+        k.tube([(0.312, -0.07, z + 0.03), (0.322, -0.06, z + 0.02), (0.322, 0.06, z + 0.02), (0.312, 0.07, z + 0.03)], 0.006, m.dark, segs=6)
+        k.box((0.309, 0, z + 0.1), (0.004, 0.09, 0.035), m.dark)
+        k.box((0.311, 0, z + 0.1), (0.002, 0.08, 0.026), m.paper)
+    k.cyl_axis((0.31, 0.17, 1.27), 0.012, 0.01, m.dark, axis="X", verts=12)
+    k.box((-0.02, -0.08, 1.32 + 0.04), (0.24, 0.3, 0.08), m.paper)
+    k.box((-0.02, 0.12, 1.32 + 0.11), (0.3, 0.06, 0.22), m.ntnu)
 
 
 @prop
 def p_ServerRack(k, m):
+    """Server rack: frame with posts, perforated front door glass, servers with drive bays and LEDs, cable bundles."""
     k.box((0, 0, 1.0), (1.0, 0.6, 2.0), m.dark)
-    k.box((0.505, 0, 1.0), (0.01, 0.55, 1.9), m.glass)
-    for i in range(16):
-        z = 0.2 + i * 0.11
-        k.box((0.44, 0, z), (0.1, 0.5, 0.08), m.plastic)
-        for j in range(4):
-            k.box((0.492, -0.18 + j * 0.06, z), (0.004, 0.015, 0.015), m.screen_on if (i + j) % 3 else m.green)
+    for y in (-0.28, 0.28):
+        k.box((0.48, y, 1.0), (0.04, 0.04, 2.0), m.plastic)
+    k.box((0.48, 0, 1.98), (0.04, 0.6, 0.04), m.plastic)
+    k.box((0.48, 0, 0.04), (0.04, 0.6, 0.08), m.plastic)
+    for i in range(15):
+        z = 0.15 + i * 0.12
+        h = 0.085 if i % 4 else 0.04
+        k.box((0.43, 0, z), (0.1, 0.5, h), m.plastic)
+        if i % 4:
+            for j in range(8):
+                k.box((0.482, -0.21 + j * 0.035, z), (0.004, 0.03, h * 0.8), m.metal)
+                k.box((0.485, -0.21 + j * 0.035 + 0.01, z + h * 0.32), (0.002, 0.004, 0.004), m.screen_on if (i + j) % 3 else m.green)
+            k.box((0.484, 0.18, z), (0.004, 0.08, h * 0.6), m.dark)
+            k.box((0.486, 0.21, z + h * 0.25), (0.002, 0.006, 0.006), m.screen_on)
+        else:
+            for j in range(12):
+                k.box((0.482, -0.2 + j * 0.034, z), (0.004, 0.018, 0.014), m.screen_on if j % 4 else m.orange)
+    k.box((0.506, 0, 1.0), (0.008, 0.54, 1.9), m.glass)
+    k.tube([(0.5, 0.33, 1.95), (0.5, 0.33, 0.1)], 0.012, m.metal, segs=8)
+    for i in range(4):
+        k.tube([(-0.2 + i * 0.05, 0.1, 2.0), (-0.2 + i * 0.05, 0.12 + i * 0.01, 2.2), (-0.2 + i * 0.05, 0.2, 2.6)], 0.012, (m.blue, m.yellow, m.dark, m.blue)[i], segs=6)
 
 
 @prop
 def p_LabBench(k, m):
-    """Chemistry lab bench with sink, tap and glassware."""
-    k.box((0, 0, 0.45), (0.9, 2.4, 0.9), m.white)
-    k.box((0, 0, 0.92), (0.95, 2.45, 0.04), m.dark)
-    k.box((0, 0.8, 0.9), (0.4, 0.5, 0.05), m.metal)
-    k.cyl((-0.25, 0.8, 0.94), 0.015, 0.35, m.metal, verts=8)
-    k.box((-0.15, 0.8, 1.28), (0.22, 0.025, 0.025), m.metal)
-    k.box((-0.0, -0.4, 1.5), (0.1, 2.0, 0.03), m.metal)
-    for y in (-1.1, 1.1):
-        k.box((-0.0, y, 1.21), (0.03, 0.03, 0.6), m.metal)
-    for i, y in enumerate((-0.9, -0.6, -0.3, 0.1)):
-        k.cyl((0.15, y, 0.94), 0.05 - (i % 2) * 0.015, 0.18 + (i % 3) * 0.05, m.glass, verts=12, r_top=0.02 + (i % 2) * 0.02)
-    k.box((0.2, -0.0, 0.96), (0.25, 0.3, 0.02), m.paper)
+    """Chemistry lab bench: cabinet doors, epoxy top, sink with gooseneck tap, reagent shelf, glassware and a burner."""
+    k.box((0, 0, 0.47), (0.86, 2.36, 0.86), m.white)
+    k.box((0, 0, 0.03), (0.8, 2.3, 0.06), m.dark)
+    for i in range(4):
+        y = -0.885 + i * 0.59
+        k.box((0.432, y, 0.47), (0.004, 0.57, 0.78), m.white)
+        k.box((0.436, y + 0.2, 0.75), (0.01, 0.1, 0.015), m.metal)
+    k.loft([(x, 0.9, 0.94, 1.225) for x in [-0.475 + 0.95 * i / 6 for i in range(7)]], m.dark, segs=24, power=10.0)
+    # sink and tap
+    k.box((0.05, 0.8, 0.915), (0.36, 0.42, 0.05), m.metal)
+    k.box((0.05, 0.8, 0.935), (0.32, 0.38, 0.012), m.dark)
+    k.cyl((-0.25, 0.8, 0.94), 0.018, 0.08, m.metal, verts=12)
+    k.tube([(-0.25, 0.8, 1.0), (-0.25, 0.8, 1.25), (-0.2, 0.8, 1.32), (-0.1, 0.8, 1.3), (-0.06, 0.8, 1.2)], 0.012, m.metal, segs=10)
+    for y in (0.72, 0.88):
+        k.box((-0.25, y, 1.02), (0.02, 0.08, 0.015), m.red if y < 0.8 else m.blue)
+    # reagent shelf on posts
+    k.box((-0.3, -0.4, 1.5), (0.22, 2.0, 0.025), m.lwood)
+    for y in (-1.35, 0.55):
+        k.box((-0.38, y, 1.22), (0.03, 0.03, 0.6), m.metal)
+    for i in range(10):
+        y = -1.3 + i * 0.18
+        col = (m.orange, m.paper, m.blue, m.soil)[i % 4]
+        k.cyl((-0.3, y, 1.512), 0.035, 0.12, col, verts=14)
+        k.cyl((-0.3, y, 1.632), 0.02, 0.03, m.dark, verts=10)
+    # glassware: erlenmeyer, beakers, flask on a stand, burner
+    for i, y in enumerate((-0.95, -0.7, -0.45, -0.2)):
+        if i % 2 == 0:
+            k.cyl((0.15, y, 0.94), 0.06, 0.14, m.glass, verts=18, r_top=0.018)
+            k.cyl((0.15, y, 1.08), 0.018, 0.05, m.glass, verts=14)
+            k.cyl((0.15, y, 0.942), 0.055, 0.05, m.blue if i else m.green, verts=18, r_top=0.04)
+        else:
+            k.cyl((0.15, y, 0.94), 0.04, 0.11, m.glass, verts=18)
+            k.cyl((0.15, y, 0.942), 0.037, 0.05, m.orange, verts=18)
+    k.cyl((0.1, 0.2, 0.94), 0.06, 0.01, m.dark, verts=16)
+    k.cyl((0.08, 0.2, 0.95), 0.006, 0.45, m.metal, verts=8)
+    k.box((0.12, 0.2, 1.25), (0.08, 0.01, 0.01), m.metal)
+    k.sphere((0.17, 0.2, 1.2), 0.045, m.glass, n=8, segs=16)
+    k.cyl((0.17, 0.2, 1.24), 0.012, 0.08, m.glass, verts=10)
+    k.cyl((0.17, 0.2, 0.94), 0.025, 0.12, m.metal, verts=12, r_top=0.012)
+    k.box((0.25, -0.05, 0.945), (0.2, 0.28, 0.004), m.paper, rot=(0, 0, -10))
 
 
 @prop
@@ -466,10 +545,18 @@ def p_LectureSeats(k, m):
 
 @prop
 def p_Lectern(k, m):
-    k.box((0, 0, 0.55), (0.5, 0.7, 1.1), m.wood)
-    k.box((0.05, 0, 1.15), (0.5, 0.75, 0.04), m.wood, rot=(0, -15, 0))
-    k.box((0.26, 0, 0.7), (0.01, 0.4, 0.15), m.ntnu)
-    k.cyl((0.1, 0.2, 1.17), 0.008, 0.3, m.dark, verts=6)
+    """Lecture podium: rounded wooden body, slanted reading top with a lip, NTNU logo panel, gooseneck microphone."""
+    k.loft([(x, 0.04, 1.08, 0.35 - 0.04 * (x + 0.25) / 0.5) for x in [-0.25 + 0.5 * i / 6 for i in range(7)]], m.wood, segs=24, power=8.0)
+    k.box((0, 0, 0.02), (0.54, 0.74, 0.04), m.dark)
+    k.box((0.05, 0, 1.13), (0.52, 0.76, 0.035), m.wood, rot=(0, -15, 0))
+    k.box((0.3, 0, 1.08), (0.02, 0.74, 0.03), m.wood, rot=(0, -15, 0))
+    k.box((0.252, 0, 0.66), (0.01, 0.46, 0.28), m.ntnu)
+    k.box((0.258, 0, 0.66), (0.004, 0.32, 0.04), m.white)
+    k.box((0.05, -0.12, 1.16), (0.297, 0.21, 0.004), m.paper, rot=(0, -15, 0))
+    k.cyl((-0.12, 0.26, 1.18), 0.025, 0.02, m.dark, verts=12)
+    k.tube([(-0.12, 0.26, 1.2), (-0.11, 0.25, 1.35), (-0.04, 0.22, 1.43), (0.04, 0.2, 1.42)], 0.006, m.dark, segs=6)
+    k.sphere((0.06, 0.2, 1.415), 0.018, m.dark, n=6, segs=12, scale=(1.6, 1.0, 1.0))
+    k.cyl((-0.1, -0.28, 1.2), 0.03, 0.1, m.glass, verts=14)
 
 
 @prop
