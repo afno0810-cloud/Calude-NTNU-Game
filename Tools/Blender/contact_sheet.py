@@ -128,6 +128,8 @@ if os.environ.get("TEXTURED"):
     specs = _instances()
     for mat in list(bpy.data.materials):
         base = mat.name.split(".")[0]
+        if base.endswith("_In"):   # indoor slots use the same textures as the outdoor material
+            base = base[:-3]
         spec = specs.get(base)
         cm = re.match(r"^M_C_(\d\d)(\d\d)(\d\d)_(\d)$", base)
         if not spec and cm:

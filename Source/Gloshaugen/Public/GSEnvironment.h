@@ -48,6 +48,8 @@ protected:
 	TArray<FVector> RainDrops;  // world positions (cm)
 	TArray<FVector> SnowFlakes;
 	float Time = 0.f;
+	/** Game hour the sun was last turned to (whole game minutes); see Tick. */
+	float LastSunHours = -1.f;
 	/** 0..1, rises while it rains and dries slowly afterwards; snow cover the same way. Sent to MPC_GS_Weather. */
 	float Wetness = 0.f;
 	float SnowCover = 0.f;

@@ -43,6 +43,7 @@ class Mats:
         self.rubber = k.mat("Rubber", (0.02, 0.02, 0.02), rough=0.95)
         self.paper = k.mat("Paper", (0.9, 0.88, 0.82), rough=0.9)
         self.ntnu = k.mat("NTNUBlue", (0.0, 0.25, 0.55), rough=0.4)
+        self.tarp = k.mat("Tarp", (0.10, 0.28, 0.16), rough=0.9)
 
 
 # ------------------------------------------------------------------ indoor
@@ -1036,6 +1037,121 @@ def p_RobotDelivery(k, m):
     # flag on a whip antenna
     k.tube([(-0.3, 0.2, 0.55), (-0.31, 0.2, 1.0), (-0.32, 0.2, 1.4)], 0.005, m.metal, segs=6)
     k.box((-0.32, 0.27, 1.33), (0.006, 0.14, 0.1), m.orange)
+
+
+# ------------------------------------------------------------------ building site (the edge of the map and cover)
+def _part(k, lo, hi, mi, faces="xyY", inset=0.0, turn=0.0):
+    """Box from lo to hi with only some faces (x = the +X face, y = -Y, Y = +Y, z = top), turned `turn` degrees
+    about Z. inset pulls the +X face in along Y (ribs with slanted sides). Saves triangles on things that lie
+    against a wall, like the ribs of a container."""
+    from mathutils import Matrix
+    (x0, y0, z0), (x1, y1, z1) = lo, hi
+    v = [(x0, y0, z0), (x1, y0 + inset, z0), (x1, y1 - inset, z0), (x0, y1, z0),
+         (x0, y0, z1), (x1, y0 + inset, z1), (x1, y1 - inset, z1), (x0, y1, z1)]
+    f = {"y": (0, 1, 5, 4), "x": (1, 2, 6, 5), "Y": (2, 3, 7, 6), "z": (4, 5, 6, 7)}
+    k._add(v, [f[c] for c in faces], mi, Matrix.Rotation(math.radians(turn), 4, "Z"))
+
+
+def _site_fence(k, m, tarp):
+    """Temporary site fence panel (Heras type), 3.5 m long along Y and 2.0 m high: tube frame, welded wire mesh,
+    a concrete foot at each end. With tarp=True a green tarpaulin is tied to the front (+X)."""
+    r = 0.02
+    for y in (-1.73, 1.73):
+        k.tube([(0, y, 0.1), (0, y, 1.98)], r, m.metal, segs=6)
+        k.box((0, y * 0.948, 0.07), (0.6, 0.22, 0.14), m.concrete)   # inside the 3.5 m, so panels can stand end to end
+    for z in (0.22, 1.98):
+        k.tube([(0, -1.73, z), (0, 1.73, z)], r, m.metal, segs=6)
+    for i in range(12):   # upright wires
+        k.box((0, -1.73 + 3.46 * (i + 1) / 13, 1.1), (0.01, 0.01, 1.76), m.metal)
+    for i in range(5):    # cross wires
+        k.box((0, 0, 0.22 + 1.76 * (i + 1) / 6), (0.01, 3.46, 0.01), m.metal)
+    if tarp:
+        k.box((0.028, 0, 1.08), (0.01, 3.4, 1.8), m.tarp)
+
+
+@prop
+def p_SiteFence(k, m):
+    """Site fence panel you can see through. Front +X, 3.5 m along Y, 2.0 m high."""
+    _site_fence(k, m, False)
+
+
+@prop
+def p_SiteFenceTarp(k, m):
+    """Site fence panel covered with a green tarpaulin: blocks the view."""
+    _site_fence(k, m, True)
+
+
+@prop
+def p_SiteSign(k, m):
+    """Warning sign that hangs on a site fence (front +X): yellow triangle with a black edge and an exclamation
+    mark, white text plate under it. The middle of the sign is at z = 1.45."""
+    k.prism_x(0.0, 0.012, [(-0.3, 1.355), (0.3, 1.355), (0.0, 1.875)], m.plastic)
+    k.prism_x(0.012, 0.018, [(-0.235, 1.392), (0.235, 1.392), (0.0, 1.8)], m.yellow)
+    k.box((0.02, 0, 1.6), (0.006, 0.045, 0.2), m.plastic)
+    k.box((0.02, 0, 1.45), (0.006, 0.045, 0.045), m.plastic)
+    k.box((0.006, 0, 1.175), (0.012, 0.5, 0.3), m.white)
+    for z in (1.24, 1.175, 1.11):
+        k.box((0.0135, 0, z), (0.003, 0.4, 0.025), m.plastic)
+
+
+@prop
+def p_RoadBlock(k, m):
+    """Road closure trestle, front +X: red and white board 2.0 m long (along Y) at 1.0 m on two A-frame legs,
+    a no-entry sign on a post to 1.9 m and two orange warning lamps."""
+    for i in range(8):
+        k.box((0, -0.875 + 0.25 * i, 1.0), (0.03, 0.25, 0.2), m.red if i % 2 == 0 else m.white)
+    for y in (-0.8, 0.8):
+        for sx in (-1, 1):
+            # leg from the board down and out to the ground
+            k.box((sx * 0.17, y, 0.5), (0.05, 0.05, 1.06), m.dark, rot=(0, sx * -18.5, 0))
+        k.box((0, y, 0.3), (0.42, 0.04, 0.04), m.dark)
+        k.cyl((0, y, 1.1), 0.06, 0.11, m.orange, verts=8)
+        k.cyl((0, y, 1.21), 0.045, 0.03, m.dark, verts=8)
+    k.cyl((-0.03, 0, 0.0), 0.03, 1.9, m.metal, verts=8)
+    k.cyl_axis((0.01, 0, 1.6), 0.3, 0.02, m.red, axis="X", verts=20)
+    k.box((0.022, 0, 1.6), (0.006, 0.44, 0.11), m.white)
+
+
+def _container(k, m, paint):
+    """20 foot shipping container: 6.06 m long (Y), 2.44 m wide (X), 2.59 m high. Corrugated sides and back end,
+    double doors with four locking rods at the +Y end, dark corner castings."""
+    W, L, H = 2.44, 6.06, 2.59
+    k.box((0, 0, (0.15 + H - 0.12) / 2), (W - 0.06, L - 0.06, H - 0.27), paint)   # between the bottom and the top rail
+    # frame rails along the bottom and the top
+    for z in (0.09, H - 0.06):
+        k.box((0, 0, z), (W, L, 0.12), paint)
+    # corrugation: ribs every 0.28 m on both long sides, a few on the back end
+    n = int((L - 0.5) / 0.28)
+    for side in (0.0, 180.0):
+        for i in range(n):
+            y = -(n - 1) * 0.14 + i * 0.28
+            _part(k, (W / 2 - 0.03, y - 0.09, 0.15), (W / 2 + 0.005, y + 0.09, H - 0.12), paint, inset=0.03, turn=side)
+    for i in range(4):
+        x = -0.72 + i * 0.48
+        _part(k, (L / 2 - 0.03, x - 0.12, 0.15), (L / 2 + 0.005, x + 0.12, H - 0.12), paint, inset=0.04, turn=-90.0)
+    # doors at the +Y end: two leaves, four locking rods with handles
+    for sx in (-1, 1):
+        k.box((sx * 0.59, L / 2 + 0.005, H / 2), (1.12, 0.04, H - 0.3), paint)
+        for rx in (0.3, 0.88):
+            _part(k, (L / 2 + 0.02, sx * rx - 0.02, 0.1), (L / 2 + 0.06, sx * rx + 0.02, H - 0.1), m.metal, turn=90.0)
+        k.box((sx * 0.59, L / 2 + 0.065, 1.15), (0.5, 0.02, 0.05), m.metal)
+    # corner castings
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            for z in (0.06, H - 0.06):
+                k.box((sx * (W / 2 - 0.08), sy * (L / 2 - 0.09), z), (0.18, 0.2, 0.13), m.dark)
+
+
+@prop
+def p_Container(k, m):
+    """Blue 20 foot shipping container. Long side along Y, doors at +Y."""
+    _container(k, m, m.blue)
+
+
+@prop
+def p_ContainerGreen(k, m):
+    """Green 20 foot shipping container."""
+    _container(k, m, m.green)
 
 
 def build(name):

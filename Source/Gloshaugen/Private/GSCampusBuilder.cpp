@@ -23,7 +23,7 @@ namespace
 	struct FPlaza { float X0, Y0, X1, Y1; };
 	const FPlaza Plazas[] = {
 		{ -16.f, -34.f, 16.f, -20.5f },   // forecourt in front of the main entrance
-		{ -41.f,  14.f, 41.f,  58.f },    // courtyard between the wings, around the tower
+		{ -41.f,  14.f, 41.f,  58.f },    // courtyard between the wings (the back yard)
 	};
 	bool InPlaza(const FVector2D& P, float Margin)
 	{
@@ -44,6 +44,22 @@ namespace
 		const float T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / FMath::Max(AB.SizeSquared(), 1.f), 0.f, 1.f);
 		return FVector2D::Distance(P, A + AB * T);
 	}
+
+	/** A box whose top is under 0.3 m and that lies flat (ground, roads, squares, painted lines, sidewalks, kerbs):
+	 *  it cannot shade anything, so it goes in a group that casts no shadow. */
+	bool IsLowBox(const FVector& CenterCm, const FRotator& Rot, const FVector& SizeM)
+	{
+		return CenterCm.Z / CmPerM + SizeM.Z * 0.5 < 0.3 && Rot.Pitch == 0. && Rot.Roll == 0.;
+	}
+
+	bool NameIn(const TCHAR* Name, std::initializer_list<const TCHAR*> List)
+	{
+		for (const TCHAR* N : List)
+		{
+			if (FCString::Strcmp(Name, N) == 0) return true;
+		}
+		return false;
+	}
 }
 
 AGSCampusBuilder::AGSCampusBuilder()
@@ -54,9 +70,26 @@ AGSCampusBuilder::AGSCampusBuilder()
 	RootComponent->SetMobility(EComponentMobility::Static);
 }
 
-UInstancedStaticMeshComponent* AGSCampusBuilder::GetISM(UStaticMesh* Mesh, const FLinearColor& Color, bool bCollide)
+void AGSCampusBuilder::Queue(UInstancedStaticMeshComponent* ISM, const FTransform& WorldT)
 {
-	const FString Key = ColorKey(Mesh, Color, bCollide);
+	if (ISM) Pending.FindOrAdd(ISM).Add(WorldT);
+}
+
+void AGSCampusBuilder::FlushPending()
+{
+	for (TPair<UInstancedStaticMeshComponent*, TArray<FTransform>>& Pair : Pending)
+	{
+		if (Pair.Key && Pair.Value.Num() > 0)
+		{
+			Pair.Key->AddInstances(Pair.Value, /*bShouldReturnIndices*/ false, /*bWorldSpace*/ true);
+		}
+	}
+	Pending.Empty();
+}
+
+UInstancedStaticMeshComponent* AGSCampusBuilder::GetISM(UStaticMesh* Mesh, const FLinearColor& Color, bool bCollide, bool bShadow)
+{
+	const FString Key = ColorKey(Mesh, Color, bCollide) + (bShadow ? TEXT("") : TEXT("_L"));
 	if (TObjectPtr<UInstancedStaticMeshComponent>* Found = ISMs.Find(Key))
 	{
 		return *Found;
@@ -73,6 +106,7 @@ UInstancedStaticMeshComponent* AGSCampusBuilder::GetISM(UStaticMesh* Mesh, const
 	{
 		ISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
+	if (!bShadow) ISM->SetCastShadow(false);
 	ISM->RegisterComponent();
 	GSUtils::SetColor(ISM, Color);
 	ISMs.Add(Key, ISM);
@@ -91,16 +125,16 @@ UStaticMesh* AGSCampusBuilder::MainBuildingMesh()
 	return Cached.Get();
 }
 
-void AGSCampusBuilder::AddMesh(UStaticMesh* Mesh, const FTransform& T, const FLinearColor& Color, bool bCollide)
+void AGSCampusBuilder::AddMesh(UStaticMesh* Mesh, const FTransform& T, const FLinearColor& Color, bool bCollide, bool bShadow)
 {
 	if (!Mesh) return;
-	GetISM(Mesh, Color, bCollide)->AddInstance(T, /*bWorldSpace*/ true);
+	Queue(GetISM(Mesh, Color, bCollide, bShadow), T);
 }
 
 void AGSCampusBuilder::AddBox(const FVector& CenterCm, const FRotator& Rot, const FVector& SizeM, const FLinearColor& Color, bool bCollide)
 {
 	if (SizeM.X <= 0.01f || SizeM.Y <= 0.01f || SizeM.Z <= 0.01f) return;
-	AddMesh(GSUtils::Cube(), FTransform(Rot, CenterCm, SizeM), Color, bCollide);
+	AddMesh(GSUtils::Cube(), FTransform(Rot, CenterCm, SizeM), Color, bCollide, !IsLowBox(CenterCm, Rot, SizeM));
 }
 
 UMaterialInterface* AGSCampusBuilder::GSMaterial(const TCHAR* Name)
@@ -134,7 +168,8 @@ void AGSCampusBuilder::AddBoxMat(const FVector& CenterCm, const FRotator& Rot, c
 		AddBox(CenterCm, Rot, SizeM, Fallback, bCollide);
 		return;
 	}
-	const FString Key = FString::Printf(TEXT("Cube_%s_%d"), MatName, bCollide ? 1 : 0);
+	const bool bLow = IsLowBox(CenterCm, Rot, SizeM);
+	const FString Key = FString::Printf(TEXT("Cube_%s_%d%s"), MatName, bCollide ? 1 : 0, bLow ? TEXT("_L") : TEXT(""));
 	UInstancedStaticMeshComponent* ISM = nullptr;
 	if (TObjectPtr<UInstancedStaticMeshComponent>* Found = ISMs.Find(Key))
 	{
@@ -148,11 +183,12 @@ void AGSCampusBuilder::AddBoxMat(const FVector& CenterCm, const FRotator& Rot, c
 		ISM->SetupAttachment(RootComponent);
 		if (bCollide) ISM->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 		else ISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		if (bLow) ISM->SetCastShadow(false);
 		ISM->RegisterComponent();
 		ISM->SetMaterial(0, Mat);
 		ISMs.Add(Key, ISM);
 	}
-	ISM->AddInstance(FTransform(Rot, CenterCm, SizeM), /*bWorldSpace*/ true);
+	Queue(ISM, FTransform(Rot, CenterCm, SizeM));
 }
 
 FString AGSCampusBuilder::SafeName(const FString& Name)
@@ -177,6 +213,7 @@ void AGSCampusBuilder::Build()
 	}
 	BuildSidewalks();
 	BuildPathEdges();
+	BuildPerimeter();
 	BuildTreesAndProps();
 	BuildCampusProps();
 	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
@@ -187,6 +224,8 @@ void AGSCampusBuilder::Build()
 	{
 		BuildStreetLights();
 	}
+	// Everything above only queued its instances: add them now, one call per group.
+	FlushPending();
 
 	int32 Count = 0;
 	for (const auto& Pair : ISMs) Count += Pair.Value->GetInstanceCount();
@@ -244,9 +283,12 @@ void AGSCampusBuilder::BuildPlazas()
 
 void AGSCampusBuilder::BuildPathEdges()
 {
-	// 4 m pieces on both sides of every path, 3 cm higher than the paving. No collision, so nobody gets stuck on them.
+	// Kerbs on both sides of every path, 3 cm higher than the paving, in pieces of at most 4 m. No collision, so nobody
+	// gets stuck on them. Each side is walked in 25 cm steps, and a kerb is only laid along stretches that are clear of
+	// other paths, squares and buildings from one end to the other: no piece lies across a path that joins or crosses.
 	const TArray<GSCampus::FRoad>& Roads = GSCampus::Roads();
 	constexpr float Piece = 4.f;
+	constexpr float Step = 0.25f;
 	for (const GSCampus::FRoad& R : Roads)
 	{
 		if (!R.bPath) continue;
@@ -254,27 +296,278 @@ void AGSCampusBuilder::BuildPathEdges()
 		const FVector2D Side(-D.Y, D.X);
 		const float Len = FVector2D::Distance(R.A, R.B);
 		const FRotator Rot(0.f, FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)), 0.f);
-		for (float S = 0.f; S < Len; S += Piece)
+		auto Blocked = [&](const FVector2D& K)
 		{
-			const float L = FMath::Min(Piece, Len - S);
-			const FVector2D Mid = R.A + D * (S + L * 0.5f);
-			for (float Sgn : { -1.f, 1.f })
+			if (InPlaza(K, 0.f)) return true;
+			for (const GSCampus::FRoad& O : Roads)
 			{
-				const FVector2D K = Mid + Side * Sgn * (R.Width * 0.5f + 0.06f);
-				bool bSkip = InPlaza(K, 0.f);
-				for (const GSCampus::FRoad& O : Roads)
+				if (&O != &R && DistToSegment(K, O.A, O.B) < O.Width * 0.5f + 0.1f) return true;
+			}
+			for (const FBox2D& Box : Footprints)
+			{
+				if (Box.ExpandBy(0.2f).IsInside(K)) return true;
+			}
+			return false;
+		};
+		const int32 Steps = FMath::CeilToInt(Len / Step);
+		for (float Sgn : { -1.f, 1.f })
+		{
+			const FVector2D Base = R.A + Side * Sgn * (R.Width * 0.5f + 0.06f);
+			int32 RunStart = INDEX_NONE;
+			// one sample more than the path is long, so the last free stretch is closed too
+			for (int32 I = 0; I <= Steps + 1; ++I)
+			{
+				const bool bFree = I <= Steps && !Blocked(Base + D * FMath::Min(I * Step, Len));
+				if (bFree)
 				{
-					if (&O != &R && DistToSegment(K, O.A, O.B) < O.Width * 0.5f + 0.1f) bSkip = true;
+					if (RunStart == INDEX_NONE) RunStart = I;
+					continue;
 				}
-				for (const FBox2D& Box : Footprints)
+				if (RunStart == INDEX_NONE) continue;
+				// free from sample RunStart to sample I - 1
+				const float S0 = RunStart * Step;
+				const float S1 = FMath::Min((I - 1) * Step, Len);
+				RunStart = INDEX_NONE;
+				if (S1 - S0 < 0.5f) continue;
+				const int32 N = FMath::CeilToInt((S1 - S0) / Piece);
+				const float L = (S1 - S0) / N;
+				for (int32 P = 0; P < N; ++P)
 				{
-					if (Box.ExpandBy(0.2f).IsInside(K)) bSkip = true;
+					const FVector2D K = Base + D * (S0 + L * (P + 0.5f));
+					AddBoxMat(FVector(K.X, K.Y, 0.f) * CmPerM, Rot, FVector(L, 0.12f, 0.14f), TEXT("W_Concrete"), FLinearColor(0.55f, 0.55f, 0.53f), false);
 				}
-				if (bSkip) continue;
-				AddBoxMat(FVector(K.X, K.Y, 0.f) * CmPerM, Rot, FVector(L, 0.12f, 0.14f), TEXT("W_Concrete"), FLinearColor(0.55f, 0.55f, 0.53f), false);
 			}
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------------------------
+// The edge of the map. The campus is "under rebuilding": site fences all the way round, the roads
+// out are closed, and the same fences, containers and parked cars give cover on the long routes.
+// ---------------------------------------------------------------------------------------------
+
+int32 AGSCampusBuilder::FenceRun(const FVector2D& A, const FVector2D& B, bool bMixed)
+{
+	constexpr float PanelLen = 3.5f;   // SM_Prop_SiteFence, along its Y axis
+	const float Len = FVector2D::Distance(A, B);
+	if (Len < 0.5f) return 0;
+	FenceSegs.Add(TPair<FVector2D, FVector2D>(A, B));
+	const FVector2D D = (B - A).GetSafeNormal();
+	const FVector2D Front(D.Y, -D.X);
+	// model +Y along D, which turns model +X (the front) to Front
+	const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(-D.X, D.Y));
+	const int32 N = FMath::CeilToInt(Len / PanelLen);
+	const float Spacing = Len / N;
+	const FVector Scale(1.f, Spacing / PanelLen, 1.f);
+	for (int32 I = 0; I < N; ++I)
+	{
+		const FVector2D Mid = A + D * (Spacing * (I + 0.5f));
+		bool bOpen = false;
+		if (bMixed)
+		{
+			// see through where a road or path leaves the map (you see the closed road behind), and now and then
+			bOpen = I % 4 == 2;
+			for (const GSCampus::FRoad& R : GSCampus::Roads())
+			{
+				if (DistToSegment(Mid, R.A, R.B) < R.Width * 0.5f + (R.bPath ? 0.5f : 2.8f)) bOpen = true;
+			}
+		}
+		AddPropWorld(bOpen ? TEXT("SiteFence") : TEXT("SiteFenceTarp"),
+			FTransform(FRotator(0.f, Yaw, 0.f), FVector(Mid.X, Mid.Y, 0.f) * CmPerM, Scale), true);
+		if (bMixed && I % 8 == 4)
+		{
+			const FVector2D S = Mid + Front * 0.08f;
+			AddPropWorld(TEXT("SiteSign"), FTransform(FRotator(0.f, Yaw, 0.f), FVector(S.X, S.Y, 0.f) * CmPerM), false);
+		}
+	}
+	return N;
+}
+
+bool AGSCampusBuilder::NearPerimeter(const FVector2D& P, float Margin) const
+{
+	for (const TPair<FVector2D, FVector2D>& S : FenceSegs)
+	{
+		if (DistToSegment(P, S.Key, S.Value) < Margin) return true;
+	}
+	return false;
+}
+
+bool AGSCampusBuilder::IsReserved(const FVector2D& P, float Extra) const
+{
+	for (const FVector& R : Reserved)
+	{
+		if (FVector2D::Distance(P, FVector2D(R.X, R.Y)) < R.Z + Extra) return true;
+	}
+	return false;
+}
+
+void AGSCampusBuilder::BuildPerimeter()
+{
+	const FTransform WorldT = FTransform::Identity;
+	const FBox2D Area = GSCampus::PlayArea();
+	// the fence stands 0.5 m inside the edge, front (signs) towards the players
+	const FBox2D Line(Area.Min + FVector2D(0.5f, 0.5f), Area.Max - FVector2D(0.5f, 0.5f));
+	int32 Panels = 0, Closures = 0, Containers = 0;
+
+	// 1. Fence all the way round. The corners are walked so that the front of every panel faces inwards.
+	const FVector2D NW(Line.Min.X, Line.Min.Y), NE(Line.Max.X, Line.Min.Y), SE(Line.Max.X, Line.Max.Y), SW(Line.Min.X, Line.Max.Y);
+	Panels += FenceRun(NE, NW, true);
+	Panels += FenceRun(NW, SW, true);
+	Panels += FenceRun(SW, SE, true);
+	Panels += FenceRun(SE, NE, true);
+
+	// 2. Every road and path that crosses the fence line is closed just inside it.
+	for (const GSCampus::FRoad& R : GSCampus::Roads())
+	{
+		// the part of the road inside the fence rectangle is T0..T1 along A -> B (Liang-Barsky clipping)
+		const FVector2D AB = R.B - R.A;
+		double T0 = 0., T1 = 1.;
+		bool bInside = true;
+		const double Pv[4] = { -AB.X, AB.X, -AB.Y, AB.Y };
+		const double Qv[4] = { R.A.X - Line.Min.X, Line.Max.X - R.A.X, R.A.Y - Line.Min.Y, Line.Max.Y - R.A.Y };
+		for (int32 I = 0; I < 4; ++I)
+		{
+			if (FMath::IsNearlyZero(Pv[I]))
+			{
+				if (Qv[I] < 0.) bInside = false;
+				continue;
+			}
+			const double T = Qv[I] / Pv[I];
+			if (Pv[I] < 0.) T0 = FMath::Max(T0, T);
+			else T1 = FMath::Min(T1, T);
+		}
+		if (!bInside || T0 >= T1) continue;   // the whole road lies outside
+		const FVector2D Dir = AB.GetSafeNormal();
+		for (int32 End = 0; End < 2; ++End)
+		{
+			if (End == 0 ? T0 <= 0. : T1 >= 1.) continue;   // this end of the road is inside the fence
+			const FVector2D C = R.A + AB * (End == 0 ? T0 : T1);   // where the road meets the fence
+			const FVector2D In = End == 0 ? Dir : -Dir;            // along the road, into the map
+			const FVector2D Side(-In.Y, In.X);
+			const float FaceIn = FMath::RadiansToDegrees(FMath::Atan2(In.Y, In.X));
+			if (!R.bPath)
+			{
+				// car road: a row of concrete barriers across the lanes and both sidewalks, a no-entry trestle in
+				// front of it, and a van left on the road outside the fence
+				const FVector2D Row = C + In * 2.f;
+				for (int32 K = -3; K <= 3; ++K)
+				{
+					const FVector2D P = Row + Side * (K * 2.1f);
+					AddProp(TEXT("Barrier"), WorldT, P.X, P.Y, FMath::Abs(K) == 3 ? 0.12f : 0.f, FaceIn);
+				}
+				const FVector2D Trestle = C + In * 3.5f;
+				AddProp(TEXT("RoadBlock"), WorldT, Trestle.X, Trestle.Y, 0.f, FaceIn);
+				const FVector2D Van = C - In * 4.f;
+				AddModel(TEXT("SM_Car_Van"), FTransform(FRotator(0.f, FaceIn + 8.f, 0.f), FVector(Van.X, Van.Y, 0.f) * CmPerM), TEXT("CarPaint_White"), true);
+				Reserved.Add(FVector(Row.X, Row.Y, 9.f));
+				Reserved.Add(FVector(Van.X, Van.Y, 7.f));
+			}
+			else
+			{
+				const FVector2D Trestle = C + In * 1.5f;
+				AddProp(TEXT("RoadBlock"), WorldT, Trestle.X, Trestle.Y, 0.f, FaceIn);
+				Reserved.Add(FVector(Trestle.X, Trestle.Y, 4.f));
+			}
+			++Closures;
+		}
+	}
+
+	// 3. Invisible walls exactly on the edges of the play area, 0.35 m behind the fence: the fence is 2.0 m high and
+	// players climb 2.2 m. They also stop bullets and grenades, so they must never stand inside the map.
+	PerimeterBlock = NewObject<UInstancedStaticMeshComponent>(this);
+	PerimeterBlock->SetMobility(EComponentMobility::Static);
+	PerimeterBlock->SetStaticMesh(GSUtils::Cube());
+	PerimeterBlock->SetupAttachment(RootComponent);
+	PerimeterBlock->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+	PerimeterBlock->SetVisibility(false);
+	PerimeterBlock->SetHiddenInGame(true);
+	PerimeterBlock->SetCastShadow(false);
+	PerimeterBlock->RegisterComponent();
+	constexpr float BlockT = 0.3f, BlockH = 14.f;
+	const FVector2D Mid = Area.GetCenter();
+	const FVector2D Size = Area.GetSize();
+	for (const double Y : { Area.Min.Y, Area.Max.Y })
+	{
+		Queue(PerimeterBlock, FTransform(FRotator::ZeroRotator, FVector(Mid.X, Y, BlockH * 0.5f) * CmPerM, FVector(Size.X + BlockT, BlockT, BlockH)));
+	}
+	for (const double X : { Area.Min.X, Area.Max.X })
+	{
+		Queue(PerimeterBlock, FTransform(FRotator::ZeroRotator, FVector(X, Mid.Y, BlockH * 0.5f) * CmPerM, FVector(BlockT, Size.Y + BlockT, BlockH)));
+	}
+
+	// 4. Shipping containers just inside the fence, long side along the edge: solid cover on the flanks.
+	struct FContainerSpot { const TCHAR* Name; float X, Y, Yaw; };
+	const FContainerSpot Spots[] = {
+		{ TEXT("Container"), -159.f, -70.f, 0.f },        { TEXT("Container"), 159.f, 90.f, 180.f },
+		{ TEXT("ContainerGreen"), -159.f, 75.f, 0.f },    { TEXT("ContainerGreen"), 159.f, -55.f, 180.f },
+		{ TEXT("Container"), -70.f, 135.5f, 90.f },       { TEXT("ContainerGreen"), 70.f, 135.5f, -90.f },
+	};
+	for (const FContainerSpot& S : Spots)
+	{
+		AddProp(S.Name, WorldT, S.X, S.Y, 0.f, S.Yaw);
+		// 6.06 m long (model Y) and 2.44 m wide; trees and props stay out of it
+		const bool bAlongY = FMath::IsNearlyZero(FMath::Fmod(S.Yaw, 180.f));
+		const FVector2D Half = bAlongY ? FVector2D(1.22f, 3.03f) : FVector2D(3.03f, 1.22f);
+		Footprints.Add(FBox2D(FVector2D(S.X, S.Y) - Half, FVector2D(S.X, S.Y) + Half));
+		if (PropMesh(S.Name)) ++Containers;
+	}
+
+	// 5. Rig area behind each base: tarpaulin fences from the edge in towards the outer corners of the base building,
+	// with a 4 m opening next to the building. Players spawn in here, out of sight from all three routes.
+	const float EdgeX = Line.Max.X;
+	for (const float Sgn : { -1.f, 1.f })   // west, east
+	{
+		Panels += FenceRun(FVector2D(Sgn * EdgeX, -3.f), FVector2D(Sgn * 152.f, -3.f), false);
+		Panels += FenceRun(FVector2D(Sgn * EdgeX, 23.f), FVector2D(Sgn * 152.f, 23.f), false);
+	}
+	// a pallet and a stack of crates in each, against the fence and at least 3 m from every spawn point
+	// (the east side is the west side turned 180 degrees about (0, 10))
+	AddProp(TEXT("Pallet"), WorldT, -160.f, -1.4f, 0.f, 0.f);
+	AddProp(TEXT("Crates"), WorldT, -158.f, 21.f, 0.f, 0.f);
+	AddProp(TEXT("Pallet"), WorldT, 160.f, 21.4f, 0.f, 180.f);
+	AddProp(TEXT("Crates"), WorldT, 158.f, -1.f, 0.f, 180.f);
+
+	// 6. Dig sites fenced with tarpaulin right across the two long straight routes (north path 316 m, south
+	// promenade 330 m): you walk round them on the lawn, and nobody can shoot from base to base along the path.
+	auto DigSite = [&](float CX, float Y0, float Y1)
+	{
+		const FVector2D A(CX - 3.5f, Y0), B(CX + 3.5f, Y0), C(CX + 3.5f, Y1), D(CX - 3.5f, Y1);
+		Panels += FenceRun(B, A, false);
+		Panels += FenceRun(A, D, false);
+		Panels += FenceRun(D, C, false);
+		Panels += FenceRun(C, B, false);
+		const float CY = (Y0 + Y1) * 0.5f;
+		AddProp(TEXT("Pallet"), WorldT, CX - 1.3f, CY + 0.4f, 0.f, 15.f);
+		AddProp(TEXT("Barrier"), WorldT, CX + 1.4f, CY - 0.2f, 0.f, 70.f);
+		Reserved.Add(FVector(CX, CY, 7.f));   // at least 2 m of free lawn on both sides
+	};
+	for (const float Sgn : { -1.f, 1.f })
+	{
+		DigSite(Sgn * 96.f, -33.f, -28.f);     // north path (Y -32 .. -28)
+		DigSite(Sgn * 100.f, 117.f, 123.f);    // south promenade (Y 117.5 .. 122.5)
+	}
+
+	// 7. Vehicles left on the paths (deliveries to the building site): cover half way along both routes.
+	struct FParked { const TCHAR* Model; float X, Y, Yaw; const TCHAR* Paint; };
+	const FParked Parked[] = {
+		{ TEXT("SM_Car_Van"), -42.f, -30.7f, 4.f, TEXT("CarPaint_White") },
+		{ TEXT("SM_Car_Estate"), 42.f, -29.3f, 184.f, TEXT("CarPaint_Blue") },
+		{ TEXT("SM_Car_Van"), -30.f, 120.6f, 3.f, TEXT("CarPaint_Grey") },
+		{ TEXT("SM_Car_Hatch"), 32.f, 119.4f, 183.f, TEXT("CarPaint_Red") },
+	};
+	for (const FParked& P : Parked)
+	{
+		AddModel(P.Model, FTransform(FRotator(0.f, P.Yaw, 0.f), FVector(P.X, P.Y, 0.f) * CmPerM), P.Paint, true);
+		Reserved.Add(FVector(P.X, P.Y, 5.f));
+	}
+	// the forecourt in front of the main entrance: bike racks along the path and planters
+	for (const float Sgn : { -1.f, 1.f })
+	{
+		AddProp(TEXT("BikeRack"), WorldT, Sgn * 11.f, -31.5f, 0.f, 90.f);
+		AddProp(TEXT("Planter"), WorldT, Sgn * 5.f, -33.f, 0.f, 0.f);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Gloshaugen: perimeter closed, %d fence panels, %d road closures, %d containers"), Panels, Closures, Containers);
 }
 
 void AGSCampusBuilder::BuildSidewalks()
@@ -368,36 +661,33 @@ void AGSCampusBuilder::BuildBuilding(const GSCampus::FBuilding& B)
 
 	Footprints.Add(FBox2D(FVector2D(B.X - B.SizeX * 0.5f, B.Y - B.SizeY * 0.5f), FVector2D(B.X + B.SizeX * 0.5f, B.Y + B.SizeY * 0.5f)));
 
-	// The hand-made Blender model replaces the block version of the main building and its tower.
+	// The hand-made Blender model replaces the block version of the main building.
 	const FString Name(B.Name);
-	if (Name == TEXT("Hovedbygningen") || Name == TEXT("Hovedbygningen taarn"))
+	if (Name == TEXT("Hovedbygningen"))
 	{
 		if (UStaticMesh* Custom = MainBuildingMesh())
 		{
-			if (Name == TEXT("Hovedbygningen"))
+			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+			C->SetMobility(EComponentMobility::Static);
+			C->SetStaticMesh(Custom);
+			C->SetupAttachment(RootComponent);
+			C->SetWorldTransform(BT);
+			C->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+			C->RegisterComponent();
+			if (UStaticMesh* Glass = ModelMesh(TEXT("SM_Glass_Hovedbygningen")))
 			{
-				UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
-				C->SetMobility(EComponentMobility::Static);
-				C->SetStaticMesh(Custom);
-				C->SetupAttachment(RootComponent);
-				C->SetWorldTransform(BT);
-				C->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
-				C->RegisterComponent();
-				if (UStaticMesh* Glass = ModelMesh(TEXT("SM_Glass_Hovedbygningen")))
-				{
-					UStaticMeshComponent* G = NewObject<UStaticMeshComponent>(this);
-					G->SetMobility(EComponentMobility::Static);
-					G->SetStaticMesh(Glass);
-					G->SetupAttachment(RootComponent);
-					G->SetWorldTransform(BT);
-					G->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-					G->SetCastShadow(false);
-					G->ComponentTags.Add(TEXT("Mat_Glass"));
-					G->RegisterComponent();
-				}
-				// front bay with the main door and the turrets
-				Footprints.Add(FBox2D(FVector2D(B.X - 12.f, B.Y - 21.f), FVector2D(B.X + 12.f, B.Y - 14.f)));
+				UStaticMeshComponent* G = NewObject<UStaticMeshComponent>(this);
+				G->SetMobility(EComponentMobility::Static);
+				G->SetStaticMesh(Glass);
+				G->SetupAttachment(RootComponent);
+				G->SetWorldTransform(BT);
+				G->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				G->SetCastShadow(false);
+				G->ComponentTags.Add(TEXT("Mat_Glass"));
+				G->RegisterComponent();
 			}
+			// front bay with the main door and the turrets
+			Footprints.Add(FBox2D(FVector2D(B.X - 12.f, B.Y - 21.f), FVector2D(B.X + 12.f, B.Y - 14.f)));
 			return;
 		}
 	}
@@ -566,6 +856,8 @@ void AGSCampusBuilder::BuildTreesAndProps()
 		{
 			if (FVector2D::Distance(P, T) < 4.f) return false;
 		}
+		// never in a site fence, a dig site, a road closure or on a parked car
+		if (NearPerimeter(P, 1.5f) || IsReserved(P)) return false;
 		return true;
 	};
 
@@ -624,6 +916,7 @@ void AGSCampusBuilder::BuildTreesAndProps()
 				for (const FBox2D& Box : Footprints) if (Box.ExpandBy(2.f).IsInside(Q)) bOk = false;
 				for (const GSCampus::FRoad& R : Roads) if (DistToSegment(Q, R.A, R.B) < R.Width * 0.5f + 1.f) bOk = false;
 				for (const FVector2D& S : GSCampus::SpawnPoints()) if (FVector2D::Distance(Q, S) < 3.5f) bOk = false;
+				if (NearPerimeter(Q, 1.5f) || IsReserved(Q)) bOk = false;
 				if (bOk) AddModel(TEXT("SM_Bush"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(Q.X * CmPerM, Q.Y * CmPerM, 0.f), FVector(Rand.FRandRange(0.8f, 1.4f))), nullptr, false);
 			}
 		}
@@ -718,6 +1011,7 @@ void AGSCampusBuilder::BuildTreesAndProps()
 		for (const FBox2D& Box : Footprints) if (Box.ExpandBy(3.f).IsInside(P)) bBlocked = true;
 		for (const FVector2D& Q : CarSpots) if (FVector2D::Distance(P, Q) < 6.f) bBlocked = true;
 		for (const GSCampus::FRoad& O : Roads) if (&O != &R && !O.bPath && DistToSegment(P, O.A, O.B) < O.Width * 0.5f + 4.f) bBlocked = true;
+		if (NearPerimeter(P, 4.f) || IsReserved(P)) bBlocked = true;   // not in the fence or in a road closure
 		if (bBlocked) continue;
 		CarSpots.Add(P);
 		const FRotator Rot(0.f, FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)) + (SideSign > 0.f ? 0.f : 180.f) + Rand.FRandRange(-3.f, 3.f), 0.f);
@@ -786,6 +1080,14 @@ void AGSCampusBuilder::AddModel(const TCHAR* Name, const FTransform& WorldT, con
 		if (bCollide) ISM->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 		else ISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		ISM->SetCullDistances(0, 40000);
+		const FString ModelName(Name);
+		if (ModelName.StartsWith(TEXT("SM_Tree_")) || ModelName.StartsWith(TEXT("SM_Bush")) || ModelName.StartsWith(TEXT("SM_Hedge")))
+		{
+			// Leaves sway with world position offset. Beyond 40 m the sway is switched off, and the sway never
+			// throws away the cached shadow maps: otherwise every tree redraws its shadow every single frame.
+			ISM->SetWorldPositionOffsetDisableDistance(4000);
+			ISM->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Rigid;
+		}
 		ISM->RegisterComponent();
 		if (PaintMat)
 		{
@@ -797,7 +1099,7 @@ void AGSCampusBuilder::AddModel(const TCHAR* Name, const FTransform& WorldT, con
 		}
 		PropISMs.Add(Key, ISM);
 	}
-	ISM->AddInstance(WorldT, /*bWorldSpace*/ true);
+	Queue(ISM, WorldT);
 	++NumProps;
 }
 
@@ -816,8 +1118,8 @@ void AGSCampusBuilder::AddTrunkCollider(const FVector2D& P, float Radius, float 
 		TrunkColliders->RegisterComponent();
 	}
 	// engine cylinder: 100 cm tall, 100 cm across, pivot in the middle
-	TrunkColliders->AddInstance(FTransform(FRotator::ZeroRotator, FVector(P.X * CmPerM, P.Y * CmPerM, Height * 0.5f * CmPerM),
-		FVector(Radius * 2.f, Radius * 2.f, Height)), /*bWorldSpace*/ true);
+	Queue(TrunkColliders, FTransform(FRotator::ZeroRotator, FVector(P.X * CmPerM, P.Y * CmPerM, Height * 0.5f * CmPerM),
+		FVector(Radius * 2.f, Radius * 2.f, Height)));
 }
 
 void AGSCampusBuilder::BuildStreetLights()
@@ -834,6 +1136,7 @@ void AGSCampusBuilder::BuildStreetLights()
 			const FVector2D P = R.A + D * S + Side * (R.Width * 0.5f + 0.8f);
 			bool bBlocked = false;
 			for (const FBox2D& Box : Footprints) if (Box.ExpandBy(1.f).IsInside(P)) bBlocked = true;
+			if (NearPerimeter(P, 1.f) || IsReserved(P)) bBlocked = true;
 			if (bBlocked) continue;
 
 			FVector LightPos(P.X * CmPerM, P.Y * CmPerM, 5.7f * CmPerM);
@@ -860,6 +1163,9 @@ void AGSCampusBuilder::BuildStreetLights()
 			L->SetAttenuationRadius(2200.f);
 			L->SetLightColor(FLinearColor(1.f, 0.78f, 0.5f));
 			L->SetCastShadows(false);
+			// not drawn at all beyond 80 m, fading out over the last 15 m
+			L->MaxDrawDistance = 8000.f;
+			L->MaxDistanceFadeRange = 1500.f;
 			L->RegisterComponent();
 			StreetLights.Add(L);
 		}
@@ -905,8 +1211,17 @@ UStaticMesh* AGSCampusBuilder::PropMesh(const TCHAR* Name)
 
 void AGSCampusBuilder::AddProp(const TCHAR* Name, const FTransform& BT, float X, float Y, float Z, float Yaw, bool bCollide, float Scale)
 {
+	const FVector Loc = BT.TransformPosition(FVector(X, Y, Z) * CmPerM);
+	const FRotator Rot = (FQuat(BT.GetRotation()) * FQuat(FRotator(0.f, Yaw, 0.f))).Rotator();
+	AddPropWorld(Name, FTransform(Rot, Loc, FVector(Scale)), bCollide);
+}
+
+void AGSCampusBuilder::AddPropWorld(const TCHAR* Name, const FTransform& WorldT, bool bCollide)
+{
 	UStaticMesh* Mesh = PropMesh(Name);
 	if (!Mesh) return;
+	// Small things nobody should get stuck on never collide, whatever the caller asks for.
+	if (NameIn(Name, { TEXT("Plant"), TEXT("TrashBin"), TEXT("Stool"), TEXT("Projector") })) bCollide = false;
 	const FString Key = FString::Printf(TEXT("%s_%d"), Name, bCollide ? 1 : 0);
 	UInstancedStaticMeshComponent* ISM = nullptr;
 	if (TObjectPtr<UInstancedStaticMeshComponent>* Found = PropISMs.Find(Key))
@@ -921,14 +1236,14 @@ void AGSCampusBuilder::AddProp(const TCHAR* Name, const FTransform& BT, float X,
 		ISM->SetupAttachment(RootComponent);
 		if (bCollide) ISM->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 		else ISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		// small things stop casting far shadows; saves a lot on a 6 GB card
-		ISM->SetCullDistances(0, 9000);
+		// Small things disappear at 90 m (saves a lot on a 6 GB card); big things you steer by are seen to 400 m.
+		const bool bSeenFar = NameIn(Name, { TEXT("StreetLamp"), TEXT("BusStop"), TEXT("Dumpster"), TEXT("NTNUSign"), TEXT("Barrier"),
+			TEXT("SiteFence"), TEXT("SiteFenceTarp"), TEXT("SiteSign"), TEXT("RoadBlock"), TEXT("Container"), TEXT("ContainerGreen") });
+		ISM->SetCullDistances(0, bSeenFar ? 40000 : 9000);
 		ISM->RegisterComponent();
 		PropISMs.Add(Key, ISM);
 	}
-	const FVector Loc = BT.TransformPosition(FVector(X, Y, Z) * CmPerM);
-	const FRotator Rot = (FQuat(BT.GetRotation()) * FQuat(FRotator(0.f, Yaw, 0.f))).Rotator();
-	ISM->AddInstance(FTransform(Rot, Loc, FVector(Scale)), /*bWorldSpace*/ true);
+	Queue(ISM, WorldT);
 	++NumProps;
 }
 
@@ -1085,7 +1400,6 @@ void AGSCampusBuilder::FurnishBuilding(const GSCampus::FBuilding& B)
 		FurnishMainBuilding(B);
 		return;
 	}
-	if (MainBuildingMesh() && Name == TEXT("Hovedbygningen taarn")) return;
 
 	const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * CmPerM, B.Y * CmPerM, 0.f));
 	FRandomStream Rand(static_cast<int32>(GetTypeHash(Name)));
@@ -1100,6 +1414,16 @@ void AGSCampusBuilder::FurnishBuilding(const GSCampus::FBuilding& B)
 	TArray<FVector> Keep;
 	Keep.Add(FVector(-HX + 1.0f, -HY * 0.4f, 0.f));
 	Keep.Add(FVector(-HX + 0.9f, HY * 0.4f, FH));
+	// The bases have a screen wall inside the north and the south door (local x -3 .. 3 at y = +-6, see
+	// Tools/Blender/buildings.py): no furniture in the walls or in the way round them.
+	for (const GSCampus::FBase& Base : GSCampus::Bases())
+	{
+		if (Name != Base.Building) continue;
+		for (const float X : { -4.5f, -2.5f, 0.f, 2.5f, 4.5f })
+		{
+			for (const float Y : { -6.f, 6.f }) Keep.Add(FVector(X, Y, 0.f));
+		}
+	}
 
 	// Rooms: split each floor into cells of about 9 x 8 m, with a 3 m cross corridor through the middle
 	// (it lines up with the doors in the outer walls) and 1.2 m along the walls.
@@ -1182,20 +1506,12 @@ void AGSCampusBuilder::FurnishMainBuilding(const GSCampus::FBuilding& B)
 		AddProp(TEXT("Plant"), BT, 15.5f, -4.2f, Z, 0.f);
 	}
 
-	// Lysgaarden: rows of chairs facing the stage (stage at y -9..-6), aisle in the middle, lectern on the stage
-	for (float Y = -4.8f; Y <= -1.0f; Y += 1.0f)
-	{
-		for (float X = -8.f; X <= 8.01f; X += 0.6f)
-		{
-			if (FMath::Abs(X) < 1.0f) continue;
-			AddProp(TEXT("Chair"), BT, X, Y, 0.f, -90.f);
-		}
-	}
-	AddProp(TEXT("Lectern"), BT, 3.f, -8.f, 0.85f, 90.f);
-	AddProp(TEXT("Plant"), BT, -6.f, -8.5f, 0.85f, 0.f);
-	AddProp(TEXT("Plant"), BT, 6.f, -8.5f, 0.85f, 0.f);
-	// cafe corner on the west side and a sofa lounge on the east side of Lysgaarden
-	for (float Y : { -6.f, -2.5f, 1.f })
+	// Lysgaarden is the middle route between the bases, so the floor is kept open: free ways north-south at
+	// x 1.6 .. 3.5 on both sides of the plinth (y -8.5 .. -6.5, where the loot crate stands) and east-west at y -3.3 .. 0.
+	AddProp(TEXT("Plant"), BT, -6.5f, -8.3f, 0.f, 0.f);
+	AddProp(TEXT("Plant"), BT, 6.5f, -8.3f, 0.f, 0.f);
+	// cafe corner on the west side and a sofa lounge on the east side, against the walls
+	for (float Y : { -7.f, -4.2f, 5.f })
 	{
 		AddProp(TEXT("CafeTable"), BT, -11.5f, Y, 0.f, 0.f);
 		AddProp(TEXT("Chair"), BT, -12.3f, Y - 0.45f, 0.f, 0.f);
@@ -1205,13 +1521,10 @@ void AGSCampusBuilder::FurnishMainBuilding(const GSCampus::FBuilding& B)
 	}
 	AddProp(TEXT("CoffeeMachine"), BT, -13.2f, 5.f, 0.f, 0.f);
 	AddProp(TEXT("VendingMachine"), BT, -13.1f, 7.f, 0.f, 0.f);
-	AddProp(TEXT("Sofa"), BT, 11.f, -3.f, 0.f, 180.f);
-	AddProp(TEXT("Sofa"), BT, 11.f, 1.f, 0.f, 180.f);
-	AddProp(TEXT("CafeTable"), BT, 9.6f, -1.f, 0.f, 90.f);
+	AddProp(TEXT("Sofa"), BT, 11.f, -6.8f, 0.f, 180.f);
+	AddProp(TEXT("Sofa"), BT, 11.f, -4.2f, 0.f, 180.f);
+	AddProp(TEXT("CafeTable"), BT, 9.6f, -5.5f, 0.f, 90.f);
 	AddProp(TEXT("VendingMachine"), BT, 13.1f, 7.f, 0.f, 180.f);
-	// security robot patrolling spot by the main door, robot dog in Lysgaarden
-	AddProp(TEXT("RobotGuard"), BT, 2.5f, -13.f, 0.f, -90.f);
-	AddProp(TEXT("RobotDog"), BT, -5.f, 4.f, 0.f, 30.f);
 }
 
 void AGSCampusBuilder::BuildCampusProps()
@@ -1243,6 +1556,8 @@ void AGSCampusBuilder::BuildCampusProps()
 			const float SideSign = (Rand.FRand() < 0.5f) ? 1.f : -1.f;
 			const FVector2D Edge = R.A + D * S + Side * SideSign * (R.Width * 0.5f + 1.4f);
 			if (Inside(Edge, 2.f) || OnRoad(Edge, 0.6f)) continue;
+			// not in the site fences, and nothing within reach of the dig sites, the parked cars and the road closures
+			if (NearPerimeter(Edge, 1.5f) || IsReserved(Edge)) continue;
 			// benches face the road
 			const float FaceRoad = Yaw(-Side * SideSign);
 			const int32 Kind = Rand.RandRange(0, 9);
@@ -1279,12 +1594,6 @@ void AGSCampusBuilder::BuildCampusProps()
 				AddProp(TEXT("Planter"), WorldT, Edge.X, Edge.Y, 0.f, 0.f);
 			}
 		}
-		// a delivery robot somewhere on every path
-		if (R.bPath && Len > 30.f)
-		{
-			const FVector2D P = R.A + D * Rand.FRandRange(8.f, Len - 8.f) + Side * Rand.FRandRange(-0.8f, 0.8f);
-			if (!Inside(P, 1.f)) AddProp(TEXT("RobotDelivery"), WorldT, P.X, P.Y, 0.f, Yaw(D) + ((Rand.FRand() < 0.5f) ? 0.f : 180.f));
-		}
 	}
 
 	// Around the buildings: bike racks and bollards at the front, bins and dumpsters with pallets behind.
@@ -1296,8 +1605,8 @@ void AGSCampusBuilder::BuildCampusProps()
 		const bool bMain = MainBuildingMesh() && FString(B.Name) == TEXT("Hovedbygningen");
 		auto Ok = [&](float LX, float LY, float Margin)
 		{
-			const FVector W = BT.TransformPosition(FVector(LX, LY, 0.f));
-			const FVector2D P(W.X, W.Y);
+			const FVector W = BT.TransformPosition(FVector(LX, LY, 0.f) * CmPerM);
+			const FVector2D P(W.X / CmPerM, W.Y / CmPerM);   // world meters, like Footprints and the roads
 			return !Inside(P, Margin) && !OnRoad(P, 0.8f);
 		};
 		const float FrontY = bMain ? -HY - 9.f : -HY - 3.5f;
@@ -1324,7 +1633,7 @@ void AGSCampusBuilder::BuildCampusProps()
 		}
 	}
 
-	// Lawns inside the play area: picnic tables, robot dogs, the odd construction barrier and fence
+	// Lawns inside the play area: picnic tables, benches, the odd construction barrier and fence
 	auto NearSpawn = [](const FVector2D& P, float Dist)
 	{
 		for (const FVector2D& S : GSCampus::SpawnPoints()) if (FVector2D::Distance(P, S) < Dist) return true;
@@ -1335,6 +1644,7 @@ void AGSCampusBuilder::BuildCampusProps()
 	{
 		const FVector2D P(Rand.FRandRange(-150.f, 150.f), Rand.FRandRange(-100.f, 130.f));
 		if (Inside(P, 5.f) || OnRoad(P, 3.f) || InPlaza(P, 2.f) || NearSpawn(P, 4.f)) continue;
+		if (NearPerimeter(P, 3.f) || IsReserved(P)) continue;
 		const int32 Kind = Rand.RandRange(0, 9);
 		const float Y = Rand.FRandRange(0.f, 360.f);
 		if (Kind <= 4) AddProp(TEXT("PicnicTable"), WorldT, P.X, P.Y, 0.f, Y);
@@ -1350,8 +1660,25 @@ void AGSCampusBuilder::BuildCampusProps()
 			const FVector2D Q = P + FVector2D(-D.Y, D.X) * 2.f;
 			if (!Inside(Q, 3.f) && !OnRoad(Q, 2.f)) AddProp(TEXT("Barrier"), WorldT, Q.X, Q.Y, 0.f, Y + 90.f);
 		}
-		else if (Kind == 7) AddProp(TEXT("RobotDog"), WorldT, P.X, P.Y, 0.f, Y);
 		else AddProp(TEXT("ParkBench"), WorldT, P.X, P.Y, 0.f, Y);
 		++Lawn;
 	}
+
+	// The back yard between the wings, behind the back door of Lysgaarden: fixed places, cover on the south route.
+	AddModel(TEXT("SM_Car_Van"), FTransform(FRotator(0.f, 20.f, 0.f), FVector(-14.f, 40.f, 0.f) * CmPerM), TEXT("CarPaint_White"), true);
+	AddModel(TEXT("SM_Car_Estate"), FTransform(FRotator(0.f, 195.f, 0.f), FVector(16.f, 33.f, 0.f) * CmPerM), TEXT("CarPaint_Grey"), true);
+	for (const float X : { -30.f, 30.f })
+	{
+		AddProp(TEXT("BikeRack"), WorldT, X, 20.f, 0.f, 0.f);
+		AddProp(TEXT("BikeRack"), WorldT, X, 24.f, 0.f, 0.f);
+	}
+	AddProp(TEXT("Dumpster"), WorldT, 36.f, 50.f, 0.f, 90.f);
+	AddProp(TEXT("Dumpster"), WorldT, 38.5f, 50.f, 0.f, 90.f);
+	AddProp(TEXT("Pallet"), WorldT, -36.f, 48.f, 0.f, 0.f);
+	AddProp(TEXT("Crates"), WorldT, -34.f, 49.5f, 0.f, 0.f);
+	AddProp(TEXT("PicnicTable"), WorldT, -8.f, 28.f, 0.f, 0.f);
+	AddProp(TEXT("PicnicTable"), WorldT, 9.f, 46.f, 0.f, 0.f);
+	AddProp(TEXT("Planter"), WorldT, -6.f, 18.f, 0.f, 0.f);
+	AddProp(TEXT("Planter"), WorldT, 6.f, 18.f, 0.f, 0.f);
+	AddProp(TEXT("ParkBench"), WorldT, 0.f, 55.f, 0.f, -90.f);
 }

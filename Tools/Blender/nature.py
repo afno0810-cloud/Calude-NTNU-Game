@@ -120,10 +120,10 @@ def maple(seed=1):
     tips.append(Vector((0.1, 0, trunk_h + 3.6)))
     # canopy: leaf clusters around branch tips and filling the crown
     for tip in tips:
-        for _ in range(7):
+        for _ in range(4):
             c = tip + Vector((rnd.uniform(-1.1, 1.1), rnd.uniform(-1.1, 1.1), rnd.uniform(-0.9, 0.9)))
             k.cross(c, rnd.uniform(1.3, 1.9), leaf, rnd)
-    for _ in range(40):
+    for _ in range(20):
         r = rnd.uniform(0, 3.2)
         a = rnd.uniform(0, math.pi * 2)
         c = Vector((math.cos(a) * r, math.sin(a) * r, trunk_h + 2.4 + rnd.uniform(-1.6, 2.2) * (1 - r / 4)))

@@ -205,9 +205,17 @@ void AGSEnvironment::Tick(float DeltaSeconds)
 	// Sun path: Trondheim, low sun. Noon at 12:00, highest ~48 degrees.
 	const float Elevation = 48.f * FMath::Sin((Hours - 6.f) / 24.f * 2.f * PI);
 	// X = east, Y = south: the light travels west in the morning, north at noon, east in the evening.
-	const float Azimuth = Hours / 24.f * 360.f + 90.f;
-	Sun->SetWorldRotation(FRotator(-Elevation, Azimuth, 0.f));
-	Moon->SetWorldRotation(FRotator(-FMath::Max(20.f, -Elevation), Azimuth + 180.f, 0.f));
+	// The sun and moon are only turned once per game minute (0.25 degrees). Turning them every frame
+	// throws away the cached shadow maps every frame; brightness and colour below still follow Hours smoothly.
+	const float SunHours = FMath::GridSnap(Hours, 1.f / 60.f);
+	if (SunHours != LastSunHours)
+	{
+		LastSunHours = SunHours;
+		const float SunElevation = 48.f * FMath::Sin((SunHours - 6.f) / 24.f * 2.f * PI);
+		const float SunAzimuth = SunHours / 24.f * 360.f + 90.f;
+		Sun->SetWorldRotation(FRotator(-SunElevation, SunAzimuth, 0.f));
+		Moon->SetWorldRotation(FRotator(-FMath::Max(20.f, -SunElevation), SunAzimuth + 180.f, 0.f));
+	}
 
 	const float DayFactor = FMath::SmoothStep(-4.f, 8.f, Elevation);
 	Sun->SetIntensity(Look.SunLux * DayFactor);

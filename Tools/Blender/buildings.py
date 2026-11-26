@@ -9,7 +9,11 @@ layout that AGSCampusBuilder makes from boxes (outer walls with the same window 
 stairwell opening and ramps), so loot, furniture, PCs and cameras still line up. On top of that it adds what
 makes a building look real: window frames with mullions and sills, lintels, plinth, floor bands, cornice,
 parapets or slate roofs with chimneys, entrance canopies, interior plaster and floor finishes, railings,
-rooftop machinery.
+rooftop machinery. The two Capture the Flag base buildings (Bases() in GSCampus.h) also get a screen wall
+inside the north and the south door, so the flag cannot be shot at from the paths outside.
+
+Material slots that end in _In are indoors: Content/Python/gs_materials.py gives them the same material
+without rain and snow.
 
 Exports SM_Bygg_<Name> (walls etc., per-triangle collision) and SM_Glass_<Name> (window panes, no collision).
 """
@@ -34,6 +38,12 @@ RAMP_ANGLE = 25.0
 
 def safe(name):
     return re.sub(r"[^A-Za-z0-9]", "_", name)
+
+
+def read_base_buildings():
+    """Names of the buildings that are Capture the Flag bases (second TEXT in each entry of Bases())."""
+    src = open(os.path.join(ROOT, "Source", "Gloshaugen", "Public", "GSCampus.h"), encoding="utf-8").read()
+    return re.findall(r'\{\s*TEXT\("[^"]+"\),\s*TEXT\("([^"]+)"\),\s*FVector\(', src)
 
 
 def read_buildings():
@@ -85,18 +95,21 @@ class Mats:
         self.plinth = k.mat(st["plinth"], col[st["plinth"]])
         fr = st["frame"]
         self.frame = k.mat("PlasticWhite" if fr == "PaintedFrame" else fr, col[fr], metallic=0.0 if fr == "PaintedFrame" else 0.8, rough=0.4)
-        self.inner = k.mat("PlasterWhite", (0.86, 0.85, 0.82))
-        self.floor = k.mat("Terrazzo", (0.66, 0.65, 0.62), rough=0.3)
-        self.slab = k.mat("ConcreteSmooth", (0.6, 0.59, 0.57))
-        self.ramp = k.mat("Concrete", (0.55, 0.54, 0.52))
+        self.inner = k.mat("PlasterWhite_In", (0.86, 0.85, 0.82))
+        self.floor = k.mat("Terrazzo_In", (0.66, 0.65, 0.62), rough=0.3)
+        self.slab = k.mat("ConcreteSmooth", (0.6, 0.59, 0.57))          # the roof
+        self.slab_in = k.mat("ConcreteSmooth_In", (0.6, 0.59, 0.57))    # the slabs between the floors
+        self.ramp = k.mat("Concrete_In", (0.55, 0.54, 0.52))
         self.slate = k.mat("Slate", (0.16, 0.17, 0.2))
         self.roof = k.mat("Gravel", (0.4, 0.39, 0.37))
         self.metal = k.mat("Metal", (0.56, 0.57, 0.58), metallic=0.9, rough=0.35)
+        self.metal_in = k.mat("Metal_In", (0.56, 0.57, 0.58), metallic=0.9, rough=0.35)   # railings indoors
         self.dark = k.mat("MetalDark", (0.18, 0.18, 0.19), metallic=0.8, rough=0.4)
         self.copper = k.mat("Copper", (0.3, 0.55, 0.45), metallic=0.4)
         self.brick = k.mat("Brick", col["Brick"])
         self.rubber = k.mat("Rubber", (0.05, 0.05, 0.05))
-        self.light = k.mat("LightPanel", (1.0, 0.98, 0.92))
+        self.light = k.mat("LightPanel", (1.0, 0.98, 0.92))          # the lamp over each entrance
+        self.light_in = k.mat("LightPanel_In", (1.0, 0.98, 0.92))    # ceiling lights
 
 
 class Building:
@@ -234,8 +247,8 @@ class Building:
         for kf in range(1, self.floors):
             zt = kf * FH
             if stairs:
-                k.box_minmax((ix0, iy0, zt - SLAB_T), (ox0, iy1, zt), m.slab)
-                k.box_minmax((ox0, iy0, zt - SLAB_T), (ix1, oy0, zt), m.slab)
+                k.box_minmax((ix0, iy0, zt - SLAB_T), (ox0, iy1, zt), m.slab_in)
+                k.box_minmax((ox0, iy0, zt - SLAB_T), (ix1, oy0, zt), m.slab_in)
                 k.box_minmax((ix0, iy0, zt), (ox0, iy1, zt + 0.02), m.floor)
                 k.box_minmax((ox0, iy0, zt), (ix1, oy0, zt + 0.02), m.floor)
                 z0 = (kf - 1) * FH
@@ -243,22 +256,22 @@ class Building:
                 cxr, cyr = (ox0 + ix1) / 2, (oy0 + iy1) / 2
                 k.box((cxr, cyr, (z0 + zt) / 2 - SLAB_T / 2), (length, RAMP_W - 0.1, SLAB_T), m.ramp, rot=(0, -RAMP_ANGLE, 0))
                 # handrails: wall side runs the full length
-                k.box((cxr, iy1 - 0.1, (z0 + zt) / 2 + 0.9), (length, 0.05, 0.05), m.metal, rot=(0, -RAMP_ANGLE, 0))
+                k.box((cxr, iy1 - 0.1, (z0 + zt) / 2 + 0.9), (length, 0.05, 0.05), m.metal_in, rot=(0, -RAMP_ANGLE, 0))
                 # floor side stops 2.6 m before the top, so you can step off the ramp onto the floor (F2)
                 t1 = max(0.0, (ix1 - 2.6 - ox0) / ramp_len)
                 if t1 > 0.05:
-                    k.box((ox0 + ramp_len * t1 / 2, oy0 + 0.1, z0 + FH * t1 / 2 + 0.9), (length * t1, 0.05, 0.05), m.metal,
+                    k.box((ox0 + ramp_len * t1 / 2, oy0 + 0.1, z0 + FH * t1 / 2 + 0.9), (length * t1, 0.05, 0.05), m.metal_in,
                           rot=(0, -RAMP_ANGLE, 0))
                 # railing along the edge of the opening on the upper floor
                 rx0, rx1 = ox0 + 1.5, ix1 - 2.6
                 if rx1 > rx0:
-                    k.box_minmax((rx0, oy0 - 0.04, zt + 0.95), (rx1, oy0 + 0.04, zt + 1.02), m.metal)
+                    k.box_minmax((rx0, oy0 - 0.04, zt + 0.95), (rx1, oy0 + 0.04, zt + 1.02), m.metal_in)
                     x = rx0
                     while x <= rx1 + 0.01:
-                        k.box_minmax((x - 0.02, oy0 - 0.02, zt), (x + 0.02, oy0 + 0.02, zt + 0.95), m.metal)
+                        k.box_minmax((x - 0.02, oy0 - 0.02, zt), (x + 0.02, oy0 + 0.02, zt + 0.95), m.metal_in)
                         x += 1.2
             else:
-                k.box_minmax((ix0, iy0, zt - SLAB_T), (ix1, iy1, zt), m.slab)
+                k.box_minmax((ix0, iy0, zt - SLAB_T), (ix1, iy1, zt), m.slab_in)
                 k.box_minmax((ix0, iy0, zt), (ix1, iy1, zt + 0.02), m.floor)
         # ceiling lights: thin white panels under each slab (and the roof)
         for kf in range(1, self.floors + 1):
@@ -268,9 +281,19 @@ class Building:
                 y = iy0 + 3
                 while y < iy1 - 2:
                     if not (stairs and x > ox0 - 1 and y > oy0 - 1):
-                        k.box((x, y, zc), (1.2, 0.3, 0.03), m.light)
+                        k.box((x, y, zc), (1.2, 0.3, 0.03), m.light_in)
                     y += 5
                 x += 5
+
+    # ---------------------------------------------------------------- screen walls in the bases
+    def screen_walls(self):
+        """Capture the Flag bases: a wall 6 m wide and 5 m inside the north and the south door (x 0), ground floor.
+        The doors then look straight at a wall, and the flag in the middle cannot be shot at from outside.
+        AGSCampusBuilder::FurnishBuilding keeps furniture away from them."""
+        k, m = self.k, self.m
+        top = self.b["fh"] - SLAB_T
+        for y in (-6.0, 6.0):
+            k.box_minmax((-3.0, y - 0.075, 0.0), (3.0, y + 0.075, top), m.inner)
 
     # ---------------------------------------------------------------- roof
     def roof(self):
@@ -361,6 +384,8 @@ class Building:
         self.wall_side(-hx + WALL_T / 2, 0, b["sy"] - 2 * WALL_T, False, -1)
         self.wall_side(hx - WALL_T / 2, 0, b["sy"] - 2 * WALL_T, False, +1)
         self.floors_and_ramps()
+        if b["name"] in read_base_buildings():
+            self.screen_walls()
         self.roof()
         self.extras()
         self.k.finish()

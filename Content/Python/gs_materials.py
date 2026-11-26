@@ -21,7 +21,7 @@ GS = "/Game/GS"
 TEX = GS + "/Textures"
 MAT = GS + "/Materials"
 MODELS = "/Game/Models"
-VERSION = 8  # bump to rebuild the master materials
+VERSION = 9  # bump to rebuild the master materials
 
 mel = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -169,6 +169,16 @@ def _surface_master(name, world):
     mpc = ensure_weather_mpc()
     wet = _expr(m, unreal.MaterialExpressionCollectionParameter, -350, 800, collection=mpc, parameter_name="Wetness")
     snow = _expr(m, unreal.MaterialExpressionCollectionParameter, -350, 900, collection=mpc, parameter_name="SnowCover")
+    # Weather = 1 outdoors, 0 indoors (the MI_GS_<Name>_In instances): floors, walls and furniture under a roof
+    # never get wet or snowed on. Everything below uses the scaled values.
+    weather = _expr(m, unreal.MaterialExpressionScalarParameter, -650, 850, parameter_name="Weather", default_value=1.0)
+    wet_raw, snow_raw = wet, snow
+    wet = _expr(m, unreal.MaterialExpressionMultiply, -500, 800)
+    mel.connect_material_expressions(wet_raw, "", wet, "A")
+    mel.connect_material_expressions(weather, "", wet, "B")
+    snow = _expr(m, unreal.MaterialExpressionMultiply, -500, 900)
+    mel.connect_material_expressions(snow_raw, "", snow, "A")
+    mel.connect_material_expressions(weather, "", snow, "B")
     dark = _expr(m, unreal.MaterialExpressionConstant, -350, 1000, r=0.55)
     one = _expr(m, unreal.MaterialExpressionConstant, -350, 1060, r=1.0)
     wdark = _expr(m, unreal.MaterialExpressionLinearInterpolate, -200, 900)
@@ -495,6 +505,7 @@ INSTANCES = {
     "Steel": ("Metal", (0.9, 0.9, 0.92), 2, 0.8, 1, "Surface"),
     "Gunmetal": ("Metal", (0.12, 0.12, 0.13), 3, 1.3, 1, "Surface"),
     "Fabric": ("Fabric", (0.2, 0.3, 0.55), 4, 1, 0, "Surface"),
+    "Tarp": ("Fabric", (0.10, 0.28, 0.16), 3, 0.9, 0, "Surface"),
     "FabricRed": ("Fabric", (0.75, 0.12, 0.12), 4, 1, 0, "Surface"),
     "Plastic": ("Plastic", (0.08, 0.08, 0.09), 2, 1, 0, "Surface"),
     "PlasticWhite": ("Plastic", (1.13, 1.13, 1.15), 2, 1, 0, "Surface"),
@@ -559,36 +570,72 @@ INSTANCES = {
 }
 
 
+def _fill_instance(mi, parent, spec):
+    """Sets parent, textures, tint and scales on a material instance from its INSTANCES entry."""
+    texset, tint, tiling, rough, metal, master = spec[:6]
+    glow = spec[6] if len(spec) > 6 else 0.0
+    glow_col = spec[7] if len(spec) > 7 else (1.0, 0.95, 0.85)
+    mel.set_material_instance_parent(mi, parent)
+    for param, suffix in (("BaseColorTex", "_D"), ("NormalTex", "_N"), ("ARMTex", "_ARM")):
+        t = tex(f"T_GS_{texset}{suffix}")
+        if t:
+            mel.set_material_instance_texture_parameter_value(mi, param, t)
+    mel.set_material_instance_vector_parameter_value(mi, "Tint", unreal.LinearColor(tint[0], tint[1], tint[2], 1))
+    mel.set_material_instance_scalar_parameter_value(mi, "TileCm" if master == "World" else "Tiling", float(tiling))
+    mel.set_material_instance_scalar_parameter_value(mi, "RoughnessScale", float(rough))
+    mel.set_material_instance_scalar_parameter_value(mi, "MetallicScale", float(metal))
+    if master == "Surface":
+        mel.set_material_instance_scalar_parameter_value(mi, "EmissiveStrength", float(glow))
+        mel.set_material_instance_vector_parameter_value(mi, "EmissiveColor", unreal.LinearColor(glow_col[0], glow_col[1], glow_col[2], 1))
+
+
+def _ensure_indoor(name, spec, force):
+    """MI_GS_<Name>_In: the same material without rain and snow (Weather = 0), for everything under a roof.
+    It has MI_GS_<Name> as its parent, so it follows the textures and the colour of the outdoor one. If the
+    engine will not take an instance as parent, it becomes an instance of the master with the same values."""
+    path = f"{MAT}/MI_GS_{name}_In"
+    exists = eal.does_asset_exist(path)
+    if exists and not force:
+        return 0
+    outdoor = eal.load_asset(f"{MAT}/MI_GS_{name}")
+    if not outdoor:
+        return 0
+    mi = eal.load_asset(path) if exists else tools.create_asset(
+        f"MI_GS_{name}_In", MAT, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    if not mi:
+        return 0
+    mel.set_material_instance_parent(mi, outdoor)
+    if mi.get_editor_property("parent") != outdoor:
+        master = eal.load_asset(f"{MAT}/M_GS_{spec[5]}")
+        if not master:
+            return 0
+        _fill_instance(mi, master, spec)
+        log(f"MI_GS_{name}_In: fikk ikke instans som forelder, bruker hovedmaterialet")
+    mel.set_material_instance_scalar_parameter_value(mi, "Weather", 0.0)
+    eal.save_loaded_asset(mi)
+    return 1
+
+
 def build_instances(force):
     made = 0
     for name, spec in INSTANCES.items():
-        texset, tint, tiling, rough, metal, master = spec[:6]
-        glow = spec[6] if len(spec) > 6 else 0.0
-        glow_col = spec[7] if len(spec) > 7 else (1.0, 0.95, 0.85)
+        master = spec[5]
         path = f"{MAT}/MI_GS_{name}"
-        if eal.does_asset_exist(path) and not force:
-            continue
-        if eal.does_asset_exist(path):
-            mi = eal.load_asset(path)
-        else:
-            mi = tools.create_asset(f"MI_GS_{name}", MAT, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
-        parent = eal.load_asset(f"{MAT}/M_GS_{master}")
-        if not mi or not parent:
-            continue
-        mel.set_material_instance_parent(mi, parent)
-        for param, suffix in (("BaseColorTex", "_D"), ("NormalTex", "_N"), ("ARMTex", "_ARM")):
-            t = tex(f"T_GS_{texset}{suffix}")
-            if t:
-                mel.set_material_instance_texture_parameter_value(mi, param, t)
-        mel.set_material_instance_vector_parameter_value(mi, "Tint", unreal.LinearColor(tint[0], tint[1], tint[2], 1))
-        mel.set_material_instance_scalar_parameter_value(mi, "TileCm" if master == "World" else "Tiling", float(tiling))
-        mel.set_material_instance_scalar_parameter_value(mi, "RoughnessScale", float(rough))
-        mel.set_material_instance_scalar_parameter_value(mi, "MetallicScale", float(metal))
+        exists = eal.does_asset_exist(path)
+        if not exists or force:
+            mi = eal.load_asset(path) if exists else tools.create_asset(
+                f"MI_GS_{name}", MAT, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+            parent = eal.load_asset(f"{MAT}/M_GS_{master}")
+            if not mi or not parent:
+                continue
+            _fill_instance(mi, parent, spec)
+            eal.save_loaded_asset(mi)
+            made += 1
         if master == "Surface":
-            mel.set_material_instance_scalar_parameter_value(mi, "EmissiveStrength", float(glow))
-            mel.set_material_instance_vector_parameter_value(mi, "EmissiveColor", unreal.LinearColor(glow_col[0], glow_col[1], glow_col[2], 1))
-        eal.save_loaded_asset(mi)
-        made += 1
+            try:
+                made += _ensure_indoor(name, spec, force)
+            except Exception as e:  # never block the rest
+                log(f"MI_GS_{name}_In feilet: {e}")
     for name, master, extra in (("Glass", "Glass", None), ("GlassDark", "Glass", (0.02, 0.03, 0.035)),
                                 ("Leaves", "Foliage", None), ("LeavesAutumn", "Foliage", (1.8, 1.1, 0.4)),
                                 ("Needles", "Foliage", (0.55, 0.75, 0.6))):
@@ -748,8 +795,18 @@ def ensure_color_instance(base):
     return f"{path}.{name}"
 
 
-def pick_material(slot, scanned):
+# Furniture that only ever stands indoors: every Surface slot on these models gets the _In instance.
+# (Building models mark their indoor slots themselves, with names that end in _In.)
+INDOOR_MODELS = {"SM_Prop_" + n for n in (
+    "Desk", "Chair", "OfficeChair", "PC", "Printer3D", "Locker", "Bookshelf", "Whiteboard", "Plant", "VendingMachine",
+    "CoffeeMachine", "Sofa", "TrashBin", "FireExtinguisher", "FilingCabinet", "ServerRack", "LabBench", "Stool",
+    "CafeTable", "LectureSeats", "Lectern", "Projector")}
+
+
+def pick_material(slot, scanned, indoor=False):
     base = slot.split(".")[0]
+    if base.endswith("_In"):
+        base, indoor = base[:-3], True
     if base in ("M_Glass", "M_Lens"):
         g = "Glass" if base == "M_Glass" else "GlassDark"
         return f"{MAT}/MI_GS_{g}.MI_GS_{g}"
@@ -760,6 +817,8 @@ def pick_material(slot, scanned):
         if hits:
             hits.sort(key=lambda m: (not m[2], len(m[0])))
             return hits[0][1]
+    if indoor and base in INSTANCES and INSTANCES[base][5] == "Surface" and eal.does_asset_exist(f"{MAT}/MI_GS_{base}_In"):
+        return f"{MAT}/MI_GS_{base}_In.MI_GS_{base}_In"
     if base in INSTANCES or base in ("Glass", "GlassDark", "Leaves", "LeavesAutumn", "Needles"):
         return f"{MAT}/MI_GS_{base}.MI_GS_{base}"
     return None
@@ -778,7 +837,7 @@ def apply_to_models(only=None):
         changed = False
         for i, sm in enumerate(mesh.get_editor_property("static_materials")):
             slot = str(sm.get_editor_property("material_slot_name"))
-            path = pick_material(slot, scanned)
+            path = pick_material(slot, scanned, short in INDOOR_MODELS)
             if not path:
                 continue
             cur = sm.get_editor_property("material_interface")

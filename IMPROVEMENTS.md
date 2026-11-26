@@ -3,6 +3,28 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 2 (Grafikk og kart): jevnere bilde, stengt bane og dekning (26. nov.)
+
+Gammelt som er forbedret: ytelsen (416–418), Hovedbygningen og Lysgården (419, 428), basene og spawn (424, 426, 427), kantstein, synsavstand og sjekkskript (431), vær inne (430).
+Nytt: byggegjerder rundt hele banen og stengte veier (421–423), gravefelt og parkerte biler som dekning (425), møblert bakgård (429).
+
+416. Jevnere bildefrekvens: sola flyttes i små trinn, og trærne tvinger ikke lenger skyggene til å tegnes på nytt hver eneste frame
+417. Bakken, veiene, oppmerkingen, fortauene og kantsteinen kaster ikke lenger skygge (de kunne ikke skygge for noe), så skjermkortet får mindre å gjøre
+418. Kortere frys når spillet starter og når noen kobler til: campus settes ut gruppe for gruppe i stedet for én ting om gangen, og lønnetrærne har halvparten så mange bladflater
+419. Klokketårnet bak Hovedbygningen er borte (det finnes ikke i virkeligheten); bakveggen har vinduer hele veien og en bakdør fra Lysgården ut i bakgården
+420. Robotene som sto som pynt i Lysgården, på stiene og på plenene er fjernet
+421. Banen er stengt hele veien rundt med byggegjerder, noen med presenning og noen du ser gjennom; ingen kan gå ut av kartet, og det står alltid et gjerde der du blir stoppet
+422. Høgskoleringen er sperret i begge ender med betongsperrer, sperrebukk og en parkert varebil; promenaden og stien mot Sentralbygget er stengt med sperrebukk
+423. Nye modeller: byggegjerde, gjerde med presenning, varselskilt, sperrebukk og to containere; containerne står langs kanten som dekning
+424. Du starter skjermet i et riggområde bak din egen base, ikke på åpen plen ved motstanderens rute
+425. Nordstien og sørpromenaden er ikke lenger åpne skytebaner: inngjerdede gravefelt og parkerte biler bryter sikten og gir dekning
+426. Flagget kan ikke lenger beskytes utenfra: en skjermvegg står mellom ytterdørene og flagget i begge basene
+427. De to basene er like store og speilvendt om midten av banen, og stiene til endedørene går rett på døra
+428. Midtruta gjennom Lysgården er åpen: sceneteppet, scenen og stolradene er borte, og kafébord og sofaer står ikke lenger i gangveien
+429. Bakgården der tårnet sto er møblert med varebil, sykkelstativ, avfallscontainere, paller og bord som dekning i sørruta
+430. Snø og regn legger seg ikke lenger inne: gulv, vegger og møbler holder seg tørre i all slags vær
+431. Småfeil: kantsteinen ligger ikke lenger tvers over stier, lyktestolper og busskur synes på lang avstand (før 90 meter), og sjekkskriptene har motprøver så de ikke sier OK av feil grunn
+
 ## Runde 10 (Kamp): ballistikk 1a – kuler med fart og fall (26. nov.)
 
 Gammelt som er forbedret: skytingen på serveren (393–396), haglene (391), drapsloggen og hodeskudd (398), retningskilen (399).

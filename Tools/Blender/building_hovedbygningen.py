@@ -1,4 +1,4 @@
-"""Hovedbygningen (NTNU main building) with Lysgaarden (the big hall) and the tower, as one walkable mesh.
+"""Hovedbygningen (NTNU main building) with Lysgaarden (the big hall), as one walkable mesh.
 
 Coordinates in meters, Unreal space: X east, Y south, Z up, origin at the middle of the main block
 (the same as the "Hovedbygningen" entry in GSCampus.h). Run:
@@ -8,9 +8,14 @@ Exports SourceArt/Models/SM_Hovedbygningen.(fbx|glb|blend). Unreal uses complex-
 Layout:
   * Main block 110 x 28 m, 4 floors (5.5 m), walls with windows, doors on all sides.
   * Front bay (north) with the arched main door, a gable and two octagonal turrets with spires.
-  * Lysgaarden: atrium through all floors with a glass roof, arcades, galleries, grand stair, stage.
+  * Lysgaarden: atrium through all floors with a glass roof, arcades, galleries, grand stair and a plinth
+    on the north side (the mythic loot crate stands on it). The floor is otherwise open: it is the middle
+    route between the two Capture the Flag bases.
   * Ramps between all floors at both ends of the building.
-  * Tower behind the building (south) with a spiral ramp to a belfry at 33 m and a spire to 50 m.
+  * Three doors in the south wall: one to each wing and a back door from Lysgaarden to the back yard.
+
+Material slots that end in _In are indoors: Content/Python/gs_materials.py gives them the same material
+without rain and snow.
 """
 import math
 import os
@@ -24,13 +29,16 @@ STONE = K.mat("Stone", (0.22, 0.23, 0.24), rough=0.85)
 STONE_D = K.mat("StoneDark", (0.15, 0.155, 0.16), rough=0.9)
 TRIM = K.mat("Trim", (0.46, 0.45, 0.42), rough=0.8)
 SLATE = K.mat("Slate", (0.11, 0.12, 0.14), rough=0.6)
-PLASTER = K.mat("Plaster", (0.86, 0.83, 0.76), rough=0.9)
-FLOOR = K.mat("Floor", (0.52, 0.47, 0.41), rough=0.6)
-MARBLE = K.mat("Marble", (0.78, 0.76, 0.72), rough=0.35)
-WOOD = K.mat("Wood", (0.33, 0.19, 0.09), rough=0.6)
+PLASTER = K.mat("Plaster_In", (0.86, 0.83, 0.76), rough=0.9)
+FLOOR = K.mat("Floor_In", (0.52, 0.47, 0.41), rough=0.6)
+MARBLE = K.mat("Marble_In", (0.78, 0.76, 0.72), rough=0.35)
+WOOD = K.mat("Wood_In", (0.33, 0.19, 0.09), rough=0.6)
 METAL = K.mat("Metal", (0.25, 0.26, 0.28), metallic=0.8, rough=0.4)
 GLASS = K.mat("Glass", (0.55, 0.7, 0.78), metallic=0.3, rough=0.1)
 COPPER = K.mat("Copper", (0.25, 0.5, 0.42), metallic=0.4, rough=0.5)
+# the same stone trim and metal, for everything that stands indoors
+TRIM_IN = K.mat("Trim_In", (0.46, 0.45, 0.42), rough=0.8)
+METAL_IN = K.mat("Metal_In", (0.25, 0.26, 0.28), metallic=0.8, rough=0.4)
 
 W = 0.7            # outer wall thickness
 FH = 5.5           # floor height
@@ -42,8 +50,6 @@ BAY = (-9.0, 9.0, -18.0)  # front bay x range and its front face
 ATRIUM = (-14.0, 14.0, -9.0, 9.0)
 RAMP_X = (40.0, 52.5)
 RAMP_Y = (10.5, 13.2)
-TOWER = (-6.0, 6.0, 14.0, 26.0)
-TOWER_H = 38.0
 PANES = []  # window glass, exported as SM_Glass_Hovedbygningen (no collision)
 FRAME = K.mat("PlasticWhite", (0.88, 0.87, 0.84), rough=0.4)
 
@@ -179,8 +185,8 @@ doors_s = [(0.0, 2.4, 3.2), (-48.0, 2.4, 3.2), (48.0, 2.4, 3.2)]
 # north wall either side of the bay (the bay has its own front)
 facade("X", Y0 + W / 2, X0, BAY[0], -1)
 facade("X", Y0 + W / 2, BAY[1], X1, -1)
-# south wall (tower at x 0, wings at +-48); no windows where the tower touches
-facade("X", Y1 - W / 2, X0, X1, +1, doors=doors_s, skip=[(0.0, 7.0)])
+# south wall: windows all the way, a door to each wing (x +-48) and the back door from Lysgaarden (x 0)
+facade("X", Y1 - W / 2, X0, X1, +1, doors=doors_s)
 # end walls with a door each
 facade("Y", X0 + W / 2, Y0, Y1, -1, doors=[(0.0, 2.4, 3.2)], spacing=3.4)
 facade("Y", X1 - W / 2, Y0, Y1, +1, doors=[(0.0, 2.4, 3.2)], spacing=3.4)
@@ -258,10 +264,10 @@ for sgn in (1, -1):
         K.ramp((xa, ry, z0 + 0.02), (xb, ry, z1), RW, 0.3, FLOOR)
         # rail along the open side of the ramp hole on the floor above
         zt = z1
-        K.box_minmax((min(sgn * RAMP_X[0], sgn * RAMP_X[1]), RAMP_Y[0] - 0.12, zt), (max(sgn * RAMP_X[0], sgn * RAMP_X[1]), RAMP_Y[0], zt + 1.0), METAL)
+        K.box_minmax((min(sgn * RAMP_X[0], sgn * RAMP_X[1]), RAMP_Y[0] - 0.12, zt), (max(sgn * RAMP_X[0], sgn * RAMP_X[1]), RAMP_Y[0], zt + 1.0), METAL_IN)
     # railing around the top-floor ramp hole
     zt = (FLOORS - 1) * FH
-    K.box_minmax((min(sgn * RAMP_X[0], sgn * (RAMP_X[0] + 0.12)), RAMP_Y[0], zt), (max(sgn * RAMP_X[0], sgn * (RAMP_X[0] + 0.12)), RAMP_Y[1], zt + 1.0), METAL)
+    K.box_minmax((min(sgn * RAMP_X[0], sgn * (RAMP_X[0] + 0.12)), RAMP_Y[0], zt), (max(sgn * RAMP_X[0], sgn * (RAMP_X[0] + 0.12)), RAMP_Y[1], zt + 1.0), METAL_IN)
 
 # ---------------------------------------------------------------- Lysgaarden (atrium)
 ax0, ax1, ay0, ay1 = ATRIUM
@@ -270,17 +276,18 @@ STEPS = 30
 run = (ay1 - 0.2) / STEPS
 for s in range(STEPS):
     y_a = 0.2 + s * run
-    K.box_minmax((-3.8, y_a, 0.0), (3.8, ay1 + 0.01, (s + 1) * FH / STEPS), MARBLE if s % 2 == 0 else TRIM)
+    K.box_minmax((-3.8, y_a, 0.0), (3.8, ay1 + 0.01, (s + 1) * FH / STEPS), MARBLE if s % 2 == 0 else TRIM_IN)
 # stair balustrades
 for x in (-4.0, 4.0):
     K.ramp((x, 0.2, 1.0), (x, ay1, FH + 1.0), 0.25, 0.25, WOOD)
-    K.ramp((x, 0.2, 0.15), (x, ay1, FH + 0.15), 0.3, 0.15, TRIM)
-    K.box((x, 0.35, 0.6), (0.45, 0.45, 1.2), TRIM)
-    K.cyl((x, 0.35, 1.2), 0.18, 0.5, METAL, verts=8, r_top=0.08)
-# stage on the north side of the hall
-K.box_minmax((-6.0, ay0, 0.0), (6.0, ay0 + 3.0, 0.5), WOOD)
-K.box_minmax((-2.0, ay0 + 3.0, 0.0), (2.0, ay0 + 3.5, 0.25), WOOD)
-K.box_minmax((-6.0, ay0 + 0.05, 0.5), (6.0, ay0 + 0.25, 5.0), K.mat("Curtain", (0.45, 0.06, 0.07), rough=0.95))
+    K.ramp((x, 0.2, 0.15), (x, ay1, FH + 0.15), 0.3, 0.15, TRIM_IN)
+    K.box((x, 0.35, 0.6), (0.45, 0.45, 1.2), TRIM_IN)
+    K.cyl((x, 0.35, 1.2), 0.18, 0.5, METAL_IN, verts=8, r_top=0.08)
+# plinth on the north side of the hall. The top must be at z = 0.5: the mythic loot crate stands on it
+# (AGSGameMode puts it at (0, -7.5, 0.85)). A base course, the block and a 6 cm cornice round the top.
+K.box_minmax((-1.56, -8.56, 0.0), (1.56, -6.44, 0.08), TRIM_IN)
+K.box_minmax((-1.5, -8.5, 0.08), (1.5, -6.5, 0.44), MARBLE)   # between the two courses: no faces on top of each other
+K.box_minmax((-1.56, -8.56, 0.44), (1.56, -6.44, 0.5), TRIM_IN)
 # arcades: columns + arches around the hall on the ground floor and every gallery
 for f in range(FLOORS):
     zb = f * FH + (0.0 if f == 0 else 0.0)
@@ -298,9 +305,9 @@ for f in range(FLOORS):
         for y in ys:
             lines.append((xpos, y))
     for (x, y) in lines:
-        K.box((x, y, zb + 0.15), (r_col * 2.6, r_col * 2.6, 0.3), TRIM)
+        K.box((x, y, zb + 0.15), (r_col * 2.6, r_col * 2.6, 0.3), TRIM_IN)
         K.cyl((x, y, zb + 0.3), r_col, ch - 0.3, MARBLE, verts=12)
-        K.box((x, y, zb + ch + 0.12), (r_col * 2.8, r_col * 2.8, 0.25), TRIM)
+        K.box((x, y, zb + ch + 0.12), (r_col * 2.8, r_col * 2.8, 0.25), TRIM_IN)
     # arches between neighbours
     for yline, ypos in ((ay0, ay0 - 0.45), (ay1, ay1 + 0.45)):
         for k in range(len(xs) - 1):
@@ -314,27 +321,27 @@ for f in range(FLOORS):
     zg = (f + 1) * FH
     if f + 1 < FLOORS:
         for (a, b) in ((ax0, -4.2), (4.2, ax1)) if f == 0 else ((ax0, ax1),):
-            K.box_minmax((a, ay1 + 0.0, zg), (b, ay1 + 0.2, zg + 0.15), TRIM)
+            K.box_minmax((a, ay1 + 0.0, zg), (b, ay1 + 0.2, zg + 0.15), TRIM_IN)
             K.box_minmax((a, ay1 + 0.0, zg + 0.95), (b, ay1 + 0.25, zg + 1.1), WOOD)
             for x in [a + 0.3 + 0.35 * i for i in range(int((b - a) / 0.35))]:
                 K.cyl((x, ay1 + 0.1, zg + 0.15), 0.06, 0.8, PLASTER, verts=6)
-        K.box_minmax((ax0, ay0 - 0.2, zg), (ax1, ay0, zg + 0.15), TRIM)
+        K.box_minmax((ax0, ay0 - 0.2, zg), (ax1, ay0, zg + 0.15), TRIM_IN)
         K.box_minmax((ax0, ay0 - 0.25, zg + 0.95), (ax1, ay0, zg + 1.1), WOOD)
         for x in [ax0 + 0.3 + 0.35 * i for i in range(int((ax1 - ax0) / 0.35))]:
             K.cyl((x, ay0 - 0.1, zg + 0.15), 0.06, 0.8, PLASTER, verts=6)
         for xe in (ax0 - 0.2, ax1):
-            K.box_minmax((xe, ay0, zg), (xe + 0.2, ay1, zg + 0.15), TRIM)
+            K.box_minmax((xe, ay0, zg), (xe + 0.2, ay1, zg + 0.15), TRIM_IN)
             K.box_minmax((xe - 0.05, ay0, zg + 0.95), (xe + 0.25, ay1, zg + 1.1), WOOD)
             for y in [ay0 + 0.3 + 0.35 * i for i in range(int((ay1 - ay0) / 0.35))]:
                 K.cyl((xe + 0.1, y, zg + 0.15), 0.06, 0.8, PLASTER, verts=6)
 # chandeliers hanging in the hall
 for cx in (-8.0, 0.0, 8.0):
-    K.cyl((cx, 0.0, 11.0), 0.03, H - 11.0, METAL, verts=4)
-    K.cyl((cx, 0.0, 10.4), 1.2, 0.15, METAL, verts=12)
-    K.cyl((cx, 0.0, 10.55), 0.9, 0.5, COPPER, verts=12, r_top=0.2)
+    K.cyl((cx, 0.0, 11.0), 0.03, H - 11.0, METAL_IN, verts=4)
+    K.cyl((cx, 0.0, 10.4), 1.2, 0.15, METAL_IN, verts=12)
+    K.cyl((cx, 0.0, 10.55), 0.9, 0.5, K.mat("Copper_In", (0.25, 0.5, 0.42), metallic=0.4, rough=0.5), verts=12, r_top=0.2)
     for i in range(8):
         a = 2 * math.pi * i / 8
-        K.cyl((cx + math.cos(a) * 1.1, math.sin(a) * 1.1, 10.55), 0.06, 0.25, K.mat("Bulb", (1.0, 0.9, 0.6), rough=0.2), verts=6)
+        K.cyl((cx + math.cos(a) * 1.1, math.sin(a) * 1.1, 10.55), 0.06, 0.25, K.mat("Bulb_In", (1.0, 0.9, 0.6), rough=0.2), verts=6)
 # glass roof over Lysgaarden: steel frame + glass panes
 gz = H
 for x in [ax0 - 1.0 + 2.0 * i for i in range(16)]:
@@ -376,94 +383,6 @@ for xe, sgn in ((X0, 1), (X1, -1)):
     for cx in (xe + sgn * 6.0, xe + sgn * 20.0):
         K.box_minmax((cx - 0.8, 3.0, H + 3.0), (cx + 0.8, 4.6, RIDGE + 2.5), STONE_D)
         K.box_minmax((cx - 1.0, 2.8, RIDGE + 2.5), (cx + 1.0, 4.8, RIDGE + 2.8), TRIM)
-
-# ---------------------------------------------------------------- the tower (behind the building) with a spiral ramp
-tx0, tx1, ty0, ty1 = TOWER
-tcx, tcy = (tx0 + tx1) / 2, (ty0 + ty1) / 2
-TW = 0.7
-belfry = [(a - 1.4, a + 1.4, 33.6, 37.2) for a in (-2.8, 2.8)]
-slits = []
-for z in (6.5, 12.0, 17.5, 23.0, 28.5):
-    slits.append((-0.4, 0.4, z, z + 2.2))
-# north wall touches the main block: door at ground level into the spiral
-wall("X", ty0 + TW / 2, tx0, tx1, 0, TOWER_H, TW,
-     [(tcx - 1.2, tcx + 1.2, 0, 3.0)] + [(tcx + h[0], tcx + h[1], h[2], h[3]) for h in belfry] +
-     [(tcx - 0.4, tcx + 0.4, z, z + 2.2) for z in (23.0, 28.5)], STONE)
-wall("X", ty1 - TW / 2, tx0, tx1, 0, TOWER_H, TW,
-     [(tcx - 1.2, tcx + 1.2, 0, 3.0)] + [(tcx + h[0], tcx + h[1], h[2], h[3]) for h in belfry + slits], STONE)
-wall("Y", tx0 + TW / 2, ty0 + TW, ty1 - TW, 0, TOWER_H, TW, [(tcy + h[0], tcy + h[1], h[2], h[3]) for h in belfry + slits], STONE)
-wall("Y", tx1 - TW / 2, ty0 + TW, ty1 - TW, 0, TOWER_H, TW, [(tcy + h[0], tcy + h[1], h[2], h[3]) for h in belfry + slits], STONE)
-# corner buttresses and bands
-for (cx, cy) in ((tx0, ty0), (tx1, ty0), (tx0, ty1), (tx1, ty1)):
-    K.box((cx, cy, 16.0), (1.6, 1.6, 32.0), STONE_D)
-    K.box((cx, cy, 33.0), (1.4, 1.4, 2.0), TRIM)
-    K.cyl((cx, cy, TOWER_H + 0.4), 0.6, 4.0, SLATE, verts=4, r_top=0.0, rot_z=45)
-for z in (FH, 2 * FH, 3 * FH, H, 33.0, TOWER_H):
-    K.box_minmax((tx0 - 0.3, ty0 - 0.3, z - 0.3), (tx1 + 0.3, ty1 + 0.3, z), TRIM)
-# belfry arches
-for (axis, at) in (("X", ty0 - 0.05), ("X", ty1 + 0.05)):
-    for a in (-2.8, 2.8):
-        K.arch(tcx + a, at, 37.2, 2.8, 0.85, 0.4, TRIM, along="X", segs=7)
-for (axis, at) in (("Y", tx0 - 0.05), ("Y", tx1 + 0.05)):
-    for a in (-2.8, 2.8):
-        K.arch(at, tcy + a, 37.2, 2.8, 0.85, 0.4, TRIM, along="Y", segs=7)
-# clock faces just under the belfry
-CLOCK = K.mat("ClockFace", (0.9, 0.88, 0.8), rough=0.5)
-for (x, y, ax, o) in ((tcx, ty0 - 0.4, "Y", -1), (tcx, ty1 + 0.4, "Y", 1), (tx0 - 0.4, tcy, "X", -1), (tx1 + 0.4, tcy, "X", 1)):
-    K.cyl_axis((x, y, 30.0), 1.5, 0.2, TRIM, axis=ax, verts=24)
-    K.cyl_axis((x + (0.1 * o if ax == "X" else 0), y + (0.1 * o if ax == "Y" else 0), 30.0), 1.3, 0.1, CLOCK, axis=ax, verts=24)
-    d = (0.2 * o if ax == "X" else 0, 0.2 * o if ax == "Y" else 0)
-    K.box((x + d[0], y + d[1], 30.45), (0.1, 0.1, 0.9) if ax == "Y" else (0.1, 0.1, 0.9), METAL)
-    K.box((x + d[0] + (0.3 if ax == "Y" else 0), y + d[1] + (0.3 if ax == "X" else 0), 30.0),
-          (0.65, 0.1, 0.1) if ax == "Y" else (0.1, 0.65, 0.1), METAL)
-# spire
-K.cyl((tcx, tcy, TOWER_H), 8.3, 0.6, TRIM, verts=4, rot_z=45)
-K.cyl((tcx, tcy, TOWER_H + 0.6), 7.4, 12.0, SLATE, verts=4, r_top=0.0, rot_z=45)
-K.cyl((tcx, tcy, TOWER_H + 12.4), 0.1, 2.2, METAL, verts=6)
-K.cyl((tcx, tcy, TOWER_H + 13.6), 0.3, 0.3, COPPER, verts=8)
-
-# spiral ramp: corner landings at offset D from the center, sides rise 2.75 m each.
-D, RWT, RISE = 4.2, 2.2, 2.75
-corners = {"A": (-D, -D), "B": (D, -D), "C": (D, D), "D": (-D, D)}  # A=NW, B=NE, C=SE, D=SW (y south)
-order = ["B", "C", "D", "A"]
-SIDES = 12
-z = 0.0
-K.box_minmax((tcx - 1.4, tcy - 1.4, 0), (tcx + 1.4, tcy + 1.4, 33.0), STONE_D)  # central core
-for s in range(SIDES):
-    a = corners[order[s % 4]]
-    b = corners[order[(s + 1) % 4]]
-    za, zb = z, z + RISE
-    # landing at a (stands on its own height)
-    if s > 0:
-        K.box_minmax((tcx + a[0] - RWT / 2, tcy + a[1] - RWT / 2, za - 0.3), (tcx + a[0] + RWT / 2, tcy + a[1] + RWT / 2, za), FLOOR)
-    # ramp from the edge of landing a to the edge of landing b
-    dx, dy = (b[0] - a[0]) / (2 * D), (b[1] - a[1]) / (2 * D)
-    p0 = (tcx + a[0] + dx * RWT / 2, tcy + a[1] + dy * RWT / 2, za)
-    p1 = (tcx + b[0] - dx * RWT / 2, tcy + b[1] - dy * RWT / 2, zb)
-    K.ramp(p0, p1, RWT, 0.3, FLOOR)
-    # inner rail (towards the core void)
-    nx, ny = -dy, dx  # perpendicular; point it towards the center
-    cxm, cym = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
-    if nx * -cxm + ny * -cym < 0:
-        nx, ny = -nx, -ny
-    off = RWT / 2 - 0.06
-    K.ramp((p0[0] + nx * off, p0[1] + ny * off, za + 1.0), (p1[0] + nx * off, p1[1] + ny * off, zb + 1.0), 0.08, 0.08, METAL)
-    z = zb
-# top floor of the belfry with a hole over the last ramp
-last_a = corners[order[(SIDES - 1) % 4]]
-last_b = corners[order[SIDES % 4]]
-hx0 = tcx + min(last_a[0], last_b[0]) - RWT / 2
-hx1 = tcx + max(last_a[0], last_b[0]) - RWT / 2
-hy0 = tcy + min(last_a[1], last_b[1]) - RWT / 2
-hy1 = tcy + max(last_a[1], last_b[1]) + RWT / 2
-K.slab_with_holes(tx0 + TW, tx1 - TW, ty0 + TW, ty1 - TW, z, 0.3, [(hx0, hx1, hy0, hy1)], FLOOR)
-# a bell in the belfry
-K.cyl((tcx, tcy + 2.0, z + 1.4), 1.0, 1.4, COPPER, verts=16, r_top=0.45)
-K.box((tcx, tcy + 2.0, z + 3.0), (2.6, 0.25, 0.3), WOOD)
-for sx in (-1.2, 1.2):
-    K.box((tcx + sx, tcy + 2.0, z + 1.5), (0.25, 0.25, 3.0), WOOD)
-# railing around the hole at the top
-K.box_minmax((hx0, hy1, z), (hx1, hy1 + 0.1, z + 1.0), METAL)
 
 # ---------------------------------------------------------------- outside: lamps by the main door, flag, sign
 for sx in (-6.0, 6.0):

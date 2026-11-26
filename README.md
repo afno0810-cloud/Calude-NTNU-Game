@@ -115,7 +115,7 @@ Modellene lages med Python-skript i `Tools/Blender/` og ligger ferdig eksportert
 - Lyd: `python3 Tools/Audio/gen_sounds.py` (skudd, fotsteg, lading, vind, regn, fugler til `SourceArt/Sounds`; ekte opptak med samme navn i `/Game/Sounds` vinner)
 - Detaljer og horisont: `Tools/Blender/details.py` (kumlokk, sluk, hydranter, steiner, blomsterbed) og `Tools/Blender/backdrop.py` (by, åser, fjord)
 - Skriptene kjøres med Blender (vanlig `python` har ikke `bpy`); argumenter til skriptet kommer etter `--`:
-  `"C:\Program Files\Blender Foundation\Blender 5.3lender.exe" --background --python Tools/Blender/<skript>.py -- <argumenter>`
+  `"C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" --background --python Tools/Blender/<skript>.py -- <argumenter>`
 - Byggene: `Tools/Blender/buildings.py -- [Navn ...]` (alle bygg man kan gå inn i unntatt Hovedbygningen, rett fra `GSCampus.h`; kulisser lages bare når de nevnes ved navn). Trær: `nature.py`. Biler: `cars.py`
 - Møbler og campus-ting: `Tools/Blender/props.py`. Hovedbygningen: `Tools/Blender/building_hovedbygningen.py`
 - Sjekker: `Tools/Blender/check_walkable.py` (med Blender: er dørene og rampetoppene åpne?) og `python Tools/Blender/check_campus.py` (kartdataene: bygg, stier, baser og spawnpunkter)
