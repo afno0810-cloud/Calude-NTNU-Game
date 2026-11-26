@@ -11,6 +11,8 @@
 #include "GSHelp.h"
 #include "GSFlag.h"
 #include "GSAudio.h"
+#include "GSBallistics.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Engine/Canvas.h"
 #include "CanvasItem.h"
 #include "Engine/Engine.h"
@@ -624,12 +626,38 @@ void AGSHUD::DrawScope(AGSCharacter* C)
 	Box(CX - 2.f, CY + R * 0.45f, 4.f, R * 0.55f, Ink);
 	Box(CX - R * 0.45f, CY - 0.5f, R * 0.9f, 1.f, Ink);
 	Box(CX - 0.5f, CY - R * 0.45f, 1.f, R * 0.9f, Ink);
+	// Strong scopes (8x and the sniper rifles' own) get hold marks below the centre instead of the dots there. In a
+	// 4x the marks would lie too close together to use on this map.
+	const float FOV = PlayerOwner && PlayerOwner->PlayerCameraManager ? PlayerOwner->PlayerCameraManager->GetFOVAngle() : 25.f;
+	const bool bStadia = FOV <= 16.f;
 	for (int32 i = 1; i <= 4; ++i)
 	{
 		const float D = R * 0.1f * i;
 		for (const FVector2D& P : { FVector2D(CX + D, CY), FVector2D(CX - D, CY), FVector2D(CX, CY + D), FVector2D(CX, CY - D) })
 		{
+			if (bStadia && P.Y > CY) continue;
 			Box(P.X - 2.f, P.Y - 2.f, 4.f, 4.f, Ink);
+		}
+	}
+	// Hold marks below the centre, like the drop stadia on a real scope: where to hold at 150, 200, 250, 300 m with
+	// the cartridge in this gun (the same numbers the bullets fly by). Whole hundreds are wide and numbered.
+	const FGSWeaponSlot* W = C->GetCurrentWeapon();
+	if (bStadia && W)
+	{
+		const FGSBallistic B = GSBallistics::ForWeapon(C->GetStats(*W));
+		const float PxPerRad = (Canvas->SizeX * 0.5f) / FMath::Tan(FMath::DegreesToRadians(FOV * 0.5f));
+		float LastDy = 0.f;
+		for (int32 M = 50; M <= 300; M += 50)
+		{
+			if (M <= B.ZeroM) continue;
+			const float Dy = FMath::Tan(GSBallistics::HoldUnder(B, float(M))) * PxPerRad;
+			if (Dy > R * 0.85f) break;
+			if (Dy - LastDy < 4.f) continue;
+			LastDy = Dy;
+			const bool bMajor = M % 100 == 0;
+			const float Half = bMajor ? 14.f : 7.f;
+			Box(CX - Half, CY + Dy - 0.5f, Half * 2.f, 1.f, Ink);
+			if (bMajor) Text(FString::FromInt(M / 100), CX + Half + 5.f, CY + Dy - 9.f, Ink, 0.7f);
 		}
 	}
 	Box(CX - 1.5f, CY - 1.5f, 3.f, 3.f, FLinearColor(1.f, 0.1f, 0.1f, 0.9f));

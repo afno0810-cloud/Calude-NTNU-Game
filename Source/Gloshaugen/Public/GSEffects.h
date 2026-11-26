@@ -14,6 +14,9 @@ public:
 	AGSShortFX();
 
 	static void SpawnTracer(UWorld* World, const FVector& Start, const FVector& End);
+	/** A glowing streak that lives until it is destroyed. GSBallistics owns one per tracer bullet and moves it every frame. */
+	static AGSShortFX* SpawnBulletStreak(UWorld* World);
+	void SetStreak(const FVector& Tail, const FVector& Head);
 	static void SpawnImpact(UWorld* World, const FVector& Location, const FVector& Normal);
 	static void SpawnMuzzleFlash(UWorld* World, const FVector& Location, const FVector& Dir, bool bSilent);
 	static void SpawnExplosion(UWorld* World, const FVector& Location, float Radius);

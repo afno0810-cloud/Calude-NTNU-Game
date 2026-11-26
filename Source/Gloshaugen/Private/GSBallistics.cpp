@@ -3,7 +3,12 @@
 #include "GSItems.h"
 #include "GSEffects.h"
 #include "GSCampus.h"
+#include "GSAudio.h"
+#include "GSGameState.h"
+#include "GSPlayerState.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Engine/DamageEvents.h"
 #include "GameFramework/Controller.h"
 #include "DrawDebugHelpers.h"
@@ -35,6 +40,11 @@ namespace
 	constexpr float StepSeconds = 1.f / 60.f;
 	constexpr float MaxAdvance = 0.1f;        // s: the most a bullet is flown ahead for the shooter's ping
 	constexpr int32 MaxBullets = 600;         // oldest shown bullets go first
+	constexpr int32 MaxStreaks = 40;          // glowing tracer streaks on one machine at once
+	constexpr float TracerLightCm = 1000.f;   // a tracer lights 10 m from the muzzle, like the real compound
+	constexpr float SoundSpeedCm = 34300.f;   // faster than this: a sharp crack; slower: a whiz
+	constexpr float CrackRadiusCm = 300.f;
+	constexpr float WhizRadiusCm = 150.f;
 	TAutoConsoleVariable<int32> CVarShowBullets(TEXT("gs.ShowBullets"), 0, TEXT("1 = draw the path of every real bullet (server)"));
 }
 
@@ -119,14 +129,26 @@ float GSBallistics::DamageScale(const FGSBallistic& B, float DistM)
 	return FMath::Clamp(0.2f + 0.8f * R * R, 0.2f, 1.f);
 }
 
-uint8 GSBallistics::PackSpread(float Deg)
+uint16 GSBallistics::PackSpread(float Deg)
 {
-	return static_cast<uint8>(FMath::Clamp(FMath::RoundToInt(Deg * 10.f), 0, 255));
+	// 0.01 degree steps: the L96 scoped and crouched (0.035) still keeps its own cone, and up to 655 degrees fit.
+	return static_cast<uint16>(FMath::Clamp(FMath::RoundToInt(Deg * 100.f), 0, 65535));
 }
 
-float GSBallistics::UnpackSpread(uint8 Q)
+float GSBallistics::UnpackSpread(uint16 Q)
 {
-	return Q * 0.1f;
+	return Q * 0.01f;
+}
+
+void UGSBallistics::EndBullet(FGSBullet& B)
+{
+	// Counted by whether it ever got one, not by whether the actor still exists, so the count can never drift.
+	if (!B.Streak.IsExplicitlyNull())
+	{
+		if (AGSShortFX* Streak = B.Streak.Get()) Streak->Destroy();
+		LiveStreaks = FMath::Max(LiveStreaks - 1, 0);
+		B.Streak.Reset();
+	}
 }
 
 void UGSBallistics::AddNow(const FGSBullet& B)
@@ -139,7 +161,11 @@ void UGSBallistics::AddNow(const FGSBullet& B)
 		{
 			if (!Bullets[I].bReal && (Oldest == INDEX_NONE || Bullets[I].Age > Bullets[Oldest].Age)) Oldest = I;
 		}
-		if (Oldest != INDEX_NONE) Bullets.RemoveAtSwap(Oldest);
+		if (Oldest != INDEX_NONE)
+		{
+			EndBullet(Bullets[Oldest]);
+			Bullets.RemoveAtSwap(Oldest);
+		}
 	}
 	Bullets.Add(B);
 }
@@ -150,7 +176,7 @@ void UGSBallistics::Add(const FGSBullet& B)
 	else AddNow(B);
 }
 
-void UGSBallistics::FireShown(const AGSCharacter* Shooter, const FVector& Start, const FVector& Dir, const FGSBallistic& B)
+void UGSBallistics::FireShown(const AGSCharacter* Shooter, const FVector& Start, const FVector& Dir, const FGSBallistic& B, bool bTracer)
 {
 	const UWorld* World = GetWorld();
 	if (!World || World->GetNetMode() == NM_DedicatedServer) return;
@@ -159,6 +185,7 @@ void UGSBallistics::FireShown(const AGSCharacter* Shooter, const FVector& Start,
 	Bullet.Vel = Dir.GetSafeNormal() * B.MuzzleVelocity * 100.f;
 	Bullet.Ball = B;
 	Bullet.Shooter = const_cast<AGSCharacter*>(Shooter);
+	Bullet.bTracer = bTracer;
 	Add(Bullet);
 }
 
@@ -175,6 +202,7 @@ void UGSBallistics::FireReal(AGSCharacter* Shooter, const FVector& Start, const 
 	Bullet.WeaponId = WeaponId;
 	Bullet.AmmoType = AmmoType;
 	Bullet.Instigator = Shooter ? Shooter->GetController() : nullptr;
+	Bullet.Team = Shooter ? Shooter->GetTeam() : GSTeam::None;
 
 	// Fly it ahead by half the shooter's ping, in ordinary steps, so it keeps pace with the bullet he sees.
 	// The bullet is a local here, so nothing TakeDamage does can pull it out from under us.
@@ -199,6 +227,13 @@ void UGSBallistics::Tick(float DeltaTime)
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSBullet), true);   // once per tick; only the ignored shooter changes
 	const float Dt = FMath::Min(DeltaTime, 0.1f);
 	if (Dt <= 0.f) return;
+	UWorld* World = GetWorld();
+	const float Now = World ? World->GetTimeSeconds() : 0.f;
+	// The local player's ear (his camera, so a death cam or spectator hears where it looks), once per tick.
+	const APlayerController* LocalPC = World && World->GetNetMode() != NM_DedicatedServer ? World->GetFirstPlayerController() : nullptr;
+	const bool bHasEar = LocalPC && LocalPC->IsLocalController() && LocalPC->PlayerCameraManager;
+	const FVector Ear = bHasEar ? LocalPC->PlayerCameraManager->GetCameraLocation() : FVector::ZeroVector;
+	const APawn* EarPawn = bHasEar ? LocalPC->GetPawn() : nullptr;
 	bStepping = true;
 	for (int32 I = Bullets.Num() - 1; I >= 0; --I)
 	{
@@ -219,10 +254,51 @@ void UGSBallistics::Tick(float DeltaTime)
 		}
 		else
 		{
+			// Shown bullets only (the host has a real and a shown one for the same shot; this keeps it to one sound
+			// and one streak).
+			const FVector Prev = B.Pos;
+			const float Speed = B.Vel.Size();
 			bAlive = Step(B, Dt, Params);   // does no damage: one trace per frame is enough
+
+			// Crack or whiz once per bullet when it passes close to the local player's head. Never his own bullets.
+			if (bHasEar && !B.bPassedEar && EarPawn != B.Shooter.Get())
+			{
+				const bool bSupersonic = Speed > SoundSpeedCm;
+				if (FMath::PointDistToSegment(Ear, Prev, B.Pos) < (bSupersonic ? CrackRadiusCm : WhizRadiusCm))
+				{
+					B.bPassedEar = true;
+					// A shotgun blast going past is one crack, and never more than 20 a second.
+					if (Now - LastCrackTime > 0.05f)
+					{
+						LastCrackTime = Now;
+						GSAudio::PlayAt(this, bSupersonic ? TEXT("Bullet_Crack") : TEXT("Bullet_Whiz"),
+							FMath::ClosestPointOnSegment(Ear, Prev, B.Pos), bSupersonic ? 0.9f : 0.6f, 30.f, FMath::FRandRange(0.92f, 1.08f));
+					}
+				}
+			}
+
+			// The tracer: lights 10 m out, then a streak as long as the bullet goes in 1/50 s (how the eye sees one).
+			// Moved here every frame; never a new actor or material per frame.
+			if (bAlive && B.bTracer && B.Travelled > TracerLightCm)
+			{
+				if (B.Streak.IsExplicitlyNull() && LiveStreaks < MaxStreaks)
+				{
+					B.Streak = AGSShortFX::SpawnBulletStreak(World);
+					if (!B.Streak.IsExplicitlyNull()) ++LiveStreaks;
+				}
+				if (AGSShortFX* Streak = B.Streak.Get())
+				{
+					const float Len = FMath::Min(FMath::Clamp(B.Vel.Size() * 0.02f, 200.f, 1500.f), B.Travelled - TracerLightCm);
+					if (Len > 1.f) Streak->SetStreak(B.Pos - B.Vel.GetSafeNormal() * Len, B.Pos);
+				}
+			}
 		}
 		if (bAlive) Bullets[I] = B;
-		else Bullets.RemoveAtSwap(I);
+		else
+		{
+			EndBullet(B);
+			Bullets.RemoveAtSwap(I);
+		}
 	}
 	bStepping = false;
 	for (const FGSBullet& B : Pending) AddNow(B);
@@ -253,7 +329,15 @@ bool UGSBallistics::Step(FGSBullet& B, float Dt, const FCollisionQueryParams& Pa
 		AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor());
 		if (B.bReal)
 		{
-			if (Victim)
+			// The shooter has left the game while it flew: TakeDamage cannot tell his team any more, so the team
+			// stored at the shot decides. A teammate stops the bullet and takes nothing (friendly fire off).
+			bool bSpared = false;
+			if (Victim && !B.Instigator.IsValid() && B.Team != GSTeam::None && Victim->GetTeam() == B.Team)
+			{
+				const AGSGameState* GS = World->GetGameState<AGSGameState>();
+				bSpared = GS && !GS->bFriendlyFire;
+			}
+			if (Victim && !bSpared)
 			{
 				const float DistM = (B.Travelled + FVector::Dist(B.Pos, End)) / 100.f;
 				const float Dmg = B.Damage * GSBallistics::DamageScale(B.Ball, DistM);
@@ -271,6 +355,7 @@ bool UGSBallistics::Step(FGSBullet& B, float Dt, const FCollisionQueryParams& Pa
 			// Dust and a hole where the bullet lands. Blood on a body comes from the server (MulticastWoundFX).
 			AGSShortFX::SpawnImpact(World, Hit.ImpactPoint, Hit.ImpactNormal);
 		}
+		B.Pos = End;   // the last stretch is known to Tick (a crack from a bullet that hit the wall beside you)
 		return false;
 	}
 	B.Travelled += FVector::Dist(B.Pos, NewPos);

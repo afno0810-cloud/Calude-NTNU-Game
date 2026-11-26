@@ -127,6 +127,43 @@ void AGSShortFX::SpawnTracer(UWorld* World, const FVector& Start, const FVector&
 	FX->SetLifeSpan(0.05f);
 }
 
+AGSShortFX* AGSShortFX::SpawnBulletStreak(UWorld* World)
+{
+	if (!World || World->GetNetMode() == NM_DedicatedServer) return nullptr;
+	FActorSpawnParameters P;
+	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AGSShortFX* FX = World->SpawnActor<AGSShortFX>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+	if (!FX) return nullptr;
+	// The same glow as the old muzzle streak. No life span: the bullet that owns it destroys it (GSBallistics).
+	// It does not tick (neither sprite nor stain), so nothing here moves or scales it behind the owner's back.
+	FX->Mesh->SetStaticMesh(GSUtils::Cube());
+	FX->Mesh->SetWorldScale3D(FVector(0.01f, 0.012f, 0.012f));
+	if (UMaterialInterface* AddMat = GSFXMaterial(true))
+	{
+		UMaterialInstanceDynamic* TM = UMaterialInstanceDynamic::Create(AddMat, FX);
+		TM->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.7f, 0.3f));
+		TM->SetScalarParameterValue(TEXT("Glow"), 25.f);
+		TM->SetScalarParameterValue(TEXT("Soft"), 0.01f);
+		FX->Mesh->SetMaterial(0, TM);
+	}
+	else
+	{
+		GSUtils::SetColor(FX->Mesh, FLinearColor(1.f, 0.85f, 0.4f));
+	}
+	FX->SetActorHiddenInGame(true);   // shown at the first SetStreak
+	return FX;
+}
+
+void AGSShortFX::SetStreak(const FVector& Tail, const FVector& Head)
+{
+	const FVector Delta = Head - Tail;
+	const float Len = Delta.Size();
+	if (Len < 1.f) return;
+	SetActorLocationAndRotation((Tail + Head) * 0.5f, Delta.Rotation());
+	Mesh->SetWorldScale3D(FVector(Len / 100.f, 0.012f, 0.012f));
+	if (IsHidden()) SetActorHiddenInGame(false);
+}
+
 void AGSShortFX::SpawnImpact(UWorld* World, const FVector& Location, const FVector& Normal)
 {
 	if (!World || World->GetNetMode() == NM_DedicatedServer) return;

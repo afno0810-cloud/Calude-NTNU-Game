@@ -292,7 +292,11 @@ protected:
 	FString CurrentWeaponName() const;
 
 	/** AimDir has no spread: the server draws it. SpreadQ: the spread the owner used (GSBallistics::PackSpread). */
-	UFUNCTION(Server, Reliable) void ServerFire(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex, uint8 SpreadQ);
+	UFUNCTION(Server, Reliable) void ServerFire(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex, uint16 SpreadQ);
+	/** Fast automatic weapons only: a lost shot is not missed, and a burst can never overflow the reliable buffer. */
+	UFUNCTION(Server, Unreliable) void ServerFireFast(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex, uint16 SpreadQ);
+	/** Server: the shot itself, the same whichever way it came. */
+	void HandleFire(const FVector& Start, const FVector& AimDir, int32 ShotIndex, uint16 SpreadQ);
 	UFUNCTION(Server, Reliable) void ServerMelee(bool bQuick);
 	UFUNCTION(Server, Reliable) void ServerReload();
 	UFUNCTION(Server, Reliable) void ServerSetSprinting(bool bNew);
@@ -304,7 +308,7 @@ protected:
 	UFUNCTION(Server, Reliable) void ServerDropItem(int32 Index);
 	UFUNCTION(Server, Reliable) void ServerGrapple(FVector_NetQuantize Target);
 	UFUNCTION(Server, Reliable) void ServerToggleFlashlight();
-	// Flags: 1 = suppressed, 2 = no bullet (rocket/grenade/bolt is its own actor), 4 = launcher (the one-shot tube is already gone from the weapon list)
+	// Flags: 1 = suppressed, 2 = no bullet (rocket/grenade/bolt is its own actor), 4 = launcher (the one-shot tube is already gone from the weapon list), 8 = tracer round
 	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, uint8 Flags);
 	UFUNCTION(NetMulticast, Unreliable) void MulticastPelletFX(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed, int32 Pellets, float ConeDeg);
 	UFUNCTION(NetMulticast, Unreliable) void MulticastMeleeFX();
@@ -322,7 +326,7 @@ protected:
 	UFUNCTION() void OnRep_Dead();
 	UFUNCTION() void OnRep_Gear();
 
-	void DrawPellets(const FVector& Start, const FVector& Dir, int32 Seed, int32 Pellets, float ConeDeg, bool bFromMuzzle, const FGSBallistic& B);
+	void DrawPellets(const FVector& Start, const FVector& Dir, int32 Seed, int32 Pellets, float ConeDeg, const FGSBallistic& B);
 	void NoteShotForRadio(const FVector& Where);
 
 	// Movement extras

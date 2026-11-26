@@ -7,6 +7,7 @@
 
 class AGSCharacter;
 class AController;
+class AGSShortFX;
 struct FGSWeaponStats;
 
 /** How a cartridge flies. */
@@ -32,9 +33,9 @@ namespace GSBallistics
 	GLOSHAUGEN_API void PelletDirections(const FVector& AimDir, float ConeDeg, int32 Seed, int32 Pellets, const FGSBallistic& B, TArray<FVector>& Out);
 	/** Damage left after DistM metres: 1 out to the zero distance, then with the energy left, never below 0.2. */
 	GLOSHAUGEN_API float DamageScale(const FGSBallistic& B, float DistM);
-	/** Spread in 0.1 degree steps for the fire RPC. Owner and server both use the unpacked value. */
-	GLOSHAUGEN_API uint8 PackSpread(float Deg);
-	GLOSHAUGEN_API float UnpackSpread(uint8 Q);
+	/** Spread in 0.01 degree steps for the fire RPC (finer than the tightest scoped rifle). Owner and server both use the unpacked value. */
+	GLOSHAUGEN_API uint16 PackSpread(float Deg);
+	GLOSHAUGEN_API float UnpackSpread(uint16 Q);
 }
 
 struct FGSBullet
@@ -50,7 +51,11 @@ struct FGSBullet
 	uint8 AmmoType = 0;
 	TWeakObjectPtr<AGSCharacter> Shooter;
 	TWeakObjectPtr<AController> Instigator;
+	uint8 Team = 0;                       // the shooter's team when fired (GSTeam), for when he has left before it lands
 	bool bReal = false;                   // server bullet that does damage; otherwise it only shows
+	bool bTracer = false;                 // shown bullet that glows
+	bool bPassedEar = false;              // shown bullet: has already cracked past the local player's head
+	TWeakObjectPtr<AGSShortFX> Streak;    // shown tracer: its glowing streak (owned here, see EndBullet)
 };
 
 /** Every bullet in flight in this world. Server: real bullets. Each player's machine: bullets that only show. */
@@ -61,8 +66,8 @@ class GLOSHAUGEN_API UGSBallistics : public UTickableWorldSubsystem
 public:
 	/** Server. AdvanceSeconds: fly this far at once (half the shooter's ping), so it keeps pace with what he sees. */
 	void FireReal(AGSCharacter* Shooter, const FVector& Start, const FVector& Dir, const FGSBallistic& B, float Damage, FName WeaponId, uint8 AmmoType, float AdvanceSeconds);
-	/** Any machine with a screen: a bullet that does no damage, only shows where it lands. */
-	void FireShown(const AGSCharacter* Shooter, const FVector& Start, const FVector& Dir, const FGSBallistic& B);
+	/** Any machine with a screen: a bullet that does no damage, only shows where it lands (and glows if bTracer). */
+	void FireShown(const AGSCharacter* Shooter, const FVector& Start, const FVector& Dir, const FGSBallistic& B, bool bTracer);
 	virtual void Tick(float DeltaTime) override;
 	virtual TStatId GetStatId() const override { RETURN_QUICK_DECLARE_CYCLE_STAT(UGSBallistics, STATGROUP_Tickables); }
 protected:
@@ -74,7 +79,11 @@ private:
 	TArray<FGSBullet> Bullets;
 	TArray<FGSBullet> Pending;   // bullets fired while Tick walks Bullets
 	bool bStepping = false;
+	int32 LiveStreaks = 0;          // tracer streaks on this machine (one shared cap)
+	float LastCrackTime = -100.f;   // the last crack or whiz the local player heard
 	void Add(const FGSBullet& B);
+	/** Every bullet that is removed goes through here, so its streak never outlives it. */
+	void EndBullet(FGSBullet& B);
 	void AddNow(const FGSBullet& B);
 	/** Moves one bullet Dt seconds. False when it is done (hit something, spent, too old, left the map). */
 	bool Step(FGSBullet& B, float Dt, const FCollisionQueryParams& Params);

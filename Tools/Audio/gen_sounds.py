@@ -254,6 +254,34 @@ def flag_sounds():
     cue("Flag_Score", [(0.03, 660, 0.10), (0.15, 880, 0.10), (0.27, 990, 0.20)], 0.55)   # your team captured
 
 
+def bullet_sounds():
+    # Bullet_Crack: the supersonic crack of a bullet passing close by. Its shock wave is an "N-wave": the pressure
+    # jumps up at once, falls straight through to below zero over about a millisecond and snaps back. A little
+    # bright noise on the edges and a short slap off the surroundings.
+    length = 0.35
+    n = int(length * SR)
+    x = np.zeros(n)
+    k = 45                                    # ~1 ms
+    x[:k] = np.linspace(1.0, -1.0, k)
+    hiss = highpass(noise(length), 3000)
+    hiss /= np.abs(hiss).max() + 1e-9
+    x += hiss * env(n, 0.0, 0.004) * 0.5
+    x = reverb(x, 0.3, 0.25)
+    save("Bullet_Crack", x, 0.9)
+
+    # Bullet_Whiz: a slower (subsonic) bullet passing: a band of rushing air that swells and dies, with a
+    # falling tone as it goes by (doppler), 1400 down to 700 Hz.
+    length = 0.3
+    n = int(length * SR)
+    band = highpass(lowpass(noise(length), 3000), 600)
+    band /= np.abs(band).max() + 1e-9
+    freq = np.linspace(1400, 700, n)
+    tone = np.sin(2 * np.pi * np.cumsum(freq) / SR)
+    e = env(n, 0.08, 0.1)
+    x = (band * 0.7 + tone * 0.3) * e
+    save("Bullet_Whiz", x, 0.6)
+
+
 def loop_save(name, x, peak):
     # crossfade the ends so it loops without a click
     f = int(0.5 * SR)
@@ -309,6 +337,9 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "flag":
         flag_sounds()
         raise SystemExit
+    if len(sys.argv) > 1 and sys.argv[1] == "bullet":
+        bullet_sounds()
+        raise SystemExit
     gunshot("Shot_Pistol", 160, 0.8, 0.9, 0.9, 0.3)
     gunshot("Shot_SMG", 180, 0.7, 0.7, 0.8, 0.3)
     gunshot("Shot_Rifle", 120, 1.2, 1.3, 1.4, 0.35)
@@ -340,3 +371,4 @@ if __name__ == "__main__":
     city_night()
     hurt_sounds()
     flag_sounds()
+    bullet_sounds()

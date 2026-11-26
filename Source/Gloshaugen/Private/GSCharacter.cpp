@@ -667,7 +667,6 @@ FGSWeaponStats AGSCharacter::GetStats(const FGSWeaponSlot& Slot) const
 	if (A & GSAttach::Suppressor) { S.bSilent = true; S.Damage *= 0.92f; }
 	if (A & GSAttach::Compensator) S.RecoilPitch *= 0.7f;
 	if (A & GSAttach::Grip) { S.RecoilPitch *= 0.85f; S.HipSpread *= 0.8f; }
-	if (Slot.AmmoType == GSAmmoType::Tracer) { S.HipSpread *= 0.85f; S.AimSpread *= 0.85f; }
 	return S;
 }
 
@@ -751,13 +750,11 @@ void AGSCharacter::StopFire()
 	GetWorldTimerManager().ClearTimer(AutoFireTimer);
 }
 
-// The muzzle streak: straight, at most 50 m. Where the bullet lands is shown by the bullet itself (GSBallistics).
-static void GSDrawShotStreak(UWorld* World, const AActor* Ignore, const FVector& From, const FVector& Start, const FVector& Dir)
+// Which bullets glow: tracer ammo, and every fifth round from a machine gun (a belt is loaded four ball, one tracer).
+// Ordinary bullets cannot be seen in flight. Shotgun pellets never glow.
+static bool GSIsTracer(const FGSWeaponStats& S, uint8 AmmoType, int32 ShotIndex)
 {
-	FHitResult Hit;
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSStreak), true, Ignore);
-	const FVector End = Start + Dir * 5000.f;
-	AGSShortFX::SpawnTracer(World, From, World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params) ? FVector(Hit.ImpactPoint) : End);
+	return AmmoType == GSAmmoType::Tracer || (S.Class == EGSWeaponClass::LMG && ShotIndex % 5 == 0);
 }
 
 void AGSCharacter::FireOnce()
@@ -800,8 +797,8 @@ void AGSCharacter::FireOnce()
 	const int32 ShotIndex = ++LocalShotIndex;
 	const int32 Seed = GSBallistics::ShotSeed(SpreadKey, ShotIndex);
 	const FGSBallistic Ball = GSBallistics::ForWeapon(S);
-	// The spread we use is sent along (0.1 degree steps); we use the packed value ourselves so both sides agree exactly.
-	const uint8 SpreadQ = GSBallistics::PackSpread(S.Mode == EGSFireMode::Pellets ? (bAiming ? S.AimSpread : S.HipSpread) : GetCurrentSpread());
+	// The spread we use is sent along (0.01 degree steps); we use the packed value ourselves so both sides agree exactly.
+	const uint16 SpreadQ = GSBallistics::PackSpread(S.Mode == EGSFireMode::Pellets ? (bAiming ? S.AimSpread : S.HipSpread) : GetCurrentSpread());
 	const float Spread = GSBallistics::UnpackSpread(SpreadQ);
 	const float MuzzleDist = GSItems::GetMesh(W->Id) ? S.MuzzleX : 50.f;
 	const FVector MuzzleStart = FPWeaponMesh->GetComponentLocation() + Aim * MuzzleDist;
@@ -810,12 +807,11 @@ void AGSCharacter::FireOnce()
 	if (S.Mode == EGSFireMode::Hitscan)
 	{
 		const FVector D = GSBallistics::ShotDirection(Aim, Spread, Seed, Ball);
-		if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>()) Ballistics->FireShown(this, Start, D, Ball);
-		GSDrawShotStreak(GetWorld(), this, MuzzleStart, Start, D);
+		if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>()) Ballistics->FireShown(this, Start, D, Ball, GSIsTracer(S, W->AmmoType, ShotIndex));
 	}
 	else if (S.Mode == EGSFireMode::Pellets)
 	{
-		DrawPellets(Start, Aim, Seed, S.Pellets, Spread, true, Ball);
+		DrawPellets(Start, Aim, Seed, S.Pellets, Spread, Ball);
 	}
 	AGSShortFX::SpawnMuzzleFlash(GetWorld(), MuzzleStart, Aim, S.bSilent);
 	BarrelHeat = FMath::Min(BarrelHeat + (S.Class == EGSWeaponClass::Shotgun || S.Class == EGSWeaponClass::Sniper ? 3.f : 1.f), 30.f);
@@ -863,25 +859,34 @@ void AGSCharacter::FireOnce()
 		SpawnShellFX(S.Class);
 	}
 
-	ServerFire(Start, Aim, ShotIndex, SpreadQ);
+	// One costly shot must arrive (bolt rifle, shotgun, single-use launcher). A stream of them may lose one: fast
+	// automatics send unreliably, so a long burst on a bad connection can never overflow the reliable buffer.
+	if (S.Mode == EGSFireMode::Hitscan && S.bAutomatic && S.FireInterval < 0.15f) ServerFireFast(Start, Aim, ShotIndex, SpreadQ);
+	else ServerFire(Start, Aim, ShotIndex, SpreadQ);
 
 	if (!S.bAutomatic) GetWorldTimerManager().ClearTimer(AutoFireTimer);
 }
 
-void AGSCharacter::DrawPellets(const FVector& Start, const FVector& Dir, int32 Seed, int32 Pellets, float ConeDeg, bool bFromMuzzle, const FGSBallistic& B)
+void AGSCharacter::DrawPellets(const FVector& Start, const FVector& Dir, int32 Seed, int32 Pellets, float ConeDeg, const FGSBallistic& B)
 {
 	TArray<FVector> Dirs;
 	GSBallistics::PelletDirections(Dir, ConeDeg, Seed, Pellets, B, Dirs);
 	UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>();
-	const FVector From = bFromMuzzle ? FPWeaponMesh->GetComponentLocation() + Dir * 60.f : TPWeaponMesh->GetComponentLocation();
-	for (const FVector& D : Dirs)
-	{
-		if (Ballistics) Ballistics->FireShown(this, Start, D, B);
-		GSDrawShotStreak(GetWorld(), this, From, Start, D);
-	}
+	if (!Ballistics) return;
+	for (const FVector& D : Dirs) Ballistics->FireShown(this, Start, D, B, false);   // pellets never glow
 }
 
-void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex, uint8 SpreadQ)
+void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex, uint16 SpreadQ)
+{
+	HandleFire(Start, AimDir, ShotIndex, SpreadQ);
+}
+
+void AGSCharacter::ServerFireFast_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex, uint16 SpreadQ)
+{
+	HandleFire(Start, AimDir, ShotIndex, SpreadQ);
+}
+
+void AGSCharacter::HandleFire(const FVector& Start, const FVector& AimDir, int32 ShotIndex, uint16 SpreadQ)
 {
 	if (bDead || bReloading || !Weapons.IsValidIndex(CurrentSlot)) return;
 	FGSWeaponSlot& W = Weapons[CurrentSlot];
@@ -925,10 +930,14 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 	// Where it starts: the owner's eye as he saw it, if that is close to where we have him (120 cm = a sprint for
 	// 0.2 s) and no wall lies between. Otherwise our own eye. The shot is never thrown away for this.
 	const FVector Eye = Camera->GetComponentLocation();
+	// Only the world blocks (walls, doors): an object trace, so a teammate beside you never counts as a wall.
 	FCollisionQueryParams WallParams(SCENE_QUERY_STAT(GSFireStart), false, this);
+	FCollisionObjectQueryParams WallTypes;
+	WallTypes.AddObjectTypesToQuery(ECC_WorldStatic);
+	WallTypes.AddObjectTypesToQuery(ECC_WorldDynamic);
 	FHitResult Wall;
 	const bool bStartOk = FVector::DistSquared(Start, Eye) <= FMath::Square(120.f)
-		&& !GetWorld()->LineTraceSingleByChannel(Wall, Eye, Start, ECC_WorldStatic, WallParams);
+		&& !GetWorld()->LineTraceSingleByObjectType(Wall, Eye, Start, WallTypes, WallParams);
 	const FVector From = bStartOk ? FVector(Start) : Eye;
 	// Spread. The size: what the owner used, held within 15 % of what we get ourselves (so an honest player hits
 	// exactly where he saw it, and a cheat gains at most 15 %). The host's own FireOnce already added this shot's recoil.
@@ -951,7 +960,7 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 		const FName Kind = S.Class == EGSWeaponClass::Bow ? FName(TEXT("arrow")) : (S.Radius > 550.f ? FName(TEXT("rocket")) : FName(TEXT("grenade40")));
 		// It starts 80 cm ahead of the eye, but never on the far side of a wall.
 		FVector Spawn = From + Aim * 80.f;
-		if (GetWorld()->LineTraceSingleByChannel(Wall, From, Spawn, ECC_WorldStatic, WallParams)) Spawn = FVector(Wall.ImpactPoint) - Aim * 15.f;
+		if (GetWorld()->LineTraceSingleByObjectType(Wall, From, Spawn, WallTypes, WallParams)) Spawn =FVector(Wall.ImpactPoint) - Aim * 15.f;
 		AGSProjectile::Launch(GetWorld(), this, Kind, WeaponId, Spawn, Aim * S.ProjSpeed, S.ProjGravity,
 			S.Damage * Mods.Damage, S.Radius, 0.f);
 		// No bullet (the projectile is its own). Launchers are loud; only bows are quiet. The launcher bit lets
@@ -986,7 +995,7 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 
 	const FVector D = GSBallistics::ShotDirection(Aim, Spread, Seed, Ball);
 	if (Ballistics) Ballistics->FireReal(this, From, D, Ball, S.Damage * Mods.Damage, WeaponId, AmmoType, Advance);
-	MulticastShotFX(From, D, static_cast<uint8>(S.bSilent || Mods.bSilent ? 1 : 0));
+	MulticastShotFX(From, D, static_cast<uint8>((S.bSilent || Mods.bSilent ? 1 : 0) | (GSIsTracer(S, AmmoType, ShotIndex) ? 8 : 0)));
 }
 
 void AGSCharacter::QuickMelee()
@@ -1091,8 +1100,7 @@ void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVe
 	// Our own copy of the bullet shows where it lands. It flies as the gun the shooter holds right now.
 	const FGSWeaponSlot* W = GetCurrentWeapon();
 	const FGSWeaponStats S = W ? GetStats(*W) : GSItems::Weapon(NAME_None);
-	if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>()) Ballistics->FireShown(this, Start, FVector(Dir), GSBallistics::ForWeapon(S));
-	if (!bSilent) GSDrawShotStreak(GetWorld(), this, TPWeaponMesh->GetComponentLocation(), Start, FVector(Dir));
+	if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>()) Ballistics->FireShown(this, Start, FVector(Dir), GSBallistics::ForWeapon(S), (Flags & 8) != 0);
 }
 
 void AGSCharacter::MulticastPelletFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed, int32 Pellets, float ConeDeg)
@@ -1101,8 +1109,8 @@ void AGSCharacter::MulticastPelletFX_Implementation(FVector_NetQuantize Start, F
 	GSAudio::PlayShotFor(this, EGSWeaponClass::Shotgun, false, Start);
 	const FGSWeaponSlot* W = GetCurrentWeapon();
 	const FGSWeaponStats S = W ? GetStats(*W) : GSItems::Weapon(NAME_None);
-	DrawPellets(Start, Dir, Seed, Pellets, ConeDeg, false,
-		W && S.Mode == EGSFireMode::Pellets ? GSBallistics::ForWeapon(S) : GSBallistics::ForCaliber(TEXT("12g")));
+	DrawPellets(Start, Dir, Seed, Pellets, ConeDeg,
+		W &&S.Mode == EGSFireMode::Pellets ? GSBallistics::ForWeapon(S) : GSBallistics::ForCaliber(TEXT("12g")));
 }
 
 void AGSCharacter::NoteShotForRadio(const FVector& Where)
