@@ -31,6 +31,17 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26: «legg alt til», «alt overfor også» (del 5, og bekreftet at alt tidligere godkjent skal med):
+  1. Treffrespons: fiender rykker til der de treffes, fysikk når de faller.
+  2. Mykere overganger mellom gå, løpe, hoppe; føtter som ikke glir.
+  3. Lys inne: lysrør som flimrer, sollys gjennom vinduer.
+  4. Materialer: våte flater og sølepytter i regn, slitasje på gulv og trapper.
+  5. Trær og gress som beveger seg i vinden.
+  6. Eget rekylmønster per våpen som kan læres.
+  7. Ekte linseeffekt og riktig forstørrelse i siktene.
+  8. Mer detaljerte spillermodeller der skitt og blod setter seg.
+  9. Lydmiks der fottrinn og flagg alltid høres.
+  10. Raskere oppstart, ingen frys når nye områder lastes.
 - 2026-11-26: «legg det til» (del 4):
   1. Drone styrt fra campus-PC-ene for å speide.
   2. Barrikader: bære pulter og stoler foran dører.

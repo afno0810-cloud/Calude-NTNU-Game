@@ -61,6 +61,14 @@ plukkes opp igjen. Første lag til 3 erobringer, eller flest når tiden går ut.
   - Spillbarhet: drone styrt fra PC-ene; hacking av kameraene (PC-ene og `GSTerminal` er lagets);
     ta flagget tilbake i nærkamp (CTF-regel); radiomeldinger på norsk fra eget lag ved flaggendringer
     (realistisk stil, ikke arkade-kommentator – lyd bestilles fra Kamp); tilskuermodus for døde.
+- **Andreas' godkjente forslag, del 5 (26. nov.), fordelt:**
+  - Kamp: treffrespons (rykk der kula treffer, fysisk fall – bygger på blodrunden); mykere
+    bevegelsesoverganger uten fotgli; eget, lærbart rekylmønster per våpen; ekte linseeffekt og riktig
+    forstørrelse i sikter; spillermodeller der skitt og blod setter seg; lydmiks der fottrinn og flagg
+    alltid høres.
+  - Grafikk og kart: lys inne (flimrende lysrør, sollys gjennom vinduer); våte flater og sølepytter,
+    slitasje; trær og gress i vind; raskere oppstart og ingen frys ved lasting (henger sammen med
+    ytelsesarbeidet).
   Q/E brukes i dag til annet (Q = neste ting i sekken, E = bruk). Spillbarhet foreslår ny tastefordeling
   i knappehjelp/keybinds; Kamp legger inn lene på de tastene som velges.
 - **Kamp:** lagtilhørighet i treff og HUD (ikke treffmarkør/blod-varsel på lagkamerater hvis venneild er
