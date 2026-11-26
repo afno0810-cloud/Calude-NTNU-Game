@@ -21,6 +21,8 @@ public:
 
 protected:
 	void DrawCrosshair(AGSCharacter* C);
+	/** Hit marker X around (CX, CY): white body hit, blue on armor, gold headshot, big red kill. */
+	void DrawHitMarker(AGSCharacter* C, float CX, float CY);
 	void DrawBars(AGSCharacter* C);
 	void DrawAmmo(AGSCharacter* C);
 	void DrawQuickbar(AGSCharacter* C);

@@ -9,6 +9,7 @@ class UInputAction;
 class AGSTerminal;
 class AGSSecurityCamera;
 class UInputMappingContext;
+class AGSCharacter;
 
 /** Input actions are created in code so the project needs no input assets. */
 UCLASS()
@@ -21,6 +22,17 @@ public:
 
 	virtual void SetupInputComponent() override;
 	virtual void BeginPlay() override;
+	virtual void SetPawn(APawn* InPawn) override;
+	virtual void AcknowledgePossession(APawn* P) override;
+
+	// --- Death cam and killer card ---
+	/** Server -> the player who died: look at your body, turn toward the killer, show who killed you and how. */
+	UFUNCTION(Client, Reliable) void ClientDeathCam(AGSCharacter* Body, APawn* KillerPawn, const FGSDeathInfo& Info);
+	FGSDeathInfo DeathInfo;
+	float LocalDeathTime = -100.f;   // local GetTimeSeconds() when you died
+	bool bHasDeathInfo = false;      // false until the first death, and again once you have a new body
+	/** The body the death cam watches until you get a new pawn (server and owning client). */
+	TWeakObjectPtr<AGSCharacter> DeathCamBody;
 
 	void EnsureInputCreated();
 
@@ -108,6 +120,8 @@ public:
 	UFUNCTION(Exec) void Straaling(int32 On);
 
 protected:
+	/** Your pawn, or your body while you are dead (what the view goes back to after a security camera). */
+	AActor* GetHomeViewTarget() const;
 	bool ServerCanUse(const AGSTerminal* T) const;
 	void SendTrackPulse();
 	TWeakObjectPtr<AGSTerminal> ActiveTerminal;

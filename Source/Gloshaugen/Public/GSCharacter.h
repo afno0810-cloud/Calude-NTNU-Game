@@ -12,6 +12,15 @@ class UStaticMeshComponent;
 class USpotLightComponent;
 struct FInputActionValue;
 
+/** What the last hit marker was for (the HUD draws each kind differently). */
+namespace GSHitKind
+{
+	constexpr uint8 Body = 0;
+	constexpr uint8 Armor = 1;   // vest or helmet took part of the hit
+	constexpr uint8 Head = 2;
+	constexpr uint8 Kill = 3;
+}
+
 UCLASS()
 class GLOSHAUGEN_API AGSCharacter : public ACharacter
 {
@@ -25,6 +34,10 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void BeginPlay() override;
 	virtual float TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	/** Death cam: while dead, the view falls, pulls back over the body and turns toward the killer. */
+	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult) override;
+	/** Local: who the death cam turns toward (set by the player controller when you die). */
+	TWeakObjectPtr<APawn> DeathCamKiller;
 
 	static constexpr int32 MaxWeapons = 4;
 	static constexpr int32 BaseBackpackSlots = 6;
@@ -77,6 +90,9 @@ public:
 	FGSWeaponStats GetStats(const FGSWeaponSlot& Slot) const;
 	int32 GetMagSize(const FGSWeaponSlot& Slot) const { return GetStats(Slot).MagSize; }
 	float GetLastHitMarkerTime() const { return LastHitMarkerTime; }
+	/** GSHitKind of the last hit marker, and whether the last kill was a headshot. */
+	uint8 GetLastHitKind() const { return LastHitKind; }
+	bool WasLastKillHeadshot() const { return bLastKillHeadshot; }
 	/** Aiming through a magnified scope (4x / 8x or a sniper): the HUD draws the scope and the gun is hidden. */
 	bool IsScopedIn() const;
 	float GetAimBlend() const { return AimBlend; }
@@ -208,7 +224,7 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantize End, bool bSilent);
 	UFUNCTION(NetMulticast, Unreliable) void MulticastPelletFX(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed, int32 Pellets, float ConeDeg);
 	UFUNCTION(NetMulticast, Unreliable) void MulticastMeleeFX();
-	UFUNCTION(Client, Unreliable) void ClientHitMarker(bool bKill);
+	UFUNCTION(Client, Unreliable) void ClientHitMarker(bool bKill, bool bHeadshot, bool bArmor);
 
 	UFUNCTION() void OnRep_Health();
 	UFUNCTION() void OnRep_Weapons();
@@ -241,7 +257,17 @@ protected:
 	float ServerLastFireTime = -100.f;
 	float LastMeleeTime = -100.f;
 	float LastHitMarkerTime = -100.f;
+	uint8 LastHitKind = GSHitKind::Body;
+	bool bLastKillHeadshot = false;
 	float LastDamageTakenTime = -100.f;
+	// Death cam (local only): when it started, where your eyes were, and the smoothed camera
+	float DeathCamStart = -1.f;
+	FVector DeathEyeLoc = FVector::ZeroVector;
+	FRotator DeathEyeRot = FRotator::ZeroRotator;
+	FVector DeathCamPos = FVector::ZeroVector;
+	FRotator DeathCamRot = FRotator::ZeroRotator;
+	float DeathCamArm = 1.f;   // 0..1 of the way from the body to the camera that is free of walls
+	bool bDeathCamInit = false;
 	float CurrentRecoil = 0.f;
 	float DefaultFOV = 90.f;
 	float StarveAccumulator = 0.f;

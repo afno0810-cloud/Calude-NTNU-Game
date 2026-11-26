@@ -23,3 +23,5 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26: «fra nå av skal det jobbe autonomt». Løkken kjører runde etter runde uten å spørre
+  Andreas, og lærer selv hva som gjør spillet bedre. Spør bare ved ting som ikke kan angres.

@@ -995,10 +995,27 @@ void AGSCharacter::FinishReload()
 	W.Reserve -= Take;
 }
 
-void AGSCharacter::ClientHitMarker_Implementation(bool bKill)
+void AGSCharacter::ClientHitMarker_Implementation(bool bKill, bool bHeadshot, bool bArmor)
 {
-	LastHitMarkerTime = GetWorld()->GetTimeSeconds();
-	GSAudio::Play2D(this, TEXT("Hit_Marker"), bKill ? 0.9f : 0.6f, bKill ? 0.8f : 1.f);
+	const float Now = GetWorld()->GetTimeSeconds();
+	const uint8 Kind = bKill ? GSHitKind::Kill : bHeadshot ? GSHitKind::Head : bArmor ? GSHitKind::Armor : GSHitKind::Body;
+	// Shotgun pellets arrive as many markers: a later pellet must not turn a fresh kill marker back into a body hit.
+	if (LastHitKind == GSHitKind::Kill && Kind != GSHitKind::Kill && Now - LastHitMarkerTime < 0.5f) return;
+	LastHitKind = Kind;
+	LastHitMarkerTime = Now;
+	if (bKill) bLastKillHeadshot = bHeadshot;
+
+	// Same sound, pitched per kind: deep for a kill, bright for a headshot, a thin "clink" off armor.
+	switch (Kind)
+	{
+	case GSHitKind::Kill:
+		GSAudio::Play2D(this, TEXT("Hit_Marker"), 0.9f, 0.8f);
+		if (bHeadshot) GSAudio::Play2D(this, TEXT("Hit_Marker"), 0.85f, 1.45f);
+		break;
+	case GSHitKind::Head:  GSAudio::Play2D(this, TEXT("Hit_Marker"), 0.85f, 1.45f); break;
+	case GSHitKind::Armor: GSAudio::Play2D(this, TEXT("Hit_Marker"), 0.55f, 1.7f); break;
+	default:               GSAudio::Play2D(this, TEXT("Hit_Marker"), 0.6f, 1.f); break;
+	}
 }
 
 FString AGSCharacter::CurrentWeaponName() const
@@ -2408,12 +2425,14 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	else if (Ammo == GSAmmoType::Shock) AddEffect(TEXT("Sjokk"));
 
 	// Armor soaks up part of the damage until it breaks.
+	bool bArmorHit = false;
 	if (bHeadshot && !Helmet.IsNone())
 	{
 		const FGSItemDef* H = GSItems::Find(Helmet);
 		const float Soak = FMath::Min(Damage * (H ? H->Absorb : 0.3f) * AbsorbMul, HelmetPoints);
 		HelmetPoints -= Soak;
 		Damage -= Soak;
+		bArmorHit = Soak > 0.f;
 		if (HelmetPoints <= 0.5f) { Helmet = NAME_None; HelmetPoints = 0.f; ApplyGearVisuals(); ClientToast(TEXT("Hjelmen gikk i stykker!")); }
 	}
 	else if (!bHeadshot && !BodyArmor.IsNone())
@@ -2422,6 +2441,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		const float Soak = FMath::Min(Damage * (A ? A->Absorb : 0.3f) * AbsorbMul, ArmorPoints);
 		ArmorPoints -= Soak;
 		Damage -= Soak;
+		bArmorHit = Soak > 0.f;
 		if (ArmorPoints <= 0.5f) { BodyArmor = NAME_None; ArmorPoints = 0.f; ApplyGearVisuals(); ClientToast(TEXT("Vesten er \u00F8delagt!")); }
 	}
 
@@ -2451,7 +2471,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	}
 	if (Shooter && Shooter != this)
 	{
-		Shooter->ClientHitMarker(bKilled);
+		Shooter->ClientHitMarker(bKilled, bHeadshot, bArmorHit);
 	}
 	if (bKilled)
 	{
@@ -2484,8 +2504,34 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 	DropEverything();
 	bFlashlightOn = false;
 
+	// Death cam and killer card for the player who died (server has the real health/armor of the killer,
+	// even though those are only replicated to their owner).
+	AGSPlayerController* VictimPC = Cast<AGSPlayerController>(GetController());
+	APawn* KillerPawn = Killer ? Killer->GetPawn() : nullptr;
+	if (KillerPawn == this) KillerPawn = nullptr;
+	FGSDeathInfo Info;
+	Info.Weapon = WeaponName;
+	Info.bHeadshot = bHeadshot;
+	if (KillerPawn)
+	{
+		Info.Killer = Killer->PlayerState ? Killer->PlayerState->GetPlayerName() : FString(TEXT("?"));
+		Info.DistanceM = FVector::Dist(KillerPawn->GetActorLocation(), GetActorLocation()) / 100.f;
+		if (const AGSCharacter* K = Cast<AGSCharacter>(KillerPawn))
+		{
+			Info.KillerHealth = K->Health;
+			Info.KillerMaxHealth = K->MaxHealth;
+			Info.KillerArmor = K->ArmorPoints + K->HelmetPoints;
+		}
+	}
+
 	OnRep_Dead();
+	if (VictimPC) VictimPC->DeathCamBody = this;   // keeps the view on this body when the controller lets go of it
 	DetachFromControllerPendingDestroy();
+	if (VictimPC)
+	{
+		VictimPC->SetViewTarget(this);
+		VictimPC->ClientDeathCam(this, KillerPawn, Info);
+	}
 	SetLifeSpan(15.f);
 }
 
@@ -2551,6 +2597,18 @@ void AGSCharacter::SetupHumanBody()
 void AGSCharacter::OnRep_Dead()
 {
 	if (!bDead) return;
+	// Death cam starts from where your eyes were
+	DeathCamStart = GetWorld()->GetTimeSeconds();
+	DeathEyeLoc = Camera->GetComponentLocation();
+	DeathEyeRot = Camera->GetComponentRotation();
+	bDeathCamInit = false;
+	// The death cam looks at your own body: show it to you too, and hide the first-person arms, gun and item.
+	if (bHumanBody) GetMesh()->SetOwnerNoSee(false);
+	else { BodyMesh->SetOwnerNoSee(false); HeadMesh->SetOwnerNoSee(false); }
+	for (UPrimitiveComponent* FP : TInlineComponentArray<UPrimitiveComponent*>(this))
+	{
+		if (FP && FP->bOnlyOwnerSee) FP->SetVisibility(false);
+	}
 	if (FPLegs) FPLegs->SetVisibility(false);
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -2573,6 +2631,107 @@ void AGSCharacter::OnRep_Dead()
 	HeadMesh->SetRelativeLocation(FVector(95.f, 0.f, -80.f));
 	ApplyWeaponVisuals();
 	ApplyGearVisuals();
+}
+
+void AGSCharacter::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+	Super::CalcCamera(DeltaTime, OutResult);   // keeps post-process from the camera component
+	if (!bDead || DeathCamStart < 0.f) return;
+
+	const UWorld* World = GetWorld();
+	const float T = World->GetTimeSeconds() - DeathCamStart;
+	const float Dt = FMath::Clamp(DeltaTime, 0.f, 0.05f);
+	constexpr float FallTime = 0.35f;   // phase 1: you drop where you stand
+	constexpr float PullTime = 1.6f;    // phase 2: the camera pulls back over the body; phase 3: turn to the killer / orbit
+	constexpr float Back = 280.f, Up = 180.f;
+
+	// Look at the ragdoll's hips (or where the old shapes lie)
+	const FVector Focus = bHumanBody ? GetMesh()->GetSocketLocation(TEXT("pelvis")) : GetActorLocation() - FVector(0.f, 0.f, 60.f);
+	const FVector Facing = FRotator(0.f, DeathEyeRot.Yaw, 0.f).Vector();   // the way you were looking
+
+	const float FallA = FMath::Clamp(T / FallTime, 0.f, 1.f);
+	const FVector FallLoc = DeathEyeLoc - FVector(0.f, 0.f, 45.f * FallA * FallA);
+	const FRotator FallRot(DeathEyeRot.Pitch - 20.f * FallA, DeathEyeRot.Yaw, 18.f * FallA);
+
+	APawn* Killer = DeathCamKiller.Get();
+	const AGSCharacter* KillerChar = Cast<AGSCharacter>(Killer);
+	const bool bLookAtKiller = Killer && !(KillerChar && KillerChar->bDead);
+
+	FVector Desired = FallLoc;
+	if (T >= FallTime)
+	{
+		const float PullA = FMath::SmoothStep(0.f, 1.f, (T - FallTime) / (PullTime - FallTime));
+		FVector Target = Focus - Facing * Back + FVector(0.f, 0.f, Up);
+		if (T >= PullTime)
+		{
+			const float After = T - PullTime;
+			if (bLookAtKiller)
+			{
+				Target.Z += 50.f * FMath::SmoothStep(0.f, 1.f, After / 0.8f);
+			}
+			else
+			{
+				// Nobody to look at: slow orbit around the body
+				Target = Focus - FRotator(0.f, DeathEyeRot.Yaw + 10.f * After, 0.f).Vector() * Back + FVector(0.f, 0.f, Up);
+			}
+		}
+		Desired = FMath::Lerp(FallLoc, Target, PullA);
+	}
+
+	if (!bDeathCamInit)
+	{
+		bDeathCamInit = true;
+		DeathCamPos = Desired;
+		DeathCamRot = FallRot;
+		DeathCamArm = 1.f;
+	}
+	DeathCamPos = FMath::VInterpTo(DeathCamPos, Desired, Dt, 10.f);
+
+	// Never through walls, roofs or the ground: sweep from the body out to the camera, snap in at once when
+	// something is in the way, ease back out when it is clear again.
+	FVector Final = DeathCamPos;
+	if (T >= FallTime)
+	{
+		const FVector Start = Focus + FVector(0.f, 0.f, 30.f);
+		const FVector Arm = DeathCamPos - Start;
+		const float Len = Arm.Size();
+		float Free = 1.f;
+		if (Len > 1.f)
+		{
+			FCollisionQueryParams Params(SCENE_QUERY_STAT(GSDeathCam), false, this);
+			if (Killer) Params.AddIgnoredActor(Killer);
+			FHitResult Hit;
+			if (World->SweepSingleByChannel(Hit, Start, DeathCamPos, FQuat::Identity, ECC_Camera, FCollisionShape::MakeSphere(12.f), Params)
+				&& !Hit.bStartPenetrating)
+			{
+				Free = FMath::Clamp(Hit.Time - 8.f / Len, 0.f, 1.f);
+			}
+		}
+		DeathCamArm = Free < DeathCamArm ? Free : FMath::FInterpTo(DeathCamArm, Free, Dt, 4.f);
+		Final = Start + Arm * DeathCamArm;
+	}
+
+	// Rotation: fall forward with a roll, then turn to look at the body; after that turn slowly toward the killer.
+	FRotator Rot;
+	if (T < FallTime)
+	{
+		Rot = FallRot;
+	}
+	else if (T < PullTime)
+	{
+		const float PullA = FMath::SmoothStep(0.f, 1.f, (T - FallTime) / (PullTime - FallTime));
+		Rot = FQuat::Slerp(FQuat(FallRot), FQuat((Focus - Final).Rotation()), PullA).Rotator();
+	}
+	else
+	{
+		const FVector LookAt = bLookAtKiller ? Killer->GetActorLocation() + FVector(0.f, 0.f, 60.f) : Focus;
+		Rot = FMath::RInterpTo(DeathCamRot, (LookAt - Final).Rotation(), Dt, 2.5f);
+	}
+	DeathCamRot = Rot;
+
+	OutResult.Location = Final;
+	OutResult.Rotation = Rot;
+	OutResult.FOV = DefaultFOV;   // not zoomed in even if you died looking through a scope
 }
 
 // ---------------------------------------------------------------- Tick
@@ -2856,6 +3015,7 @@ void AGSCharacter::Tick(float DeltaSeconds)
 
 		TickRecoil(DeltaSeconds);
 		TickScopeSway(DeltaSeconds);
-		UpdateWeaponAnimation(DeltaSeconds);
+		// Dead: the first-person arms, gun and item stay hidden (the client can still control the body for a few frames)
+		if (!bDead) UpdateWeaponAnimation(DeltaSeconds);
 	}
 }

@@ -3,6 +3,21 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 6: kamp-tilbakemelding (26. nov.)
+
+289. Dødskamera: når du dør faller bildet, trekker seg bakover og viser kroppen din i stedet for å fryse i øyehøyde
+290. Dødskameraet snur seg mot den som drepte deg, så du ser hvor skuddet kom fra
+291. Dødskameraet går aldri gjennom vegger, tak eller bakken, heller ikke inne i byggene
+292. Uten drapsmann (sult, tørst, egen granat) går kameraet sakte i bane rundt kroppen
+293. Dødskort: hvem som drepte deg, med hvilket våpen og fra hvor mange meter
+294. Dødskortet viser hvor mye liv og rustning drapsmannen hadde igjen
+295. Dødskortet merker hodeskudd, og viser årsaken når du døde av noe annet enn en spiller
+296. Nedtelling med stolpe til du kommer tilbake
+297. Treffmarkøren er nå en tydelig X med skygge som synes på snø og himmel
+298. Egen gullfarget markør og lysere lyd for hodeskudd
+299. Blå markør og «klink»-lyd når kula tas av vest eller hjelm
+300. Rød, større drapsmarkør med et lite «smell» og «HODESKUDD» når drapet var et hodeskudd, også i kikkertsikte
+
 ## Runde 4: grafikk (25. nov. kveld)
 
 ### Materialer og teksturer

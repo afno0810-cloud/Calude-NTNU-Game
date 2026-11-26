@@ -259,6 +259,46 @@ void AGSPlayerController::BeginPlay()
 	GConfig->Flush(false, GGameUserSettingsIni);
 }
 
+// ---------------------------------------------------------------- Death cam
+
+void AGSPlayerController::ClientDeathCam_Implementation(AGSCharacter* Body, APawn* KillerPawn, const FGSDeathInfo& Info)
+{
+	DeathInfo = Info;
+	bHasDeathInfo = true;
+	LocalDeathTime = GetWorld()->GetTimeSeconds();
+	if (!Body) return;
+	DeathCamBody = Body;
+	Body->DeathCamKiller = KillerPawn;
+	// The camera manager follows a viewed pawn's player state to that player's next pawn. The server has already
+	// cleared it on the body; do the same here at once, or the view jumps away when that update arrives.
+	if (Body->GetPlayerState()) Body->SetPlayerState(nullptr);
+	SetViewTarget(Body);
+}
+
+void AGSPlayerController::SetPawn(APawn* InPawn)
+{
+	Super::SetPawn(InPawn);
+	// Losing the pawn points the view at the controller; while dead it should stay on the body.
+	if (InPawn) DeathCamBody = nullptr;
+	else if (AGSCharacter* Body = DeathCamBody.Get()) SetViewTarget(Body);
+}
+
+void AGSPlayerController::AcknowledgePossession(APawn* P)
+{
+	Super::AcknowledgePossession(P);
+	if (P)
+	{
+		bHasDeathInfo = false;
+		DeathCamBody = nullptr;
+	}
+}
+
+AActor* AGSPlayerController::GetHomeViewTarget() const
+{
+	if (APawn* P = GetPawn()) return P;
+	return DeathCamBody.Get();
+}
+
 void AGSPlayerController::Grafikk(int32 Level)
 {
 	if (UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr)
@@ -315,7 +355,7 @@ void AGSPlayerController::CloseTerminal()
 	AGSTerminal* T = ActiveTerminal.Get();
 	if (TerminalMode == 1)
 	{
-		SetViewTargetWithBlend(GetPawn(), 0.15f);
+		SetViewTargetWithBlend(GetHomeViewTarget(), 0.15f);
 		ServerViewCamera(T, nullptr);
 	}
 	ActiveTerminal = nullptr;
@@ -381,8 +421,13 @@ void AGSPlayerController::TerminalInput(const FString& Key)
 void AGSPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
+	// Dead: keep watching the body if something else moved the view (the engine resets it when the pawn is let go).
+	if (!GetPawn() && DeathCamBody.IsValid() && !ActiveTerminal.IsValid() && GetViewTarget() != DeathCamBody.Get())
+	{
+		SetViewTarget(DeathCamBody.Get());
+	}
 	AGSTerminal* T = ActiveTerminal.Get();
-	if (!T && ActiveTerminal.IsStale()) { ActiveTerminal = nullptr; TerminalMode = 0; SetViewTargetWithBlend(GetPawn(), 0.f); return; }
+	if (!T && ActiveTerminal.IsStale()) { ActiveTerminal = nullptr; TerminalMode = 0; SetViewTargetWithBlend(GetHomeViewTarget(), 0.f); return; }
 	if (!T) return;
 	// Leaving, dying or getting shot kicks you off the terminal.
 	const AGSCharacter* C = Cast<AGSCharacter>(GetPawn());
@@ -401,7 +446,7 @@ bool AGSPlayerController::ServerCanUse(const AGSTerminal* T) const
 void AGSPlayerController::ServerViewCamera_Implementation(AGSTerminal* T, AGSSecurityCamera* Cam)
 {
 	if (Cam && (!ServerCanUse(T) || T->Kind != EGSTerminalKind::Computer)) Cam = nullptr;
-	SetViewTargetWithBlend(Cam ? static_cast<AActor*>(Cam) : static_cast<AActor*>(GetPawn()), 0.f);
+	SetViewTargetWithBlend(Cam ? static_cast<AActor*>(Cam) : GetHomeViewTarget(), 0.f);
 }
 
 void AGSPlayerController::ServerTrack_Implementation(AGSTerminal* T)

@@ -5,6 +5,7 @@
 #include "GSPickup.h"
 #include "GSPlayerState.h"
 #include "GSPlayerController.h"
+#include "GSGameMode.h"
 #include "GSTerminal.h"
 #include "GSCampus.h"
 #include "Engine/Canvas.h"
@@ -196,16 +197,45 @@ void AGSHUD::DrawCrosshair(AGSCharacter* C)
 		Box(CX - 1.f, CY + Gap, 2.f, Len, White);
 	}
 
-	const float SinceHit = GetWorld()->GetTimeSeconds() - C->GetLastHitMarkerTime();
-	if (SinceHit < 0.18f)
+	DrawHitMarker(C, CX, CY);
+}
+
+void AGSHUD::DrawHitMarker(AGSCharacter* C, float CX, float CY)
+{
+	const float Since = GetWorld()->GetTimeSeconds() - C->GetLastHitMarkerTime();
+	const uint8 Kind = C->GetLastHitKind();
+	float Inner = 7.f, Outer = 14.f, Thick = 2.f, Duration = 0.2f;
+	FLinearColor Color(1.f, 1.f, 1.f);
+	if (Kind == GSHitKind::Armor) Color = FLinearColor(0.6f, 0.8f, 1.f);
+	else if (Kind == GSHitKind::Head) { Color = FLinearColor(1.f, 0.82f, 0.2f); Inner = 8.f; Outer = 17.f; Thick = 2.5f; Duration = 0.3f; }
+	else if (Kind == GSHitKind::Kill) { Color = FLinearColor(1.f, 0.15f, 0.1f); Inner = 9.f; Outer = 20.f; Thick = 3.f; Duration = 0.5f; }
+	if (Since < 0.f || Since >= Duration) return;
+
+	float Scale = 1.f, Alpha;
+	if (Kind == GSHitKind::Kill)
 	{
-		const FLinearColor Red(1.f, 0.2f, 0.2f, 1.f - SinceHit / 0.18f);
-		for (int32 I = 0; I < 4; ++I)
-		{
-			const float SX = (I % 2 == 0) ? -1.f : 1.f;
-			const float SY = (I < 2) ? -1.f : 1.f;
-			Box(CX + SX * 10.f - 2.f, CY + SY * 10.f - 2.f, 5.f, 5.f, Red);
-		}
+		// Kill: starts big and snaps in, holds, then fades out over the last 0.2 s
+		if (Since < 0.12f) Scale = FMath::Lerp(1.35f, 1.f, Since / 0.12f);
+		Alpha = FMath::Clamp((Duration - Since) / 0.2f, 0.f, 1.f);
+	}
+	else
+	{
+		Alpha = 1.f - Since / Duration;
+	}
+	Color.A = Alpha;
+	const FLinearColor Shadow(0.f, 0.f, 0.f, 0.5f * Alpha);
+	const FVector2D Mid(CX, CY);
+	const FVector2D ShadowOff(1.f, 1.f);
+	for (const FVector2D& D : { FVector2D(1.f, 1.f), FVector2D(-1.f, 1.f), FVector2D(1.f, -1.f), FVector2D(-1.f, -1.f) })
+	{
+		const FVector2D Dir = D * UE_INV_SQRT_2;
+		const FVector2D A = Mid + Dir * Inner * Scale, B = Mid + Dir * Outer * Scale;
+		Canvas->K2_DrawLine(A + ShadowOff, B + ShadowOff, Thick, Shadow);   // shadow so it shows on snow and sky
+		Canvas->K2_DrawLine(A, B, Thick, Color);
+	}
+	if (Kind == GSHitKind::Kill && C->WasLastKillHeadshot())
+	{
+		Text(TEXT("HODESKUDD"), CX, CY + 34.f, FLinearColor(1.f, 0.82f, 0.2f, Alpha), 0.8f, true);
 	}
 }
 
@@ -606,11 +636,7 @@ void AGSHUD::DrawScope(AGSCharacter* C)
 		Box(CX - 80.f, BY, 160.f * Left, 6.f, Left > 0.25f ? FLinearColor(0.8f, 0.9f, 1.f, 0.85f) : FLinearColor(1.f, 0.3f, 0.2f, 0.9f));
 	}
 	// hit marker still shows when scoped
-	const float SinceHit = GetWorld()->GetTimeSeconds() - C->GetLastHitMarkerTime();
-	if (SinceHit < 0.18f)
-	{
-		Box(CX + 8.f, CY + 8.f, 6.f, 6.f, FLinearColor(1.f, 0.2f, 0.2f, 1.f - SinceHit / 0.18f));
-	}
+	DrawHitMarker(C, CX, CY);
 }
 
 void AGSHUD::DrawDamageDirection(AGSCharacter* C)
@@ -823,24 +849,78 @@ void AGSHUD::DrawScoreboard()
 
 void AGSHUD::DrawDeathScreen()
 {
-	Box(0, 0, Canvas->SizeX, Canvas->SizeY, FLinearColor(0.15f, 0.f, 0.f, 0.35f));
-	FString Killer, Weapon;
-	const AGSGameState* GS = GetWorld()->GetGameState<AGSGameState>();
-	const APlayerState* Me = PlayerOwner ? PlayerOwner->PlayerState : nullptr;
-	if (GS && Me)
+	const AGSPlayerController* PC = Cast<AGSPlayerController>(PlayerOwner);
+	if (!PC || !PC->bHasDeathInfo) return;   // not dead yet (lobby, first spawn)
+	const FGSDeathInfo& Info = PC->DeathInfo;
+	const float SX = Canvas->SizeX, SY = Canvas->SizeY, CX = SX * 0.5f;
+	const float Since = GetWorld()->GetTimeSeconds() - PC->LocalDeathTime;
+	const float In = FMath::Clamp(Since / 0.6f, 0.f, 1.f);
+	const float FadeIn = FMath::Clamp(Since / 0.3f, 0.f, 1.f);
+	UFont* Font = GEngine->GetMediumFont();
+	auto TextWidth = [Font](const FString& S, float Scale) { return Font->GetStringSize(*S) * Scale; };
+
+	// Red tint and a dark vignette that fade in
+	Box(0, 0, SX, SY, FLinearColor(0.35f, 0.f, 0.f, 0.25f * In));
+	for (int32 Band = 0; Band < 6; ++Band)
 	{
-		for (int32 I = GS->KillFeed.Num() - 1; I >= 0; --I)
-		{
-			if (GS->KillFeed[I].Victim == Me->GetPlayerName()) { Killer = GS->KillFeed[I].Killer; Weapon = GS->KillFeed[I].Weapon; break; }
-		}
+		const float D = 120.f - 20.f * Band;   // 120 px at the edge, softer toward the middle
+		const FLinearColor Dark(0.f, 0.f, 0.f, 0.35f / 6.f * In);
+		Box(0, 0, SX, D, Dark);
+		Box(0, SY - D, SX, D, Dark);
+		Box(0, 0, D, SY, Dark);
+		Box(SX - D, 0, D, SY, Dark);
 	}
-	const float CX = Canvas->SizeX * 0.5f, CY = Canvas->SizeY * 0.4f;
-	Text(TEXT("DU ER D\u00D8D"), CX, CY, FLinearColor(1.f, 0.3f, 0.3f), 2.f, true);
-	if (!Killer.IsEmpty())
+
+	Text(TEXT("DU ER D\u00D8D"), CX, SY * 0.18f, FLinearColor(1.f, 0.3f, 0.3f, FadeIn), 2.f, true);
+
+	// Killer card
+	const bool bKiller = !Info.Killer.IsEmpty();
+	const float W = 460.f, H = bKiller ? 118.f : 80.f, Pad = 18.f;
+	const float X = CX - W * 0.5f, Y = SY * 0.68f;
+	Box(X, Y, W, H, FLinearColor(0.05f, 0.05f, 0.06f, 0.78f * FadeIn));
+	Frame(X, Y, W, H, FLinearColor(1.f, 1.f, 1.f, 0.25f * FadeIn), 2.f);
+	const FLinearColor White(1.f, 1.f, 1.f, FadeIn), Grey(0.8f, 0.8f, 0.82f, FadeIn), Gold(1.f, 0.82f, 0.2f, FadeIn);
+	if (bKiller)
 	{
-		Text(FString::Printf(TEXT("Drept av %s (%s)"), *Killer, *Weapon), CX, CY + 50.f, FLinearColor::White, 1.2f, true);
+		Text(FString::Printf(TEXT("DREPT AV %s"), *Info.Killer.Left(24)), X + Pad, Y + 12.f, White, 1.4f);
+		Text(FString::Printf(TEXT("%s  \u00B7  %d m"), *Info.Weapon, FMath::RoundToInt(Info.DistanceM)), X + Pad, Y + 50.f, Grey, 1.f);
+		if (Info.bHeadshot) Text(TEXT("HODESKUDD"), X + W - Pad, Y + 50.f, Gold, 1.f, false, true);
+
+		// How hurt the killer was: health (red -> green) and armor (blue, vest + helmet, max 200)
+		const float RowY = Y + 84.f, BarH = 8.f, Small = 0.85f;
+		const float HealthFrac = FMath::Clamp(Info.KillerHealth / FMath::Max(Info.KillerMaxHealth, 1.f), 0.f, 1.f);
+		const FLinearColor HealthCol(FMath::Lerp(1.f, 0.25f, HealthFrac), FMath::Lerp(0.2f, 0.85f, HealthFrac), 0.2f, FadeIn);
+		const FLinearColor ArmorCol(0.35f, 0.6f, 1.f, FadeIn);
+		float LX = X + Pad;
+		Text(TEXT("Liv"), LX, RowY, Grey, Small);
+		LX += TextWidth(TEXT("Liv"), Small) + 10.f;
+		Box(LX, RowY + 6.f, 120.f, BarH, FLinearColor(0.15f, 0.15f, 0.15f, 0.8f * FadeIn));
+		Box(LX, RowY + 6.f, 120.f * HealthFrac, BarH, HealthCol);
+		Text(FString::FromInt(FMath::CeilToInt(Info.KillerHealth)), LX + 128.f, RowY, White, Small);
+		const FString ArmorLabel = TEXT("Rustning");
+		float RX = X + W * 0.5f + 6.f;
+		Text(ArmorLabel, RX, RowY, Grey, Small);
+		RX += TextWidth(ArmorLabel, Small) + 10.f;
+		const float ArmorBarW = X + W - Pad - 38.f - RX;
+		Box(RX, RowY + 6.f, ArmorBarW, BarH, FLinearColor(0.15f, 0.15f, 0.15f, 0.8f * FadeIn));
+		Box(RX, RowY + 6.f, ArmorBarW * FMath::Clamp(Info.KillerArmor / 200.f, 0.f, 1.f), BarH, ArmorCol);
+		Text(FString::FromInt(FMath::CeilToInt(Info.KillerArmor)), X + W - Pad, RowY, White, Small, false, true);
 	}
-	Text(TEXT("Tingene dine ligger der du d\u00F8de. Du kommer tilbake om noen sekunder ..."), CX, CY + 85.f, FLinearColor(0.85f, 0.85f, 0.85f), 1.f, true);
+	else
+	{
+		Text(TEXT("DU D\u00D8DE"), X + Pad, Y + 12.f, White, 1.4f);
+		Text(FString::Printf(TEXT("\u00C5rsak: %s"), *Info.Weapon), X + Pad, Y + 48.f, Grey, 1.f);
+	}
+
+	// Countdown to respawn with a thin bar
+	const float Delay = AGSGameMode::RespawnDelay;
+	const float Left = Delay - Since;
+	const float CY = Y + H + 14.f;
+	Text(Left > 0.f ? FString::Printf(TEXT("Tilbake om %d s"), FMath::CeilToInt(Left)) : FString(TEXT("Kommer tilbake ...")),
+		CX, CY, White, 1.f, true);
+	Box(X, CY + 28.f, W, 4.f, FLinearColor(1.f, 1.f, 1.f, 0.15f * FadeIn));
+	Box(X, CY + 28.f, W * FMath::Clamp(Since / Delay, 0.f, 1.f), 4.f, FLinearColor(0.95f, 0.75f, 0.2f, 0.9f * FadeIn));
+	Text(TEXT("Tingene dine ligger der du d\u00F8de."), CX, CY + 42.f, FLinearColor(0.7f, 0.7f, 0.7f, 0.8f * FadeIn), 0.85f, true);
 }
 
 void AGSHUD::DrawHelp()

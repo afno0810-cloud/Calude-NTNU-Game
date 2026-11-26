@@ -108,6 +108,21 @@ struct FGSKillFeedEntry
 	UPROPERTY() float ServerTime = 0.f;
 };
 
+/** Sent by the server to a player who just died: who killed them, with what, from how far, and how hurt the killer was. */
+USTRUCT()
+struct FGSDeathInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY() FString Killer;              // empty = no player (hunger, fall, your own grenade ...)
+	UPROPERTY() FString Weapon;              // weapon name, or the cause of death ("Sult", "Overdose", "Verden" ...)
+	UPROPERTY() float DistanceM = 0.f;
+	UPROPERTY() float KillerHealth = 0.f;
+	UPROPERTY() float KillerMaxHealth = 100.f;
+	UPROPERTY() float KillerArmor = 0.f;     // vest + helmet points left
+	UPROPERTY() bool bHeadshot = false;
+};
+
 namespace GSNames
 {
 	inline const TCHAR* Weather(EGSWeather W)
