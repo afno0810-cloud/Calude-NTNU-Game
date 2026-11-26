@@ -23,6 +23,12 @@ backlog med ideer. Hver runde:
 - Oppdater `retning.md`: legg til ideer, flytt rekkefølgen, stryk det som er gjort, og skriv en linje
   under «Endringer i retningen» når du endrer kurs, med begrunnelse.
 
+## Samtidig drift
+Du jobber samtidig med byggeren og kontrolløren. Dirigenten sier hvilken fil planen skal skrives til
+(vanligvis `.claude/loop/ko/plan-NN.md`). Les planene som ligger foran i køen og `.claude/loop/funn.md`
+(kontrollørens feiljakt), og planlegg ut fra koden slik den blir etter dem. Unngå å planlegge endringer
+i de samme funksjonene som runden foran endrer, hvis du kan. Du kjører aldri `Build.bat`.
+
 ## Slik jobber du
 1. Les det du har fått som mål fra den som kalte deg. Er det tomt, velg selv.
 2. Les `.claude/loop/logg.md` (hvis den finnes): hva er gjort før, og hva sa kontrolløren sist?
@@ -33,6 +39,8 @@ backlog med ideer. Hver runde:
    Foretrekk det spilleren merker mest: feil som ødelegger spillet > spillfølelse > innhold > pynt.
 5. Skriv planen til `.claude/loop/plan.md` (overskriv), med disse delene:
    - **Mål:** én setning om hva spilleren vil merke.
+   - **Forbedrer (gammelt):** minst én eksisterende funksjon eller ting som blir bedre. Påkrevd.
+   - **Nytt:** minst én ny funksjon eller ting som legges til. Påkrevd.
    - **Hvorfor nå:** kort begrunnelse.
    - **Filer:** hvilke filer som endres eller lages.
    - **Steg:** nummererte, konkrete steg bygger kan følge uten å gjette.

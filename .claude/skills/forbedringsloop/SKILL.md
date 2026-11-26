@@ -16,6 +16,31 @@ selv ut fra `.claude/loop/andreas.md`).
 2. Sjekk om `UnrealEditor` kjører (`Get-Process UnrealEditor`), og gi agentene beskjed om det.
 3. Opprett `.claude/loop/logg.md` hvis den ikke finnes.
 
+## Samtidig drift (standard): alle tre jobber hele tiden
+Andreas vil at alle tre agentene skal kjøre samtidig, ikke etter tur. Kjør dem som et samlebånd i
+bakgrunnen, og start en ny oppgave for en agent straks den er ferdig:
+
+- **Planleggeren** ligger foran: den skriver planer til køen `.claude/loop/ko/plan-NN.md` og holder
+  alltid 1–2 ferdige planer klare. Den leser bare kode, og planlegger ut fra koden *slik den blir* etter
+  rundene som er i arbeid (les planene foran i køen). Når køen er full: oppdater `retning.md`.
+- **Byggeren** tar neste plan fra køen. Når runden bygger uten feil, committer dirigenten den straks som
+  en kandidat (`Runde NN: ...`), og byggeren går rett videre til neste plan. Rettinger fra kontrolløren
+  har alltid førsteprioritet og tas før neste plan.
+- **Kontrolløren** går gjennom forrige rundes commit (`git show <commit>`), ikke arbeidsmappen, og
+  skriver `.claude/loop/kontroll/runde-NN.md`. Når det ikke er noe å kontrollere, gjør den en
+  **feiljakt** i ett område av den eksisterende koden og skriver funn til `.claude/loop/funn.md`, som
+  planleggeren leser.
+- **Bare byggeren kompilerer.** Aldri to bygg samtidig (PC-en har 16 GB RAM). Kontrolløren og
+  planleggeren kjører ikke `Build.bat` i samtidig drift.
+- **Bare byggeren endrer filer i `Source/`, `Tools/` og `IMPROVEMENTS.md`.** De to andre skriver kun i
+  `.claude/loop/`. Slik kolliderer de aldri.
+- Sier kontrolløren **MÅ FIKSES** på en commit som alt er lagret: byggeren retter i en ny commit
+  (`Runde NN fix: ...`). Er feilen alvorlig og ikke lar seg rette på to forsøk: `git revert` commiten.
+- Lærdom, logg og selvforbedring av agentene skjer som beskrevet under, for hver runde som er ferdig
+  kontrollert.
+
+Reglene under («Hver runde») beskriver innholdet i hvert steg og gjelder fortsatt.
+
 ## Hver runde (N = 1, 2, 3 …)
 1. **Plan:** kall agenten `planlegger` med målet. Den skriver `.claude/loop/plan.md`.
 2. **Bygg:** kall agenten `bygger`. Den gjennomfører planen og bygger.

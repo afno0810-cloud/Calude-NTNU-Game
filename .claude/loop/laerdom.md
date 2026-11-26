@@ -11,3 +11,7 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Kamera/view target online må tåle at RPC-er og replikerte verdier kommer i vilkårlig rekkefølge: sett tilstanden på både server og klient, og ha en billig vakt som bare retter når noe faktisk er feil. (runde 1)
 - `Build.bat` som sier «Target is up to date» etter byggerens bygg er godt nok bevis på at koden kompilerer. (runde 1)
 - Planer for nettverksting må nevne motorens egne kamera-/possession-kall (SetPawn, ClientRestart); byggeren måtte finne dem selv. (runde 1)
+- En rettelse på mottakersiden må sjekke at alle som kaller den faktisk sender dataene, ellers logges en forbedring som aldri kan skje. (runde 2)
+- Planleggeren leser `funn.md` før en rettelse planlegges, så samme hull ikke blir stående. (runde 2)
+- Lokale tilstander som nullstilles i `UpdateLocalVisuals` må også nullstilles i `OnRep_Dead`. (runde 2)
+- Nye mål fra Andreas midt i en runde: dirigenten sjekker planer i køen mot `andreas.md` før de bygges, og sender dem tilbake hvis de strider mot målene. (runde 3)

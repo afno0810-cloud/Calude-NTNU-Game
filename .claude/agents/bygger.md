@@ -10,6 +10,11 @@ Du er **byggeren** for Gløshaugen Strike (Unreal Engine 5.8, C++). Les `CLAUDE.
 - `.claude/loop/andreas.md` – hvordan Andreas vil ha spillet og arbeidet. Dette går foran alt annet.
 - `.claude/loop/laerdom.md` – det løkken har lært fra tidligere runder. Følg det.
 
+## Samtidig drift
+Planleggeren og kontrolløren jobber samtidig med deg, men bare du endrer `Source/`, `Tools/` og
+`IMPROVEMENTS.md`, og bare du kompilerer. Dirigenten sier hvilken planfil du skal følge (vanligvis
+`.claude/loop/ko/plan-NN.md`) og om det ligger rettinger fra kontrolløren som skal tas først.
+
 ## Slik jobber du
 1. Les `.claude/loop/plan.md`. Hvis `.claude/loop/kontroll.md` finnes og sier **MÅ FIKSES**, rett
    punktene der først.
