@@ -570,15 +570,21 @@ def p_Projector(k, m):
 # ------------------------------------------------------------------ outdoor
 @prop
 def p_ParkBench(k, m):
-    for i in range(4):
-        k.box((0.05 - i * 0.11, 0, 0.45), (0.09, 1.8, 0.04), m.wood)
+    """Park bench: cast-iron curved side frames, rounded slats for seat and back, armrests, bolts."""
+    for i in range(5):
+        x = 0.1 - i * 0.095
+        z = 0.45 - 0.012 * i
+        k.loft([(xx, z - 0.018, z + 0.018, 0.9) for xx in (x - 0.04, x, x + 0.04)], m.wood, segs=12, power=4.0)
     for i in range(3):
-        k.box((-0.33, 0, 0.62 + i * 0.12), (0.03, 1.8, 0.09), m.wood, rot=(0, -12, 0))
-    for y in (-0.75, 0.75):
-        k.box((-0.1, y, 0.22), (0.5, 0.06, 0.06), m.dark)
-        k.box((0.12, y, 0.22), (0.06, 0.06, 0.45), m.dark)
-        k.box((-0.3, y, 0.4), (0.06, 0.06, 0.8), m.dark, rot=(0, -12, 0))
-        k.box((0.0, y, 0.62), (0.45, 0.05, 0.04), m.dark)
+        k.box((-0.34 - i * 0.03, 0, 0.6 + i * 0.12), (0.03, 1.8, 0.085), m.wood, rot=(0, -14, 0))
+    for y in (-0.72, 0.72):
+        k.tube([(0.2, y, 0.0), (0.16, y, 0.2), (0.12, y, 0.42)], 0.025, m.dark, segs=8)
+        k.tube([(-0.3, y, 0.0), (-0.27, y, 0.2), (-0.27, y, 0.42), (-0.33, y, 0.6), (-0.4, y, 0.9)], 0.025, m.dark, segs=8)
+        k.tube([(0.16, y, 0.43), (-0.3, y, 0.41)], 0.022, m.dark, segs=8)
+        k.tube([(0.2, y, 0.0), (0.0, y, 0.15), (-0.3, y, 0.0)], 0.018, m.dark, segs=8)
+        k.tube([(-0.3, y, 0.66), (-0.1, y, 0.68), (0.12, y, 0.66), (0.16, y, 0.6), (0.14, y, 0.43)], 0.02, m.dark, segs=8)
+        for x in (0.18, -0.29):
+            k.cyl((x, y, 0.0), 0.04, 0.02, m.dark, verts=10)
 
 
 @prop
@@ -656,10 +662,20 @@ def p_Scooter(k, m):
 
 @prop
 def p_OutdoorBin(k, m):
-    k.box((0, 0, 0.5), (0.5, 0.5, 1.0), m.green)
-    k.cyl((0, 0, 1.0), 0.3, 0.12, m.green, verts=4, rot_z=45)
-    k.box((0.255, 0, 0.85), (0.02, 0.25, 0.1), m.dark)
+    """Street litter bin: rounded steel body with slats, domed hood with opening, ashtray, on a concrete pad."""
     k.box((0, 0, 0.02), (0.6, 0.6, 0.04), m.concrete)
+    k.cyl((0, 0, 0.04), 0.24, 0.06, m.dark, verts=28)
+    k.cyl((0, 0, 0.1), 0.25, 0.8, m.green, verts=28)
+    for i in range(20):
+        a = i * math.pi / 10
+        k.box((math.cos(a) * 0.255, math.sin(a) * 0.255, 0.5), (0.012, 0.03, 0.72), m.green, rot=(0, 0, math.degrees(a)))
+    k.cyl((0, 0, 0.9), 0.27, 0.04, m.dark, verts=28)
+    st = [(0.94 + 0.14 * math.sin(t * math.pi / 2), 0.27 * math.cos(t * math.pi / 2) ** 0.6) for t in [i / 8 for i in range(9)]]
+    for (za, ra), (zb, rb) in zip(st, st[1:]):
+        k.cyl((0, 0, za), max(ra, 0.01), zb - za, m.green, verts=28, r_top=max(rb, 0.01))
+    k.box((0.2, 0, 0.98), (0.1, 0.24, 0.1), m.dark)
+    k.cyl((0, 0, 1.08), 0.05, 0.02, m.metal, verts=14)
+    k.box((0.26, 0, 0.7), (0.01, 0.12, 0.12), m.white)
 
 
 @prop
@@ -675,24 +691,45 @@ def p_NTNUSign(k, m):
 
 @prop
 def p_Bollard(k, m):
-    k.cyl((0, 0, 0), 0.1, 0.9, m.dark, verts=12)
-    k.cyl((0, 0, 0.75), 0.105, 0.06, m.yellow, verts=12)
+    """Steel street bollard: base ring, rounded cap, reflective band."""
+    k.cyl((0, 0, 0), 0.12, 0.04, m.dark, verts=20)
+    k.cyl((0, 0, 0.04), 0.1, 0.8, m.dark, verts=20)
+    k.cyl((0, 0, 0.84), 0.1, 0.04, m.dark, verts=20, r_top=0.085)
+    k.cyl((0, 0, 0.88), 0.085, 0.03, m.dark, verts=20, r_top=0.05)
+    k.cyl((0, 0, 0.72), 0.102, 0.06, m.yellow, verts=20)
+    k.cyl((0, 0, 0.62), 0.102, 0.02, m.white, verts=20)
 
 
 @prop
 def p_Planter(k, m):
-    k.box((0, 0, 0.3), (1.2, 1.2, 0.6), m.concrete)
-    k.box((0, 0, 0.58), (1.05, 1.05, 0.04), m.soil)
-    for i in range(9):
-        a = i * 0.7
-        k.cyl((math.cos(a) * 0.3, math.sin(a) * 0.3, 0.6), 0.18, 0.35 + (i % 3) * 0.1, m.leaf, verts=8, r_top=0.05)
+    """Concrete planter with chamfered rim, soil and a small shrub with leaf clumps."""
+    k.box((0, 0, 0.28), (1.2, 1.2, 0.56), m.concrete)
+    k.loft([(x, 0.54, 0.62, 0.63) for x in (-0.63, -0.6, 0.6, 0.63)], m.concrete, segs=4, power=40.0)
+    k.box((0, 0, 0.6), (1.04, 1.04, 0.04), m.soil)
+    k.tube([(0, 0, 0.6), (0.02, 0.01, 0.85), (0.0, 0.0, 1.0)], 0.03, m.wood, segs=6)
+    for i in range(14):
+        a = i * 2.4
+        r = 0.15 + (i % 4) * 0.07
+        z = 0.85 + (i % 5) * 0.09
+        k.sphere((math.cos(a) * r, math.sin(a) * r, z), 0.16 + (i % 3) * 0.03, m.leaf, n=6, segs=10, scale=(1.0, 1.0, 0.8))
+    for i in range(6):
+        a = i * 1.1
+        k.sphere((math.cos(a) * 0.42, math.sin(a) * 0.42, 0.66), 0.07, m.leaf, n=5, segs=8, scale=(1.0, 1.0, 0.6))
 
 
 @prop
 def p_Barrier(k, m):
-    k.prism_y(-1.0, 1.0, [(-0.3, 0.0), (0.3, 0.0), (0.12, 0.25), (0.08, 0.8), (-0.08, 0.8), (-0.12, 0.25)], m.concrete)
-    k.box((0, -0.6, 0.6), (0.17, 0.3, 0.06), m.red)
-    k.box((0, 0.6, 0.6), (0.17, 0.3, 0.06), m.white)
+    """Concrete jersey barrier: chamfered ends, lifting slots, reflectors and red/white chevrons."""
+    prof = [(-0.3, 0.0), (0.3, 0.0), (0.3, 0.08), (0.13, 0.26), (0.09, 0.8), (-0.09, 0.8), (-0.13, 0.26), (-0.3, 0.08)]
+    k.prism_y(-0.95, 0.95, prof, m.concrete)
+    k.prism_y(-1.0, -0.95, [(x * 0.9, z * 0.97) for x, z in prof], m.concrete)
+    k.prism_y(0.95, 1.0, [(x * 0.9, z * 0.97) for x, z in prof], m.concrete)
+    for y in (-0.6, 0.6):
+        k.box((0, y, 0.04), (0.62, 0.2, 0.06), m.dark)
+    for i in range(6):
+        k.box((0.105, -0.75 + i * 0.3, 0.6), (0.01, 0.16, 0.12), m.red if i % 2 else m.white, rot=(-10, 0, 0))
+    for y in (-0.9, 0.9):
+        k.box((0.1, y, 0.74), (0.01, 0.06, 0.06), m.orange)
 
 
 @prop
@@ -715,37 +752,76 @@ def p_Crates(k, m):
 
 @prop
 def p_Dumpster(k, m):
-    k.box((0, 0, 0.65), (1.4, 2.0, 1.1), m.green)
-    k.box((0, 0, 1.22), (1.45, 2.05, 0.06), m.dark, rot=(0, -6, 0))
+    """Waste container: tapered steel box with ribs, two hinged lids, side pockets, castors, warning stripe."""
+    k.loft([(x, 0.16, 1.2, 1.0 - 0.04 * (0.7 - abs(x)) / 0.7) for x in [-0.7 + 1.4 * i / 8 for i in range(9)]], m.green, segs=24, power=10.0)
+    for y in (-0.6, -0.2, 0.2, 0.6):
+        k.box((0.71, y, 0.68), (0.04, 0.06, 0.96), m.green)
+        k.box((-0.71, y, 0.68), (0.04, 0.06, 0.96), m.green)
+    k.box((0, 0, 1.2), (1.48, 2.06, 0.04), m.green)
+    for y in (-0.52, 0.52):
+        k.box((-0.02, y, 1.28), (1.46, 0.98, 0.05), m.dark, rot=(0, -6, 0))
+        k.box((0.7, y, 1.25), (0.05, 0.2, 0.03), m.dark)
+    for y in (-1.03, 1.03):
+        k.box((0, y, 0.95), (0.3, 0.06, 0.12), m.dark)
     for x in (-0.55, 0.55):
         for y in (-0.85, 0.85):
-            k.cyl((x, y, 0.0), 0.07, 0.1, m.rubber, verts=10)
-    k.box((0.71, 0, 0.9), (0.03, 1.6, 0.05), m.metal)
+            k.box((x, y, 0.15), (0.12, 0.12, 0.03), m.dark)
+            k.cyl_axis((x, y, 0.07), 0.07, 0.04, m.rubber, axis="Y", verts=14)
+    for i in range(8):
+        k.box((0.725, -0.84 + i * 0.24, 0.3), (0.005, 0.12, 0.08), m.yellow if i % 2 else m.dark, rot=(45, 0, 0))
+    k.box((0.725, 0, 0.8), (0.004, 0.5, 0.18), m.white)
 
 
 @prop
 def p_PicnicTable(k, m):
-    k.box((0, 0, 0.75), (0.8, 2.0, 0.05), m.wood)
-    for x in (-0.6, 0.6):
-        k.box((x, 0, 0.45), (0.3, 2.0, 0.04), m.wood)
+    """Picnic table: plank top and benches with gaps, A-frame legs, cross braces and bolts."""
+    for i in range(5):
+        k.box((-0.32 + i * 0.16, 0, 0.75), (0.14, 2.0, 0.045), m.wood)
+    for x in (-0.62, 0.62):
+        for j in (-1, 1):
+            k.box((x + j * 0.075, 0, 0.45), (0.13, 2.0, 0.04), m.wood)
     for y in (-0.8, 0.8):
         for a in (-1, 1):
-            k.box((a * 0.3, y, 0.37), (0.06, 0.06, 0.85), m.wood, rot=(0, a * 30, 0))
-        k.box((0, y, 0.42), (1.5, 0.06, 0.05), m.wood)
+            k.box((a * 0.33, y, 0.37), (0.07, 0.07, 0.86), m.wood, rot=(0, a * 30, 0))
+        k.box((0, y, 0.41), (1.55, 0.07, 0.07), m.wood)
+        k.box((0, y, 0.715), (0.78, 0.07, 0.05), m.wood)
+        for x in (-0.6, 0.6, -0.2, 0.2):
+            k.cyl_axis((x, y + 0.04, 0.41), 0.012, 0.01, m.metal, axis="Y", verts=8)
+    k.box((0, 0, 0.58), (0.06, 1.5, 0.06), m.wood, rot=(0, 0, 0))
 
 
 @prop
 def p_BusStop(k, m):
+    """Bus shelter: steel frame, glass back and sides, curved roof, bench, timetable screen, ad panel and stop sign."""
     k.box((0, 0, 0.02), (2.0, 4.0, 0.04), m.concrete)
-    k.box((-0.9, 0, 1.25), (0.04, 3.8, 2.3), m.glass)
-    for y in (-1.9, 1.9):
+    k.box((0.98, 0, 0.06), (0.06, 4.0, 0.12), m.concrete)
+    for y in (-1.9, -0.63, 0.63, 1.9):
         k.box((-0.9, y, 1.25), (0.08, 0.08, 2.5), m.dark)
-        k.box((0.0, y, 1.25), (1.8, 0.04, 2.3), m.glass)
-    k.box((-0.2, 0, 2.52), (1.9, 4.1, 0.08), m.dark)
-    k.box((-0.6, 0, 0.45), (0.4, 2.5, 0.05), m.wood)
-    k.box((0.9, 2.1, 1.4), (0.06, 0.06, 2.8), m.metal)
-    k.box((0.9, 2.1, 2.7), (0.04, 0.5, 0.4), m.yellow)
-    k.box((-0.88, -1.0, 1.3), (0.01, 1.0, 1.4), m.screen_on)
+    for y in (-1.9, 1.9):
+        k.box((0.3, y, 1.25), (0.06, 0.06, 2.4), m.dark)
+        k.box((-0.3, y, 1.25), (1.2, 0.02, 2.2), m.glass)
+        k.box((-0.3, y, 2.4), (1.24, 0.05, 0.05), m.dark)
+    for y in (-1.265, 0.0, 1.265):
+        k.box((-0.9, y, 1.3), (0.02, 1.2, 2.2), m.glass)
+    k.box((-0.9, 0, 2.42), (0.06, 3.9, 0.06), m.dark)
+    k.box((-0.9, 0, 0.12), (0.06, 3.9, 0.06), m.dark)
+    k.loft([(x, 2.48 + 0.08 * math.cos((x + 0.2) / 1.25 * math.pi / 2), 2.56 + 0.08 * math.cos((x + 0.2) / 1.25 * math.pi / 2), 2.08) for x in [-1.05 + 1.85 * i / 8 for i in range(9)]], m.dark, segs=20, power=8.0)
+    # bench
+    for i in range(3):
+        k.box((-0.6 + i * 0.1, 0.2, 0.47), (0.09, 2.2, 0.035), m.wood)
+    for y in (-0.7, 1.1):
+        k.box((-0.5, y, 0.23), (0.06, 0.06, 0.46), m.dark)
+    # timetable screen and ad panel
+    k.box((-0.85, -1.27, 1.45), (0.06, 0.8, 1.6), m.dark)
+    k.box((-0.815, -1.27, 1.45), (0.004, 0.74, 1.54), m.screen_on)
+    k.box((-0.86, 1.1, 1.6), (0.03, 0.5, 0.7), m.dark)
+    k.box((-0.843, 1.1, 1.65), (0.004, 0.44, 0.5), m.screen_on)
+    # stop sign pole
+    k.cyl((0.9, 2.1, 0.0), 0.04, 2.9, m.metal, verts=10)
+    k.box((0.9, 2.1, 2.65), (0.04, 0.5, 0.5), m.yellow)
+    k.box((0.922, 2.1, 2.65), (0.004, 0.4, 0.4), m.white)
+    k.box((0.924, 2.1, 2.65), (0.004, 0.25, 0.08), m.dark)
+    k.box((0.92, 2.1, 2.2), (0.02, 0.32, 0.3), m.white)
 
 
 @prop
@@ -768,21 +844,28 @@ def p_StreetSign(k, m):
 
 @prop
 def p_StreetLamp(k, m):
-    """6 m street lamp: tapered pole on a concrete foot, curved arm, flat LED head over +X."""
-    k.cyl((0, 0, 0), 0.25, 0.3, m.concrete, verts=12)
-    k.cyl((0, 0, 0.3), 0.09, 5.6, m.dark, verts=12, r_top=0.055)
-    k.cyl((0, 0, 0.3), 0.12, 0.6, m.dark, verts=12, r_top=0.1)
-    k.ramp((0, 0, 5.8), (0.6, 0, 6.05), 0.07, 0.07, m.dark)
-    k.ramp((0.6, 0, 6.05), (1.2, 0, 6.1), 0.07, 0.07, m.dark)
-    k.box((1.45, 0, 6.08), (0.7, 0.3, 0.1), m.dark)
-    k.box((1.45, 0, 6.02), (0.6, 0.24, 0.02), m.white)
-    k.box((0.0, 0, 2.6), (0.03, 0.2, 0.3), m.paper)
+    """6 m street lamp: concrete foot, base cover with hatch, tapered pole, smooth curved arm and a slim LED head."""
+    k.cyl((0, 0, 0), 0.25, 0.3, m.concrete, verts=20, r_top=0.22)
+    k.cyl((0, 0, 0.3), 0.13, 0.7, m.dark, verts=20, r_top=0.1)
+    k.box((0.115, 0, 0.65), (0.01, 0.08, 0.25), m.dark)
+    k.cyl((0, 0, 1.0), 0.09, 4.9, m.dark, verts=20, r_top=0.055)
+    pts = [(0.75 * (1 - math.cos(t * math.pi / 2)) + 0.0, 0, 5.75 + 0.35 * math.sin(t * math.pi / 2)) for t in [i / 10 for i in range(11)]]
+    k.tube([(0, 0, 5.6)] + pts + [(1.2, 0, 6.1)], 0.045, m.dark, segs=10)
+    k.loft([(x, 6.03, 6.12 - 0.02 * abs(x - 1.5) / 0.35, 0.16) for x in [1.15 + 0.7 * i / 6 for i in range(7)]], m.dark, segs=20, power=4.0)
+    k.loft([(x, 6.02, 6.04, 0.12) for x in [1.22 + 0.56 * i / 4 for i in range(5)]], m.white, segs=20, power=4.0)
+    k.box((0.0, 0.07, 2.6), (0.01, 0.2, 0.3), m.paper)
 
 
 @prop
 def p_Bollard_Light(k, m):
-    k.cyl((0, 0, 0), 0.1, 0.9, m.dark, verts=12)
-    k.cyl((0, 0, 0.7), 0.105, 0.15, m.white, verts=12)
+    """Path light bollard: square-ish post, frosted light window under a cap."""
+    k.cyl((0, 0, 0), 0.1, 0.03, m.concrete, verts=20)
+    k.cyl((0, 0, 0.03), 0.08, 0.68, m.dark, verts=20)
+    k.cyl((0, 0, 0.71), 0.082, 0.14, m.white, verts=20)
+    for i in range(4):
+        a = i * math.pi / 2
+        k.box((math.cos(a) * 0.08, math.sin(a) * 0.08, 0.78), (0.012, 0.012, 0.14), m.dark, rot=(0, 0, math.degrees(a)))
+    k.cyl((0, 0, 0.85), 0.1, 0.04, m.dark, verts=20, r_top=0.09)
 
 
 # ------------------------------------------------------------------ robots (static shells; Isaac Lab animation later)
