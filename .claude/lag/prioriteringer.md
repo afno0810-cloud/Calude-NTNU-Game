@@ -44,6 +44,15 @@ plukkes opp igjen. Første lag til 3 erobringer, eller flest når tiden går ut.
     lommelykt og nattsikte montert på våpen; vind på lange skudd.
   - Spillbarhet: valg av utstyr/klasse før hver runde (passer med CTF-lobbyen); statistikk og nivåer
     som bare låser opp utseende (våpendrakter), aldri styrke – lagres lokalt per spiller.
+- **Andreas' godkjente forslag, del 3 (26. nov.), fordelt:**
+  - Kamp: ekte våpenmodeller fra Fab når Andreas har lagt dem inn (se etter nye mapper i `Content/`,
+    ikke vent på dem); Lyra/Game Animation Sample-animasjoner på andre spillere (tredjeperson); våpenlyd
+    med ekko og romklang ute og inne; inventar med dra-og-slipp, tydelige ikoner og raskere bytte
+    (inventar-HUD er Kamps fil – samordne med Spillbarhet om gjenstandsdata).
+  - Grafikk og kart: ytelse på RTX 3050 laptop (jevn bildefrekvens, smartere lys og skygger, LOD,
+    mindre hakking – mål og logg før/etter); mer liv innvendig (rot, papirer, oppslag, skilt som på NTNU).
+  - Spillbarhet: minikart/kart med flagg, baser og lagkamerater (bestill tegnekall i HUD fra Kamp, eller
+    lag det i egne filer og bestill ett kall).
   Q/E brukes i dag til annet (Q = neste ting i sekken, E = bruk). Spillbarhet foreslår ny tastefordeling
   i knappehjelp/keybinds; Kamp legger inn lene på de tastene som velges.
 - **Kamp:** lagtilhørighet i treff og HUD (ikke treffmarkør/blod-varsel på lagkamerater hvis venneild er

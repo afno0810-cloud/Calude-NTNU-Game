@@ -31,6 +31,14 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26: «legg til» (forbedringer av det som finnes):
+  1. Ekte våpenmodeller fra Fab-pakkene når Andreas har lagt dem til.
+  2. Lyra-animasjoner på andre spillere.
+  3. Ytelse: jevnere bildefrekvens på RTX 3050-laptopen, smartere lys og skygger, mindre hakking.
+  4. Inventar: dra og slipp, tydelige ikoner, raskere bytte.
+  5. Mer liv i byggene innvendig: rot, papirer, skilt som på ekte NTNU.
+  6. Realistisk våpenlyd med ekko ute og inne.
+  7. Minikartet viser flagg, baser og lagkamerater.
 - 2026-11-26: «legg alt det til også»:
   1. Vær som påvirker spillet: regn demper lyd, tåke gir kortere sikt, vind påvirker skudd på lang avstand.
   2. Bygg man kan bruke: heiser, brannalarmer som lager støy, lys som kan slås av.
