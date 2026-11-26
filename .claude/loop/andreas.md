@@ -31,6 +31,7 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26: «legg til alle 50» – hele lista står i `.claude/lag/onskeliste.md`, fordelt på lagene.
 - 2026-11-26: «legg alt til», «alt overfor også» (del 5, og bekreftet at alt tidligere godkjent skal med):
   1. Treffrespons: fiender rykker til der de treffes, fysikk når de faller.
   2. Mykere overganger mellom gå, løpe, hoppe; føtter som ikke glir.

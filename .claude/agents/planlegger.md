@@ -30,7 +30,7 @@ instruksen under sier `.claude/loop/...` for planer, retning, logg, funn og vurd
 egen mappe. `andreas.md` og den felles `laerdom.md` ligger alltid i `.claude/loop/`. Hold deg til lagets
 fokus og lagets filer; alt annet går som bestilling i `.claude/lag/bestillinger.md`.
 
-Les også `.claude/lag/prioriteringer.md` før hver plan: hovedagentens prioriteringer for laget ditt.
+Les også `.claude/lag/onskeliste.md` (Andreas' godkjente ønsker for laget ditt) og `.claude/lag/prioriteringer.md` før hver plan: hovedagentens prioriteringer for laget ditt.
 Følg dem; innenfor dem velger du selv.
 
 ## Samtidig drift

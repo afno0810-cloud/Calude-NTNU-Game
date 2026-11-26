@@ -69,6 +69,8 @@ plukkes opp igjen. Første lag til 3 erobringer, eller flest når tiden går ut.
   - Grafikk og kart: lys inne (flimrende lysrør, sollys gjennom vinduer); våte flater og sølepytter,
     slitasje; trær og gress i vind; raskere oppstart og ingen frys ved lasting (henger sammen med
     ytelsesarbeidet).
+- **Ønskelisten med 50 punkter** (`.claude/lag/onskeliste.md`) er godkjent og fordelt. Den kommer etter
+  CTF-grunnmuren, ytelse og listene over. Planleggerne henter fra den når backlogen fylles.
   Q/E brukes i dag til annet (Q = neste ting i sekken, E = bruk). Spillbarhet foreslår ny tastefordeling
   i knappehjelp/keybinds; Kamp legger inn lene på de tastene som velges.
 - **Kamp:** lagtilhørighet i treff og HUD (ikke treffmarkør/blod-varsel på lagkamerater hvis venneild er

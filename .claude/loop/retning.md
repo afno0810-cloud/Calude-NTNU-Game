@@ -25,67 +25,72 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
 5. **Minimal, ærlig HUD**: mindre tekst og færre markører; informasjon fra verden.
 6. **Campus, lys og vær**: ekte Gløshaugen, mørke netter, våte flater, bygg med dører og rom.
 7. **Stabilitet, rettferdighet og ytelse** med 4–20 spillere (kontrollørens funn i `funn.md`).
+8. **Capture the Flag** (eneste spillmodus, Andreas 26. nov.): to lag. Kamp eier lagtilhørighet i treff og HUD,
+   synlig flaggbærer, og lyd/retningsvarsel når flagget tas. Reglene og flagget eier lag Spillbarhet.
 
 ## Gjort
 - Runde 1: dødskamera, drapskort, treffmarkører.
-- Runde 2 (committet `94f1370`, hos kontrolløren): å bli truffet – blodkant, retningspiler, rustningslyder, hjerteslag.
+- Runde 2 (`94f1370`, godkjent): å bli truffet – blodkant, retningspiler, rustningslyder, hjerteslag.
+- Feilretting 1 (`57493cb`): drap med prosjektil telles, granater flyr riktig hos klienter, miner blir liggende.
 
 ## I arbeid / planlagt
-- **Runde 3** (`ko/plan-03.md`): blod i verden – sky og dråper ved såret, sprut på veggen bak, dråper på gulvet,
-  pøl som vokser under kroppen, kropper ligger i 90 s og faller slik kula traff (spor 1).
+- **Runde 3** (`ko/plan-03.md`, bygges): blod i verden – sky og dråper ved såret, sprut bak, pøl under kroppen,
+  kropper ligger i 90 s og faller slik kula traff.
+- **Rettinger** (`rettinger.md`, byggeren tar dem før runde 4): prosjektilretning, mine hos sene klienter,
+  dødskort etter respawn, mineregel, musehjul.
+- **Runde 4** (`ko/plan-04.md`): kroppssoner – sju treffbokser med ekte mål, skade etter kroppsdel, beinskade
+  (halter, ingen sprint) og armskade (ustøtt sikte, treg lading), vest bare på overkroppen, hjelm ikke i ansiktet.
+  Samtidig V1 (sikting til serveren), V3 (skuddtakt), V5 (rakettkasterlyd), kroppen andre ser står på bakken,
+  og HUD mister «LAVT LIV», hvitt blink og «HODESKUDD».
 
 ## Neste ideer (backlog, viktigst øverst)
-1. **[Spor 1] Blødning og blodspor** (kandidat runde 4). Nytt: kjøttsår gir blødning (replikert `Bleeding`-nivå) som
-   tapper liv til den stoppes med bandasje/plaster; den som blør etterlater dråpespor man kan følge. Gammelt: bandasje
-   og plaster får en ekte oppgave (i dag bare +liv), hjerteslaget fra runde 2 følger blodtapet. Bruker `SpawnBloodStain`
-   fra runde 3. Rører `TakeDamage` og `CompleteUse`.
-2. **[Spor 1] Skade etter kroppsdel**. Nytt: egne treffsoner for hode, overkropp, mage, armer og bein (i dag bare én
-   sylinder og én kule). Bein = halter og kan ikke sprinte, arm = dårligere sikte og tregere lading, mage = kraftig
-   blødning. Gammelt: skademodellen og hodeskuddregelen. Skinne/smertestillende lindrer.
-3. **[Spor 2] Ekte ballistikk**. Nytt: kuler med fart, flytid og kulefall (rask simulering i steg, ikke hitscan) og
-   gjennomslag gjennom tynne vegger, dører, glass og kropper etter kaliber. Gammelt: all skyting, kikkertsiktets
-   mil-dots får mening, lyssporene følger kulebanen.
-4. **[Spor 3] Ekte lyd på avstand**. Nytt: smellet forsinkes etter avstand (343 m/s), overlydsknallet fra kula kommer
-   før smellet, kuler som går nær smeller og hviner. Gammelt: skuddlydene dempes og får romklang inne, og dempes
-   gjennom vegger.
-5. **[Spor 1] Sår som synes**. Nytt: blodflekker på kroppen der kula traff (festet til nærmeste bein), blod på egne
-   hender/våpen når du er skadet, blod som renner nedover veggen fra store flekker. Gammelt: blodmaterialet og
-   treffene fra runde 3.
-6. **[Spor 1+7] Lik med innhold**. Nytt: ransake kroppen (utstyret blir i liket i stedet for å sveve som pickups
-   rundt), kroppene ligger hele kampen (billig «frosset» ragdoll, lik posisjon hos alle). Gammelt: `DropEverything`,
-   og rustning husker slitasjen sin (funn 1: gratis reparasjon ved bytte).
-7. **[Spor 5] Slank HUD**. Gammelt: treffmarkører tones ned til et knapt synlig hakk eller fjernes (blodet viser
-   treffet nå), skadepiler blir svakere, ammo-tallet vises bare når du sjekker magasinet. Nytt: «sjekk magasin»
-   (hold R: «nesten fullt / halvt / nesten tomt»), valg i innstillinger for HUD-mengde. Gjøres gradvis, og først
-   etter at verden selv gir nok tilbakemelding.
-8. **[Spor 2] Våpenhåndtering**. Nytt: magasiner som egne ting (bytter du halvfullt mag, beholder du det), kammer
-   +1, funksjonsfeil på slitte/våte våpen, våpenet må løftes før sikting etter sprint. Gammelt: rekyl og svai.
-9. **[Spor 3] Kroppen høres**. Nytt: våt trefflyd, stønn/skrik når man treffes, gisping ved lavt liv, dødsralling,
-   pust etter sprint. Gammelt: `Hit_Body`/`Hit_Head` brukes ikke lenger som 3D-lyd for andre.
-10. **[Spor 1] Undertrykkelse uten skjermtriks**. Nytt: støv/fliser/murbiter spruter der kuler slår ned nær deg, og
-    rykk i siktet. Gammelt: kulehull får form etter materialet (mur: krater og støv, tre: fliser, metall: gnist og
-    bulk, glass: sprekker), og varer lenger.
-11. **[Spor 4] Tyngde i bevegelsen**. Nytt: utholdenhet (sprint tar slutt, tung sekk gjør deg treg), fallskade med
-    brukne bein, lene seg rundt hjørner. Gammelt: akselerasjon/stopp og hopp blir mindre «svevende».
-12. **[Spor 7] Rettferdig spawn uten magi**. Gammelt: `PickSpawnTransform` velger aldri et punkt en fiende ser eller
-    står nær, flere spawnpunkter (funn 12). Nytt: man kommer inn fra kanten av campus (gående/dør), ikke «ut av
-    lufta» – ingen usårlighets-skjær.
-13. **[Spor 6] Dører og glass**. Nytt: dører som åpnes, lukkes og sparkes inn (replikert, med lyd); vinduer som
-    knuses av kuler. Gammelt: byggene blir taktiske, kuler går gjennom dørblad (henger sammen med punkt 3).
-14. **[Spor 6] Mørke og vær som betyr noe**. Gammelt: nettene blir virkelig mørke (lommelykt/nattbriller trengs),
-    regn gir våte, blanke flater. Nytt: regn vasker bort blod fortere, munningsflammen lyser opp rommet om natta,
-    pusten synes i kulde.
-15. **[Spor 1] Eksplosjoner som ødelegger**. Nytt: svimerker og sot på bakken, trykkbølge-støv, øresus og dempet
-    hørsel nær smellet, splinter som egne treff. Gammelt: granatskaden (i dag ren avstandsformel) og funn 2 (drap
-    telles ikke hvis kasteren dør først) og funn 4 (granater hakker hos klienter).
-16. **[Spor 7] Feilrunde fra `funn.md`**: loot-vekter (funn 3, nesten ingen medisin – viktig når blødning kommer),
-    loot gjennom vegger (8), skudd som starter bak vegg (9), miner (5, 14), kampstart (6, 7).
-17. **[Spor 5] Nøktern kampinfo** (det brukbare fra den gamle runde 3-planen). Gammelt: drapsfeeden blir en liten,
-    dempet logg med riktig tekst («Ola døde [Sult]», ikke «Verden [Sult] Ola»); poengtavla sorterer likt drap etter
-    færrest døde og heter «Drap». Nytt: valg for å skjule feeden helt.
-18. **[Spor 7] Ytelse**: pickups som ticker (funn 11), måling med 20 spillere, grenser for effekter.
-19. **[Spor 6] Innstillinger**: FOV, lyd, mus – lagres mellom økter.
-20. **[Spor 6] Hendelser som finnes på ekte**: strømbrudd i et bygg, brannalarm, forsyninger som leveres med varebil.
+1. **[Spor 8] Lag i kamp (CTF)** – kandidat runde 5, så snart lag Spillbarhet har levert lagfeltet (bestilling
+   ligger inne). Gammelt: `TakeDamage` får én lagsjekk øverst (venneild av = ingen skade, blod, lemskade eller
+   treffmarkør på lagkamerater), eksplosjoner og miner følger samme regel, drapskort og drapslogg viser lagfarge.
+   Nytt: lagkamerater vises med et lite, dempet navn over hodet på nært hold (ingen markør gjennom vegger),
+   flagget henger synlig på ryggen til bæreren og bæreren går tregere, egen lyd og retningskile i HUD når flagget
+   tas, mistes og erobres. Kan ikke planlegges i detalj før feltene finnes; er de ikke levert, går punkt 2 først.
+2. **[Spor 2] Ballistikk del 1: kulefart, flytid, kulefall og skadefall**. Nytt: kuler er raske, usynlige
+   prosjektiler på serveren (stegvis spor per tick, fart og tyngdekraft per kaliber). Gammelt: `ServerFire` skrives
+   om – serveren legger på spredningen selv (V2), `ServerFire` blir upålitelig RPC (V7), kula lever til den treffer
+   noe (R2), lysspor bare for sporlys (R12), kikkertens streker får mening. V8 (forsinkelse) blir mindre viktig.
+   Bruker reservetabell på kaliber til Spillbarhet har levert feltene.
+3. **[Spor 2] Ballistikk del 2: gjennomslag og ødeleggelse**. Nytt: kuler går gjennom glass, tre, gips og kropper
+   etter kaliber, med tapt fart; kulehull som blir værende, splinter, dører som kan skytes opp (Andreas liker
+   glass som knuser). Gammelt: nedslagseffekten får form etter materialet. Trenger materialmerking fra Grafikk
+   (bestilt); uten den er alt betong.
+4. **[Spor 1] Blødning og blodspor** (sammen med Spillbarhet: Kamp eier skadelogikken, de eier bandasje/
+   tourniquet). Nytt: replikert blødning som tapper liv til den stoppes, mest ved mageskudd; dråpespor man kan
+   følge. Gammelt: bandasje får sin egentlige oppgave, hjerteslaget følger blodtapet. Bygger på sonene fra runde 4.
+5. **[Spor 4] Bruke ting med animasjon** (Andreas' ønske): sprøyte, pille, bandasje, spise/drikke, ta på vest og
+   hjelm – realistisk lengde, kan avbrytes, sårbar imens. Gammelt: `UpdateItemUse`. Og mer detaljert lading per
+   våpentype (taktisk mot tom lading, magasin som faller, +1 i kammer, skudd-for-skudd som kan avbrytes – R8).
+6. **[Spor 4] Lene seg (taster avtales med Spillbarhet) og ligge ned**. Nytt: lene rundt hjørner, ligge. Gammelt:
+   treffsonene får en tredje stilling (ligge), tofot/huk demper rekyl (R10).
+7. **[Spor 4] Kropp med ordentlige animasjoner**. Gammelt: mannekengen andre ser har ingen huke-, sikte- eller
+   haltebevegelse og holder ikke våpenet. Nytt: animasjoner fra Game Animation Sample/Lyra, treffbokser festet til
+   beina på skjelettet (da stemmer løpende bein og armer også), halting som synes for andre.
+8. **[Spor 3] Ekte lyd på avstand** (R11). Nytt: smellet forsinkes med avstanden (343 m/s), overlydsknall og hvin
+   når en kule passerer nær, lengre rekkevidde med demping. Gammelt: lyddempet våpen høres lenger enn 40 m, demper
+   trekker ikke skade, hagle med demper (V6).
+9. **[Spor 1] Sår som synes**. Nytt: blodflekker på kroppen der kula traff (per sone), blod på egne hender når du
+   er skadet, lik kan treffes og blør (R15). Gammelt: blodmaterialet fra runde 3.
+10. **[Spor 7] Bestilling fra Spillbarhet** (`lag/spillbarhet/funn.md`): S3 brann-drap går til skytteren og får
+    riktig dødsårsak, S5 serveren vet om du sitter ved PC-en og sporing stopper når du går, S10 sluttskjermen
+    overlapper poengtavla, F2 spillernavn, B2 sult/tørst med tidlige følger. Tas som små tillegg i rundene over
+    der de rører samme funksjon (S3 passer i blødningsrunden, S10/F2 i CTF-runden).
+11. **[Spor 4] Klatring med vekt** (Andreas liker klatring og sliding): vinduer, tak, høyere murer med animasjon;
+    skli med lyd og kamerabevegelse.
+12. **[Spor 2] Rekyl og spredning som på ekte** (R9, R10, V10): liten mekanisk spredning, resten er synlig
+    våpenbevegelse; rekyl fra impuls, ingen fast mønster. Ildvelger (R14). Våpenbytte tar tid (V11).
+13. **[Spor 1] Drapskamera fra drapsmannens side** (Andreas' godkjente forslag), bygger på dødskameraet.
+14. **[Spor 5] Slank HUD videre**: treffmarkør tones ned eller fjernes (blodet viser treffet), ammo vises ved
+    «sjekk magasin», valg for HUD-mengde.
+15. **[Spor 3] Kroppen høres**: våt trefflyd, stønn, gisping ved lavt liv, pust etter sprint.
+16. **[Spor 1] Eksplosjoner som ødelegger**: sot, trykkbølge, øresus, splinter som egne treff per sone.
+17. **[Spor 2] Lommelykt og nattsikte montert på våpen; vind på lange skudd** (leser vær fra Grafikk).
+18. **[Spor 7] Åpne funn i egne filer**: skudd som starter bak vegg (funn 9), spesialammo som varer evig (V4),
+    lyddemper på alt (V12), røyk/ild for sene spillere (funn 10).
 
 ### Strøket (arkade – skal ikke bygges)
 Medaljer («DOBBELTDRAP» osv.), drapsserier og serie-teller, medaljelyder, drapsbekreftelse i stor tekst, dusør på
@@ -93,6 +98,13 @@ lederen, lysstråle i sjeldenhetsfarge på loot, glødende omriss rundt drapsman
 rundeslutt med «høydepunkter». Statistikk kan vises nøkternt på resultattavla etter kampen, ikke underveis.
 
 ## Endringer i retningen
+- 2026-11-26 (runde 4): **Capture the Flag er eneste modus** (Andreas). Nytt spor 8, og lag i kamp ligger øverst i
+  backlogen; den kan først bygges når lag Spillbarhet har lagfeltet (bestilt). Runde 4 ble kroppssoner
+  (hovedagentens prioritering) fordi den ikke trenger noe fra andre lag, og er skrevet slik at lagsjekken senere
+  blir én linje. Rekkefølgen etterpå: lag i kamp → ballistikk (fart/fall, så gjennomslag) → blødning. Blødning er
+  flyttet bak ballistikk fordi den må samordnes med Spillbarhets gjenstander. Andreas' godkjente forslag (lene,
+  ligge, animasjoner for bruk av ting, klatring, drapskamera, våpenlykt, vind) er lagt inn. Fire bestillinger
+  sendt (lagfelt, våpendata for ballistikk, medisin, materialmerking av flater).
 - 2026-11-26 (runde 3, revidert): **Ny kurs.** Andreas la inn to overordnede mål: superrealistisk og veldig groteskt,
   uten arkade-preg. Visjon, spor og backlog er skrevet om etter det. Den første planen for runde 3 (drapsserier,
   medaljer, medaljelyder) er strøket og erstattet med «blod i verden». Det nøkterne fra den (riktig tekst i
