@@ -10,6 +10,7 @@
 #include "GSUtils.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -29,6 +30,8 @@
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
+#include "DrawDebugHelpers.h"
+#include "HAL/IConsoleManager.h"
 
 namespace
 {
@@ -85,6 +88,22 @@ namespace
 	const FName FxDrone(TEXT("Avslort"));
 	const FName FxFlash(TEXT("Blendet"));
 	const FName FxPoison(TEXT("Matforgiftning"));
+	const FName FxPainkillers(TEXT("Smertestillende"));
+
+	/** One hit box: where it sits on the capsule (cm from the capsule centre, X forward, Y right) and half its size,
+	 *  standing and crouched. Standing capsule: feet at -92, crouched: feet at -58. */
+	struct FGSZoneBox { uint8 Zone; FVector Stand; FVector StandExt; FVector Crouch; FVector CrouchExt; };
+	const FGSZoneBox GSZoneBoxes[7] = {
+		{ GSZone::Head,    FVector(3.f, 0.f, 77.f),     FVector(9.5f, 8.f, 12.f),    FVector(6.f, 0.f, 62.f),     FVector(9.5f, 8.f, 12.f) },
+		{ GSZone::Chest,   FVector(0.f, 0.f, 49.f),     FVector(12.f, 18.f, 16.f),   FVector(3.f, 0.f, 35.f),     FVector(12.f, 18.f, 15.f) },
+		{ GSZone::Stomach, FVector(0.f, 0.f, 15.5f),    FVector(11.f, 16.5f, 17.5f), FVector(0.f, 0.f, 6.f),      FVector(12.f, 16.5f, 14.f) },
+		{ GSZone::Arm,     FVector(0.f, -24.5f, 28.f),  FVector(6.f, 5.5f, 32.f),    FVector(4.f, -24.5f, 22.f),  FVector(7.f, 5.5f, 26.f) },
+		{ GSZone::Arm,     FVector(0.f, 24.5f, 28.f),   FVector(6.f, 5.5f, 32.f),    FVector(4.f, 24.5f, 22.f),   FVector(7.f, 5.5f, 26.f) },
+		{ GSZone::Leg,     FVector(0.f, -9.5f, -47.f),  FVector(9.f, 8.5f, 45.f),    FVector(8.f, -9.5f, -33.f),  FVector(17.f, 8.5f, 25.f) },
+		{ GSZone::Leg,     FVector(0.f, 9.5f, -47.f),   FVector(9.f, 8.5f, 45.f),    FVector(8.f, 9.5f, -33.f),   FVector(17.f, 8.5f, 25.f) },
+	};
+
+	TAutoConsoleVariable<int32> CVarShowHitZones(TEXT("gs.ShowHitZones"), 0, TEXT("1 = draw the hit zone boxes of every player"));
 
 	bool IsLocalOnlyGadget(const FGSItemDef& D)
 	{
@@ -101,7 +120,7 @@ AGSCharacter::AGSCharacter()
 	SetNetUpdateFrequency(60.f);
 
 	GetCapsuleComponent()->InitCapsuleSize(40.f, 92.f);
-	// Bullets hit the body/head meshes, not the capsule.
+	// Bullets hit the zone boxes, not the capsule.
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
@@ -133,7 +152,7 @@ AGSCharacter::AGSCharacter()
 		C->SetGenerateOverlapEvents(false);
 		C->CanCharacterStepUpOn = ECB_No;
 	};
-	auto SetupHittable = [](UStaticMeshComponent* C)
+	auto SetupHittable = [](UPrimitiveComponent* C)
 	{
 		C->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		C->SetCollisionObjectType(ECC_Pawn);
@@ -182,14 +201,27 @@ AGSCharacter::AGSCharacter()
 	BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, -14.f));
 	BodyMesh->SetRelativeScale3D(FVector(0.62f, 0.62f, 1.56f));
 	BodyMesh->SetOwnerNoSee(true);
-	SetupHittable(BodyMesh);
+	SetupVisual(BodyMesh);   // only a stand-in body to look at when the mannequin is missing; bullets hit the zone boxes
 
 	HeadMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Head"));
 	HeadMesh->SetupAttachment(GetCapsuleComponent());
 	HeadMesh->SetRelativeLocation(FVector(0.f, 0.f, 78.f));
 	HeadMesh->SetRelativeScale3D(FVector(0.3f));
 	HeadMesh->SetOwnerNoSee(true);
-	SetupHittable(HeadMesh);
+	SetupVisual(HeadMesh);
+
+	// Hit zones: boxes the size of real body parts. Bullets, blades and arrows (ECC_Visibility) hit these.
+	static const TCHAR* ZoneNames[7] = { TEXT("ZoneHead"), TEXT("ZoneChest"), TEXT("ZoneStomach"), TEXT("ZoneArmL"),
+		TEXT("ZoneArmR"), TEXT("ZoneLegL"), TEXT("ZoneLegR") };
+	for (int32 I = 0; I < 7; ++I)
+	{
+		UBoxComponent* B = CreateDefaultSubobject<UBoxComponent>(ZoneNames[I]);
+		B->SetupAttachment(GetCapsuleComponent());
+		SetupHittable(B);
+		B->SetCanEverAffectNavigation(false);
+		HitZones[I] = B;
+	}
+	ApplyHitZoneLayout(false);
 
 	TPWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TPWeapon"));
 	TPWeaponMesh->SetupAttachment(GetCapsuleComponent());
@@ -280,6 +312,9 @@ void AGSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AGSCharacter, bDead);
 	DOREPLIFETIME_CONDITION(AGSCharacter, bSliding, COND_SkipOwner);
 	DOREPLIFETIME(AGSCharacter, bFlashlightOn);
+	DOREPLIFETIME(AGSCharacter, LegInjury);
+	DOREPLIFETIME(AGSCharacter, ArmInjury);
+	DOREPLIFETIME_CONDITION(AGSCharacter, bAiming, COND_SkipOwner);
 }
 
 void AGSCharacter::BeginPlay()
@@ -471,7 +506,7 @@ void AGSCharacter::StopJump() { StopJumping(); }
 void AGSCharacter::StartSprint()
 {
 	bWantsSprint = true;
-	if (!bAiming && !bIsCrouched && Stamina > 10.f) SetSprinting(true);
+	if (!bAiming && !bIsCrouched && Stamina > 10.f && GetLegPain() < 0.5f) SetSprinting(true);
 }
 
 void AGSCharacter::StopSprint()
@@ -494,7 +529,7 @@ void AGSCharacter::SetSprinting(bool bNew)
 
 void AGSCharacter::ServerSetSprinting_Implementation(bool bNew)
 {
-	bSprinting = bNew && Stamina > 1.f && !bIsCrouched;
+	bSprinting = bNew && Stamina > 1.f && !bIsCrouched && GetLegPain() < 0.5f;
 	if (bSprinting) CancelUse();
 }
 
@@ -515,15 +550,23 @@ void AGSCharacter::ToggleCrouch()
 
 void AGSCharacter::StartAim()
 {
-	if (TerminalPC()) return;
+	if (TerminalPC() || bDead) return;
 	bAiming = true;
 	SetSprinting(false);
+	if (!HasAuthority()) ServerSetAiming(true);
 }
 
 void AGSCharacter::StopAim()
 {
 	bAiming = false;
+	if (!HasAuthority()) ServerSetAiming(false);
 	if (bWantsSprint) StartSprint();
+}
+
+void AGSCharacter::ServerSetAiming_Implementation(bool bNew)
+{
+	bAiming = bNew && !bDead;
+	if (bAiming) bSprinting = false;
 }
 
 void AGSCharacter::SelectSlot(int32 Slot)
@@ -548,8 +591,24 @@ void AGSCharacter::Scroll(const FInputActionValue& Value)
 {
 	const float Wheel = Value.Get<float>();
 	if (FMath::IsNearlyZero(Wheel)) return;
-	const int32 Step = Wheel > 0.f ? -1 : 1;   // wheel up = previous (up the list), wheel down = next
-	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("Q")); return; }
+	// A touchpad or a smooth wheel sends fractions of a notch over many frames: add them up and take one step per
+	// whole notch. The sum starts over when the direction turns or after a short pause.
+	const float RealNow = GetWorld()->GetRealTimeSeconds();
+	if (RealNow - ScrollLastTime > 0.3f || (Wheel > 0.f) != (ScrollAccum > 0.f)) ScrollAccum = 0.f;
+	ScrollLastTime = RealNow;
+	ScrollAccum += Wheel;
+	const int32 Notches = FMath::Clamp(FMath::TruncToInt32(ScrollAccum), -3, 3);
+	if (Notches == 0) return;
+	ScrollAccum = FMath::Clamp(ScrollAccum - Notches, -1.f, 1.f);
+	const int32 Step = -Notches;   // wheel up = previous (up the list), wheel down = next
+	if (AGSPlayerController* TPC = TerminalPC())
+	{
+		// 3D printer: 1 = previous recipe, Q = next. Computer showing cameras: F = previous camera, Q = next.
+		const AGSTerminal* Term = TPC->GetActiveTerminal();
+		const TCHAR* Key = Step > 0 ? TEXT("Q") : (Term && Term->Kind == EGSTerminalKind::Printer ? TEXT("1") : TEXT("F"));
+		for (int32 I = 0; I < FMath::Abs(Step); ++I) TPC->TerminalInput(Key);
+		return;
+	}
 	const AGSPlayerController* PC = Cast<AGSPlayerController>(GetController());
 	if (bDead || (PC && PC->bMenuOpen)) return;
 	if (PC && PC->bShowInventory)
@@ -568,6 +627,7 @@ void AGSCharacter::ServerSelectSlot_Implementation(int32 Slot)
 {
 	if (!Weapons.IsValidIndex(Slot) || Slot == CurrentSlot) return;
 	CurrentSlot = Slot;
+	ShotCredit = FMath::Min(ShotCredit, 1.f);   // saved-up fire from a fast weapon does not follow to a slow one
 	bReloading = false;
 	GetWorldTimerManager().ClearTimer(ReloadTimer);
 	CancelUse();
@@ -645,6 +705,7 @@ float AGSCharacter::GetCurrentSpread() const
 	if (GetCharacterMovement()->IsFalling()) Spread += 4.f;
 	if (bIsCrouched) Spread *= 0.7f;
 	Spread += CurrentRecoil * 0.4f;
+	if (!bAiming) Spread += 1.5f * GetArmPain();
 	return Spread * GetMods().Spread;
 }
 
@@ -741,7 +802,7 @@ void AGSCharacter::FireOnce()
 
 	// Recoil: a per-weapon pattern that climbs during a burst and wanders sideways, applied smoothly
 	// (TickRecoil), plus one of five fire animations on the weapon and a pump/bolt cycle where it has one.
-	const float Recoil = S.RecoilPitch * Mods.Recoil;
+	const float Recoil = S.RecoilPitch * Mods.Recoil * (1.f + 0.5f * GetArmPain());
 	CurrentRecoil += Recoil;
 	BurstShots = (Now - LastShotTime < S.FireInterval * 1.8f + 0.05f) ? BurstShots + 1 : 0;
 	LastShotTime = Now;
@@ -805,9 +866,17 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 	FGSWeaponSlot& W = Weapons[CurrentSlot];
 	const FGSWeaponStats S = GetStats(W);
 	const float Now = GetWorld()->GetTimeSeconds();
-	if (S.Mode == EGSFireMode::Melee || W.Ammo <= 0 || Now - ServerLastFireTime < S.FireInterval * 0.7f) return;
+	if (S.Mode == EGSFireMode::Melee || W.Ammo <= 0) return;
 	// Basic anti-cheat: the shot must start close to where we really are.
 	if (FVector::DistSquared(Start, Camera->GetComponentLocation()) > FMath::Square(250.f)) return;
+	// Shot account: one shot is earned per FireInterval (5 % slack, the same the client allows itself). Up to
+	// 0.15 s worth may be saved up, so shots that arrive bunched together after a network hiccup still count,
+	// but the average rate can never beat the weapon's own.
+	const float MaxCredit = FMath::Clamp(0.15f / FMath::Max(S.FireInterval, 0.01f), 1.1f, 3.f);
+	ShotCredit = FMath::Min(MaxCredit, ShotCredit + (Now - ShotCreditTime) / FMath::Max(S.FireInterval * 0.95f, 0.01f));
+	ShotCreditTime = Now;
+	if (ShotCredit < 1.f) return;
+	ShotCredit -= 1.f;
 
 	ServerLastFireTime = Now;
 	W.Ammo--;
@@ -820,7 +889,10 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 		const FName Kind = S.Class == EGSWeaponClass::Bow ? FName(TEXT("arrow")) : (S.Radius > 550.f ? FName(TEXT("rocket")) : FName(TEXT("grenade40")));
 		AGSProjectile::Launch(GetWorld(), this, Kind, W.Id, FVector(Start) + D * 80.f, D * S.ProjSpeed, S.ProjGravity,
 			S.Damage * Mods.Damage, S.Radius, 0.f);
-		if (!S.bSilent) MulticastShotFX(Start, FVector(Start) + D * 200.f, true);
+		// No tracer (the projectile is its own). Launchers are loud; only bows are quiet. The launcher bit lets
+		// others play the right sound even if a single-use tube is already gone from the weapon list when this arrives.
+		MulticastShotFX(Start, FVector(Start) + D * 200.f, static_cast<uint8>(2 | (S.bSilent || S.Class == EGSWeaponClass::Bow ? 1 : 0)
+			| (S.Class == EGSWeaponClass::Launcher ? 4 : 0)));
 		if (W.Ammo <= 0 && W.Reserve <= 0 && S.MaxReserve <= 0 && S.Caliber.IsNone())
 		{
 			// Single-use launcher: the empty tube is thrown away.
@@ -871,7 +943,7 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 			Victim->IncomingAmmoType = GSAmmoType::Normal;
 		}
 	}
-	MulticastShotFX(Start, bHit ? FVector(Hit.ImpactPoint) : End, S.bSilent || Mods.bSilent);
+	MulticastShotFX(Start, bHit ? FVector(Hit.ImpactPoint) : End, static_cast<uint8>(S.bSilent || Mods.bSilent ? 1 : 0));
 }
 
 void AGSCharacter::QuickMelee()
@@ -959,17 +1031,22 @@ void AGSCharacter::MulticastWoundFX_Implementation(FVector_NetQuantize Point, FV
 	if (bDead) ApplyDeathImpulse();
 }
 
-void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantize End, bool bSilent)
+void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantize End, uint8 Flags)
 {
+	const bool bSilent = (Flags & 1) != 0;     // suppressed, or a bow
+	const bool bNoTracer = (Flags & 2) != 0;   // a launched projectile: it draws its own flight and impact
 	if (!bSilent) NoteShotForRadio(Start);
 	if (IsLocallyControlled()) return; // shooter already drew it
 	LastRemoteShotTime = GetWorld()->GetTimeSeconds();
 	{
 		const FGSWeaponSlot* W = GetCurrentWeapon();
-		GSAudio::PlayShotFor(this, W ? GetStats(*W).Class : EGSWeaponClass::Rifle, bSilent, Start);
+		const EGSWeaponClass Class = (Flags & 4) != 0 ? EGSWeaponClass::Launcher : (W ? GetStats(*W).Class : EGSWeaponClass::Rifle);
+		// A bow has its own quiet sound (the string), not the "pfft" of a suppressed gun.
+		GSAudio::PlayShotFor(this, Class, bSilent && !(bNoTracer && Class == EGSWeaponClass::Bow), Start);
 	}
 	const FVector From = TPWeaponMesh->GetComponentLocation();
-	if (!bSilent) AGSShortFX::SpawnTracer(GetWorld(), From, End);
+	if (!bSilent && !bNoTracer) AGSShortFX::SpawnTracer(GetWorld(), From, End);
+	if (bNoTracer) return;
 	FHitResult Hit;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSFxTrace), true, this);
 	const FVector Dir = (FVector(End) - FVector(Start)).GetSafeNormal();
@@ -1029,7 +1106,7 @@ void AGSCharacter::ServerReload_Implementation()
 	if (!S.UsesAmmo() || W.Ammo >= S.MagSize || W.Reserve <= 0) return;
 	bReloading = true;
 	CancelUse();
-	GetWorldTimerManager().SetTimer(ReloadTimer, this, &AGSCharacter::FinishReload, S.ReloadTime * GetMods().Reload, false);
+	GetWorldTimerManager().SetTimer(ReloadTimer, this, &AGSCharacter::FinishReload, ReloadSeconds(S), false);
 }
 
 void AGSCharacter::FinishReload()
@@ -1130,7 +1207,7 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 	if (bReloading && !bWasReloading)
 	{
 		ReloadStart = Now;
-		ReloadLength = W ? S.ReloadTime * GetMods().Reload : 2.f;
+		ReloadLength = W ? ReloadSeconds(S) : 2.f;
 		bMagDropped = false;
 		bEmptyReload = W && W->Ammo <= 0;
 		// mag out, mag in, charging handle (timed to the procedural reload animation)
@@ -1666,6 +1743,8 @@ namespace
 
 void AGSCharacter::ClientTookHit_Implementation(FVector_NetQuantize From, bool bHasFrom, float HealthLost, uint8 Kind)
 {
+	const uint8 Zone = Kind >> 4;   // GSZone in the high bits
+	Kind &= 0x0F;
 	const float Now = GetWorld()->GetTimeSeconds();
 	HealthLost = FMath::Max(0.f, HealthLost);
 
@@ -1725,12 +1804,19 @@ void AGSCharacter::ClientTookHit_Implementation(FVector_NetQuantize From, bool b
 	LastHurtFlashTime = Now;
 
 	// Headshots you survive jerk the view harder (the normal flinch starts from the health change).
-	const bool bHead = Kind == GSHurtKind::Head || Kind == GSHurtKind::HeadArmor;
+	const bool bHead = Zone == GSZone::Head || Kind == GSHurtKind::Head || Kind == GSHurtKind::HeadArmor;
 	if (bHead)
 	{
 		FlinchScale = 2.2f;
 		FlinchStart = Now;
 		FlinchSign = FMath::RandBool() ? 1.f : -1.f;
+	}
+	// You feel where it hit: the knee gives way, or the gun is knocked in your hands.
+	if (HealthLost > 0.f && Zone == GSZone::Leg) CamDipVel -= 90.f + 140.f * FMath::Clamp(HealthLost / 30.f, 0.f, 1.f);
+	if (HealthLost > 0.f && Zone == GSZone::Arm)
+	{
+		const FGSWeaponSlot* W = GetCurrentWeapon();
+		AddWeaponKick(2.5f, W ? GetStats(*W).Class : EGSWeaponClass::Rifle);
 	}
 
 	// One sound per instant: nine shotgun pellets must not play nine sounds on top of each other,
@@ -1756,6 +1842,7 @@ void AGSCharacter::ClientTookHit_Implementation(FVector_NetQuantize From, bool b
 		break;
 	case GSHurtKind::ArmorBroke:
 		GSAudio::Play2D(this, TEXT("Armor_Break"), 0.9f, 1.f);
+		if (Zone == GSZone::Head) GSAudio::Play2D(this, TEXT("Ear_Ring"), 0.4f, 1.f);
 		GSAudio::Play2D(this, TEXT("Hit_Body"), 0.5f, FMath::FRandRange(0.9f, 1.1f));
 		break;
 	default:
@@ -2302,6 +2389,13 @@ void AGSCharacter::CompleteUse()
 	case EGSItemCat::Medicine:
 	{
 		Health = FMath::Min(MaxHealth, Health + Def->Heal);
+		if (Def->Cat == EGSItemCat::Medicine && Def->Heal > 0.f)
+		{
+			// Dressing the wound: a plaster helps a little, a bandage a lot, a first-aid kit sets the limb right.
+			const float Treat = Def->Heal / 60.f;
+			LegInjury = FMath::Max(0.f, LegInjury - Treat);
+			ArmInjury = FMath::Max(0.f, ArmInjury - Treat);
+		}
 		Hunger = FMath::Clamp(Hunger + Def->Hunger, 0.f, 100.f);
 		Thirst = FMath::Clamp(Thirst + Def->Thirst, 0.f, 100.f);
 		Stamina = FMath::Clamp(Stamina + Def->StaminaGain, 0.f, 100.f);
@@ -2551,6 +2645,8 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	}
 
 	bool bHeadshot = false;
+	uint8 Zone = GSZone::None;
+	bool bFace = false;
 	// Where and from which way the body was hit, for the blood everyone sees (MulticastWoundFX below)
 	FVector WoundPoint = GetActorLocation() + FVector(0.f, 0.f, 30.f);
 	FVector WoundDir = FVector::ZeroVector;
@@ -2577,7 +2673,15 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		WoundPoint = PE.HitInfo.ImpactPoint;
 		WoundDir = FVector(PE.ShotDirection);
 		bPointHit = true;
-		if (PE.HitInfo.GetComponent() == HeadMesh)
+		Zone = ZoneOf(PE.HitInfo.GetComponent());
+		if (Zone == GSZone::None) Zone = GSZone::Chest;   // a point hit that found no zone box counts as the torso
+		if (Zone == GSZone::Head)
+		{
+			// The helmet covers the skull, not the face: the lower part of the head, hit from the front, goes past it.
+			const float LocalZ = PE.HitInfo.GetComponent()->GetComponentTransform().InverseTransformPosition(PE.HitInfo.ImpactPoint).Z;
+			bFace = LocalZ < -2.5f && FVector::DotProduct(FVector(PE.ShotDirection), GetActorForwardVector()) < -0.2f;
+		}
+		if (Zone == GSZone::Head)
 		{
 			bHeadshot = true;
 			if (const AGSCharacter* S = Cast<AGSCharacter>(DamageCauser))
@@ -2592,11 +2696,19 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		}
 	}
 
+	// Arms and legs are seldom deadly on their own; the belly a little less than the chest.
+	if (Zone == GSZone::Arm) Damage *= 0.55f;
+	else if (Zone == GSZone::Leg) Damage *= 0.65f;
+	else if (Zone == GSZone::Stomach) Damage *= 0.9f;
+
 	Damage *= GetMods().Taken;
 
 	// Special rounds
 	const uint8 Ammo = IncomingAmmoType;
-	const bool bArmored = bHeadshot ? !Helmet.IsNone() : !BodyArmor.IsNone();
+	// Armor only covers what it covers: the helmet the skull, the vest the torso (and it takes part of a blast).
+	const bool bHelmetCovers = bHeadshot && !bFace;
+	const bool bVestCovers = !bHeadshot && Zone != GSZone::Arm && Zone != GSZone::Leg;
+	const bool bArmored = (bHelmetCovers && !Helmet.IsNone()) || (bVestCovers && !BodyArmor.IsNone());
 	float AbsorbMul = 1.f;
 	if (Ammo == GSAmmoType::ArmorPiercing) { AbsorbMul = 0.35f; Damage *= 0.95f; }
 	else if (Ammo == GSAmmoType::HollowPoint) Damage *= bArmored ? 0.75f : 1.3f;
@@ -2607,7 +2719,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	const float HealthBefore = Health;
 	bool bArmorHit = false;
 	bool bArmorBroke = false;
-	if (bHeadshot && !Helmet.IsNone())
+	if (bHelmetCovers && !Helmet.IsNone())
 	{
 		const FGSItemDef* H = GSItems::Find(Helmet);
 		const float Soak = FMath::Min(Damage * (H ? H->Absorb : 0.3f) * AbsorbMul, HelmetPoints);
@@ -2616,7 +2728,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		bArmorHit = Soak > 0.f;
 		if (HelmetPoints <= 0.5f) { Helmet = NAME_None; HelmetPoints = 0.f; bArmorBroke = true; ApplyGearVisuals(); ClientToast(TEXT("Hjelmen gikk i stykker!")); }
 	}
-	else if (!bHeadshot && !BodyArmor.IsNone())
+	else if (bVestCovers && !BodyArmor.IsNone())
 	{
 		const FGSItemDef* A = GSItems::Find(BodyArmor);
 		const float Soak = FMath::Min(Damage * (A ? A->Absorb : 0.3f) * AbsorbMul, ArmorPoints);
@@ -2627,6 +2739,12 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	}
 
 	Health = FMath::Max(0.f, Health - Damage);
+	// A hit that draws blood from a limb leaves it hurt until it is treated.
+	if (Health > 0.f && HealthBefore > Health)
+	{
+		if (Zone == GSZone::Leg) LegInjury = FMath::Min(1.f, LegInjury + (HealthBefore - Health) / 45.f);
+		else if (Zone == GSZone::Arm) ArmInjury = FMath::Min(1.f, ArmInjury + (HealthBefore - Health) / 40.f);
+	}
 	LastDamageTakenTime = GetWorld()->GetTimeSeconds();
 	// Tell the one who was hit where it came from, how hard, and whether the vest/helmet took it. Sent before
 	// OnRep_Health below so a listen-server host does not also play the generic hurt sound.
@@ -2641,7 +2759,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		const FVector From = !bHasFrom ? GetActorLocation()
 			: Proj ? (bPointHit ? Proj->LaunchLocation : Proj->GetActorLocation())
 			: Shooter->GetActorLocation();
-		ClientTookHit(From, bHasFrom, HealthBefore - Health, Kind);
+		ClientTookHit(From, bHasFrom, HealthBefore - Health, static_cast<uint8>(Kind | (Zone << 4)));   // zone in the high bits
 	}
 	// Everyone nearby sees the wound. Only real hits: hunger, thirst and poison never come through here, and fire
 	// burns without blood. Sent before Die() below, so a listen-server host knows the wound when the body falls.
@@ -2734,6 +2852,7 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 	if (bDead) return;
 	bDead = true;
 	StopFire();
+	bAiming = false;
 	CancelUse();
 
 	if (AGSGameMode* GM = GetWorld()->GetAuthGameMode<AGSGameMode>())
@@ -2803,6 +2922,67 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 	SetLifeSpan(BodyLifeSeconds);
 }
 
+void AGSCharacter::ApplyHitZoneLayout(bool bCrouch)
+{
+	for (int32 I = 0; I < 7; ++I)
+	{
+		if (!HitZones[I]) continue;
+		const FGSZoneBox& Z = GSZoneBoxes[I];
+		HitZones[I]->SetRelativeLocation(bCrouch ? Z.Crouch : Z.Stand);
+		HitZones[I]->SetBoxExtent(bCrouch ? Z.CrouchExt : Z.StandExt, false);
+	}
+}
+
+uint8 AGSCharacter::ZoneOf(const UPrimitiveComponent* Comp) const
+{
+	for (int32 I = 0; I < 7; ++I)
+	{
+		if (Comp && HitZones[I] == Comp) return GSZoneBoxes[I].Zone;
+	}
+	return GSZone::None;
+}
+
+void AGSCharacter::OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
+{
+	Super::OnStartCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
+	ApplyHitZoneLayout(true);
+	FixBodyMeshOffset(HalfHeightAdjust);
+}
+
+void AGSCharacter::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
+{
+	Super::OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
+	ApplyHitZoneLayout(false);
+	FixBodyMeshOffset(0.f);
+}
+
+float AGSCharacter::GetLegPain() const
+{
+	const bool bNumb = Effects.ContainsByPredicate([](const FGSActiveEffect& E) { return E.Id == FxPainkillers; });
+	return LegInjury * (bNumb ? 0.5f : 1.f);
+}
+
+float AGSCharacter::GetArmPain() const
+{
+	const bool bNumb = Effects.ContainsByPredicate([](const FGSActiveEffect& E) { return E.Id == FxPainkillers; });
+	return ArmInjury * (bNumb ? 0.5f : 1.f);
+}
+
+float AGSCharacter::ReloadSeconds(const FGSWeaponStats& S) const
+{
+	return S.ReloadTime * GetMods().Reload * (1.f + 0.6f * GetArmPain());   // a shot arm fumbles the magazine
+}
+
+void AGSCharacter::FixBodyMeshOffset(float HalfHeightAdjust)
+{
+	if (!bHumanBody || bDead) return;
+	const float StandHalf = GetDefault<AGSCharacter>()->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
+	const FVector Loc(0.f, 0.f, -StandHalf + HalfHeightAdjust);   // feet on the floor (the capsule centre drops when crouched)
+	const FRotator Rot(0.f, -90.f, 0.f);
+	GetMesh()->SetRelativeLocationAndRotation(Loc, Rot);
+	CacheInitialMeshOffset(Loc, Rot);   // the engine's network smoothing and crouch code start from this
+}
+
 void AGSCharacter::SetupHumanBody()
 {
 	// Paths of the standard Unreal characters (Third Person template / content pack, older templates).
@@ -2847,6 +3027,7 @@ void AGSCharacter::SetupHumanBody()
 	Skel->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
 	Skel->SetVisibility(true);
 	bHumanBody = true;
+	FixBodyMeshOffset(bIsCrouched ? GetDefault<AGSCharacter>()->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() - GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() : 0.f);
 	// Your own legs when you look down: same body, upper body hidden, a little behind the camera.
 	if (IsLocallyControlled() && FPLegs)
 	{
@@ -2857,7 +3038,7 @@ void AGSCharacter::SetupHumanBody()
 		FPLegs->HideBoneByName(TEXT("spine_03"), EPhysBodyOp::PBO_None);
 		FPLegs->SetVisibility(true);
 	}
-	// keep the old shapes as invisible hitboxes
+	// the old shapes are only the stand-in body when no mannequin is found
 	BodyMesh->SetVisibility(false);
 	HeadMesh->SetVisibility(false);
 }
@@ -2888,6 +3069,7 @@ void AGSCharacter::OnRep_Dead()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HeadMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	for (UBoxComponent* Z : HitZones) { if (Z) Z->SetCollisionEnabled(ECollisionEnabled::NoCollision); }
 	if (bHumanBody)
 	{
 		// Real ragdoll: the body falls the way physics says (local only, it is just for looks)
@@ -3111,9 +3293,14 @@ void AGSCharacter::TickScopeSway(float Dt)
 		if (bHolding) Target *= 0.12f;
 		else if (BreathHeld >= 4.f) Target *= 1.7f;
 	}
+	// A shot arm cannot hold the gun still: the sights wander and tremble with any weapon. Holding your breath does not help.
+	const float ArmPain = bDead ? 0.f : GetArmPain();
+	const float Shake = bAiming ? 0.07f * ArmPain : 0.f;
+	if (bAiming) Target += 0.5f * ArmPain;
 	ScopeSwayAmp = FMath::FInterpTo(ScopeSwayAmp, Target, Dt, 3.f);
 	const float T = GetWorld()->GetTimeSeconds();
-	const FVector2D Off(FMath::Sin(T * 0.9f) * ScopeSwayAmp, FMath::Sin(T * 1.7f + 0.8f) * ScopeSwayAmp * 0.6f);
+	const FVector2D Off(FMath::Sin(T * 0.9f) * ScopeSwayAmp + FMath::Sin(T * 6.3f) * Shake,
+		FMath::Sin(T * 1.7f + 0.8f) * ScopeSwayAmp * 0.6f + FMath::Sin(T * 7.9f + 1.3f) * Shake);
 	const FVector2D Delta = Off - ScopeSwayPrev;
 	ScopeSwayPrev = Off;
 	if (!Delta.IsNearlyZero(1e-5f))
@@ -3214,11 +3401,16 @@ void AGSCharacter::UpdateLocalVisuals(float DeltaSeconds)
 	const float BreathAmp = (bAiming ? 0.05f : 0.15f) * (1.f + 2.f * FMath::Max(Hurt, Tired));
 	const float Breath = FMath::Sin(T * BreathRate) * BreathAmp;
 
+	// A hurt leg: the view drops and tips on every second step.
+	const float LimpAmt = bDead || bFalling ? 0.f : GetLegPain() * FMath::Clamp(Vel.Size2D() / 200.f, 0.f, 1.f);
+	LimpPhase = FMath::Frac(LimpPhase + Vel.Size2D() * Dt / 350.f);   // one cycle = two steps
+	const float Limp = LimpAmt * FMath::Max(0.f, FMath::Sin(LimpPhase * 2.f * PI));
+
 	Camera->ClearAdditiveOffset();
 	if (!bDead)
 	{
-		const FRotator CamRot(Breath + Flinch * 2.5f, Flinch * FlinchSign * 1.2f, CamLean + Flinch * FlinchSign * 3.f);
-		Camera->AddAdditiveOffset(FTransform(CamRot, FVector(0.f, 0.f, CamDip)), 0.f);
+		const FRotator CamRot(Breath + Flinch * 2.5f, Flinch * FlinchSign * 1.2f, CamLean + Flinch * FlinchSign * 3.f + Limp * 2.2f);
+		Camera->AddAdditiveOffset(FTransform(CamRot, FVector(0.f, 0.f, CamDip - Limp * 7.f)), 0.f);
 	}
 }
 
@@ -3270,10 +3462,13 @@ void AGSCharacter::Tick(float DeltaSeconds)
 	}
 
 	UCharacterMovementComponent* Move = GetCharacterMovement();
+	const float LegPain = bDead ? 0.f : GetLegPain();
+	// A badly shot leg cannot run. Server and owner both apply it (bSprinting is predicted by the owner).
+	if (bSprinting && LegPain >= 0.5f && (HasAuthority() || IsLocallyControlled())) SetSprinting(false);
 	float Speed = bSprinting ? SprintSpeed : (bAiming ? AimSpeed : WalkSpeed);
 	if (!UseItemId.IsNone()) Speed = FMath::Min(Speed, AimSpeed);
-	Move->MaxWalkSpeed = Speed * Mods.Speed * GearSpeed;
-	Move->JumpZVelocity = 430.f * Mods.Jump;
+	Move->MaxWalkSpeed = Speed * Mods.Speed * GearSpeed * (1.f - 0.45f * LegPain);
+	Move->JumpZVelocity = 430.f * Mods.Jump * (1.f - 0.4f * LegPain);
 	if (Mods.bGlide && Move->IsFalling())
 	{
 		Move->AirControl = 0.9f;
@@ -3343,7 +3538,8 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		const float Since = GetWorld()->GetTimeSeconds() - LastRemoteShotTime;
 		const float Kick = Since < 0.3f ? FMath::Exp(-Since * 14.f) : 0.f;
 		const float Bob = FMath::Sin(GetWorld()->GetTimeSeconds() * (bSprinting ? 13.f : 8.5f)) * FMath::Min(Spd / 600.f, 1.f);
-		const FVector Shoulder(5.f, 18.f, bIsCrouched ? 10.f : 48.f);
+		TPAim = FMath::FInterpTo(TPAim, bAiming && !bSprinting && !bReloading ? 1.f : 0.f, DeltaSeconds, 9.f);
+		const FVector Shoulder(5.f + 4.f * TPAim, 18.f - 9.f * TPAim, (bIsCrouched ? 10.f : 48.f) + 9.f * TPAim);
 		FRotator Aim(FMath::Lerp(AimPitch, -35.f, TPSprint) + 8.f * Kick, FMath::Lerp(0.f, -40.f, TPSprint), 0.f);
 		// Reloading seen by others: gun canted and lowered toward the chest, with a tug when the mag seats
 		TPReload = FMath::FInterpTo(TPReload, bReloading ? 1.f : 0.f, DeltaSeconds, 8.f);
@@ -3385,4 +3581,19 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		// Dead: the first-person arms, gun and item stay hidden (the client can still control the body for a few frames)
 		if (!bDead) UpdateWeaponAnimation(DeltaSeconds);
 	}
+
+#if !UE_BUILD_SHIPPING
+	if (CVarShowHitZones.GetValueOnGameThread() != 0 && !bDead && GetNetMode() != NM_DedicatedServer)
+	{
+		static const FColor ZoneColors[6] = { FColor::White, FColor::Red, FColor::Orange, FColor::Yellow, FColor::Cyan, FColor::Green };
+		for (int32 I = 0; I < 7; ++I)
+		{
+			if (const UBoxComponent* Z = HitZones[I])
+			{
+				DrawDebugBox(GetWorld(), Z->GetComponentLocation(), Z->GetScaledBoxExtent(), Z->GetComponentQuat(),
+					ZoneColors[GSZoneBoxes[I].Zone], false, -1.f, 0, 0.6f);
+			}
+		}
+	}
+#endif
 }

@@ -230,10 +230,6 @@ void AGSHUD::DrawHitMarker(AGSCharacter* C, float CX, float CY)
 		Canvas->K2_DrawLine(A + ShadowOff, B + ShadowOff, Thick, Shadow);   // shadow so it shows on snow and sky
 		Canvas->K2_DrawLine(A, B, Thick, Color);
 	}
-	if (Kind == GSHitKind::Kill && C->WasLastKillHeadshot())
-	{
-		Text(TEXT("HODESKUDD"), CX, CY + 34.f, FLinearColor(1.f, 0.82f, 0.2f, Alpha), 0.8f, true);
-	}
 }
 
 void AGSHUD::DrawBars(AGSCharacter* C)
@@ -241,6 +237,13 @@ void AGSHUD::DrawBars(AGSCharacter* C)
 	const float X = 40.f, W = 260.f;
 	float Y = Canvas->SizeY - 150.f;
 	Box(X - 8.f, Y - 30.f, W + 16.f, 150.f, FLinearColor(0.f, 0.f, 0.f, 0.35f));
+	// Hurt limbs, small and plain, above the bars
+	{
+		float IY = Y - 52.f;
+		const FLinearColor Col(0.85f, 0.45f, 0.4f, 0.85f);
+		if (C->ArmInjury > 0.05f) { Text(C->ArmInjury > 0.5f ? TEXT("Armen er hardt skadd") : TEXT("Armen er skadd"), X, IY, Col, 0.75f); IY -= 18.f; }
+		if (C->LegInjury > 0.05f) { Text(C->LegInjury >= 0.5f ? TEXT("Beinet er hardt skadd - du kan ikke løpe") : TEXT("Beinet er skadd"), X, IY, Col, 0.75f); }
+	}
 	Text(FString::Printf(TEXT("HELSE  %d"), FMath::RoundToInt(C->Health)), X, Y - 26.f, FLinearColor::White);
 	const float HP = C->Health / C->MaxHealth;
 	Bar(X, Y, W, 14.f, HP, HP > 0.35f ? FLinearColor(0.2f, 0.85f, 0.3f, 0.9f) : FLinearColor(0.95f, 0.2f, 0.15f, 0.9f));
@@ -699,18 +702,14 @@ void AGSHUD::EdgeGlow(const FLinearColor& Col, float Alpha, float Depth)
 void AGSHUD::DrawHurtOverlay(AGSCharacter* C)
 {
 	const float Now = GetWorld()->GetTimeSeconds();
-	const float SX = Canvas->SizeX, SY = Canvas->SizeY;
+	const float SY = Canvas->SizeY;
 
-	// Low health: dark red edge pulsing with the heartbeat, and a short warning when it is really bad
+	// Low health: dark red edge pulsing with the heartbeat
 	const float Low = C->GetLowHealthAlpha();
 	if (Low > 0.f)
 	{
 		const float P = FMath::Exp(-FMath::Max(0.f, Now - C->GetLastHeartbeatTime()) * 6.f);
 		EdgeGlow(FLinearColor(0.45f, 0.f, 0.f), (0.25f + 0.35f * P) * Low, SY * (0.18f + 0.06f * P));
-		if (Low > 0.6f)
-		{
-			Text(TEXT("LAVT LIV - finn dekning og heal"), SX * 0.5f, SY * 0.28f, FLinearColor(1.f, 0.35f, 0.3f, 0.5f + 0.5f * P), 0.8f, true);
-		}
 	}
 
 	// The hit you just took: blood-red edge, deeper and stronger the more health you lost; blue-grey when the
@@ -728,11 +727,6 @@ void AGSHUD::DrawHurtOverlay(AGSCharacter* C)
 		if (K == GSHurtKind::Armor || K == GSHurtKind::HeadArmor)
 		{
 			EdgeGlow(FLinearColor(0.55f, 0.7f, 0.9f), 0.35f * C->LastHurtFlashStrength * Fade, SY * 0.08f);
-		}
-		// Headshot you survived: a quick white flash, a bit dizzy
-		if ((K == GSHurtKind::Head || K == GSHurtKind::HeadArmor) && Age < 0.25f)
-		{
-			Box(0.f, 0.f, SX, SY, FLinearColor(1.f, 1.f, 1.f, 0.35f * (1.f - Age / 0.25f)));
 		}
 	}
 

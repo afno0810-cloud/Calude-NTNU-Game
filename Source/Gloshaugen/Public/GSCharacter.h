@@ -10,6 +10,7 @@
 class UCameraComponent;
 class UStaticMeshComponent;
 class USpotLightComponent;
+class UBoxComponent;
 struct FInputActionValue;
 
 /** What the last hit marker was for (the HUD draws each kind differently). */
@@ -29,6 +30,17 @@ namespace GSHurtKind
 	constexpr uint8 Head = 2;        // headshot, no helmet
 	constexpr uint8 HeadArmor = 3;   // headshot, the helmet took part of it
 	constexpr uint8 ArmorBroke = 4;  // the vest or helmet broke from this hit
+}
+
+/** Which part of the body a hit landed on. */
+namespace GSZone
+{
+	constexpr uint8 None = 0;      // no single point: blast, hunger
+	constexpr uint8 Head = 1;
+	constexpr uint8 Chest = 2;
+	constexpr uint8 Stomach = 3;   // belly and pelvis
+	constexpr uint8 Arm = 4;
+	constexpr uint8 Leg = 5;
 }
 
 /** A recent hit on you, for the HUD direction wedges (local only). */
@@ -105,6 +117,14 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly) bool bSprinting = false;
 	UPROPERTY(ReplicatedUsing = OnRep_Dead, BlueprintReadOnly) bool bDead = false;
 	UPROPERTY(ReplicatedUsing = OnRep_Gear) bool bFlashlightOn = false;
+	/** 0 = fine, 1 = badly shot. Leg: slower, lower jumps, no sprint, limp. Arm: unsteady aim, more recoil, slow reload. */
+	UPROPERTY(Replicated, BlueprintReadOnly) float LegInjury = 0.f;
+	UPROPERTY(Replicated, BlueprintReadOnly) float ArmInjury = 0.f;
+	/** The injury as it is felt right now (painkillers halve it). */
+	float GetLegPain() const;
+	float GetArmPain() const;
+	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
 
 	bool IsAiming() const { return bAiming; }
 	float GetCurrentSpread() const;
@@ -175,6 +195,13 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> FPLegs;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> BodyMesh;       // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> HeadMesh;       // seen by others
+	/** Hit zones with the size of real body parts: head, chest, stomach, left/right arm, left/right leg. */
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UBoxComponent> HitZones[7];
+	void ApplyHitZoneLayout(bool bCrouch);
+	uint8 ZoneOf(const UPrimitiveComponent* Comp) const;
+	/** Keeps the body others see standing on the ground (also while crouched and for network smoothing). */
+	void FixBodyMeshOffset(float HalfHeightAdjust);
+	float ReloadSeconds(const FGSWeaponStats& S) const;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> TPWeaponMesh;   // seen by others
 	/** The same attachments on the third-person gun so other players see your scope, suppressor, laser and grip. */
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> TPAttSight;
@@ -219,7 +246,7 @@ protected:
 	void ApplyAttachmentVisuals(const struct FGSWeaponSlot* W);
 	void ApplyGearVisuals();
 	/** Uses a real animated human (the Unreal mannequin from the Third Person content pack, or Fab/Lyra characters)
-	 *  for the body others see, if one is in the project. The cylinder and sphere stay as invisible hitboxes. */
+	 *  for the body others see, if one is in the project. The cylinder and sphere are the stand-in when none is found; hits land on HitZones. */
 	void SetupHumanBody();
 	bool bHumanBody = false;
 	void UpdateFocusPickup();
@@ -252,6 +279,7 @@ protected:
 	UFUNCTION(Server, Reliable) void ServerMelee(bool bQuick);
 	UFUNCTION(Server, Reliable) void ServerReload();
 	UFUNCTION(Server, Reliable) void ServerSetSprinting(bool bNew);
+	UFUNCTION(Server, Reliable) void ServerSetAiming(bool bNew);
 	UFUNCTION(Server, Reliable) void ServerSelectSlot(int32 Slot);
 	UFUNCTION(Server, Reliable) void ServerInteract(AGSPickup* Pickup);
 	UFUNCTION(Server, Reliable) void ServerUseItem(int32 Index);
@@ -259,7 +287,7 @@ protected:
 	UFUNCTION(Server, Reliable) void ServerDropItem(int32 Index);
 	UFUNCTION(Server, Reliable) void ServerGrapple(FVector_NetQuantize Target);
 	UFUNCTION(Server, Reliable) void ServerToggleFlashlight();
-	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantize End, bool bSilent);
+	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantize End, uint8 Flags);   // Flags: bit 1 = suppressed, bit 2 = no tracer
 	UFUNCTION(NetMulticast, Unreliable) void MulticastPelletFX(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed, int32 Pellets, float ConeDeg);
 	UFUNCTION(NetMulticast, Unreliable) void MulticastMeleeFX();
 	/** Everyone: this body was just hit here, from this direction (GSWound kind, strength 0..255). */
@@ -293,13 +321,20 @@ protected:
 	/** KillingProjectile: the grenade/mine/rocket/bolt that did it, if any (death card uses where it was thrown from). */
 	void Die(AController* Killer, bool bHeadshot, const FString& WeaponName, const class AGSProjectile* KillingProjectile = nullptr);
 
-	bool bAiming = false;
+	UPROPERTY(Replicated) bool bAiming = false;
 	bool bWantsFire = false;
 	bool bWantsSprint = false;
 	bool bBinoculars = false;
 	bool bNightVisionGoggles = false;
 	float LastFireTime = -100.f;
 	float ServerLastFireTime = -100.f;
+	// Server: shots the weapon is allowed to fire right now (refills at the weapon's own rate)
+	float ShotCredit = 1.f;
+	float ShotCreditTime = -100.f;
+	float TPAim = 0.f;        // others see the gun come up to the eye when you aim
+	float LimpPhase = 0.f;    // local: the camera limps in step when a leg is hurt
+	float ScrollAccum = 0.f;  // local: wheel/touchpad movement not yet turned into a whole step
+	float ScrollLastTime = -100.f;
 	float LastMeleeTime = -100.f;
 	float LastHitMarkerTime = -100.f;
 	uint8 LastHitKind = GSHitKind::Body;
