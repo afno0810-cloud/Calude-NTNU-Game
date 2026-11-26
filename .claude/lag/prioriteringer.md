@@ -16,6 +16,27 @@ plukkes opp igjen. Første lag til 3 erobringer, eller flest når tiden går ut.
 - **Grafikk og kart:** det mindre utsnittet skal velges for CTF: to baser i hver ende (f.eks. to bygg
   som står mot hverandre), flere ruter mellom dem (ute, gjennom bygg, under tak), og et midtområde.
   Basene må være lette å kjenne igjen og forsvarbare. Detaljnivået legges der det spilles.
+- **Spillbarhet (tillegg):** tastene skal kunne endres i Innstillinger i hovedmenyen (keybinds), lagres,
+  og vises riktig i knappehjelpen. Bruk Enhanced Input sine brukerinnstillinger; trenger du kall fra
+  `GSCharacter`/`GSPlayerController`, bestill dem.
+- **Andreas liker (fra testing): glass som knuser og klatring.** Behold og bygg videre.
+  Kamp: mer ødeleggelse (kulehull som blir værende, splinter, dører som kan skytes/sparkes opp) og
+  bedre klatring (vinduer, tak, høyere murer med animasjon). Andreas liker også ladeanimasjonene og
+  sliding, og vil ha animasjoner når man bruker ting: sprøyte/dop, pille, bandasje, spise/drikke, ta
+  på vest og hjelm (realistisk lengde, kan avbrytes, du er sårbar mens det pågår). Gjør lading mer detaljert og realistisk per våpentype (taktisk vs. tom lading, magasin som
+  faller på bakken), og la glidningen ha vekt, lyd og kamerabevegelse. Grafikk og kart: lag kartet med vinduer som
+  kan knuses og klatreruter inn i og over bygg, gjerne som alternative ruter til flagget.
+- **Andreas' godkjente forslag (26. nov.), fordelt:**
+  - Kamp: lene (Q/E) og ligge ned; pust/svaie i kikkert, våpensving i løp, kulefall og gjennomslag
+    (henger sammen med ballistikk-sporet); fottrinn etter underlag (Grafikk gir flatene riktig fysisk
+    materiale); drapskamera fra drapsmannens side (bygger på dødskameraet).
+  - Spillbarhet: markere fiender og ping for laget, nærradio/stemmechat (Unreal VoIP), flaggbæreren
+    blir synlig for fiendene etter 20 s; replay etter runden (vurder Unreals replay-system, kan bli stort –
+    del opp).
+  - Grafikk og kart: fysiske materialer (stein, tre, metall, glass, gress) på alle flater, så fottrinn og
+    kulegjennomslag kan bruke dem; tynne vegger/dører som kan skytes gjennom.
+  Q/E brukes i dag til annet (Q = neste ting i sekken, E = bruk). Spillbarhet foreslår ny tastefordeling
+  i knappehjelp/keybinds; Kamp legger inn lene på de tastene som velges.
 - **Kamp:** lagtilhørighet i treff og HUD (ikke treffmarkør/blod-varsel på lagkamerater hvis venneild er
   av), flaggbærer synlig, lyd og retningsvarsel når flagget tas. Blod-runden fortsetter som planlagt.
 

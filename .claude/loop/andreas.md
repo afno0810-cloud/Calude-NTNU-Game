@@ -31,6 +31,20 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26: «legg dette til» (forslag Andreas godkjente):
+  1. Lene seg rundt hjørner (Q/E) og ligge ned.
+  2. Tunge våpen: pust/svaie i kikkertsikte, våpen som svinger under løping, kulefall, kuler gjennom tynne vegger.
+  3. Lagspill: markere fiender, ping, nærradio/stemmechat.
+  4. CTF: flaggbæreren blir synlig for fiendene etter 20 sekunder.
+  5. Fottrinn som høres forskjellig på stein, tre, metall og glass.
+  6. Replay etter runden og drapskamera fra fiendens side.
+- 2026-11-26: Animasjoner når man tar dop/boosts, medisin, tar på armor osv.
+- 2026-11-26 (fra testing): kule ladeanimasjoner og sliding. Bygg videre på begge: realistiske
+  ladesekvenser per våpentype, og en glid som føles tung og ekte.
+- 2026-11-26 (fra testing): «at glass knuser osv er kult» og «også kult med klatring». Behold og bygg
+  videre på ødeleggelse (glass, kulehull som blir værende, dører) og klatring (kanter, murer, vinduer, tak).
+- 2026-11-26 (fra testing): Man kan ikke scrolle i inventaret med musehjulet. Det må virke.
+- 2026-11-26: Tastene skal kunne endres (keybinds) i innstillingene.
 - 2026-11-26: «bare fokuser på én spillmodus per nå, og det er capture the flag».
 - 2026-11-26: Funksjoner for å invitere venner osv. i menyen.
 - 2026-11-26: Lag en hjem-/hovedmeny som man kan bruke.
