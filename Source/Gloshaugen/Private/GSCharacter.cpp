@@ -9,6 +9,7 @@
 #include "GSTerminal.h"
 #include "GSProjectile.h"
 #include "GSEffects.h"
+#include "GSBallistics.h"
 #include "GSUtils.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -330,11 +331,13 @@ void AGSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AGSCharacter, LegInjury);
 	DOREPLIFETIME(AGSCharacter, ArmInjury);
 	DOREPLIFETIME_CONDITION(AGSCharacter, bAiming, COND_SkipOwner);
+	DOREPLIFETIME_CONDITION(AGSCharacter, SpreadKey, COND_OwnerOnly);
 }
 
 void AGSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	if (HasAuthority()) SpreadKey = FMath::RandHelper(MAX_int32);   // FMath::Rand() has only 15 bits
 
 	GSUtils::SetColor(HeadMesh, FLinearColor(0.85f, 0.68f, 0.55f));
 	SetupHumanBody();
@@ -748,6 +751,15 @@ void AGSCharacter::StopFire()
 	GetWorldTimerManager().ClearTimer(AutoFireTimer);
 }
 
+// The muzzle streak: straight, at most 50 m. Where the bullet lands is shown by the bullet itself (GSBallistics).
+static void GSDrawShotStreak(UWorld* World, const AActor* Ignore, const FVector& From, const FVector& Start, const FVector& Dir)
+{
+	FHitResult Hit;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSStreak), true, Ignore);
+	const FVector End = Start + Dir * 5000.f;
+	AGSShortFX::SpawnTracer(World, From, World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params) ? FVector(Hit.ImpactPoint) : End);
+}
+
 void AGSCharacter::FireOnce()
 {
 	if (bDead || !IsLocallyControlled()) return;
@@ -784,30 +796,28 @@ void AGSCharacter::FireOnce()
 	LastFireTime = Now;
 
 	const FVector Start = Camera->GetComponentLocation();
-	const float SpreadRad = FMath::DegreesToRadians(GetCurrentSpread() * 0.5f);
-	const FVector Dir = FMath::VRandCone(Camera->GetForwardVector(), SpreadRad);
-	const int32 Seed = FMath::Rand();
+	const FVector Aim = Camera->GetForwardVector();
+	const int32 ShotIndex = ++LocalShotIndex;
+	const int32 Seed = GSBallistics::ShotSeed(SpreadKey, ShotIndex);
+	const FGSBallistic Ball = GSBallistics::ForWeapon(S);
+	// The spread we use is sent along (0.1 degree steps); we use the packed value ourselves so both sides agree exactly.
+	const uint8 SpreadQ = GSBallistics::PackSpread(S.Mode == EGSFireMode::Pellets ? (bAiming ? S.AimSpread : S.HipSpread) : GetCurrentSpread());
+	const float Spread = GSBallistics::UnpackSpread(SpreadQ);
 	const float MuzzleDist = GSItems::GetMesh(W->Id) ? S.MuzzleX : 50.f;
-	const FVector MuzzleStart = FPWeaponMesh->GetComponentLocation() + Camera->GetForwardVector() * MuzzleDist;
+	const FVector MuzzleStart = FPWeaponMesh->GetComponentLocation() + Aim * MuzzleDist;
 
-	// Local, instant feedback (the server decides what actually got hit).
+	// Local, instant feedback: our own copy of the bullet flies and shows where it lands (the server's decides the hit).
 	if (S.Mode == EGSFireMode::Hitscan)
 	{
-		FHitResult Hit;
-		FCollisionQueryParams Params(SCENE_QUERY_STAT(GSFireLocal), true, this);
-		const FVector End = Start + Dir * S.Range;
-		const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
-		AGSShortFX::SpawnTracer(GetWorld(), MuzzleStart, bHit ? Hit.ImpactPoint : End);
-		if (bHit && !Cast<AGSCharacter>(Hit.GetActor()))
-		{
-			AGSShortFX::SpawnImpact(GetWorld(), Hit.ImpactPoint, Hit.ImpactNormal);
-		}
+		const FVector D = GSBallistics::ShotDirection(Aim, Spread, Seed, Ball);
+		if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>()) Ballistics->FireShown(this, Start, D, Ball);
+		GSDrawShotStreak(GetWorld(), this, MuzzleStart, Start, D);
 	}
 	else if (S.Mode == EGSFireMode::Pellets)
 	{
-		DrawPellets(Start, Camera->GetForwardVector(), Seed, S.Pellets, bAiming ? S.AimSpread : S.HipSpread, true);
+		DrawPellets(Start, Aim, Seed, S.Pellets, Spread, true, Ball);
 	}
-	AGSShortFX::SpawnMuzzleFlash(GetWorld(), MuzzleStart, Camera->GetForwardVector(), S.bSilent);
+	AGSShortFX::SpawnMuzzleFlash(GetWorld(), MuzzleStart, Aim, S.bSilent);
 	BarrelHeat = FMath::Min(BarrelHeat + (S.Class == EGSWeaponClass::Shotgun || S.Class == EGSWeaponClass::Sniper ? 3.f : 1.f), 30.f);
 	GSAudio::Play2D(this, GSAudio::ShotName(S.Class, S.bSilent), S.bSilent ? 0.6f : 1.f, FMath::FRandRange(0.96f, 1.04f));
 	if (W->Ammo <= 1) GSAudio::Play2D(this, TEXT("Dry_Fire"), 0.5f);
@@ -853,61 +863,100 @@ void AGSCharacter::FireOnce()
 		SpawnShellFX(S.Class);
 	}
 
-	ServerFire(Start, S.Mode == EGSFireMode::Hitscan ? Dir : Camera->GetForwardVector(), Seed);
+	ServerFire(Start, Aim, ShotIndex, SpreadQ);
 
 	if (!S.bAutomatic) GetWorldTimerManager().ClearTimer(AutoFireTimer);
 }
 
-void AGSCharacter::DrawPellets(const FVector& Start, const FVector& Dir, int32 Seed, int32 Pellets, float ConeDeg, bool bFromMuzzle)
+void AGSCharacter::DrawPellets(const FVector& Start, const FVector& Dir, int32 Seed, int32 Pellets, float ConeDeg, bool bFromMuzzle, const FGSBallistic& B)
 {
-	FRandomStream Rng(Seed);
+	TArray<FVector> Dirs;
+	GSBallistics::PelletDirections(Dir, ConeDeg, Seed, Pellets, B, Dirs);
+	UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>();
 	const FVector From = bFromMuzzle ? FPWeaponMesh->GetComponentLocation() + Dir * 60.f : TPWeaponMesh->GetComponentLocation();
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSPelletFx), true, this);
-	for (int32 I = 0; I < Pellets; ++I)
+	for (const FVector& D : Dirs)
 	{
-		const FVector D = Rng.VRandCone(Dir, FMath::DegreesToRadians(ConeDeg * 0.5f));
-		FHitResult Hit;
-		const FVector End = Start + D * 4000.f;
-		const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
-		AGSShortFX::SpawnTracer(GetWorld(), From, bHit ? Hit.ImpactPoint : End);
-		if (bHit && !Cast<AGSCharacter>(Hit.GetActor())) AGSShortFX::SpawnImpact(GetWorld(), Hit.ImpactPoint, Hit.ImpactNormal);
+		if (Ballistics) Ballistics->FireShown(this, Start, D, B);
+		GSDrawShotStreak(GetWorld(), this, From, Start, D);
 	}
 }
 
-void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed)
+void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex, uint8 SpreadQ)
 {
 	if (bDead || bReloading || !Weapons.IsValidIndex(CurrentSlot)) return;
 	FGSWeaponSlot& W = Weapons[CurrentSlot];
 	const FGSWeaponStats S = GetStats(W);
 	const float Now = GetWorld()->GetTimeSeconds();
 	if (S.Mode == EGSFireMode::Melee || W.Ammo <= 0) return;
-	// Basic anti-cheat: the shot must start close to where we really are.
-	if (FVector::DistSquared(Start, Camera->GetComponentLocation()) > FMath::Square(250.f)) return;
+	// The owner numbers his shots. Older or repeated numbers are dropped.
+	const int64 Jump = int64(ShotIndex) - int64(LastServerShotIndex);
+	if (Jump <= 0) return;
+	const FVector Aim = FVector(AimDir).GetSafeNormal();
+	if (Aim.IsNearlyZero()) return;
+	// The shot must go roughly where we look (35 degrees leaves room for fast turns and network delay).
+	if (!IsLocallyControlled() && FVector::DotProduct(Aim, GetBaseAimRotation().Vector()) < 0.82f)
+	{
+#if !UE_BUILD_SHIPPING
+		UE_LOG(LogTemp, Warning, TEXT("ServerFire: shot %d from %s rejected, %.0f degrees off"), ShotIndex, *GetName(),
+			FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(Aim, GetBaseAimRotation().Vector()), -1.0, 1.0))));
+#endif
+		return;
+	}
 	// Shot account: one shot is earned per FireInterval (5 % slack, the same the client allows itself). Up to
 	// 0.15 s worth may be saved up, so shots that arrive bunched together after a network hiccup still count,
 	// but the average rate can never beat the weapon's own.
-	// The account always holds at least two shots: the server only sees shots when its own frame starts (33 ms
-	// on a 30 fps host) and the net jitters, so two honest shots can land in the same server frame.
+	// The account always holds at least one and a half shots, and two or more for weapons faster than 400
+	// rounds a minute: the server only sees shots when its own frame starts (33 ms on a 30 fps host) and the
+	// net jitters, so two honest shots from a fast weapon can land in the same server frame.
 	const float MaxCredit = 1.f + FMath::Clamp(0.15f / FMath::Max(S.FireInterval, 0.01f), 0.5f, 2.f);
 	ShotCredit = FMath::Min(MaxCredit, ShotCredit + (Now - ShotCreditTime) / FMath::Max(S.FireInterval * 0.95f, 0.01f));
 	ShotCreditTime = Now;
 	if (ShotCredit < 1.f) return;
 	ShotCredit -= 1.f;
 
+	LastServerShotIndex = ShotIndex;   // only shots that passed every check move the number
 	ServerLastFireTime = Now;
 	W.Ammo--;
 	CancelUse();
 	const FGSEffectMods Mods = GetMods();
-	const FVector D = FVector(Dir).GetSafeNormal();
+	// W points into Weapons, and flying a bullet ahead below can call TakeDamage: keep what we need as copies.
+	const FName WeaponId = W.Id;
+	const uint8 AmmoType = W.AmmoType;
+	// Where it starts: the owner's eye as he saw it, if that is close to where we have him (120 cm = a sprint for
+	// 0.2 s) and no wall lies between. Otherwise our own eye. The shot is never thrown away for this.
+	const FVector Eye = Camera->GetComponentLocation();
+	FCollisionQueryParams WallParams(SCENE_QUERY_STAT(GSFireStart), false, this);
+	FHitResult Wall;
+	const bool bStartOk = FVector::DistSquared(Start, Eye) <= FMath::Square(120.f)
+		&& !GetWorld()->LineTraceSingleByChannel(Wall, Eye, Start, ECC_WorldStatic, WallParams);
+	const FVector From = bStartOk ? FVector(Start) : Eye;
+	// Spread. The size: what the owner used, held within 15 % of what we get ourselves (so an honest player hits
+	// exactly where he saw it, and a cheat gains at most 15 %). The host's own FireOnce already added this shot's recoil.
+	const bool bPellets = S.Mode == EGSFireMode::Pellets;
+	const float Own = bPellets ? (bAiming ? S.AimSpread : S.HipSpread) : GetCurrentSpread();
+	const float Claimed = GSBallistics::UnpackSpread(SpreadQ);
+	const float Spread = IsLocallyControlled() ? Claimed : FMath::Clamp(Claimed, Own * 0.85f, Own * 1.15f);
+	if (!IsLocallyControlled()) CurrentRecoil += S.RecoilPitch * Mods.Recoil * (1.f + 0.5f * GetArmPain());   // same as FireOnce
+	// The pattern: from the key and the shot number, so the owner sees the same. He picks the number himself, so
+	// only small jumps (lost packets) are trusted; after a bigger jump we draw our own.
+	const int32 Seed = Jump <= 3 ? GSBallistics::ShotSeed(SpreadKey, ShotIndex) : FMath::RandHelper(MAX_int32);
+	const FGSBallistic Ball = GSBallistics::ForWeapon(S);
+	// Half the round trip (the engine's ping is the whole round trip in milliseconds), at most 0.1 s. None for the host.
+	const APlayerState* PS = GetPlayerState();
+	const float Advance = IsLocallyControlled() || !PS ? 0.f : FMath::Min(PS->GetPingInMilliseconds() * 0.0005f, 0.1f);
+	UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>();
 
 	if (S.Mode == EGSFireMode::Projectile)
 	{
 		const FName Kind = S.Class == EGSWeaponClass::Bow ? FName(TEXT("arrow")) : (S.Radius > 550.f ? FName(TEXT("rocket")) : FName(TEXT("grenade40")));
-		AGSProjectile::Launch(GetWorld(), this, Kind, W.Id, FVector(Start) + D * 80.f, D * S.ProjSpeed, S.ProjGravity,
+		// It starts 80 cm ahead of the eye, but never on the far side of a wall.
+		FVector Spawn = From + Aim * 80.f;
+		if (GetWorld()->LineTraceSingleByChannel(Wall, From, Spawn, ECC_WorldStatic, WallParams)) Spawn = FVector(Wall.ImpactPoint) - Aim * 15.f;
+		AGSProjectile::Launch(GetWorld(), this, Kind, WeaponId, Spawn, Aim * S.ProjSpeed, S.ProjGravity,
 			S.Damage * Mods.Damage, S.Radius, 0.f);
-		// No tracer (the projectile is its own). Launchers are loud; only bows are quiet. The launcher bit lets
+		// No bullet (the projectile is its own). Launchers are loud; only bows are quiet. The launcher bit lets
 		// others play the right sound even if a single-use tube is already gone from the weapon list when this arrives.
-		MulticastShotFX(Start, FVector(Start) + D * 200.f, static_cast<uint8>(2 | (S.bSilent || S.Class == EGSWeaponClass::Bow ? 1 : 0)
+		MulticastShotFX(From, Aim, static_cast<uint8>(2 | (S.bSilent || S.Class == EGSWeaponClass::Bow ? 1 : 0)
 			| (S.Class == EGSWeaponClass::Launcher ? 4 : 0)));
 		if (W.Ammo <= 0 && W.Reserve <= 0 && S.MaxReserve <= 0 && S.Caliber.IsNone())
 		{
@@ -921,45 +970,23 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 		return;
 	}
 
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSFireServer), true, this);
-	if (S.Mode == EGSFireMode::Pellets)
+	if (bPellets)
 	{
-		FRandomStream Rng(Seed);
-		const float Cone = bAiming ? S.AimSpread : S.HipSpread;
-		for (int32 I = 0; I < S.Pellets; ++I)
+		// Every pellet is its own small bullet. The same directions are drawn on every machine (PelletDirections).
+		TArray<FVector> Dirs;
+		GSBallistics::PelletDirections(Aim, Spread, Seed, S.Pellets, Ball, Dirs);
+		if (Ballistics)
 		{
-			const FVector PD = Rng.VRandCone(D, FMath::DegreesToRadians(Cone * 0.5f));
-			FHitResult Hit;
-			if (GetWorld()->LineTraceSingleByChannel(Hit, Start, FVector(Start) + PD * S.Range, ECC_Visibility, Params))
-			{
-				if (AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor()))
-				{
-					FPointDamageEvent Event(S.Damage, Hit, PD, nullptr);
-					Victim->IncomingAmmoType = W.AmmoType;
-					Victim->TakeDamage(S.Damage * Mods.Damage, Event, GetController(), this);
-					Victim->IncomingAmmoType = GSAmmoType::Normal;
-				}
-			}
+			for (const FVector& PD : Dirs) Ballistics->FireReal(this, From, PD, Ball, S.Damage * Mods.Damage, WeaponId, AmmoType, Advance);
 		}
-		MulticastPelletFX(Start, D, Seed, S.Pellets, Cone);
-		NoteShotForRadio(Start);
+		MulticastPelletFX(From, Aim, Seed, S.Pellets, Spread);
+		NoteShotForRadio(From);
 		return;
 	}
 
-	FHitResult Hit;
-	const FVector End = FVector(Start) + D * S.Range;
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
-	if (bHit)
-	{
-		if (AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor()))
-		{
-			FPointDamageEvent Event(S.Damage, Hit, D, nullptr);
-			Victim->IncomingAmmoType = W.AmmoType;
-			Victim->TakeDamage(S.Damage * Mods.Damage, Event, GetController(), this);
-			Victim->IncomingAmmoType = GSAmmoType::Normal;
-		}
-	}
-	MulticastShotFX(Start, bHit ? FVector(Hit.ImpactPoint) : End, static_cast<uint8>(S.bSilent || Mods.bSilent ? 1 : 0));
+	const FVector D = GSBallistics::ShotDirection(Aim, Spread, Seed, Ball);
+	if (Ballistics) Ballistics->FireReal(this, From, D, Ball, S.Damage * Mods.Damage, WeaponId, AmmoType, Advance);
+	MulticastShotFX(From, D, static_cast<uint8>(S.bSilent || Mods.bSilent ? 1 : 0));
 }
 
 void AGSCharacter::QuickMelee()
@@ -1047,10 +1074,10 @@ void AGSCharacter::MulticastWoundFX_Implementation(FVector_NetQuantize Point, FV
 	if (bDead) ApplyDeathImpulse();
 }
 
-void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantize End, uint8 Flags)
+void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, uint8 Flags)
 {
 	const bool bSilent = (Flags & 1) != 0;     // suppressed, or a bow
-	const bool bNoTracer = (Flags & 2) != 0;   // a launched projectile: it draws its own flight and impact
+	const bool bNoTracer = (Flags & 2) != 0;   // no bullet: a launched projectile draws its own flight and impact
 	if (!bSilent) NoteShotForRadio(Start);
 	if (IsLocallyControlled()) return; // shooter already drew it
 	LastRemoteShotTime = GetWorld()->GetTimeSeconds();
@@ -1060,24 +1087,22 @@ void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVe
 		// A bow has its own quiet sound (the string), not the "pfft" of a suppressed gun.
 		GSAudio::PlayShotFor(this, Class, bSilent && !(bNoTracer && Class == EGSWeaponClass::Bow), Start);
 	}
-	const FVector From = TPWeaponMesh->GetComponentLocation();
-	if (!bSilent && !bNoTracer) AGSShortFX::SpawnTracer(GetWorld(), From, End);
-	if (bNoTracer) return;
-	FHitResult Hit;
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSFxTrace), true, this);
-	const FVector Dir = (FVector(End) - FVector(Start)).GetSafeNormal();
-	if (GetWorld()->LineTraceSingleByChannel(Hit, FVector(End) - Dir * 20.f, FVector(End) + Dir * 20.f, ECC_Visibility, Params)
-		&& !Cast<AGSCharacter>(Hit.GetActor()))
-	{
-		AGSShortFX::SpawnImpact(GetWorld(), Hit.ImpactPoint, Hit.ImpactNormal);
-	}
+	if (bNoTracer) return;   // rockets, grenades and bolts fly as their own actors
+	// Our own copy of the bullet shows where it lands. It flies as the gun the shooter holds right now.
+	const FGSWeaponSlot* W = GetCurrentWeapon();
+	const FGSWeaponStats S = W ? GetStats(*W) : GSItems::Weapon(NAME_None);
+	if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>()) Ballistics->FireShown(this, Start, FVector(Dir), GSBallistics::ForWeapon(S));
+	if (!bSilent) GSDrawShotStreak(GetWorld(), this, TPWeaponMesh->GetComponentLocation(), Start, FVector(Dir));
 }
 
 void AGSCharacter::MulticastPelletFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed, int32 Pellets, float ConeDeg)
 {
 	if (IsLocallyControlled()) return;
 	GSAudio::PlayShotFor(this, EGSWeaponClass::Shotgun, false, Start);
-	DrawPellets(Start, Dir, Seed, Pellets, ConeDeg, false);
+	const FGSWeaponSlot* W = GetCurrentWeapon();
+	const FGSWeaponStats S = W ? GetStats(*W) : GSItems::Weapon(NAME_None);
+	DrawPellets(Start, Dir, Seed, Pellets, ConeDeg, false,
+		W && S.Mode == EGSFireMode::Pellets ? GSBallistics::ForWeapon(S) : GSBallistics::ForCaliber(TEXT("12g")));
 }
 
 void AGSCharacter::NoteShotForRadio(const FVector& Where)
@@ -2752,6 +2777,8 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	AGSCharacter* Shooter = Cast<AGSCharacter>(DamageCauser);
 	FString WeaponName = TEXT("Verden");
 	if (Shooter) WeaponName = Shooter->CurrentWeaponName();
+	const bool bBullet = !IncomingWeaponId.IsNone();   // a bullet from GSBallistics: it knows its own gun and where it was fired
+	if (bBullet) WeaponName = GSItems::Name(IncomingWeaponId);
 	// Grenades, mines, rockets, bolts: the thrower may have died and got a new body since. Shooter is then his new body
 	// (hit marker goes to him), but the direction and the life steal only count the body that actually threw it.
 	const AGSProjectile* Proj = Cast<AGSProjectile>(DamageCauser);
@@ -2780,7 +2807,8 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		if (Zone == GSZone::Head)
 		{
 			bHeadshot = true;
-			if (const AGSCharacter* S = Cast<AGSCharacter>(DamageCauser))
+			if (bBullet) Damage *= GSItems::Weapon(IncomingWeaponId).HeadshotMultiplier;
+			else if (const AGSCharacter* S = Cast<AGSCharacter>(DamageCauser))
 			{
 				if (const FGSWeaponSlot* W = S->GetCurrentWeapon()) Damage *= GSItems::Weapon(W->Id).HeadshotMultiplier;
 				else Damage *= 1.5f;
@@ -2851,18 +2879,18 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		// Projectiles: from where it went off (blast) or where it was fired from (bolt, rocket hitting you), never
 		// from the thrower's new body or his corpse.
 		const bool bOwnProjectile = Proj && (Proj->GetOwner() == this || Shooter == this);
-		const bool bHasFrom = Proj ? !bOwnProjectile : (Shooter && Shooter != this);
+		const bool bHasFrom = Proj ? !bOwnProjectile : (bBullet || (Shooter && Shooter != this));
 		const FVector From = !bHasFrom ? GetActorLocation()
 			: Proj ? (bPointHit ? Proj->LaunchLocation : Proj->GetActorLocation())
-			: Shooter->GetActorLocation();
+			: bBullet ? IncomingOrigin : Shooter->GetActorLocation();
 		ClientTookHit(From, bHasFrom, HealthBefore - Health, static_cast<uint8>(Kind | (Zone << 4)));   // zone in the high bits
 	}
 	// Everyone nearby sees the wound. Only real hits: hunger, thirst and poison never come through here, and fire
 	// burns without blood. Sent before Die() below, so a listen-server host knows the wound when the body falls.
-	if (DamageCauser && !bBurn)
+	if ((DamageCauser || bBullet) && !bBurn)   // a bullet whose shooter has left has no causer, but still wounds
 	{
 		const float Lost = HealthBefore - Health;
-		if (!bPointHit) WoundDir = (GetActorLocation() - DamageCauser->GetActorLocation()).GetSafeNormal();
+		if (!bPointHit && DamageCauser) WoundDir = (GetActorLocation() - DamageCauser->GetActorLocation()).GetSafeNormal();
 		if (WoundDir.IsNearlyZero()) WoundDir = FVector::DownVector;   // own grenade at your feet
 		uint8 Wound = GSWound::Blast;
 		if (bArmorHit && Lost < 12.f) Wound = GSWound::Armor;
@@ -2883,7 +2911,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	OnRep_Health();
 
 	// Blodtorst: the shooter heals from damage dealt (not a new body healing from a mine the old one laid).
-	if (Shooter && Shooter != this && bShooterThrewIt)
+	if (Shooter && Shooter != this && bShooterThrewIt && !Shooter->bDead)
 	{
 		const float Steal = Shooter->GetMods().Lifesteal;
 		if (Steal > 0.f)

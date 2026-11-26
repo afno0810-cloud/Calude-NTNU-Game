@@ -3,6 +3,35 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 10 (Kamp): ballistikk 1a – kuler med fart og fall (26. nov.)
+
+Gammelt som er forbedret: skytingen på serveren (393–396), haglene (391), drapsloggen og hodeskudd (398), retningskilen (399).
+Nytt: kuler som ekte prosjektiler (386–387), skadefall og innskyting (388, 390), framspoling med ping (397).
+
+386. Kuler er ekte prosjektiler med flytid og sin egen fart per kaliber (9 mm ca. 360 m/s, 5,56 mm ca. 940 m/s, .50 BMG ca. 890 m/s), i stedet for å treffe i samme øyeblikk
+387. Kuler faller med tyngdekraften: på lang avstand må du holde over målet, mest med pistol og hagle
+388. Luftmotstand bremser kula, og skaden faller med avstanden – men først etter innskytingsavstanden, så våpnene dreper på like mange treff som før på vanlig hold
+389. Kula flyr til den treffer noe, i stedet for å forsvinne ved en fast «rekkevidde» (en Makarov er ikke lenger helt ufarlig på 61 m)
+390. Siktene er innskutt som på ekte våpen: pistol, maskinpistol og hagle på 25 m, P90 og muskett på 50 m, rifler på 100 m
+391. Hvert hagl er en egen liten kule som bremses fort, så haglen er dødelig på nært hold og svak på avstand
+392. Støvet i veggen kommer når kula kommer fram, ikke i det du trykker
+393. Serveren trekker spredningen selv, så en juksende klient kan ikke lenger skyte helt uten spredning eller velge seg et heldig skudd
+394. Du treffer der du ser kula gå også som klient: spredningen du ser og den serveren bruker er den samme
+395. Serveren avviser skudd i en retning spilleren ikke ser
+396. Skudd, raketter og granater kan ikke lenger starte på andre siden av en vegg eller flere meter fra der skytteren står
+397. Serverens kule spoles fram med halve pingen, så den flyr i takt med kula du ser hos deg selv
+398. Drapsloggen og hodeskuddskaden følger våpenet kula ble skutt med, også når skytteren rakk å bytte våpen eller døde før kula traff
+399. Retningskilen når du blir truffet peker dit skuddet ble avfyrt, også om skytteren har flyttet seg eller koblet fra
+400. Blodtørst gir ikke lenger liv til en skytter som døde før kula hans traff
+401. Kuler som forlater banen ryddes bort med en gang, så serveren holder følge når mange skyter maskingevær samtidig
+
+Små rettinger etter kontrollen av runde 11:
+
+446. Radiolinja ved flagghendelser sier «En lagkamerat har flagget deres» når navnet ikke er kommet fram ennå, i stedet for en linje som starter med et tomt navn
+447. Lobbyboksen gjentar ikke lenger regelen og «Trykk Enter» som alt står i hjelpepanelet til venstre; den viser bare «Du er klar.» når du er det
+448. «Bildefrekvens 60» i konsollen virker også når du har skrevet t.MaxFPS selv tidligere (før ble den stille oversett)
+449. Taket på bildefrekvens tas av igjen når du stopper Play i Unreal, så editorvinduet ikke blir stående låst til 60
+
 ## Runde 2 (Spillbarhet): hovedmeny (26. nov.)
 
 402. Hovedmeny når spillet starter: Start spill, Bli med, Øv alene, Innstillinger, Kontroller og Avslutt, med campus som rolig, sakte dreiende bakgrunn

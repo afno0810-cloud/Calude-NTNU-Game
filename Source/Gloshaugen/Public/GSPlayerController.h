@@ -22,6 +22,7 @@ public:
 
 	virtual void SetupInputComponent() override;
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void SetPawn(APawn* InPawn) override;
 	virtual void AcknowledgePossession(APawn* P) override;
 
@@ -134,8 +135,9 @@ protected:
 	FTimerHandle TrackTimer;
 
 	/** Sets t.MaxFPS (works in the editor's Play too) and, in the packaged game, the saved user setting. */
-	void ApplyFrameLimit(bool bSave);
+	void ApplyFrameLimit(bool bSave, bool bFromConsole);
 	int32 FrameLimit = 60;
+	bool bFrameLimitSet = false;   // this controller put the cap on t.MaxFPS (taken off again in EndPlay in the editor)
 
 	void ShowScoreboard() { bShowScoreboard = true; }
 	void HideScoreboard() { bShowScoreboard = false; }

@@ -786,11 +786,8 @@ void AGSHUD::DrawMatch()
 		}
 		else
 		{
-			const bool bReady = Mine && Mine->bReady;
-			Text(bReady ? TEXT("Du er klar. Trykk Enter for \u00E5 angre.") : TEXT("Trykk Enter n\u00E5r du er klar"),
-				CX, Y + H - 26.f, FLinearColor(1.f, 1.f, 1.f, 0.85f), 0.85f, true);
-			Text(FString::Printf(TEXT("Capture the Flag: f\u00F8rste lag til %d erobringer, ellers flest etter %d minutter"), AGSGameState::CaptureLimit, int32(AGSGameState::MatchMinutes)),
-				CX, Y + H + 8.f, FLinearColor(0.8f, 0.8f, 0.8f, 0.8f), 0.75f, true);
+			// The rules and which key makes you ready stand in the help panel to the left (GSHelp), not here too.
+			if (Mine && Mine->bReady) Text(TEXT("Du er klar."), CX, Y + H - 26.f, FLinearColor(0.3f, 1.f, 0.4f, 0.85f), 0.85f, true);
 		}
 		break;
 	}
@@ -931,7 +928,8 @@ void AGSHUD::HandleFlagEvent(uint8 Event, uint8 FlagTeam, const FVector& Where, 
 	const uint8 MyTeam = Mine ? Mine->Team : GSTeam::None;
 	const bool bOurFlag = MyTeam != GSTeam::None && FlagTeam == MyTeam;
 	const bool bMe = Who && Who == Mine;
-	const FString Name = Who ? Who->GetPlayerName().Left(20) : FString();
+	// Who can still be null on a client (the player state has not arrived when the reliable multicast does).
+	const FString Name = Who ? Who->GetPlayerName().Left(20) : FString(TEXT("En lagkamerat"));
 
 	// Sound: a short radio break-in with one or a few plain tones. Bad news for your team sounds lower.
 	const TCHAR* Sound = TEXT("Flag_Info");
@@ -944,7 +942,7 @@ void AGSHUD::HandleFlagEvent(uint8 Event, uint8 FlagTeam, const FVector& Where, 
 		if (bOurFlag)
 		{
 			Sound = TEXT("Flag_Alert"); bWarn = true;
-			Line = Name.IsEmpty() ? FString(TEXT("Flagget v\u00E5rt er tatt.")) : FString::Printf(TEXT("Flagget v\u00E5rt er tatt av %s."), *Name);
+			Line = !Who ? FString(TEXT("Flagget v\u00E5rt er tatt.")) : FString::Printf(TEXT("Flagget v\u00E5rt er tatt av %s."), *Name);
 		}
 		else
 		{

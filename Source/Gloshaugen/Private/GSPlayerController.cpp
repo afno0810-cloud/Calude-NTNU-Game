@@ -247,7 +247,7 @@ void AGSPlayerController::BeginPlay()
 	// Frame rate cap (default 60): without one a laptop renders as fast as it can, runs hot and throttles.
 	GConfig->GetInt(TEXT("Gloshaugen"), TEXT("FrameLimit"), FrameLimit, GGameUserSettingsIni);
 	FrameLimit = FMath::Clamp(FrameLimit, 30, 240);
-	ApplyFrameLimit(false);
+	ApplyFrameLimit(false, false);
 	if (GIsEditor) return;
 
 	// First time the game runs: settings that look good and stay smooth on a laptop RTX 3050 (6 GB).
@@ -330,11 +330,29 @@ void AGSPlayerController::Opplosning(int32 Percent)
 	}
 }
 
-void AGSPlayerController::ApplyFrameLimit(bool bSave)
+void AGSPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// In the editor the cap would otherwise stay on the editor window after Play is stopped.
+	if (GIsEditor && bFrameLimitSet)
+	{
+		if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS")))
+		{
+			V->Set(0.f, ECVF_SetByConsole);   // the highest priority we ever set it with, so this always takes
+		}
+		bFrameLimitSet = false;
+	}
+	Super::EndPlay(EndPlayReason);
+}
+
+void AGSPlayerController::ApplyFrameLimit(bool bSave, bool bFromConsole)
 {
 	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS")))
 	{
-		V->Set(static_cast<float>(FrameLimit), ECVF_SetByGameSetting);
+		// Typed by the player: console priority, so it also wins over a "t.MaxFPS 120" typed earlier.
+		// In the editor always: EndPlay takes the cap off with console priority, and a weaker Set in the next
+		// Play would then be dropped without a word.
+		V->Set(static_cast<float>(FrameLimit), bFromConsole || GIsEditor ? ECVF_SetByConsole : ECVF_SetByGameSetting);
+		bFrameLimitSet = true;
 	}
 	if (!GIsEditor)
 	{
@@ -358,7 +376,7 @@ void AGSPlayerController::ApplyFrameLimit(bool bSave)
 void AGSPlayerController::Bildefrekvens(int32 Fps)
 {
 	FrameLimit = FMath::Clamp(Fps, 30, 240);
-	ApplyFrameLimit(true);
+	ApplyFrameLimit(true, true);
 	ClientMessage(FString::Printf(TEXT("Bildefrekvens: h\u00F8yst %d bilder i sekundet"), FrameLimit));
 }
 

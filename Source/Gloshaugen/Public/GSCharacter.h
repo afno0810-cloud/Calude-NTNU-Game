@@ -12,6 +12,7 @@ class UStaticMeshComponent;
 class USpotLightComponent;
 class UBoxComponent;
 struct FInputActionValue;
+struct FGSBallistic;
 
 /** What the last hit marker was for (the HUD draws each kind differently). */
 namespace GSHitKind
@@ -93,6 +94,9 @@ public:
 	uint8 GetTeam() const;
 	/** Server: special rounds of the shot that is hitting us right now (GSAmmoType). */
 	uint8 IncomingAmmoType = 0;
+	/** Server: the weapon and the firing point of the bullet hitting us right now (the shooter may have switched, moved or left). */
+	FName IncomingWeaponId;
+	FVector IncomingOrigin = FVector::ZeroVector;
 	bool bIncomingMelee = false;   // server: the hit being applied is a blade/fist
 	/** Owner gets a short text message on screen. */
 	UFUNCTION(Client, Reliable) void ClientToast(const FString& Message);
@@ -287,7 +291,8 @@ protected:
 	void DoMeleeHit(bool bQuick);
 	FString CurrentWeaponName() const;
 
-	UFUNCTION(Server, Reliable) void ServerFire(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed);
+	/** AimDir has no spread: the server draws it. SpreadQ: the spread the owner used (GSBallistics::PackSpread). */
+	UFUNCTION(Server, Reliable) void ServerFire(FVector_NetQuantize Start, FVector_NetQuantizeNormal AimDir, int32 ShotIndex, uint8 SpreadQ);
 	UFUNCTION(Server, Reliable) void ServerMelee(bool bQuick);
 	UFUNCTION(Server, Reliable) void ServerReload();
 	UFUNCTION(Server, Reliable) void ServerSetSprinting(bool bNew);
@@ -299,7 +304,8 @@ protected:
 	UFUNCTION(Server, Reliable) void ServerDropItem(int32 Index);
 	UFUNCTION(Server, Reliable) void ServerGrapple(FVector_NetQuantize Target);
 	UFUNCTION(Server, Reliable) void ServerToggleFlashlight();
-	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantize End, uint8 Flags);   // Flags: bit 1 = suppressed, bit 2 = no tracer, bit 4 = launcher (the one-shot tube is already gone from the weapon list)
+	// Flags: 1 = suppressed, 2 = no bullet (rocket/grenade/bolt is its own actor), 4 = launcher (the one-shot tube is already gone from the weapon list)
+	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, uint8 Flags);
 	UFUNCTION(NetMulticast, Unreliable) void MulticastPelletFX(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed, int32 Pellets, float ConeDeg);
 	UFUNCTION(NetMulticast, Unreliable) void MulticastMeleeFX();
 	/** Everyone: this body was just hit here, from this direction (GSWound kind, strength 0..255). */
@@ -316,7 +322,7 @@ protected:
 	UFUNCTION() void OnRep_Dead();
 	UFUNCTION() void OnRep_Gear();
 
-	void DrawPellets(const FVector& Start, const FVector& Dir, int32 Seed, int32 Pellets, float ConeDeg, bool bFromMuzzle);
+	void DrawPellets(const FVector& Start, const FVector& Dir, int32 Seed, int32 Pellets, float ConeDeg, bool bFromMuzzle, const FGSBallistic& B);
 	void NoteShotForRadio(const FVector& Where);
 
 	// Movement extras
@@ -340,6 +346,10 @@ protected:
 	bool bNightVisionGoggles = false;
 	float LastFireTime = -100.f;
 	float ServerLastFireTime = -100.f;
+	// Spread: the server draws it from SpreadKey and the shot number; the owner knows the key and predicts the same.
+	UPROPERTY(Replicated) int32 SpreadKey = 0;
+	int32 LocalShotIndex = 0;        // owner: shots sent
+	int32 LastServerShotIndex = 0;   // server: newest shot accepted
 	// Server: shots the weapon is allowed to fire right now (refills at the weapon's own rate)
 	float ShotCredit = 1.f;
 	float ShotCreditTime = -100.f;
