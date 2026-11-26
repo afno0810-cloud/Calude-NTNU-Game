@@ -31,6 +31,13 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26: «legg alt det til også»:
+  1. Vær som påvirker spillet: regn demper lyd, tåke gir kortere sikt, vind påvirker skudd på lang avstand.
+  2. Bygg man kan bruke: heiser, brannalarmer som lager støy, lys som kan slås av.
+  3. Skader: halting ved skudd i beinet, mer sving i siktet ved skudd i armen, blødning som må bandasjeres.
+  4. Lommelykt og nattsikte på våpen, til nattrunder.
+  5. Valg av utstyr/klasse før hver runde.
+  6. Statistikk og nivåer som låser opp våpendrakter (utseende), ikke styrke.
 - 2026-11-26: «legg dette til» (forslag Andreas godkjente):
   1. Lene seg rundt hjørner (Q/E) og ligge ned.
   2. Tunge våpen: pust/svaie i kikkertsikte, våpen som svinger under løping, kulefall, kuler gjennom tynne vegger.

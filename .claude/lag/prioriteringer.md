@@ -35,6 +35,15 @@ plukkes opp igjen. Første lag til 3 erobringer, eller flest når tiden går ut.
     del opp).
   - Grafikk og kart: fysiske materialer (stein, tre, metall, glass, gress) på alle flater, så fottrinn og
     kulegjennomslag kan bruke dem; tynne vegger/dører som kan skytes gjennom.
+- **Andreas' godkjente forslag, del 2 (26. nov.), fordelt:**
+  - Grafikk og kart: vær som påvirker spillet (regn, tåke, vind – laget eier `GSEnvironment` og
+    replikerer verdiene; Kamp bruker dem til lyddemping, sikt og vindavdrift); bygg man kan bruke:
+    lysbrytere, heiser, brannalarm (lag dem i kart-koden, bestill lyd/samspill fra Kamp ved behov).
+  - Kamp: skade per kroppsdel (halting, sving ved armskudd, blødning som må bandasjeres – overlapper med
+    Spillbarhets overlevelse; Kamp eier skadelogikken, Spillbarhet eier bandasje-gjenstanden);
+    lommelykt og nattsikte montert på våpen; vind på lange skudd.
+  - Spillbarhet: valg av utstyr/klasse før hver runde (passer med CTF-lobbyen); statistikk og nivåer
+    som bare låser opp utseende (våpendrakter), aldri styrke – lagres lokalt per spiller.
   Q/E brukes i dag til annet (Q = neste ting i sekken, E = bruk). Spillbarhet foreslår ny tastefordeling
   i knappehjelp/keybinds; Kamp legger inn lene på de tastene som velges.
 - **Kamp:** lagtilhørighet i treff og HUD (ikke treffmarkør/blod-varsel på lagkamerater hvis venneild er
