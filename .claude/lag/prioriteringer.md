@@ -91,6 +91,8 @@ før noe føles ferdig.
 4. Tone ned arkade-preg i HUD («LAVT LIV»-tekst, hvitt blink).
 
 **Lag Grafikk og kart**
+00. **Andreas har bestemt (26. nov.):** fjern klokketårnet bak Hovedbygningen (R5) og robotene som står
+   som pynt (R11). Tas i runde 2.
 0. **Ny retning fra Andreas (26. nov.): mindre kart, mye mer detaljert.** Velg et mindre, sammenhengende
    utsnitt av campus (kjernen rundt Hovedbygningen er et naturlig valg, men laget velger), stram inn
    spillområdet til det, og legg all innsatsen i detaljer der: fasader, innganger, rom innvendig, møbler,

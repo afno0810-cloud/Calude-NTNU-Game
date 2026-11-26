@@ -16,7 +16,7 @@ I lagmappen ligger lagets egne filer: `lag.md` (fokus), `retning.md`, `logg.md`,
 ## Hvem eier hvilke filer (bare eierlagets bygger endrer dem)
 | Filer | Eier |
 |---|---|
-| `GSCharacter.*`, `GSHUD.*`, `GSPlayerController.*`, `GSProjectile.*`, `GSEffects.*`, `GSAudio.*`, `Tools/Audio/`, `SourceArt/Sounds/` | Kamp |
+| `GSCharacter.*`, `GSHUD.*`, `GSPlayerController.*`, `GSProjectile.*`, `GSEffects.*`, `GSAudio.*`, nye `GSBallistics.*`, `Tools/Audio/`, `SourceArt/Sounds/` | Kamp |
 | `GSCampusBuilder.*`, `GSCampus.h` (kartdata: bygg, veier, spillområde, baser, spawnpunkter), `GSEnvironment.*`, `GSWorldSubsystem.*`, `Tools/Blender/`, `Tools/Textures/`, `Content/Python/`, `SourceArt/Models/`, `SourceArt/Textures/` | Grafikk og kart |
 | `GSGameMode.*`, `GSGameState.*`, `GSPlayerState.*`, `GSItems.*`, `GSPickup.*`, `GSTerminal.*`, `Tools/ItemCatalog/` (og den genererte `GSItemCatalog.gen.inl`), nye `GSHelp.*`, `GSMenu.*` og `GSFlag.*` | Spillbarhet |
 | `GSTypes.h`, `Gloshaugen.Build.cs`, `IMPROVEMENTS.md` | Felles: bare små tillegg, aldri omskriving. Legg til nederst i en struct/enum, ikke endre andres linjer. |
