@@ -1,6 +1,7 @@
 #include "GSMenu.h"
 #include "GSGameMode.h"
 #include "GSGameState.h"
+#include "GSHelp.h"
 #include "GSPlayerController.h"
 #include "GSPlayerState.h"
 #include "GSTypes.h"
@@ -8,7 +9,9 @@
 #include "AudioDeviceHandle.h"
 #include "CanvasItem.h"
 #include "Engine/Canvas.h"
+#include "Engine/Console.h"
 #include "Engine/Engine.h"
+#include "Engine/NetDriver.h"
 #include "Engine/Font.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
@@ -74,6 +77,7 @@ namespace GSMenuImpl
 		float DragX = 0.f, DragW = 1.f;
 		bool bWorldSetupDone = false, bNameSent = false;
 		bool bModalApplied = false, bHudHidden = false;
+		double TeamClickAt = -100.0;       // our last team button click (the server allows one switch per 2 s)
 		TArray<FHit> Hits;                 // rebuilt every frame, read by the next click
 		// --- per window (kept across map changes) ---
 		FString MsgTitle, MsgText, MsgDetail;
@@ -102,6 +106,7 @@ namespace GSMenuImpl
 			DragSlider = NAME_None;
 			bWorldSetupDone = bNameSent = false;
 			bModalApplied = bHudHidden = false;
+			TeamClickAt = -100.0;
 			Hits.Reset();
 		}
 	};
@@ -174,13 +179,20 @@ namespace GSMenuImpl
 		}
 	}
 
+	/** Letters (also æøå), digits, space and - _ . only: no invisible or URL characters. Same rule as AGSGameMode::ChangeName. */
+	bool NameChar(TCHAR Ch)
+	{
+		return Ch == TEXT(' ') || Ch == TEXT('-') || Ch == TEXT('_') || Ch == TEXT('.') || (Ch > 32 && FChar::IsAlnum(Ch));
+	}
+
 	FString CleanName(const FString& In)
 	{
 		FString Out;
 		for (int32 I = 0; I < In.Len(); ++I)
 		{
 			const TCHAR Ch = In[I];
-			if (Ch < 32 || Ch == 127 || Ch == TEXT('"') || Ch == TEXT('?') || Ch == TEXT('=') || Ch == TEXT('#') || Ch == TEXT('\\')) continue;
+			if (!NameChar(Ch)) continue;
+			if (Ch == TEXT(' ') && Out.EndsWith(TEXT(" "))) continue;   // one space at a time
 			Out.AppendChar(Ch);
 		}
 		Out.TrimStartAndEndInline();
@@ -266,9 +278,21 @@ namespace GSMenuImpl
 		if (!Str.IsEmpty())
 		{
 			const FKey K(*Str);
-			if (K.IsValid()) return K;
+			if (K.IsValid() && K != EKeys::H) return K;   // H is the help overview's (an older save may have it)
 		}
 		return EKeys::L;
+	}
+
+	/** The key an action has now (after rebinding); invalid when it has none. */
+	FKey ActionKey(const AGSPlayerController* PC, FName Action)
+	{
+		const UInputMappingContext* C = PC ? PC->MappingContext.Get() : nullptr;
+		if (!C) return FKey();
+		for (const FEnhancedActionKeyMapping& M : C->GetMappings())
+		{
+			if (M.Action && M.Action->GetFName() == Action) return M.Key;
+		}
+		return FKey();
 	}
 
 	/** Every key that can be changed, in the combat team's mapping order, the team panel last. Reserved = keys that are taken for good. */
@@ -279,6 +303,7 @@ namespace GSMenuImpl
 		{
 			Reserved->Reset();
 			Reserved->Add(EKeys::Escape);
+			Reserved->Add(EKeys::H);   // opens "Taster og regler" (GSHelp)
 		}
 		const UInputMappingContext* C = PC ? PC->MappingContext.Get() : nullptr;
 		if (C)
@@ -366,7 +391,8 @@ namespace GSMenuImpl
 		UInputMappingContext* C = PC ? PC->MappingContext.Get() : nullptr;
 		if (!C) return;
 		TArray<FKeyRow> Rows;
-		BuildRows(PC, Rows);
+		TArray<FKey> Reserved;
+		BuildRows(PC, Rows, &Reserved);
 		for (const FKeyRow& Row : Rows)
 		{
 			if (Row.Map == INDEX_NONE || Row.Map >= C->GetMappings().Num()) continue;
@@ -375,7 +401,7 @@ namespace GSMenuImpl
 			if (!Str.IsEmpty())
 			{
 				const FKey Saved(*Str);
-				if (Saved.IsValid()) K = Saved;
+				if (Saved.IsValid() && !Reserved.Contains(Saved)) K = Saved;   // a key saved before it was reserved (H)
 			}
 			C->GetMapping(Row.Map).Key = K;
 		}
@@ -407,7 +433,7 @@ namespace GSMenuImpl
 		if (!NewKey.IsValid() || NewKey.IsGamepadKey() || NewKey.IsTouch() || NewKey.IsAxis1D() || NewKey.IsAxis2D() || NewKey.IsAxis3D()
 			|| NewKey == EKeys::MouseScrollUp || NewKey == EKeys::MouseScrollDown || Reserved.Contains(NewKey))
 		{
-			S.KeyNote = TEXT("Esc, F10, musa og hjulet er satt av og kan ikke brukes.");
+			S.KeyNote = TEXT("Esc, F10, H, musa og hjulet er satt av og kan ikke brukes.");
 			return;
 		}
 		const FKeyRow& Row = Rows[RowIndex];
@@ -596,10 +622,38 @@ namespace GSMenuImpl
 	}
 
 	// ------------------------------------------------------------------ state changes
-	bool InMatch(const UWorld* W)
+	/** Are we in a match with others (host or client)? Not the same as the net mode: while a connection is pending,
+	 *  the engine reports NM_Client for a world that is still alone. */
+	bool InMatch(const UWorld* W, const FState& S)
 	{
-		const ENetMode Mode = W ? W->GetNetMode() : NM_Standalone;
-		return Mode == NM_ListenServer || Mode == NM_Client;
+		if (!W) return false;
+		if (S.bConnecting && S.ConnectWorld.Get() == W) return S.bConnectFromMatch;
+		const ENetMode Mode = W->GetNetMode();
+		return Mode == NM_ListenServer || (Mode == NM_Client && W->GetNetDriver() != nullptr);
+	}
+
+	/** The port this host actually listens on: the engine quietly takes the next free one when 7777 is taken. */
+	int32 HostPort(const UWorld* W)
+	{
+		const UNetDriver* Driver = (W && W->GetNetMode() == NM_ListenServer) ? W->GetNetDriver() : nullptr;
+		if (Driver)
+		{
+			// "0.0.0.0:7778"
+			const FString Addr = const_cast<UNetDriver*>(Driver)->LowLevelGetNetworkNumber();
+			int32 Colon = INDEX_NONE;
+			if (Addr.FindLastChar(TEXT(':'), Colon))
+			{
+				const int32 Port = FCString::Atoi(*Addr.RightChop(Colon + 1));
+				if (Port > 0 && Port < 65536) return Port;
+			}
+		}
+		return 7777;
+	}
+
+	/** "192.168.1.20", or "192.168.1.20:7778" when the port is not the usual one. */
+	FString WithPort(const FString& Addr, int32 Port)
+	{
+		return Port == 7777 ? Addr : FString::Printf(TEXT("%s:%d"), *Addr, Port);
 	}
 
 	/** Mouse cursor and input mode follow whether anything of ours is open. */
@@ -666,6 +720,11 @@ namespace GSMenuImpl
 		SetFocus(PC, S, NAME_None);
 		S.Page = Page;
 		S.ListenRow = INDEX_NONE;
+		if (S.DragSlider != NAME_None)
+		{
+			S.DragSlider = NAME_None;   // the button may have been let go outside the window
+			CfgFlush();
+		}
 		S.KeyNote.Empty();
 		S.JoinNote.Empty();
 		if (Page == EPage::Join)
@@ -734,8 +793,9 @@ namespace GSMenuImpl
 	void StartJoin(AGSPlayerController* PC, UWorld* World, FState& S, const FString& Addr)
 	{
 		if (!PC) return;
+		S.bConnectFromMatch = InMatch(World, S);   // before bConnecting is set
 		S.bConnecting = true;
-		S.bConnectFromMatch = InMatch(World);
+		S.LeavingUntil = 0.0;   // a new attempt: its own failures must be shown
 		S.ConnectWorld = World;
 		S.ConnectAddress = Addr;
 		S.ConnectStart = FPlatformTime::Seconds();
@@ -749,8 +809,10 @@ namespace GSMenuImpl
 		const FString Addr = S.AddressEdit.TrimStartAndEnd();
 		if (Addr.IsEmpty()) { S.JoinNote = TEXT("Skriv inn en adresse."); return; }
 		if (Addr.Contains(TEXT(" "))) { S.JoinNote = TEXT("Adressen kan ikke ha mellomrom."); return; }
+		// Without '.' or ':' the engine reads the address as a map name and fails with a misleading map error.
+		if (!Addr.Contains(TEXT(".")) && !Addr.Contains(TEXT(":"))) { S.JoinNote = TEXT("Sjekk adressen. Den skal se ut som 192.168.1.20."); return; }
 		S.JoinNote.Empty();
-		if (InMatch(World))
+		if (InMatch(World, S))
 		{
 			S.PendingJoin = Addr;
 			S.Dialog = EDialog::Join;
@@ -790,7 +852,16 @@ namespace GSMenuImpl
 
 	// ------------------------------------------------------------------ settings
 	static const int32 ResSteps[] = { 50, 60, 72, 85, 100 };
-	static const int32 FpsSteps[] = { 30, 60, 90, 120, 144, 0 };
+	// The combat team owns the cap (30-240, saved, set again on every map): no "unlimited".
+	static const int32 FpsSteps[] = { 30, 60, 90, 120, 144, 240 };
+
+	/** The graphics level shown and stepped from. Not the overall level: the engine gives -1 for that as soon as the
+	 *  resolution scale is not the level's own value, and we keep the player's own resolution. One part instead,
+	 *  which the overall level sets and nothing else here touches. */
+	int32 GraphicsLevel(const UGameUserSettings* Gus)
+	{
+		return Gus ? FMath::Clamp(Gus->GetShadowQuality(), 0, 4) : 2;
+	}
 
 	int32 NearestIndex(const int32* Steps, int32 Num, int32 Value)
 	{
@@ -817,12 +888,21 @@ namespace GSMenuImpl
 			}
 			return;
 		}
+		if (Id == TEXT("Set.Fps"))
+		{
+			// The combat team's cap: it saves it and sets it again on every map, also in the editor's Play.
+			const int32 N = int32(UE_ARRAY_COUNT(FpsSteps));
+			const int32 Cur = NearestIndex(FpsSteps, N, PC->GetFrameLimit());
+			const int32 I = FMath::Clamp(Cur + Dir, 0, N - 1);
+			if (FpsSteps[I] != PC->GetFrameLimit()) PC->Bildefrekvens(FpsSteps[I]);
+			return;
+		}
 		if (!Gus) return;
 		if (Id == TEXT("Set.Graphics"))
 		{
 			// The overall level also resets the resolution scale: keep the player's own.
 			const int32 Res = PC->GetResolutionPercent();
-			Gus->SetOverallScalabilityLevel(FMath::Clamp(PC->GetGraphicsLevel() + Dir, 0, 4));
+			Gus->SetOverallScalabilityLevel(FMath::Clamp(GraphicsLevel(Gus) + Dir, 0, 4));
 			Gus->SetResolutionScaleValueEx(float(FMath::Clamp(Res, 50, 100)));
 			Gus->ApplyNonResolutionSettings();
 		}
@@ -835,14 +915,6 @@ namespace GSMenuImpl
 		else if (Id == TEXT("Set.VSync"))
 		{
 			Gus->SetVSyncEnabled(!Gus->IsVSyncEnabled());
-			Gus->ApplyNonResolutionSettings();
-		}
-		else if (Id == TEXT("Set.Fps"))
-		{
-			const int32 Cur = FMath::RoundToInt(Gus->GetFrameRateLimit());
-			int32 I = Cur <= 0 ? int32(UE_ARRAY_COUNT(FpsSteps)) - 1 : NearestIndex(FpsSteps, int32(UE_ARRAY_COUNT(FpsSteps)) - 1, Cur);
-			I = FMath::Clamp(I + Dir, 0, int32(UE_ARRAY_COUNT(FpsSteps)) - 1);
-			Gus->SetFrameRateLimit(float(FpsSteps[I]));
 			Gus->ApplyNonResolutionSettings();
 		}
 		else if (Id == TEXT("Set.Mode"))
@@ -893,7 +965,7 @@ namespace GSMenuImpl
 	void DrawSettings(const FUi& U, AGSPlayerController* PC, float X, float Y, float W, float H)
 	{
 		const UGameUserSettings* Gus = GEngine ? GEngine->GetGameUserSettings() : nullptr;
-		const float RowH = FMath::Clamp((H - 110.f) / 10.f, 30.f, 40.f);
+		const float RowH = FMath::Clamp((H - 110.f) / 9.f, 30.f, 40.f);
 		const float LX = X + 24.f;
 		const float CX = X + W * 0.45f;
 		const float CW = FMath::Min(W * 0.55f - 24.f, 340.f);
@@ -902,7 +974,7 @@ namespace GSMenuImpl
 
 		static const TCHAR* Levels[] = { TEXT("Lav"), TEXT("Middels"), TEXT("Høy"), TEXT("Episk"), TEXT("Film") };
 		Label(TEXT("Grafikk"));
-		Choice(U, TEXT("Set.Graphics"), Levels[FMath::Clamp(PC->GetGraphicsLevel(), 0, 4)], CX, Y, CW);
+		Choice(U, TEXT("Set.Graphics"), Levels[GraphicsLevel(Gus)], CX, Y, CW);
 		Y += RowH;
 
 		Label(TEXT("Oppløsning"));
@@ -927,10 +999,7 @@ namespace GSMenuImpl
 		Y += RowH;
 
 		Label(TEXT("Maks bildefrekvens"));
-		{
-			const int32 Fps = Gus ? FMath::RoundToInt(Gus->GetFrameRateLimit()) : 0;
-			Choice(U, TEXT("Set.Fps"), Fps > 0 ? FString::Printf(TEXT("%d"), Fps) : FString(TEXT("Ubegrenset")), CX, Y, CW);
-		}
+		Choice(U, TEXT("Set.Fps"), FString::Printf(TEXT("%d"), PC->GetFrameLimit()), CX, Y, CW);
 		Y += RowH;
 
 		Label(TEXT("Musfølsomhet"));
@@ -944,10 +1013,7 @@ namespace GSMenuImpl
 		Text(U.C, FString::Printf(TEXT("%d %%"), FMath::RoundToInt(Vol * 100.f)), CX + CW, Y + (28.f - LineHeight(S)) * 0.5f, TextColor, S, 2);
 		Y += RowH;
 
-		Label(TEXT("Navn"));
-		Field(U, TEXT("Name"), U.S.NameEdit, TEXT("Navnet ditt"), CX, Y - 2.f, CW, 32.f);
-		Y += RowH;
-
+		// The name is edited in the left panel (one field, one caret).
 		Label(TEXT("Taster"));
 		Button(U, TEXT("Nav.Controls"), TEXT("Endre taster ..."), CX, Y, CW, 30.f);
 		Y += RowH + 6.f;
@@ -959,10 +1025,26 @@ namespace GSMenuImpl
 	{
 		TArray<FKeyRow> Rows;
 		BuildRows(PC, Rows);
-		const int32 PerCol = FMath::Max(1, (Rows.Num() + 1) / 2);
-		const float RowH = FMath::Clamp((H - 250.f) / PerCol, 18.f, 28.f);
+		const float LX = X + 24.f, MaxW = W - 48.f;
+		const FString Help = TEXT("Klikk en linje og trykk den nye tasten (Esc avbryter). Faste: mus = se rundt · musehjul = bla i våpnene, eller i sekken når inventaret er åpent · Esc / F10 = meny · H = taster og regler.");
+		const FString Rules = FString::Printf(TEXT("Ta motstanderens flagg og bær det til din egen base. Du får bare poeng når ditt eget flagg står hjemme. Første lag til %d erobringer vinner."),
+			AGSGameState::CaptureLimit);
+		auto ParaH = [](const FString& Str, float Scale, float Width) { return Wrap(Str, Scale, Width).Num() * (LineHeight(Scale) + 3.f); };
+		// What goes under the rows: help text, the note, the reset button, and (if there is room) the CTF rules.
+		const float FooterH = 8.f + ParaH(Help, 0.72f, MaxW) + 2.f + LineHeight(0.8f) + 8.f + 44.f;
+		const float RulesH = LineHeight(0.9f) + 4.f + ParaH(Rules, 0.78f, MaxW);
+		// Small window (the editor's Play on a laptop): first drop the rules, then go to three columns.
+		constexpr float GoodRowH = 22.f;
+		int32 Cols = 2;
+		bool bRules = true;
+		auto PerColFor = [&](int32 C) { return FMath::Max(1, (Rows.Num() + C - 1) / C); };
+		auto RowHFor = [&](int32 C, bool bWithRules) { return (H - FooterH - (bWithRules ? RulesH : 0.f)) / PerColFor(C); };
+		if (RowHFor(2, true) < GoodRowH) bRules = false;
+		if (!bRules && RowHFor(2, false) < GoodRowH && (MaxW - 40.f) / 3.f >= 210.f) Cols = 3;
+		const int32 PerCol = PerColFor(Cols);
+		const float RowH = FMath::Clamp(RowHFor(Cols, bRules), 16.f, 28.f);
 		const float S = FMath::Clamp(0.85f * RowH / 26.f, 0.62f, 0.85f);
-		const float ColW = (W - 48.f - 20.f) * 0.5f;
+		const float ColW = (MaxW - 20.f * (Cols - 1)) / Cols;
 		const float KeyW = FMath::Min(170.f, ColW * 0.48f);
 		const float Top = Y;
 		for (int32 I = 0; I < Rows.Num(); ++I)
@@ -990,24 +1072,26 @@ namespace GSMenuImpl
 			U.Hit(TEXT("Key.Row"), RX, RY, ColW, RowH - 2.f, I);
 		}
 		Y = Top + PerCol * RowH + 8.f;
-		const float LX = X + 24.f, MaxW = W - 48.f;
-		Y = Para(U, TEXT("Klikk en linje og trykk den nye tasten (Esc avbryter). Faste: mus = se rundt · musehjul = bla i våpnene, eller i sekken når inventaret er åpent · Esc / F10 = meny."),
-			LX, Y, MaxW, DimColor, 0.72f);
+		Y = Para(U, Help, LX, Y, MaxW, DimColor, 0.72f);
 		Text(U.C, U.S.KeyNote, LX, Y + 2.f, AccentColor, 0.8f);
-		Y += LineHeight(0.8f) + 8.f;
-		Button(U, TEXT("Key.Reset"), TEXT("Tilbakestill alle taster"), LX, Y, FMath::Min(300.f, MaxW), 32.f);
+		Y += 2.f + LineHeight(0.8f) + 8.f;
+		{
+			const float BW = FMath::Min(280.f, (MaxW - 12.f) * 0.5f);
+			Button(U, TEXT("Key.Reset"), TEXT("Tilbakestill alle taster"), LX, Y, BW, 32.f);
+			Button(U, TEXT("Help.Reset"), TEXT("Vis hintene på nytt"), LX + BW + 12.f, Y, BW, 32.f);
+		}
 		Y += 44.f;
+		if (!bRules) return;   // the rules are also shown in the lobby (GSHelp)
 		Text(U.C, TEXT("Capture the Flag"), LX, Y, FLinearColor::White, 0.9f);
 		Y += LineHeight(0.9f) + 4.f;
-		Para(U, FString::Printf(TEXT("Ta motstanderens flagg og bær det til din egen base. Du får bare poeng når ditt eget flagg står hjemme. Første lag til %d erobringer vinner."),
-			AGSGameState::CaptureLimit), LX, Y, MaxW, TextColor, 0.78f);
+		Para(U, Rules, LX, Y, MaxW, TextColor, 0.78f);
 	}
 
 	void DrawMain(const FUi& U, AGSPlayerController* PC, UWorld* World)
 	{
 		FState& S = U.S;
 		const float SX = U.C->SizeX, SY = U.C->SizeY;
-		const bool bMatch = InMatch(World);
+		const bool bMatch = InMatch(World, S);
 		Box(U.C, 0.f, 0.f, SX, SY, FLinearColor(0.f, 0.f, 0.f, 0.30f));
 
 		// --- left panel ---
@@ -1190,7 +1274,9 @@ namespace GSMenuImpl
 				++Shown;
 			}
 			CY += RowsShown * RowH + 8.f;
-			const FString Block = TeamJoinBlock(GS, PS, T);
+			FString Block = TeamJoinBlock(GS, PS, T);
+			// The server takes one switch per player every TeamSwitchCooldown: say so instead of a click that does nothing.
+			if (Block.IsEmpty() && FPlatformTime::Seconds() - U.S.TeamClickAt < AGSGameMode::TeamSwitchCooldown) Block = TEXT("Vent litt");
 			Button(U, TEXT("Team.Join"), T == GSTeam::Red ? TEXT("Bli med på rødt lag") : TEXT("Bli med på blått lag"), CX, CY, ColW, 36.f, Block.IsEmpty(), false, T);
 			Text(U.C, Block, CX + 16.f, CY + 38.f, DimColor, 0.75f);
 		}
@@ -1202,7 +1288,7 @@ namespace GSMenuImpl
 		Y += 40.f + 8.f;
 		if (bHost)
 		{
-			Text(U.C, FString::Printf(TEXT("Venner blir med på: %s"), *LocalAddresses()[0]), X + 24.f, Y, TextColor, 0.85f);
+			Text(U.C, FString::Printf(TEXT("Venner blir med på: %s"), *WithPort(LocalAddresses()[0], HostPort(World))), X + 24.f, Y, TextColor, 0.85f);
 			Y += 26.f;
 		}
 		Text(U.C, FString::Printf(TEXT("%s klar · Esc lukk · %s åpner igjen"), *GSMenu::KeyName(PC, TEXT("IA_Ready")), *GSMenu::KeyName(PC, TEXT("GS_Team"))),
@@ -1210,9 +1296,9 @@ namespace GSMenuImpl
 	}
 
 	/** "Du er vert. Kampen avsluttes for alle 3 andre." / "Du forlater kampen du er i." / empty when alone. */
-	FString LeaveText(UWorld* World)
+	FString LeaveText(UWorld* World, const FState& S)
 	{
-		if (!InMatch(World)) return FString();
+		if (!InMatch(World, S)) return FString();
 		if (World->GetNetMode() == NM_ListenServer)
 		{
 			const AGameStateBase* GS = World->GetGameState();
@@ -1231,10 +1317,10 @@ namespace GSMenuImpl
 		bool bCancel = true;
 		switch (S.Dialog)
 		{
-		case EDialog::Host: Title = TEXT("Starte en ny kamp?"); Body = LeaveText(World); Yes = TEXT("Ja, start ny"); break;
-		case EDialog::Join: Title = TEXT("Bli med i en annen kamp?"); Body = LeaveText(World); Yes = TEXT("Ja, koble til"); break;
-		case EDialog::Leave: Title = TEXT("Forlate kampen?"); Body = LeaveText(World); Yes = TEXT("Ja, forlat"); break;
-		case EDialog::Quit: Title = TEXT("Avslutte spillet?"); Body = LeaveText(World); Yes = TEXT("Avslutt"); break;
+		case EDialog::Host: Title = TEXT("Starte en ny kamp?"); Body = LeaveText(World, S); Yes = TEXT("Ja, start ny"); break;
+		case EDialog::Join: Title = TEXT("Bli med i en annen kamp?"); Body = LeaveText(World, S); Yes = TEXT("Ja, koble til"); break;
+		case EDialog::Leave: Title = TEXT("Forlate kampen?"); Body = LeaveText(World, S); Yes = TEXT("Ja, forlat"); break;
+		case EDialog::Quit: Title = TEXT("Avslutte spillet?"); Body = LeaveText(World, S); Yes = TEXT("Avslutt"); break;
 		case EDialog::Message: Title = S.MsgTitle; Body = S.MsgText; Detail = S.MsgDetail; Yes = TEXT("OK"); bCancel = false; break;
 		default: return;
 		}
@@ -1323,7 +1409,7 @@ namespace GSMenuImpl
 		else if (Id == TEXT("Nav.Quit")) S.Dialog = EDialog::Quit;
 		else if (Id == TEXT("Host.Go"))
 		{
-			if (InMatch(World)) S.Dialog = EDialog::Host;
+			if (InMatch(World, S)) S.Dialog = EDialog::Host;
 			else { S.LeavingUntil = FPlatformTime::Seconds() + 10.0; PC->Host(); }
 		}
 		else if (Id == TEXT("Join.Go")) TryJoin(PC, World, S);
@@ -1338,9 +1424,19 @@ namespace GSMenuImpl
 		}
 		else if (Id == TEXT("Key.Row")) { S.ListenRow = Hit.Arg; S.KeyNote.Empty(); }
 		else if (Id == TEXT("Key.Reset")) ResetKeys(PC, S);
+		else if (Id == TEXT("Help.Reset"))
+		{
+			GSHelp::ResetHints();
+			S.ListenRow = INDEX_NONE;
+			S.KeyNote = TEXT("Hintene vises på nytt.");
+		}
 		else if (Id == TEXT("Team.Join"))
 		{
-			if (AGSPlayerState* PS = PC->GetPlayerState<AGSPlayerState>()) PS->ServerRequestTeam(uint8(Hit.Arg));   // the server decides
+			if (AGSPlayerState* PS = PC->GetPlayerState<AGSPlayerState>())
+			{
+				PS->ServerRequestTeam(uint8(Hit.Arg));   // the server decides
+				S.TeamClickAt = FPlatformTime::Seconds();
+			}
 		}
 		else if (Id == TEXT("Team.Ready")) PC->ToggleReady();
 		else if (Id == TEXT("Team.Close")) CloseTeam(S);
@@ -1363,7 +1459,7 @@ namespace GSMenuImpl
 		{
 			if (S.Page == EPage::Connecting) CancelConnect(PC, World, S);
 			else if (S.Page != EPage::Root) SetPage(PC, S, EPage::Root);
-			else if (InMatch(World)) CloseMain(PC, S);
+			else if (InMatch(World, S)) CloseMain(PC, S);
 			return;   // alone at the root: nothing
 		}
 		if (S.bTeamOpen) CloseTeam(S);
@@ -1373,11 +1469,6 @@ namespace GSMenuImpl
 	{
 		return (Ch >= TEXT('0') && Ch <= TEXT('9')) || (Ch >= TEXT('a') && Ch <= TEXT('z')) || (Ch >= TEXT('A') && Ch <= TEXT('Z'))
 			|| Ch == TEXT('.') || Ch == TEXT(':') || Ch == TEXT('-');
-	}
-
-	bool NameChar(TCHAR Ch)
-	{
-		return Ch >= 32 && Ch != 127 && Ch != TEXT('"') && Ch != TEXT('?') && Ch != TEXT('=') && Ch != TEXT('#') && Ch != TEXT('\\');
 	}
 
 	void TypeChar(FState& S, TCHAR Ch)
@@ -1533,6 +1624,10 @@ namespace GSMenuImpl
 			else if (S.Focus == FName(TEXT("Name"))) SetFocus(PC, S, NAME_None);
 			else if (S.bTeamOpen) PC->ToggleReady();
 		}
+		else if (S.bTeamOpen && !S.bMainOpen && S.Dialog == EDialog::None && S.Focus == NAME_None && Key == ActionKey(PC, TEXT("IA_Ready")))
+		{
+			PC->ToggleReady();   // the player's own Ready key (the panel names it), as well as Enter
+		}
 		else if (Key == EKeys::BackSpace)
 		{
 			if (S.Focus == FName(TEXT("Address"))) S.AddressEdit.LeftChopInline(1);
@@ -1581,8 +1676,10 @@ namespace GSMenuImpl
 		if (!SP) return;
 		FState& S = *SP;
 		const bool bClient = W && W->GetNetMode() == NM_Client;
-		if (Type != ENetworkFailure::NetDriverListenFailure && !bClient && !S.bConnecting) return;
-		if (SkipFailure(S)) return;
+		const bool bListenFailure = Type == ENetworkFailure::NetDriverListenFailure;
+		if (!bListenFailure && !bClient && !S.bConnecting) return;
+		// Starting as host opens the "we left on purpose" window, and this failure comes inside it: never skip it.
+		if (!bListenFailure && SkipFailure(S)) return;
 		const FString Where = S.ConnectAddress.IsEmpty() ? FString(TEXT("adressen")) : S.ConnectAddress;
 		switch (Type)
 		{
@@ -1604,7 +1701,7 @@ namespace GSMenuImpl
 			ShowMessage(S, TEXT("Ulike versjoner"), TEXT("Du og verten har ikke samme versjon av spillet."), Err);
 			break;
 		case ENetworkFailure::NetDriverListenFailure:
-			ShowMessage(S, TEXT("Kunne ikke starte som vert"), TEXT("Port 7777 er i bruk. Lukk andre kopier av spillet og prøv igjen."), Err);
+			ShowMessage(S, TEXT("Kunne ikke starte som vert"), TEXT("Spillet fikk ikke åpnet en nettverksport. Lukk andre kopier av spillet og prøv igjen."), Err);
 			break;
 		default:
 			ShowMessage(S, TEXT("Noe gikk galt med forbindelsen"), FString(), Err);
@@ -1750,7 +1847,7 @@ namespace GSMenuImpl
 				if (GS->Phase == EGSMatchPhase::Playing) S.bTeamOpen = false;
 				S.LastPhase = GS->Phase;
 			}
-			if (InMatch(World) && GS->Phase == EGSMatchPhase::Lobby && PS && PS->Team != GSTeam::None && !S.bTeamShownThisLobby
+			if (InMatch(World, S) && GS->Phase == EGSMatchPhase::Lobby && PS && PS->Team != GSTeam::None && !S.bTeamShownThisLobby
 				&& !S.bMainOpen && !PC->bMenuOpen && !PC->IsOnTerminal())
 			{
 				S.bTeamOpen = true;
@@ -1773,9 +1870,9 @@ namespace GSMenuImpl
 
 		if (S.bMainOpen)
 		{
-			if (NetMode == NM_Standalone)
+			if (!InMatch(World, S))
 			{
-				// Campus turns slowly behind the menu.
+				// Campus turns slowly behind the menu (also while connecting from it).
 				const float Dt = FMath::Min(World->GetDeltaSeconds(), 0.1f);
 				FRotator R = PC->GetControlRotation();
 				R.Yaw += 2.f * Dt;
@@ -1804,7 +1901,9 @@ namespace GSMenuImpl
 
 bool UGSGameViewportClient::InputChar(FViewport* InViewport, int32 ControllerId, TCHAR Character)
 {
-	if (GSMenu::HandleChar(this, Character)) return true;
+	// The console (§ in the editor) types first: its characters must not end up in our text fields.
+	const bool bConsoleOpen = ViewportConsole && ViewportConsole->ConsoleActive();
+	if (!bConsoleOpen && GSMenu::HandleChar(this, Character)) return true;
 	return Super::InputChar(InViewport, ControllerId, Character);
 }
 
@@ -1882,8 +1981,9 @@ namespace GSMenu
 			Out.Add(R);
 		}
 		Out.Add(FGSControlRow{ TEXT("Se rundt"), TEXT("Mus"), false });
-		Out.Add(FGSControlRow{ TEXT("Bla i våpnene, eller i sekken når inventaret er åpent"), TEXT("Musehjul"), false });
+		Out.Add(FGSControlRow{ TEXT("Bla i våpen (i sekken med inventaret åpent)"), TEXT("Musehjul"), false });
 		Out.Add(FGSControlRow{ TEXT("Meny"), TEXT("Esc / F10"), false });
+		Out.Add(FGSControlRow{ TEXT("Hjelp: taster og regler"), TEXT("H"), false });
 		return Out;
 	}
 

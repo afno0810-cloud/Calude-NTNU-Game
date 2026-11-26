@@ -3,6 +3,55 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 3 (Spillbarhet): knappehjelp og hint (26. nov.)
+
+Gammelt som er forbedret: lobby-panelet og påminnelsen om H (462), Kontroller-siden i menyen (466), sen innkobling (467).
+Nytt: H-oversikten «Taster og regler» (460, 461), hint (463–465).
+
+460. H åpner en oversikt over alle taster, slik du selv har satt dem i Innstillinger. H lukker den igjen
+461. Oversikten forklarer Capture the Flag i seks korte linjer, og hva tastene gjør på en PC og en 3D-printer
+462. En liten påminnelse «H: taster og regler» står nederst på skjermen de første sekundene, til du har brukt oversikten
+463. Hint første gang du ser på et våpen, en ting, en låst kasse, en PC og en 3D-printer, og når magasinet er tomt
+464. Hint når du er skadet eller har fått en skade i arm eller bein, og om flagget: når du er nær det, bærer det, eller deres eget er tatt
+465. Hvert hint vises høyst to ganger, aldri to ganger på rad i samme situasjon, og huskes til neste gang du spiller
+466. Hintene viser tastene du faktisk har valgt. H er satt av til hjelpen, og «Vis hintene på nytt» i menyen henter hintene fram igjen
+467. Den som kommer inn midt i en kamp får vite laget sitt og stillingen, og de andre ser hvem som ble med på hvilket lag
+
+## Runde 12 (Kamp): ballistikk del 2 (26. nov.)
+
+Gammelt som er forbedret: lysspor (484–488), skuddmeldingene til serveren (493, 494), kikkertsiktet (496), spredningen som sendes med skuddet (497), startpunktet for skudd (498), venneild (499).
+Nytt: overlydssmell og sus (489–491), holdemerker (495), flygende lysspor med felles tak (492).
+
+484. Vanlige kuler er usynlige i lufta, som i virkeligheten; bare lysspor-ammo og hver femte kule fra maskingevær lyser
+485. Lysspor flyr med kula i dens egen fart og bue, i stedet for en strek som er der i samme øyeblikk
+486. Lyssporet er så langt som kula rekker på et øyeblikk: en rask geværkule gir en lang strek, en pistolkule en kort
+487. Lyssporet tennes ti meter foran løpet, så det ikke dekker skjermen til den som skyter
+488. Lysspor-ammo gir ikke lenger bedre treff, bare synlige kuler
+489. Kuler som passerer nær hodet ditt gir et skarpt overlydssmell rett ved deg
+490. Langsomme kuler (.45) suser forbi i stedet for å smelle
+491. En haglskur som går forbi deg er ett smell, ikke ni, og du hører aldri smell fra dine egne kuler
+492. Hvert lysspor er én strek som flyttes, og høyst 40 tegnes samtidig, så det ikke hakker når flere skyter maskingevær
+493. Automatvåpen sender skuddene som raske meldinger, så maskingevær med dårlig nett ikke lenger kan koble deg fra serveren
+494. Enkeltskudd, boltrifler, hagler og rakettkastere sendes fortsatt sikkert: et skudd du har hørt smelle forsvinner aldri på veien
+495. Sterke kikkerter har holdemerker for 150, 200, 250 og 300 m, regnet ut fra patronen i våpenet
+496. Prikkene under midten i den sterke kikkerten, som ikke betydde noe, er borte
+497. Spredningen sendes til serveren i hundredels grader, så de mest presise geværene (L96 i kikkert) får nøyaktig sin egen treffkjegle, også på serveren
+498. Bare vegger og dører kan flytte startpunktet for skuddet ditt; en lagkamerat som står tett ved deg gjør det ikke lenger
+499. En kule som er i lufta når skytteren forlater spillet, skader ikke lagkameratene hans (laget huskes fra skuddet)
+
+## Rettinger (Spillbarhet): hovedmeny (26. nov.)
+
+Gammelt som er forbedret: grafikk og bildefrekvens i innstillingene (476, 477), menyen mens man kobler til (478), feilmeldinger når man starter som vert eller kobler til (479, 480), lagvalget (481, 482), Kontroller-siden i et lite vindu (483).
+
+476. Grafikk-raden i innstillingene viser riktig nivå og kan settes helt opp til Film; den hoppet før tilbake til «Lav» og kom aldri over Middels
+477. Maks bildefrekvens i hovedmenyen er den samme som spillet bruker: valget (30–240) huskes når kampen starter, når du blir med og når du går ut igjen, også i Play i editoren
+478. Mens du kobler til fra hovedmenyen viser menyen fortsatt hovedmenyen, ikke de gråe «i kamp»-knappene, og Avslutt sier ikke lenger at du forlater en kamp
+479. «Kunne ikke starte som vert» vises når spillet ikke får åpnet nettverket, i stedet for at du bare havner i menyen igjen; får du en annen port enn 7777, viser lagvalget adressen med riktig port
+480. Prøver du å bli med rett etter at du forlot en kamp, vises feilen med en gang i stedet for «Kobler til …» i 20 sekunder; en adresse uten punktum får beskjeden «Sjekk adressen» i stedet for en misvisende kartfeil
+481. Lagknappene sier «Vent litt» i to sekunder etter et bytte, i stedet for et klikk som ikke gjør noe
+482. Klar-tasten i lagvalget er den du har valgt selv under Kontroller (Enter virker fortsatt)
+483. Kontroller-siden får plass i et lite vindu: reglene for Capture the Flag tas bort når det blir trangt, og tastene fordeles på tre kolonner om nødvendig; dessuten: navnet kan bare byttes hvert andre sekund og bare ha bokstaver, tall, mellomrom og - _ ., navnefeltet står bare ett sted, konsollen i editoren kan skrives i mens menyen er åpen, og en glidebryter blir ikke hengende når du slipper musa utenfor vinduet
+
 ## Runde 2 (Grafikk og kart): jevnere bilde, stengt bane og dekning (26. nov.)
 
 Gammelt som er forbedret: ytelsen (416–418), Hovedbygningen og Lysgården (419, 428), basene og spawn (424, 426, 427), kantstein, synsavstand og sjekkskript (431), vær inne (430).

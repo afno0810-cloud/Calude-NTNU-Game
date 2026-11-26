@@ -17,7 +17,7 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
-	/** Cleans the name (no control or URL characters, at most 20) and makes it unique among the players. */
+	/** Cleans the name (letters, digits, space and - _ . only, at most 20) and makes it unique among the players. */
 	virtual void ChangeName(AController* Controller, const FString& NewName, bool bNameChange) override;
 
 	void OnPlayerKilled(AController* Killer, AController* Victim, const FString& WeaponName, bool bHeadshot);
@@ -26,6 +26,8 @@ public:
 	static constexpr int32 MaxPerTeam = 10;
 	/** Seconds between two accepted team switches for one player. */
 	static constexpr float TeamSwitchCooldown = 2.f;
+	/** Seconds between two name changes for one player (a name cannot be swapped in a stream to confuse). */
+	static constexpr float NameChangeCooldown = 2.f;
 
 	virtual void Tick(float DeltaSeconds) override;
 	/** Lobby: a player toggles ready. */
@@ -62,6 +64,8 @@ protected:
 	int32 TeamCount(uint8 Team) const;
 	/** Server world time of each player's last accepted team switch. */
 	TMap<TWeakObjectPtr<AGSPlayerState>, float> LastTeamSwitch;
+	/** Server world time of each player's last accepted name change (from the player, not the join URL). */
+	TMap<TWeakObjectPtr<AController>, float> LastNameChange;
 	/** Match start: remove mines, fire, smoke, dropped items and bodies; refill all loot; flags home. */
 	void CleanWorldForMatch();
 };

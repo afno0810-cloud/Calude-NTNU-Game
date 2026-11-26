@@ -482,7 +482,25 @@ void AGSGameMode::RestartPlayer(AController* NewPlayer)
 	if (!NewPlayer || NewPlayer->IsPendingKillPending()) return;
 	// The team is set before the body is made, so it spawns at the right base.
 	AGSPlayerState* PS = NewPlayer->GetPlayerState<AGSPlayerState>();
-	if (PS && PS->Team == GSTeam::None) AssignTeam(PS);
+	if (PS && PS->Team == GSTeam::None)
+	{
+		AssignTeam(PS);
+		// Came in during a match (StartMatch sets every team before it respawns anyone, so this is a real late
+		// arrival): everyone sees "Kari [ble med på] rødt lag". 2 s later, so the name from the client is there.
+		const AGSGameState* GS = GetGameState<AGSGameState>();
+		if (GS && GS->Phase == EGSMatchPhase::Playing)
+		{
+			TWeakObjectPtr<AGSPlayerState> WeakPS = PS;
+			FTimerHandle Handle;
+			GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, [this, WeakPS]()
+			{
+				AGSPlayerState* P = WeakPS.Get();
+				AGSGameState* G = GetGameState<AGSGameState>();
+				if (!P || !G || G->Phase != EGSMatchPhase::Playing || P->Team == GSTeam::None) return;
+				G->AddKill(P->GetPlayerName(), FString(GSTeam::Name(P->Team)).ToLower(), TEXT("ble med på"), false);
+			}), 2.f, false);
+		}
+	}
 	RestartPlayerAtTransform(NewPlayer, PickSpawnTransform(NewPlayer));
 }
 
@@ -594,18 +612,39 @@ void AGSGameMode::SpawnTerminals()
 void AGSGameMode::ChangeName(AController* Controller, const FString& NewName, bool bNameChange)
 {
 	if (!Controller || !Controller->PlayerState) return;
-	// No control characters and nothing that means something in a travel URL.
+	// Letters (also æøå), digits, space and - _ . only: no control, URL or invisible characters (U+200B, U+00A0),
+	// one space at a time. Same rule as the menu's name field (GSMenu.cpp CleanName).
 	FString Clean;
 	for (int32 I = 0; I < NewName.Len(); ++I)
 	{
 		const TCHAR Ch = NewName[I];
-		if (Ch < 32 || Ch == 127 || Ch == TEXT('"') || Ch == TEXT('?') || Ch == TEXT('=') || Ch == TEXT('#') || Ch == TEXT('\\')) continue;
+		const bool bOk = Ch == TEXT(' ') || Ch == TEXT('-') || Ch == TEXT('_') || Ch == TEXT('.') || (Ch > 32 && FChar::IsAlnum(Ch));
+		if (!bOk || (Ch == TEXT(' ') && Clean.EndsWith(TEXT(" ")))) continue;
 		Clean.AppendChar(Ch);
 	}
 	Clean.TrimStartAndEndInline();
 	Clean.LeftInline(20);
 	Clean.TrimEndInline();
 	if (Clean.IsEmpty()) return;   // keep the old name
+	if (Clean.Equals(Controller->PlayerState->GetPlayerName(), ESearchCase::CaseSensitive)) return;   // nothing to change
+
+	// Changes asked for by the player (not the name from the join URL): one every NameChangeCooldown.
+	if (bNameChange)
+	{
+		const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+		if (const float* Last = LastNameChange.Find(Controller))
+		{
+			if (Now - *Last < NameChangeCooldown) return;
+		}
+		if (LastNameChange.Num() > 64)
+		{
+			for (auto It = LastNameChange.CreateIterator(); It; ++It)
+			{
+				if (!It.Key().IsValid()) It.RemoveCurrent();
+			}
+		}
+		LastNameChange.Add(Controller, Now);
+	}
 
 	// Unique among the players: "Kari", "Kari 2", "Kari 3" ...
 	const AGameStateBase* GS = GameState;

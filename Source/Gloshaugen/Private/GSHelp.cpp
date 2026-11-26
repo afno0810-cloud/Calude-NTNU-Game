@@ -1,9 +1,13 @@
 #include "GSHelp.h"
+#include "GSCharacter.h"
 #include "GSFlag.h"
 #include "GSGameState.h"
+#include "GSItems.h"
 #include "GSMenu.h"
+#include "GSPickup.h"
 #include "GSPlayerController.h"
 #include "GSPlayerState.h"
+#include "GSTerminal.h"
 #include "CanvasItem.h"
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
@@ -12,6 +16,7 @@
 #include "EngineUtils.h"
 #include "GameFramework/HUD.h"
 #include "InputCoreTypes.h"
+#include "Misc/ConfigCacheIni.h"
 
 namespace
 {
@@ -93,6 +98,368 @@ namespace
 		return Map;
 	}
 
+	// ------------------------------------------------------------------ H overview and hints: state
+	// (Distinct names: a unity build can put this file next to other files' anonymous namespaces.)
+	const TCHAR* const HelpIniSection = TEXT("Gloshaugen.Help");
+	const FName HelpOverviewKey(TEXT("OverviewOpened"));
+	constexpr int32 HelpMaxShows = 2;           // each hint (and the H reminder) at most this many times
+	constexpr float HelpHintSeconds = 7.f;
+	constexpr float HelpHintFade = 0.4f;
+	constexpr float HelpHintPause = 6.f;        // quiet time after a hint
+	constexpr float HelpCountAfter = 2.f;       // a hint counts as read once it has stood this long
+	constexpr float HelpRepeatSeconds = 60.f;   // the same hint never comes back sooner
+	constexpr float HelpJoinedSeconds = 10.f;
+
+	/** Per HUD: several PIE windows share these statics. Times are World->GetTimeSeconds(). */
+	struct FHelpState
+	{
+		bool bOpen = false; uint64 KeyFrame = 0;
+		FName HintId; FString HintText; float HintStart = -100.f; bool bHintCounted = false; float NextHintAt = 0.f;
+		float LastUpdate = -100.f;
+		TMap<FName, float> LastShown;      // per hint: when it was last on screen (long enough to count)
+		TSet<FName> SeenFalse;             // hints whose condition has been false since they were last shown
+		float JoinedAt = -1.f; bool bFirstDrawDone = false; bool bJoinedMid = false;
+		uint8 PhaseGroup = 255; float PhaseGroupStart = 0.f;   // 0 lobby + countdown, 1 playing, 2 ended
+	};
+
+	TMap<TWeakObjectPtr<const AHUD>, FHelpState>& HelpStates()
+	{
+		static TMap<TWeakObjectPtr<const AHUD>, FHelpState> Map;
+		return Map;
+	}
+
+	FHelpState& HelpStateFor(const AHUD* HUD)
+	{
+		TMap<TWeakObjectPtr<const AHUD>, FHelpState>& Map = HelpStates();
+		if (FHelpState* Found = Map.Find(HUD)) return *Found;
+		if (Map.Num() > 16)
+		{
+			for (auto It = Map.CreateIterator(); It; ++It)
+			{
+				if (!It.Key().IsValid()) It.RemoveCurrent();
+			}
+		}
+		return Map.Add(HUD, FHelpState());
+	}
+
+	/** How many times each hint was shown, saved in GameUserSettings.ini. Read once per id, not every frame. */
+	TMap<FName, int32>& HelpCounts()
+	{
+		static TMap<FName, int32> Map;
+		return Map;
+	}
+
+	int32 HelpCount(FName Id)
+	{
+		TMap<FName, int32>& Map = HelpCounts();
+		if (const int32* N = Map.Find(Id)) return *N;
+		int32 V = 0;
+		if (GConfig) GConfig->GetInt(HelpIniSection, *Id.ToString(), V, GGameUserSettingsIni);
+		return Map.Add(Id, FMath::Max(0, V));
+	}
+
+	void HelpCountUp(FName Id)
+	{
+		const int32 N = HelpCount(Id) + 1;
+		HelpCounts().Add(Id, N);
+		if (GConfig)
+		{
+			GConfig->SetInt(HelpIniSection, *Id.ToString(), N, GGameUserSettingsIni);
+			GConfig->Flush(false, GGameUserSettingsIni);   // only when a number changes
+		}
+	}
+
+	FString HelpKey(const APlayerController* PC, const TCHAR* Action, const TCHAR* Default)
+	{
+		const FString K = GSMenu::KeyName(PC, FName(Action));
+		return K.IsEmpty() ? FString(Default) : K;   // before the mapping context exists
+	}
+
+	TArray<FString> HelpWrap(const FString& S, float Scale, float MaxW)
+	{
+		TArray<FString> Lines, Words;
+		S.ParseIntoArray(Words, TEXT(" "), true);
+		FString Line;
+		for (const FString& Word : Words)
+		{
+			const FString Try = Line.IsEmpty() ? Word : Line + TEXT(" ") + Word;
+			if (!Line.IsEmpty() && TextWidth(Try, Scale) > MaxW) { Lines.Add(Line); Line = Word; }
+			else Line = Try;
+		}
+		if (!Line.IsEmpty()) Lines.Add(Line);
+		return Lines;
+	}
+
+	/** The CTF rules as they are in the game today (plan-04 adds overtime and the revealed carrier here). */
+	TArray<FString> RuleLines(const AGSGameState* /*GS: overtime in plan-04*/)
+	{
+		TArray<FString> L;
+		L.Add(TEXT("Ta motstanderens flagg ved å gå helt bort til det, og bær det til din egen base."));
+		L.Add(TEXT("Du får bare poeng når ditt eget flagg står hjemme."));
+		L.Add(TEXT("Bæreren går saktere."));
+		L.Add(TEXT("Faller bæreren, blir flagget liggende. Motstanderne kan ta det opp; eget lag sender det hjem ved å gå bort til det."));
+		L.Add(FString::Printf(TEXT("Første lag til %d erobringer vinner, ellers flest når %d minutter er gått."),
+			AGSGameState::CaptureLimit, int32(AGSGameState::MatchMinutes)));
+		L.Add(TEXT("Du kommer tilbake ved egen base. Det du bar, ligger igjen der du falt."));
+		return L;
+	}
+
+	/** The overview "Taster og regler". bDraw = false only measures. Returns the height. */
+	float LayoutOverview(UCanvas* Canvas, const APlayerController* PC, const AGSGameState* GS,
+		float X, float Y, float W, float S, float RowH, bool bDraw)
+	{
+		const float Pad = 22.f, IX = X + Pad, IW = W - 2.f * Pad;
+		const FLinearColor KeyColor(0.85f, 0.65f, 0.25f);
+		const float Top = Y;
+		Y += 16.f;
+		if (bDraw)
+		{
+			Text(Canvas, TEXT("Taster og regler"), IX, Y, FLinearColor::White, 1.f);
+			Text(Canvas, TEXT("H lukker"), IX + IW, Y + 3.f, DimColor, 0.75f, 2);
+		}
+		Y += LineHeight(1.f) + 10.f;
+
+		// --- keys, in two columns ---
+		const TArray<FGSControlRow> Rows = GSMenu::Controls(PC);
+		const int32 Half = FMath::Max(1, (Rows.Num() + 1) / 2);
+		const float Gap = 28.f, ColW = (IW - Gap) * 0.5f;
+		if (bDraw)
+		{
+			for (int32 I = 0; I < Rows.Num(); ++I)
+			{
+				const float RX = IX + (I / Half) * (ColW + Gap);
+				const float RY = Y + (I % Half) * RowH;
+				const float KeyW = TextWidth(Rows[I].Key, S);
+				FString Label = Rows[I].Label;
+				const float Room = ColW - KeyW - 12.f;
+				while (Label.Len() > 4 && TextWidth(Label, S) > Room) Label.LeftChopInline(1);   // tiny windows only
+				Text(Canvas, Label, RX, RY, TextColor, S);
+				Text(Canvas, Rows[I].Key, RX + ColW, RY, KeyColor, S, 2);
+			}
+		}
+		Y += Half * RowH + 10.f;
+
+		// --- PC and 3D printer: the keys TerminalInput really takes (it is fed by the player's own actions) ---
+		const float TS = S * 0.9f, TLH = LineHeight(TS) + 3.f;
+		const FString PcLine = FString::Printf(TEXT("På en PC:  %s kameraer · %s spor spillere · %s tilbake til menyen · %s / %s neste / forrige kamera · %s logg ut"),
+			*HelpKey(PC, TEXT("IA_Slot1"), TEXT("1")), *HelpKey(PC, TEXT("IA_Slot2"), TEXT("2")), *HelpKey(PC, TEXT("IA_Slot3"), TEXT("3")),
+			*HelpKey(PC, TEXT("IA_NextItem"), TEXT("Q")), *HelpKey(PC, TEXT("IA_UseItem"), TEXT("F")), *HelpKey(PC, TEXT("IA_Interact"), TEXT("E")));
+		const FString PrinterLine = FString::Printf(TEXT("På en 3D-printer:  %s / %s neste, %s forrige (eller musehjulet) · %s eller %s print · %s gå vekk"),
+			*HelpKey(PC, TEXT("IA_NextItem"), TEXT("Q")), *HelpKey(PC, TEXT("IA_Slot2"), TEXT("2")), *HelpKey(PC, TEXT("IA_Slot1"), TEXT("1")),
+			*HelpKey(PC, TEXT("IA_UseItem"), TEXT("F")), *HelpKey(PC, TEXT("IA_Fire"), TEXT("Venstre musknapp")), *HelpKey(PC, TEXT("IA_Interact"), TEXT("E")));
+		for (const FString* Para : { &PcLine, &PrinterLine })
+		{
+			for (const FString& L : HelpWrap(*Para, TS, IW))
+			{
+				if (bDraw) Text(Canvas, L, IX, Y, DimColor, TS);
+				Y += TLH;
+			}
+		}
+		Y += 10.f;
+
+		// --- Capture the Flag ---
+		if (bDraw) Text(Canvas, TEXT("Capture the Flag"), IX, Y, FLinearColor::White, 0.9f);
+		Y += LineHeight(0.9f) + 4.f;
+		const float RLH = LineHeight(S) + 3.f;
+		for (const FString& Rule : RuleLines(GS))
+		{
+			const TArray<FString> Lines = HelpWrap(Rule, S, IW - 14.f);
+			for (int32 I = 0; I < Lines.Num(); ++I)
+			{
+				if (bDraw)
+				{
+					if (I == 0) Text(Canvas, TEXT("·"), IX, Y, DimColor, S);
+					Text(Canvas, Lines[I], IX + 14.f, Y, TextColor, S);
+				}
+				Y += RLH;
+			}
+		}
+		return Y + 14.f - Top;
+	}
+
+	void DrawOverview(UCanvas* Canvas, const APlayerController* PC, const AGSGameState* GS)
+	{
+		const float SX = Canvas->SizeX, SY = Canvas->SizeY;
+		const float W = FMath::Min(820.f, SX - 64.f);
+		if (W < 200.f) return;
+		float S = 0.8f, RowH = 22.f;
+		float H = LayoutOverview(Canvas, PC, GS, 0.f, 0.f, W, S, RowH, false);
+		if (H > SY - 40.f)
+		{
+			S = 0.72f; RowH = 19.f;
+			H = LayoutOverview(Canvas, PC, GS, 0.f, 0.f, W, S, RowH, false);
+		}
+		const float X = (SX - W) * 0.5f, Y = FMath::Max(20.f, (SY - H) * 0.5f);
+		Box(Canvas, X, Y, W, H, PanelColor.CopyWithNewOpacity(0.9f));
+		LayoutOverview(Canvas, PC, GS, X, Y, W, S, RowH, true);
+	}
+
+	/** The hint on screen goes away. Before it was read (2 s) it does not count and sets no 60 s block. */
+	void HelpStopHint(FHelpState& St, float Now)
+	{
+		if (St.HintId.IsNone()) return;
+		St.NextHintAt = St.bHintCounted ? Now + HelpHintPause : Now + 1.f;
+		St.HintId = NAME_None;
+		St.HintText.Empty();
+		St.bHintCounted = false;
+	}
+
+	/** One hint: when it applies (Cond) and whether it may come outside a running match. */
+	struct FHelpHint { FName Id; bool bCond; bool bLobbyToo; };
+
+	/** Every hint in priority order, with its condition right now. C is the live pawn. */
+	void HelpHints(UWorld* World, const AGSCharacter* C, const AGSPlayerState* PS, TArray<FHelpHint>& Out)
+	{
+		const uint8 MyTeam = PS ? PS->Team : GSTeam::None;
+		const AGSFlag* Own = MyTeam != GSTeam::None ? FindFlag(World, MyTeam) : nullptr;
+		const AGSFlag* Enemy = MyTeam != GSTeam::None ? FindFlag(World, GSTeam::Other(MyTeam)) : nullptr;
+		const bool bCarrying = PS && PS->CarriedFlagTeam != 0;
+
+		const AGSPickup* P = C->GetFocusPickup();
+		const FGSItemDef* PD = P ? GSItems::Find(P->ItemId) : nullptr;
+		const AGSTerminal* T = C->GetFocusTerminal();
+
+		bool bEmpty = false;
+		if (const FGSWeaponSlot* W = C->GetCurrentWeapon())
+		{
+			const FGSWeaponStats S = C->GetStats(*W);
+			// The reserve lives in the weapon slot; ammo boxes for the caliber in the sack refill it on reload.
+			const bool bMore = W->Reserve > 0 || (!S.Caliber.IsNone() && C->CountItem(FName(*(FString(TEXT("Ammo_")) + S.Caliber.ToString()))) > 0);
+			bEmpty = S.UsesAmmo() && W->Ammo <= 0 && bMore && !C->bReloading;
+		}
+
+		Out.Reset();
+		Out.Add({ TEXT("OwnTaken"), Own && Own->State == EGSFlagState::Carried, false });
+		Out.Add({ TEXT("Carry"), bCarrying, false });
+		Out.Add({ TEXT("EnemyFlag"), !bCarrying && Enemy && Enemy->State != EGSFlagState::Carried
+			&& FVector::Dist(Enemy->GetFlagLocation(), C->GetActorLocation()) < 3000.f, false });
+		Out.Add({ TEXT("Weapon"), P && !P->bLocked && PD && PD->IsWeapon(), true });
+		Out.Add({ TEXT("Item"), P && !P->bLocked && PD && !PD->IsWeapon(), true });
+		Out.Add({ TEXT("Crate"), P && P->bLocked, true });
+		Out.Add({ TEXT("Computer"), T && T->Kind == EGSTerminalKind::Computer, true });
+		Out.Add({ TEXT("Printer"), T && T->Kind == EGSTerminalKind::Printer, true });
+		Out.Add({ TEXT("Empty"), bEmpty, true });
+		// LegInjury / ArmInjury: 0 fine, 1 badly shot (about 13 HP lost in the leg or 12 in the arm gives 0.3).
+		Out.Add({ TEXT("Limb"), C->LegInjury > 0.3f || C->ArmInjury > 0.3f, false });
+		Out.Add({ TEXT("Hurt"), C->Health < 60.f, false });
+	}
+
+	FString HelpHintText(const APlayerController* PC, FName Id)
+	{
+		auto K = [PC](const TCHAR* Action, const TCHAR* Default) { return HelpKey(PC, Action, Default); };
+		if (Id == FName(TEXT("OwnTaken"))) return TEXT("Flagget deres er tatt. Stopp bæreren, så blir det liggende.");
+		if (Id == FName(TEXT("Carry"))) return TEXT("Med flagget går du saktere. Hold deg til dekning og få følge av laget.");
+		if (Id == FName(TEXT("EnemyFlag"))) return TEXT("Gå helt bort til flagget for å ta det.");
+		if (Id == FName(TEXT("Weapon")))
+			return FString::Printf(TEXT("%s tar våpenet. Du bærer fire. %s–%s eller musehjulet bytter."),
+				*K(TEXT("IA_Interact"), TEXT("E")), *K(TEXT("IA_Slot1"), TEXT("1")), *K(TEXT("IA_Slot4"), TEXT("4")));
+		if (Id == FName(TEXT("Item")))
+			return FString::Printf(TEXT("%s legger tingen i sekken. %s blar, %s bruker, %s slipper."),
+				*K(TEXT("IA_Interact"), TEXT("E")), *K(TEXT("IA_NextItem"), TEXT("Q")), *K(TEXT("IA_UseItem"), TEXT("F")), *K(TEXT("IA_DropItem"), TEXT("G")));
+		if (Id == FName(TEXT("Crate"))) return TEXT("Låst kasse. Adgangskort åpner den med en gang, dirkesett tar noen sekunder.");
+		if (Id == FName(TEXT("Computer")))
+			return FString::Printf(TEXT("%s: på PC-en ser du gjennom overvåkningskameraene."), *K(TEXT("IA_Interact"), TEXT("E")));
+		if (Id == FName(TEXT("Printer")))
+			return FString::Printf(TEXT("%s: printeren lager utstyr av filament du finner som loot."), *K(TEXT("IA_Interact"), TEXT("E")));
+		if (Id == FName(TEXT("Empty"))) return FString::Printf(TEXT("Tomt magasin. %s lader."), *K(TEXT("IA_Reload"), TEXT("R")));
+		if (Id == FName(TEXT("Limb"))) return TEXT("Skadd bein gjør deg treg, skadd arm gjør siktet ustøtt. Bandasje eller førstehjelpsskrin hjelper.");
+		if (Id == FName(TEXT("Hurt")))
+			return FString::Printf(TEXT("Du er skadet. Velg medisin med %s og bruk den med %s. Det tar tid, så finn dekning først."),
+				*K(TEXT("IA_NextItem"), TEXT("Q")), *K(TEXT("IA_UseItem"), TEXT("F")));
+		return FString();
+	}
+
+	/** Picks, counts, ends and draws the hint. bAllowed = nothing covers the screen and the pawn lives. */
+	void HelpUpdateHints(UCanvas* Canvas, UWorld* World, const APlayerController* PC, const AGSCharacter* C,
+		const AGSPlayerState* PS, const AGSGameState* GS, FHelpState& St, float Now, bool bAllowed)
+	{
+		const bool bPlaying = GS->Phase == EGSMatchPhase::Playing;
+		const bool bLobby = GS->Phase == EGSMatchPhase::Lobby || GS->Phase == EGSMatchPhase::Countdown;
+		if (!bPlaying && !bLobby) bAllowed = false;
+		// Not drawn for a while (main menu, a PC, the hook stopped): an unread hint does not count.
+		if (!St.HintId.IsNone() && !St.bHintCounted && Now - St.LastUpdate > 0.5f) HelpStopHint(St, Now);
+		St.LastUpdate = Now;
+
+		TArray<FHelpHint> Hints;
+		if (C && !C->bDead) HelpHints(World, C, PS, Hints);
+		for (const FHelpHint& H : Hints)
+		{
+			if (!H.bCond) St.SeenFalse.Add(H.Id);
+		}
+
+		if (!St.HintId.IsNone())
+		{
+			const float Age = Now - St.HintStart;
+			if (!bAllowed) { HelpStopHint(St, Now); return; }
+			if (!St.bHintCounted && Age >= HelpCountAfter)
+			{
+				St.bHintCounted = true;
+				HelpCountUp(St.HintId);
+				St.LastShown.Add(St.HintId, Now);
+				St.SeenFalse.Remove(St.HintId);
+			}
+			if (Age >= HelpHintSeconds) { HelpStopHint(St, Now); return; }
+		}
+		else
+		{
+			if (!bAllowed || Now < St.NextHintAt) return;
+			for (const FHelpHint& H : Hints)
+			{
+				if (!H.bCond || (!bPlaying && !H.bLobbyToo) || HelpCount(H.Id) >= HelpMaxShows) continue;
+				if (const float* Last = St.LastShown.Find(H.Id))
+				{
+					if (!St.SeenFalse.Contains(H.Id) || Now - *Last < HelpRepeatSeconds) continue;
+				}
+				St.HintId = H.Id;
+				St.HintText = HelpHintText(PC, H.Id);
+				St.HintStart = Now;
+				St.bHintCounted = false;
+				break;
+			}
+			if (St.HintId.IsNone()) return;
+		}
+
+		// --- draw: one line (two when long), centred under the middle of the screen, a quiet tile behind ---
+		const float Age = Now - St.HintStart;
+		const float A = FMath::Clamp(Age / HelpHintFade, 0.f, 1.f) * FMath::Clamp((HelpHintSeconds - Age) / HelpHintFade, 0.f, 1.f);
+		if (A <= 0.f || St.HintText.IsEmpty()) return;
+		TArray<FString> Lines;
+		if (St.HintText.Len() > 70)
+		{
+			// Split at the sentence end nearest the middle, else at the space nearest the middle.
+			const int32 Mid = St.HintText.Len() / 2;
+			int32 Best = INDEX_NONE;
+			for (int32 Pass = 0; Pass < 2 && Best == INDEX_NONE; ++Pass)
+			{
+				for (int32 I = 1; I < St.HintText.Len() - 1; ++I)
+				{
+					const bool bCut = St.HintText[I] == TEXT(' ') && (Pass == 1 || St.HintText[I - 1] == TEXT('.'));
+					if (bCut && (Best == INDEX_NONE || FMath::Abs(I - Mid) < FMath::Abs(Best - Mid))) Best = I;
+				}
+			}
+			if (Best != INDEX_NONE && FMath::Abs(Best - Mid) < St.HintText.Len() / 3)
+			{
+				Lines.Add(St.HintText.Left(Best));
+				Lines.Add(St.HintText.RightChop(Best + 1));
+			}
+		}
+		if (Lines.Num() == 0) Lines.Add(St.HintText);
+		const float S = 0.85f, LH = LineHeight(S) + 2.f;
+		float W = 0.f;
+		for (const FString& L : Lines) W = FMath::Max(W, TextWidth(L, S));
+		const float H = Lines.Num() * LH;
+		const float CX = Canvas->SizeX * 0.5f, SY = Canvas->SizeY;
+		// Under the pickup / PC prompt (centre + 60 .. about + 130) and above the compass and the sack bar (bottom 152 px).
+		float Y = FMath::Max(SY * 0.68f, SY * 0.5f + 150.f);
+		Y = FMath::Min(Y, SY - 170.f - H);
+		Box(Canvas, CX - W * 0.5f - 10.f, Y - 10.f, W + 20.f, H + 20.f, PanelColor * FLinearColor(1.f, 1.f, 1.f, A));
+		for (const FString& L : Lines)
+		{
+			Text(Canvas, L, CX, Y, TextColor.CopyWithNewOpacity(0.92f * A), S, 1);
+			Y += LH;
+		}
+	}
+
 	void DrawImpl(AHUD* HUD, UCanvas* Canvas)
 	{
 		if (!HUD || !Canvas || Canvas->SizeX <= 0) return;
@@ -102,10 +469,42 @@ namespace
 		const AGSGameState* GS = World->GetGameState<AGSGameState>();
 		AGSPlayerState* PS = PC->GetPlayerState<AGSPlayerState>();
 		if (!GS) return;
-		if (GSMenu::IsFullscreen(PC)) return;   // the main menu covers the screen
-		if (const AGSPlayerController* GPC = Cast<AGSPlayerController>(PC))
+		FHelpState& St = HelpStateFor(HUD);
+		const float Now = World->GetTimeSeconds();
+
+		// Came in during a match? Decided on the first draw that has a game state.
+		if (!St.bFirstDrawDone)
 		{
-			if (GPC->bMenuOpen || GPC->IsOnTerminal()) return;
+			St.bFirstDrawDone = true;
+			St.bJoinedMid = GS->Phase == EGSMatchPhase::Playing;
+		}
+		const uint8 Group = GS->Phase == EGSMatchPhase::Playing ? 1 : (GS->Phase == EGSMatchPhase::Ended ? 2 : 0);
+		if (Group != St.PhaseGroup) { St.PhaseGroup = Group; St.PhaseGroupStart = Now; }
+
+		if (GSMenu::IsFullscreen(PC))   // the main menu covers the screen
+		{
+			St.bOpen = false;
+			HelpUpdateHints(Canvas, World, PC, nullptr, PS, GS, St, Now, false);
+			return;
+		}
+		const AGSPlayerController* GPC = Cast<AGSPlayerController>(PC);
+		const AGSCharacter* Pawn = Cast<AGSCharacter>(PC->GetPawn());
+
+		// --- H: the overview "Taster og regler" (not F1: that is "wireframe" in development builds) ---
+		if (!GPC || GPC->bMenuOpen || GPC->IsOnTerminal() || GPC->bShowInventory || GSMenu::IsModal(PC))
+		{
+			St.bOpen = false;
+		}
+		else if (GFrameCounter != St.KeyFrame && PC->WasInputKeyJustPressed(EKeys::H))
+		{
+			St.KeyFrame = GFrameCounter;   // Draw and the post-render hook can both run in one frame
+			St.bOpen = !St.bOpen;
+			if (St.bOpen && HelpCount(HelpOverviewKey) < HelpMaxShows) HelpCountUp(HelpOverviewKey);
+		}
+		if (GPC && (GPC->bMenuOpen || GPC->IsOnTerminal()))
+		{
+			HelpUpdateHints(Canvas, World, PC, nullptr, PS, GS, St, Now, false);
+			return;
 		}
 
 		const bool bLobby = GS->Phase == EGSMatchPhase::Lobby || GS->Phase == EGSMatchPhase::Countdown;
@@ -140,6 +539,7 @@ namespace
 				FString Line;
 				FLinearColor Col = TextColor;
 				const AGSFlag* Own = FindFlag(World, PS->Team);
+				int32 OwnLines = 0;   // own lines taken, so the "you came in" line goes under them
 				if (PS->CarriedFlagTeam != 0)
 				{
 					Line = TEXT("Du bærer flagget. Bær det til basen din.");
@@ -151,6 +551,7 @@ namespace
 						Col = TextColor;
 						Text(Canvas, Line, CX, OwnY + LineHeight(0.8f) + 2.f, Col, 0.8f, 1);
 						Line.Empty();
+						OwnLines = 2;
 					}
 				}
 				else if (GS->LastFlagEvent.Event != 0 && World->GetTimeSeconds() - GS->LastFlagEvent.LocalTime < 6.f)
@@ -173,7 +574,16 @@ namespace
 						Line = FString::Printf(TEXT("%s %s %s"), *E.Who, Verb, GSTeam::FlagName(E.FlagTeam));
 					}
 				}
-				if (!Line.IsEmpty()) Text(Canvas, Line, CX, OwnY, Col, 0.8f, 1);
+				if (!Line.IsEmpty()) { Text(Canvas, Line, CX, OwnY, Col, 0.8f, 1); OwnLines = 1; }
+
+				// Came in during the match: the 10 s start once the team is known (else it would say "uten lag").
+				if (St.bJoinedMid && St.JoinedAt < 0.f && PS->Team != GSTeam::None) St.JoinedAt = Now;
+				if (St.JoinedAt >= 0.f && Now - St.JoinedAt < HelpJoinedSeconds)
+				{
+					const FString Joined = FString::Printf(TEXT("Kampen er i gang. Du er på %s. Stillingen er %d–%d."),
+						*FString(GSTeam::Name(PS->Team)).ToLower(), GS->RedScore, GS->BlueScore);
+					Text(Canvas, Joined, CX, OwnY + OwnLines * (LineHeight(0.8f) + 2.f), TeamText(PS->Team), 0.8f, 1);
+				}
 			}
 
 			// --- 4. Match over ---
@@ -210,6 +620,7 @@ namespace
 			{
 				Lines.Emplace(FString::Printf(TEXT("Starter av seg selv om %d s."), FMath::CeilToInt(GS->PhaseSecondsLeft())), DimColor);
 			}
+			Lines.Emplace(TEXT("H viser alle taster og regler."), DimColor);
 			const float TitleH = LineHeight(1.f) + 8.f;
 			const float H = 14.f + TitleH + LH * (Lines.Num() + 1) + 10.f;
 			Box(Canvas, X, Y, W, H, PanelColor);
@@ -229,6 +640,20 @@ namespace
 			}
 		}
 		// The team key (L) is taken by GSMenu, which opens the team panel.
+
+		// --- 5. Reminder "H: taster og regler": the first 45 s of the lobby and 20 s of a match, until H was used twice.
+		// Bottom centre under the sack bar: the ammo box owns the bottom right corner, the health bars the bottom left.
+		if (!St.bOpen && HelpCount(HelpOverviewKey) < HelpMaxShows && Group != 2
+			&& Now - St.PhaseGroupStart < (Group == 0 ? 45.f : 20.f) && !GSMenu::IsModal(PC))
+		{
+			Text(Canvas, TEXT("H: taster og regler"), CX, Canvas->SizeY - 24.f, DimColor, 0.7f, 1);
+		}
+
+		// --- 6. The H overview over everything else here, or else the hint ---
+		const bool bHintAllowed = Pawn && !Pawn->bDead && !St.bOpen && GPC && !GPC->bShowInventory && !GPC->bShowScoreboard
+			&& !GSMenu::IsModal(PC);
+		HelpUpdateHints(Canvas, World, PC, Pawn, PS, GS, St, Now, bHintAllowed);
+		if (St.bOpen) DrawOverview(Canvas, PC, GS);
 	}
 
 	void OnPostRender(AHUD* HUD, UCanvas* Canvas)
@@ -265,5 +690,20 @@ namespace GSHelp
 		if (bHooked) return;
 		bHooked = true;
 		AHUD::OnHUDPostRender.AddStatic(&OnPostRender);
+	}
+
+	void ResetHints()
+	{
+		if (GConfig)
+		{
+			GConfig->EmptySection(HelpIniSection, GGameUserSettingsIni);   // also OverviewOpened
+			GConfig->Flush(false, GGameUserSettingsIni);
+		}
+		HelpCounts().Reset();
+		for (auto& Pair : HelpStates())
+		{
+			Pair.Value.LastShown.Reset();
+			Pair.Value.SeenFalse.Reset();
+		}
 	}
 }
