@@ -3,6 +3,22 @@
 Alle planleggere leser denne før hver plan. Nyeste vurdering øverst. Innenfor prioriteringen velger
 laget selv.
 
+## 2026-11-26 kl. 17.20: Capture the Flag
+**Andreas har bestemt: spillet har foreløpig én modus, Capture the Flag.** Dette går foran alt annet.
+To lag (f.eks. rødt og blått, 2–10 per lag), hver med en base og et flagg på det mindre, detaljerte
+kartet. Ta motstanderens flagg og bær det til egen base mens ditt eget flagg står hjemme. Realistisk:
+flagget bæres synlig, bæreren går litt tregere, et mistet flagg blir liggende til det returneres eller
+plukkes opp igjen. Første lag til 3 erobringer, eller flest når tiden går ut.
+
+- **Spillbarhet:** CTF-reglene er ny hovedoppgave, rett etter (eller sammen med) hovedmenyen: lag og
+  lagvalg i lobbyen, flagg som aktør, erobring/retur, poeng og kampslutt, spawn ved egen base, venneild
+  av/på, lagfarger på poengtavla. Knappehjelpen må forklare CTF.
+- **Grafikk og kart:** det mindre utsnittet skal velges for CTF: to baser i hver ende (f.eks. to bygg
+  som står mot hverandre), flere ruter mellom dem (ute, gjennom bygg, under tak), og et midtområde.
+  Basene må være lette å kjenne igjen og forsvarbare. Detaljnivået legges der det spilles.
+- **Kamp:** lagtilhørighet i treff og HUD (ikke treffmarkør/blod-varsel på lagkamerater hvis venneild er
+  av), flaggbærer synlig, lyd og retningsvarsel når flagget tas. Blod-runden fortsetter som planlagt.
+
 ## 2026-11-26 (første vurdering)
 **Hovedagentens syn:** Spillet har mye innhold, men to ting skiller det fra målet «superrealistisk og
 veldig groteskt»: (1) våpen og skade oppfører seg ikke som i virkeligheten (ingen kulefall, flytid eller

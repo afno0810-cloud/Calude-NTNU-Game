@@ -5,6 +5,8 @@ Når Andreas gir tilbakemelding («jeg liker ...», «ikke gjør ...», «mer av
 med dato, med hans egne ord så langt det går.
 
 ## Spillet
+- **Én spillmodus foreløpig: Capture the Flag** (26. nov. 2026). To lag, to baser, ta motstanderens flagg
+  og bær det hjem. Alt annet (fri roaming, battle royale-preg) kommer i andre rekke til CTF er ferdig og godt.
 - **Stort, overordnet mål: spillet skal være superrealistisk** (26. nov. 2026). Gjelder alt: hvordan
   våpen oppfører seg (ballistikk, rekyl, lyd, lading), hvordan kroppen beveger seg og tar skade, lys,
   vær, materialer, lyd i rom, og at campus ligner den ekte Gløshaugen. Når et valg står mellom
@@ -29,6 +31,7 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26: «bare fokuser på én spillmodus per nå, og det er capture the flag».
 - 2026-11-26: Funksjoner for å invitere venner osv. i menyen.
 - 2026-11-26: Lag en hjem-/hovedmeny som man kan bruke.
 - 2026-11-26: Spillet skal informere spilleren om hvilke knapper som gjør hva, og hvordan man spiller.
