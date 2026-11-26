@@ -19,6 +19,19 @@ namespace
 	constexpr float RampW = 2.6f;
 	constexpr float RampAngle = 25.f;   // degrees
 
+	// Paved squares (m): nothing grows or stands on them.
+	struct FPlaza { float X0, Y0, X1, Y1; };
+	const FPlaza Plazas[] = {
+		{ -16.f, -34.f, 16.f, -20.5f },   // forecourt in front of the main entrance
+		{ -41.f,  14.f, 41.f,  58.f },    // courtyard between the wings, around the tower
+	};
+	bool InPlaza(const FVector2D& P, float Margin)
+	{
+		for (const FPlaza& Z : Plazas)
+			if (P.X > Z.X0 - Margin && P.X < Z.X1 + Margin && P.Y > Z.Y0 - Margin && P.Y < Z.Y1 + Margin) return true;
+		return false;
+	}
+
 	FString ColorKey(const UStaticMesh* Mesh, const FLinearColor& C, bool bCollide)
 	{
 		return FString::Printf(TEXT("%s_%d_%d_%d_%d"), *GetNameSafe(Mesh),
@@ -157,11 +170,13 @@ void AGSCampusBuilder::Build()
 	const double StartTime = FPlatformTime::Seconds();
 	BuildGround();
 	BuildRoads();
+	BuildPlazas();
 	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
 	{
 		BuildBuilding(B);
 	}
 	BuildSidewalks();
+	BuildPathEdges();
 	BuildTreesAndProps();
 	BuildCampusProps();
 	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
@@ -214,6 +229,51 @@ void AGSCampusBuilder::BuildRoads()
 		const float Z = R.bPath ? -0.01f : -0.02f; // path on top of road where they cross
 		AddBoxMat(FVector(C.X * CmPerM, C.Y * CmPerM, Z * CmPerM), FRotator(0.f, Yaw, 0.f), FVector(Len + R.Width, R.Width, 0.1f),
 			R.bPath ? TEXT("W_Paving") : TEXT("W_Asphalt"), Col, true);
+	}
+}
+
+void AGSCampusBuilder::BuildPlazas()
+{
+	// Top 3 cm over the lawn and 1 cm under the paths, so nothing flickers where they meet.
+	for (const FPlaza& Z : Plazas)
+	{
+		AddBoxMat(FVector((Z.X0 + Z.X1) * 0.5f, (Z.Y0 + Z.Y1) * 0.5f, -0.02f) * CmPerM, FRotator::ZeroRotator,
+			FVector(Z.X1 - Z.X0, Z.Y1 - Z.Y0, 0.1f), TEXT("W_Paving"), FLinearColor(0.42f, 0.41f, 0.39f), true);
+	}
+}
+
+void AGSCampusBuilder::BuildPathEdges()
+{
+	// 4 m pieces on both sides of every path, 3 cm higher than the paving. No collision, so nobody gets stuck on them.
+	const TArray<GSCampus::FRoad>& Roads = GSCampus::Roads();
+	constexpr float Piece = 4.f;
+	for (const GSCampus::FRoad& R : Roads)
+	{
+		if (!R.bPath) continue;
+		const FVector2D D = (R.B - R.A).GetSafeNormal();
+		const FVector2D Side(-D.Y, D.X);
+		const float Len = FVector2D::Distance(R.A, R.B);
+		const FRotator Rot(0.f, FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)), 0.f);
+		for (float S = 0.f; S < Len; S += Piece)
+		{
+			const float L = FMath::Min(Piece, Len - S);
+			const FVector2D Mid = R.A + D * (S + L * 0.5f);
+			for (float Sgn : { -1.f, 1.f })
+			{
+				const FVector2D K = Mid + Side * Sgn * (R.Width * 0.5f + 0.06f);
+				bool bSkip = InPlaza(K, 0.f);
+				for (const GSCampus::FRoad& O : Roads)
+				{
+					if (&O != &R && DistToSegment(K, O.A, O.B) < O.Width * 0.5f + 0.1f) bSkip = true;
+				}
+				for (const FBox2D& Box : Footprints)
+				{
+					if (Box.ExpandBy(0.2f).IsInside(K)) bSkip = true;
+				}
+				if (bSkip) continue;
+				AddBoxMat(FVector(K.X, K.Y, 0.f) * CmPerM, Rot, FVector(L, 0.12f, 0.14f), TEXT("W_Concrete"), FLinearColor(0.55f, 0.55f, 0.53f), false);
+			}
+		}
 	}
 }
 
@@ -332,6 +392,7 @@ void AGSCampusBuilder::BuildBuilding(const GSCampus::FBuilding& B)
 					G->SetWorldTransform(BT);
 					G->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 					G->SetCastShadow(false);
+					G->ComponentTags.Add(TEXT("Mat_Glass"));
 					G->RegisterComponent();
 				}
 				// front bay with the main door and the turrets
@@ -341,8 +402,8 @@ void AGSCampusBuilder::BuildBuilding(const GSCampus::FBuilding& B)
 		}
 	}
 
-	// Detailed Blender model of this building (Tools/Blender/buildings.py), plus its window glass.
-	if (B.bEnterable)
+	// Detailed Blender model of this building (Tools/Blender/buildings.py), plus its window glass. Scenery uses its model too.
+	if (B.bEnterable || B.bBackdrop)
 	{
 		const FString Safe = SafeName(Name);
 		const FString MeshPath = FString::Printf(TEXT("/Game/Models/SM_Bygg_%s.SM_Bygg_%s"), *Safe, *Safe);
@@ -365,6 +426,7 @@ void AGSCampusBuilder::BuildBuilding(const GSCampus::FBuilding& B)
 				G->SetWorldTransform(BT);
 				G->SetCollisionEnabled(ECollisionEnabled::NoCollision); // shoot and jump through windows
 				G->SetCastShadow(false);
+				G->ComponentTags.Add(TEXT("Mat_Glass"));
 				G->RegisterComponent();
 			}
 			return;
@@ -374,8 +436,8 @@ void AGSCampusBuilder::BuildBuilding(const GSCampus::FBuilding& B)
 	if (!B.bEnterable)
 	{
 		AddBox(Local(0.f, 0.f, B.Height * 0.5f), BRot, FVector(B.SizeX, B.SizeY, B.Height), B.Color);
-		// small pointed roof for towers
-		AddMesh(GSUtils::Cone(), FTransform(BRot, Local(0.f, 0.f, B.Height + 3.f), FVector(B.SizeX * 0.012f, B.SizeY * 0.012f, 0.06f)), FLinearColor(0.2f, 0.32f, 0.28f), true);
+		// small pointed roof for towers (not on scenery blocks)
+		if (!B.bBackdrop) AddMesh(GSUtils::Cone(), FTransform(BRot, Local(0.f, 0.f, B.Height + 3.f), FVector(B.SizeX * 0.012f, B.SizeY * 0.012f, 0.06f)), FLinearColor(0.2f, 0.32f, 0.28f), true);
 		return;
 	}
 
@@ -484,6 +546,7 @@ void AGSCampusBuilder::BuildTreesAndProps()
 	FRandomStream Rand(1337);
 	const TArray<GSCampus::FRoad>& Roads = GSCampus::Roads();
 
+	TArray<FVector2D> Placed; // trees standing so far
 	auto IsFree = [&](const FVector2D& P, float Margin)
 	{
 		for (const FBox2D& Box : Footprints)
@@ -494,6 +557,15 @@ void AGSCampusBuilder::BuildTreesAndProps()
 		{
 			if (DistToSegment(P, R.A, R.B) < R.Width * 0.5f + Margin * 0.5f) return false;
 		}
+		if (InPlaza(P, Margin * 0.5f)) return false;
+		for (const FVector2D& S : GSCampus::SpawnPoints())
+		{
+			if (FVector2D::Distance(P, S) < 3.5f) return false;
+		}
+		for (const FVector2D& T : Placed)
+		{
+			if (FVector2D::Distance(P, T) < 4.f) return false;
+		}
 		return true;
 	};
 
@@ -501,26 +573,58 @@ void AGSCampusBuilder::BuildTreesAndProps()
 	const FLinearColor Leaves[] = { FLinearColor(0.12f, 0.25f, 0.08f), FLinearColor(0.16f, 0.30f, 0.10f), FLinearColor(0.20f, 0.28f, 0.09f) };
 	const bool bRealTrees = ModelMesh(TEXT("SM_Tree_Maple")) != nullptr;
 
-	// Trees: maples and birches on the lawns, spruces in groups (Trondheim). Leaves have no collision;
-	// an invisible trunk collider stops players and bullets.
-	int32 Trees = 0;
-	for (int32 Try = 0; Try < 3000 && Trees < 220; ++Try)
+	// One tree model with a random turn and size, and an invisible trunk collider as thick as its trunk.
+	auto PlantTree = [&](const TCHAR* Kind, const FVector2D& P)
 	{
-		const FVector2D P(Rand.FRandRange(-320.f, 460.f), Rand.FRandRange(-100.f, 550.f));
+		const float Scale = Rand.FRandRange(0.8f, 1.3f);
+		AddModel(Kind, FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * CmPerM, P.Y * CmPerM, 0.f), FVector(Scale)), nullptr, false);
+		const FString K(Kind);
+		const float TrunkR = K == TEXT("SM_Tree_Maple") ? 0.35f : K == TEXT("SM_Tree_Birch") ? 0.2f : K == TEXT("SM_Tree_Spruce") ? 0.3f : 0.14f;
+		AddTrunkCollider(P, TrunkR * Scale, 6.f * Scale);
+		Placed.Add(P);
+	};
+
+	if (bRealTrees)
+	{
+		// Avenue of maples up to the main entrance, and street trees along Hoegskoleringen.
+		for (int32 I = 0; I < 7; ++I)
+		{
+			for (float X : { -6.5f, 6.5f })
+			{
+				PlantTree(TEXT("SM_Tree_Maple"), FVector2D(X, -98.f + 9.5f * I));
+			}
+		}
+		for (float X = -156.f; X <= 156.f; X += 13.f)
+		{
+			if (FMath::Abs(X) < 12.f) continue;
+			PlantTree(TEXT("SM_Tree_Maple"), FVector2D(X, -100.f));
+		}
+	}
+
+	// The rest: maples and birches on the lawns, spruces in groups (Trondheim). Leaves have no collision;
+	// an invisible trunk collider stops players and bullets. Never on the axis in front of the main building.
+	int32 Trees = 0;
+	for (int32 Try = 0; Try < 1500 && Trees < 80; ++Try)
+	{
+		const FVector2D P(Rand.FRandRange(-230.f, 230.f), Rand.FRandRange(-125.f, 240.f));
+		if (FMath::Abs(P.X) < 10.f && P.Y < -30.f) continue;
 		if (!IsFree(P, 6.f)) continue;
 		if (bRealTrees)
 		{
 			const float Pick = Rand.FRand();
 			const TCHAR* Kind = Pick < 0.38f ? TEXT("SM_Tree_Maple") : Pick < 0.68f ? TEXT("SM_Tree_Birch")
 				: Pick < 0.88f ? TEXT("SM_Tree_Spruce") : TEXT("SM_Tree_SpruceSmall");
-			const float Scale = Rand.FRandRange(0.8f, 1.3f);
-			AddModel(Kind, FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * CmPerM, P.Y * CmPerM, 0.f), FVector(Scale)), nullptr, false);
-			AddTrunkCollider(P, 0.35f * Scale, 6.f * Scale);
+			PlantTree(Kind, P);
 			// a few bushes around some trees
 			if (Rand.FRand() < 0.35f)
 			{
 				const FVector2D Q = P + FVector2D(Rand.FRandRange(-3.f, 3.f), Rand.FRandRange(-3.f, 3.f));
-				if (IsFree(Q, 2.f)) AddModel(TEXT("SM_Bush"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(Q.X * CmPerM, Q.Y * CmPerM, 0.f), FVector(Rand.FRandRange(0.8f, 1.4f))), nullptr, false);
+				// like IsFree(Q, 2), except that a bush may stand close to its own tree
+				bool bOk = !InPlaza(Q, 1.f);
+				for (const FBox2D& Box : Footprints) if (Box.ExpandBy(2.f).IsInside(Q)) bOk = false;
+				for (const GSCampus::FRoad& R : Roads) if (DistToSegment(Q, R.A, R.B) < R.Width * 0.5f + 1.f) bOk = false;
+				for (const FVector2D& S : GSCampus::SpawnPoints()) if (FVector2D::Distance(Q, S) < 3.5f) bOk = false;
+				if (bOk) AddModel(TEXT("SM_Bush"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(Q.X * CmPerM, Q.Y * CmPerM, 0.f), FVector(Rand.FRandRange(0.8f, 1.4f))), nullptr, false);
 			}
 		}
 		else
@@ -530,32 +634,31 @@ void AGSCampusBuilder::BuildTreesAndProps()
 			const float R = Rand.FRandRange(3.f, 5.5f);
 			AddMesh(GSUtils::Sphere(), FTransform(FRotator::ZeroRotator, FVector(P.X * CmPerM, P.Y * CmPerM, (H * 0.5f + R * 0.6f) * CmPerM), FVector(R, R, R * 1.3f)),
 				Leaves[Rand.RandRange(0, 2)], false);
+			Placed.Add(P);
 		}
 		++Trees;
 	}
 
-	// Moraine boulders on the lawns (they block bullets, good cover) and round flower beds.
+	// A few moraine boulders on the lawns (they block bullets, good cover) and four flower beds by the forecourt.
 	if (bRealTrees)
 	{
 		int32 Rocks = 0;
-		for (int32 Try = 0; Try < 800 && Rocks < 70; ++Try)
+		for (int32 Try = 0; Try < 800 && Rocks < 10; ++Try)
 		{
-			const FVector2D P(Rand.FRandRange(-320.f, 460.f), Rand.FRandRange(-100.f, 550.f));
+			const FVector2D P(Rand.FRandRange(-230.f, 230.f), Rand.FRandRange(-125.f, 240.f));
 			if (!IsFree(P, 4.f)) continue;
 			const float Pick = Rand.FRand();
 			const TCHAR* Kind = Pick < 0.45f ? TEXT("SM_Rock_A") : Pick < 0.8f ? TEXT("SM_Rock_B") : TEXT("SM_Rock_C");
 			AddModel(Kind, FTransform(FRotator(Rand.FRandRange(-6.f, 6.f), Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * CmPerM, P.Y * CmPerM, -0.15f * CmPerM),
 				FVector(Rand.FRandRange(0.7f, 1.3f))), nullptr, true);
+			Placed.Add(P);
 			++Rocks;
 		}
-		int32 Beds = 0;
-		for (int32 Try = 0; Try < 600 && Beds < 30; ++Try)
+		for (const FVector2D P : { FVector2D(-22.f, -38.f), FVector2D(22.f, -38.f), FVector2D(-32.f, -38.f), FVector2D(32.f, -38.f) })
 		{
-			const FVector2D P(Rand.FRandRange(-320.f, 460.f), Rand.FRandRange(-100.f, 550.f));
 			if (!IsFree(P, 4.f)) continue;
 			AddModel(TEXT("SM_FlowerBed"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), FVector(P.X * CmPerM, P.Y * CmPerM, 0.f),
 				FVector(Rand.FRandRange(0.8f, 1.3f))), nullptr, false);
-			++Beds;
 		}
 	}
 
@@ -567,13 +670,20 @@ void AGSCampusBuilder::BuildTreesAndProps()
 			if (!B.bEnterable) continue;
 			const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X * CmPerM, B.Y * CmPerM, 0.f));
 			const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
+			// door position on the +-X walls (same formula as BuildWallSide); the Hovedbygningen model has its end doors at y = 0
+			const float L = B.SizeY - 2.f * WallT;
+			const int32 NW = FMath::FloorToInt((L - MinPier) / (WindowW + MinPier));
+			const float Pier = NW >= 1 ? (L - NW * WindowW) / (NW + 1) : 0.f;
+			const bool bMainModel = MainBuildingMesh() && FString(B.Name) == TEXT("Hovedbygningen");
+			const float DoorY = bMainModel ? 0.f : -L * 0.5f + Pier + WindowW * 0.5f + (NW / 2) * (Pier + WindowW);
 			for (float Sgn : { -1.f, 1.f })
 			{
 				for (float Y = -HY + 3.f; Y < HY - 3.f; Y += 4.2f)
 				{
+					if (NW >= 1 && FMath::Abs(Y - DoorY) < WindowW * 0.5f + 2.7f) continue;   // hedge piece is 4.2 m long (F6)
 					const FVector W = BT.TransformPosition(FVector((HX + 1.2f) * Sgn, Y, 0.f) * CmPerM);
 					const FVector2D P(W.X / CmPerM, W.Y / CmPerM);
-					if (!IsFree(P, 0.6f)) continue;
+					if (!IsFree(P, 0.6f) || InPlaza(P, 0.5f)) continue;
 					AddModel(TEXT("SM_Hedge"), FTransform(FRotator(0.f, B.Yaw + 90.f, 0.f), W), nullptr, true);
 				}
 			}
@@ -581,7 +691,7 @@ void AGSCampusBuilder::BuildTreesAndProps()
 			{
 				const FVector W = BT.TransformPosition(FVector(Rand.FRandRange(-HX, HX), (HY + 1.5f) * (Rand.FRand() < 0.5f ? -1.f : 1.f), 0.f) * CmPerM);
 				const FVector2D P(W.X / CmPerM, W.Y / CmPerM);
-				if (IsFree(P, 0.8f)) AddModel(TEXT("SM_Bush"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), W, FVector(Rand.FRandRange(0.7f, 1.2f))), nullptr, false);
+				if (IsFree(P, 0.8f) && !InPlaza(P, 0.5f)) AddModel(TEXT("SM_Bush"), FTransform(FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), W, FVector(Rand.FRandRange(0.7f, 1.2f))), nullptr, false);
 			}
 		}
 	}
@@ -595,7 +705,7 @@ void AGSCampusBuilder::BuildTreesAndProps()
 		FLinearColor(0.5f, 0.06f, 0.05f), FLinearColor(0.1f, 0.18f, 0.4f), FLinearColor(0.85f, 0.85f, 0.85f) };
 	int32 Cars = 0;
 	TArray<FVector2D> CarSpots;
-	for (int32 Try = 0; Try < 600 && Cars < 60; ++Try)
+	for (int32 Try = 0; Try < 600 && Cars < 22; ++Try)
 	{
 		const GSCampus::FRoad& R = Roads[Rand.RandRange(0, Roads.Num() - 1)];
 		if (R.bPath) continue;
@@ -1214,12 +1324,17 @@ void AGSCampusBuilder::BuildCampusProps()
 		}
 	}
 
-	// Lawns: picnic tables, robot dogs, the odd construction barrier and fence
-	int32 Lawn = 0;
-	for (int32 Try = 0; Try < 600 && Lawn < 45; ++Try)
+	// Lawns inside the play area: picnic tables, robot dogs, the odd construction barrier and fence
+	auto NearSpawn = [](const FVector2D& P, float Dist)
 	{
-		const FVector2D P(Rand.FRandRange(-300.f, 440.f), Rand.FRandRange(-95.f, 530.f));
-		if (Inside(P, 5.f) || OnRoad(P, 3.f)) continue;
+		for (const FVector2D& S : GSCampus::SpawnPoints()) if (FVector2D::Distance(P, S) < Dist) return true;
+		return false;
+	};
+	int32 Lawn = 0;
+	for (int32 Try = 0; Try < 600 && Lawn < 8; ++Try)
+	{
+		const FVector2D P(Rand.FRandRange(-150.f, 150.f), Rand.FRandRange(-100.f, 130.f));
+		if (Inside(P, 5.f) || OnRoad(P, 3.f) || InPlaza(P, 2.f) || NearSpawn(P, 4.f)) continue;
 		const int32 Kind = Rand.RandRange(0, 9);
 		const float Y = Rand.FRandRange(0.f, 360.f);
 		if (Kind <= 4) AddProp(TEXT("PicnicTable"), WorldT, P.X, P.Y, 0.f, Y);

@@ -39,6 +39,10 @@ protected:
 	/** "IT-bygget" -> "IT_bygget": the asset name used by Tools/Blender/buildings.py. */
 	static FString SafeName(const FString& Name);
 	void BuildSidewalks();
+	/** Paved squares: the forecourt in front of the main entrance and the courtyard between the wings. */
+	void BuildPlazas();
+	/** Low concrete kerbs along both edges of every walking path. */
+	void BuildPathEdges();
 
 	void BuildGround();
 	void BuildRoads();

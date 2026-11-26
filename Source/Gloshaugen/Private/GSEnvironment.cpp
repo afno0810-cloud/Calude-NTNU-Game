@@ -204,7 +204,8 @@ void AGSEnvironment::Tick(float DeltaSeconds)
 
 	// Sun path: Trondheim, low sun. Noon at 12:00, highest ~48 degrees.
 	const float Elevation = 48.f * FMath::Sin((Hours - 6.f) / 24.f * 2.f * PI);
-	const float Azimuth = Hours / 24.f * 360.f + 180.f;
+	// X = east, Y = south: the light travels west in the morning, north at noon, east in the evening.
+	const float Azimuth = Hours / 24.f * 360.f + 90.f;
 	Sun->SetWorldRotation(FRotator(-Elevation, Azimuth, 0.f));
 	Moon->SetWorldRotation(FRotator(-FMath::Max(20.f, -Elevation), Azimuth + 180.f, 0.f));
 

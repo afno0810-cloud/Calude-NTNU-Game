@@ -3,6 +3,23 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 1 (Grafikk og kart): CTF-kjernen rundt Hovedbygningen (26. nov.)
+
+332. Kartet er strammet inn til kjernen rundt Hovedbygningen (330 × 265 m), laget for Capture the Flag
+333. To baser som står mot hverandre: Gamle fysikk i vest og Gamle kjemi i øst, med flagg- og spawnplasser lagt inn som kartdata
+334. Tre ruter mellom basene med nytt stinett: langs fasaden i nord, gjennom Hovedbygningen og Lysgården, og gjennom bakgården i sør
+335. Sentralbygg 1 og 2, Bergbygget og Elektrobygget står som kulisser utenfor banen; seks fjerne bygg er tatt ut, så spillet laster mindre
+336. Dørene i Hovedbygningen er åpne: steinsokkelen går ikke lenger tvers over døråpningene
+337. Rampene i byggene ender ikke lenger bak et rekkverk: man kan gå av rampen og ut på gulvet i neste etasje
+338. Sola står i sør midt på dagen, i øst om morgenen og i vest om kvelden (var 90 grader feil)
+339. Hekkene står ikke lenger foran dørene på kortsidene av byggene
+340. Brolagt bakgård mellom fløyene, rundt tårnet
+341. Brolagt forplass foran hovedinngangen, og stien går helt fram til trappa
+342. Kantstein langs alle gangstier
+343. Allé av lønnetrær opp til hovedinngangen og gatetrær langs Høgskoleringen
+344. Trær, steiner, benker og parkerte biler settes bare der det spilles, aldri oppå hverandre eller på en spawnplass
+345. Modellskriptene kjører rett i Blender 5.3, og to nye sjekker (dører/ramper og kartdata) finner sperrede dører før noen spiller
+
 ## Runde 1 (Spillbarhet): Capture the Flag, grunnmuren (26. nov.)
 
 346. Ny spillmodus: Capture the Flag. To lag, rødt og blått, med hver sin base og hvert sitt flagg

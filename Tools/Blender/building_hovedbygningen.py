@@ -2,7 +2,7 @@
 
 Coordinates in meters, Unreal space: X east, Y south, Z up, origin at the middle of the main block
 (the same as the "Hovedbygningen" entry in GSCampus.h). Run:
-    python Tools/Blender/building_hovedbygningen.py
+    blender --background --python Tools/Blender/building_hovedbygningen.py
 Exports SourceArt/Models/SM_Hovedbygningen.(fbx|glb|blend). Unreal uses complex-as-simple collision for it.
 
 Layout:
@@ -148,8 +148,15 @@ def facade(axis, at, a0, a1, outward, doors=(), skip=(), height=H, floors=FLOORS
         ob(c - w / 2 - 0.15, c + w / 2 + 0.15, b - 0.15, b, 0.18, TRIM)
         ob(c - w / 2 - 0.2, c + w / 2 + 0.2, t, t + 0.35, 0.14, TRIM)
         ob(c - 0.18, c + 0.18, t, t + 0.5, 0.2, TRIM)
-    # plinth, floor bands and cornice
-    ob(a0, a1, 0.0, 1.0, 0.25, STONE_D)
+    # plinth, split around the doors so you can walk in (F1)
+    edges = [a0]
+    for (c, w, h) in sorted(doors):
+        edges += [c - w / 2, c + w / 2]
+    edges.append(a1)
+    for al, ah in zip(edges[0::2], edges[1::2]):
+        if ah - al > 0.01:
+            ob(al, ah, 0.0, 1.0, 0.25, STONE_D)
+    # floor bands and cornice
     for f in range(1, floors):
         ob(a0, a1, f * FH - 0.2, f * FH + 0.1, 0.12, TRIM)
     ob(a0 - 0.3, a1 + 0.3, height - 0.5, height, 0.45, TRIM)
@@ -157,7 +164,7 @@ def facade(axis, at, a0, a1, outward, doors=(), skip=(), height=H, floors=FLOORS
     for k, (c, w, b, t) in enumerate(deco[: len(deco) // floors]):
         if k % 4 == 0:
             p = c - spacing / 2
-            if a0 + 1 < p < a1 - 1:
+            if a0 + 1 < p < a1 - 1 and not any(abs(p - d[0]) < d[1] / 2 + 0.45 for d in doors):  # never in front of a door
                 ob(p - 0.35, p + 0.35, 1.0, height - 0.5, 0.12, STONE_D)
     # door frames, arches and steps
     for (c, w, h) in doors:

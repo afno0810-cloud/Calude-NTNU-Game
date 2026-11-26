@@ -1,6 +1,8 @@
 """Detailed models of every enterable Gloshaugen building except Hovedbygningen (which has its own script).
 
-    python Tools/Blender/buildings.py [Name ...]
+    blender --background --python Tools/Blender/buildings.py -- [Name ...]
+
+Scenery buildings (bBackdrop in GSCampus.h) are only rebuilt when they are named.
 
 Reads the building list straight from Source/Gloshaugen/Public/GSCampus.h and rebuilds EXACTLY the walkable
 layout that AGSCampusBuilder makes from boxes (outer walls with the same window and door openings, floor slabs,
@@ -37,12 +39,12 @@ def safe(name):
 def read_buildings():
     src = open(os.path.join(ROOT, "Source", "Gloshaugen", "Public", "GSCampus.h"), encoding="utf-8").read()
     pat = re.compile(r'\{\s*TEXT\("([^"]+)"\),\s*([-\d.]+)f,\s*([-\d.]+)f,\s*([-\d.]+)f,\s*([-\d.]+)f,\s*([-\d.]+)f,'
-                     r'\s*([-\d.]+)f,\s*([-\d.]+)f,\s*(\w+),\s*(true|false)\s*\}')
+                     r'\s*([-\d.]+)f,\s*([-\d.]+)f,\s*(\w+),\s*(true|false)\s*(?:,\s*(true|false)\s*)?\}')
     out = []
     for m in pat.finditer(src):
         out.append(dict(name=m.group(1), x=float(m.group(2)), y=float(m.group(3)), sx=float(m.group(4)),
                         sy=float(m.group(5)), yaw=float(m.group(6)), h=float(m.group(7)), fh=float(m.group(8)),
-                        color=m.group(9), enter=m.group(10) == "true"))
+                        color=m.group(9), enter=m.group(10) == "true", backdrop=m.group(11) == "true"))
     return out
 
 
@@ -240,9 +242,13 @@ class Building:
                 length = math.hypot(ramp_len, FH)
                 cxr, cyr = (ox0 + ix1) / 2, (oy0 + iy1) / 2
                 k.box((cxr, cyr, (z0 + zt) / 2 - SLAB_T / 2), (length, RAMP_W - 0.1, SLAB_T), m.ramp, rot=(0, -RAMP_ANGLE, 0))
-                # handrails on both sides of the ramp
-                for yy in (oy0 + 0.1, iy1 - 0.1):
-                    k.box((cxr, yy, (z0 + zt) / 2 + 0.9), (length, 0.05, 0.05), m.metal, rot=(0, -RAMP_ANGLE, 0))
+                # handrails: wall side runs the full length
+                k.box((cxr, iy1 - 0.1, (z0 + zt) / 2 + 0.9), (length, 0.05, 0.05), m.metal, rot=(0, -RAMP_ANGLE, 0))
+                # floor side stops 2.6 m before the top, so you can step off the ramp onto the floor (F2)
+                t1 = max(0.0, (ix1 - 2.6 - ox0) / ramp_len)
+                if t1 > 0.05:
+                    k.box((ox0 + ramp_len * t1 / 2, oy0 + 0.1, z0 + FH * t1 / 2 + 0.9), (length * t1, 0.05, 0.05), m.metal,
+                          rot=(0, -RAMP_ANGLE, 0))
                 # railing along the edge of the opening on the upper floor
                 rx0, rx1 = ox0 + 1.5, ix1 - 2.6
                 if rx1 > rx0:
@@ -367,11 +373,15 @@ class Building:
 
 
 def main():
-    names = sys.argv[1:]
+    from gs_common import cli_args
+    names = cli_args()
     for b in read_buildings():
-        if not b["enter"] or b["name"].startswith("Hovedbygningen") and b["name"] in ("Hovedbygningen",):
+        if b["name"] == "Hovedbygningen":  # has its own script
             continue
-        if names and b["name"] not in names and safe(b["name"]) not in names:
+        named = b["name"] in names or safe(b["name"]) in names
+        if not b["enter"] and not (b["backdrop"] and named):  # scenery is only rebuilt when named
+            continue
+        if names and not named:
             continue
         Building(b).build()
         print("built", b["name"])

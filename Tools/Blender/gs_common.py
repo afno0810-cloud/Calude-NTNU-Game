@@ -169,3 +169,14 @@ def export(name, also_blend=True, also_glb=True):
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT_DIR, f"{name}.blend"))
     print(f"Exported {fbx}")
     return fbx
+
+
+def cli_args():
+    """Arguments after "--" when run by Blender, or after the script name when run with python + bpy."""
+    import sys
+    a = sys.argv
+    if "--" in a:
+        return a[a.index("--") + 1:]
+    if os.path.basename(a[0]).lower().startswith("blender"):
+        return []
+    return a[1:]

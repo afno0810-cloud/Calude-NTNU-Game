@@ -78,7 +78,7 @@ Trykk Play. Da får du ett vindu per spiller, koblet sammen som et ekte online-s
 - Dør du, ligger tingene dine igjen der du døde
 - Server-styrt treff og skade, død, respawn langt unna fiender, kill-feed og poengtavle
 - **Hovedbygningen som ekte 3D-modell**: Lysgården med trapp, scene og gallerier, korridorer og rom i fire etasjer, ramper, og tårnet med spiralrampe helt opp til klokketårnet
-- Resten av Gløshaugen: 17 bygg med etasjer, vinduer, dører og ramper mellom etasjene, veier, trær og parkerte biler
+- **Kartet er kjernen rundt Hovedbygningen, laget for Capture the Flag** (330 × 265 m): Gamle fysikk (base vest) og Gamle kjemi (base øst), Kjelhuset og fløyene bak Hovedbygningen, med etasjer, vinduer, dører og ramper mellom etasjene. Tre ruter mellom basene: langs fasaden, gjennom Hovedbygningen og Lysgården, og gjennom bakgården. Brolagt forplass og bakgård, allé opp til hovedinngangen. Sentralbygg 1 og 2, Bergbygget og Elektrobygget står som kulisser utenfor banen
 - **Møbler i alle bygg**: klasserom, kontorer, laber, kantiner, bibliotek, salonger og serverrom (pulter, stoler, skap, hyller, tavler, PC-er, automater ...)
 - **Ute på campus**: benker, sykkelstativ, sparkesykler, busskur, søppelkasser, containere, piknikbord, byggegjerder, NTNU-skilt og roboter (robothund, vaktrobot, leveringsrobot)
 - Tilfeldig vær (klart, overskyet, tåke, regn, snø) og dag/natt-syklus (ett døgn = 48 minutter) med gatelys om natta
@@ -114,8 +114,11 @@ Modellene lages med Python-skript i `Tools/Blender/` og ligger ferdig eksportert
 - Teksturer: `python3 Tools/Textures/gen_textures.py` (sømløse PBR-teksturer til `SourceArt/Textures`, blir materialer i Unreal automatisk)
 - Lyd: `python3 Tools/Audio/gen_sounds.py` (skudd, fotsteg, lading, vind, regn, fugler til `SourceArt/Sounds`; ekte opptak med samme navn i `/Game/Sounds` vinner)
 - Detaljer og horisont: `Tools/Blender/details.py` (kumlokk, sluk, hydranter, steiner, blomsterbed) og `Tools/Blender/backdrop.py` (by, åser, fjord)
-- Byggene: `python Tools/Blender/buildings.py` (alle unntatt Hovedbygningen, rett fra `GSCampus.h`). Trær: `nature.py`. Biler: `cars.py`
-- Møbler og campus-ting: `python Tools/Blender/props.py`. Hovedbygningen: `python Tools/Blender/building_hovedbygningen.py`
+- Skriptene kjøres med Blender (vanlig `python` har ikke `bpy`); argumenter til skriptet kommer etter `--`:
+  `"C:\Program Files\Blender Foundation\Blender 5.3lender.exe" --background --python Tools/Blender/<skript>.py -- <argumenter>`
+- Byggene: `Tools/Blender/buildings.py -- [Navn ...]` (alle bygg man kan gå inn i unntatt Hovedbygningen, rett fra `GSCampus.h`; kulisser lages bare når de nevnes ved navn). Trær: `nature.py`. Biler: `cars.py`
+- Møbler og campus-ting: `Tools/Blender/props.py`. Hovedbygningen: `Tools/Blender/building_hovedbygningen.py`
+- Sjekker: `Tools/Blender/check_walkable.py` (med Blender: er dørene og rampetoppene åpne?) og `python Tools/Blender/check_campus.py` (kartdataene: bygg, stier, baser og spawnpunkter)
 
 ### Megascans og Fab (gjør det mye penere)
 - **Megascans-materialer:** hent gratis materialer i Quixel Bridge / Fab (stein, betong, tre, skifer, metall, stoff ...). Når prosjektet åpnes, får bygg og møbler dem automatisk etter navnet på materialet.
