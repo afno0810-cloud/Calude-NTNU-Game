@@ -24,3 +24,6 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Musehjul/styreflate sender brøkdeler: samle utslag til hele trinn (±1) før ett steg. Andreas tester på laptop. (feilretting 2)
 - Server-kode skal aldri bruke kamerakomponenten for klienters sikteretning; bruk `GetBaseAimRotation()` eller send retningen i RPC-en. (feilretting 2)
 - Kontrolløren sjekker byggerens forklaringer om motoren mot motorkoden, ikke bare selve rettelsen. (feilretting 2)
+- Store planer forhåndssjekkes av kontrolløren før bygging; det er billigere å rette en plan enn kode. (plan 5)
+- Alt klienten selv velger (indekser, nøkler, tidspunkter) kan velges for å jukse: serveren må begrense eller trekke selv. (plan 5)
+- Endringer i skade må regnes mot katalogens drap-terskler (antall treff for å drepe) før de planlegges. (plan 5)

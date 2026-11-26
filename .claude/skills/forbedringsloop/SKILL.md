@@ -48,6 +48,13 @@ bakgrunnen, og start en ny oppgave for en agent straks den er ferdig:
 
 Reglene under («Hver runde») beskriver innholdet i hvert steg og gjelder fortsatt.
 
+## Forhåndssjekk av store planer (lært 26. nov.)
+Når en plan er stor eller rører kjernen (skyting, nettverk, kampregler, kartdata), og lagets kontrollør
+ikke har en commit å kontrollere: la kontrolløren forhåndssjekke planen mot koden før den bygges, og skriv
+`kontroll/forhand-plan-NN.md` (KLAR / BØR ENDRES). Ved BØR ENDRES skriver planleggeren planen om, gjerne
+delt i to runder. Første gang dette ble gjort fant kontrolløren et jukshull, to ytelsesfeller og en
+balansefeil før en linje kode var skrevet.
+
 ## Hver runde (N = 1, 2, 3 …)
 1. **Plan:** kall agenten `planlegger` med målet. Den skriver `.claude/loop/plan.md`.
 2. **Bygg:** kall agenten `bygger`. Den gjennomfører planen og bygger.
