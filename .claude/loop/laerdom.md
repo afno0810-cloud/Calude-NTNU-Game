@@ -18,3 +18,6 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Verdier satt på en komponent før `FinishSpawning` kan bli tolket om av `InitializeComponent`: les motorens standardverdier (f.eks. `bInitialVelocityInLocalSpace`). (feilretting 1)
 - Hos klienter kjøres `OnRep` for startverdier før `BeginPlay`, så `BeginPlay` må ikke overskrive replikert tilstand. (feilretting 1)
 - Trekninger i flere trinn (loot) må regnes ut per gjenstand og for alle `MinRarity`-nivåer før de godkjennes. (feilretting 1)
+- Upålitelige multicaster som setter lokal tilstand trenger et tidsvindu, et én-gangs-flagg og kall fra begge sider. (runde 3)
+- En sporing (trace) som filtrerer bort treff må skille «filtrert treff» fra «ingen treff». (runde 3)
+- Kosmetiske effekter trenger både et tak per kilde og et felles tak per maskin. (runde 3)

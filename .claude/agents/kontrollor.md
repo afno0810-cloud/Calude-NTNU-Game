@@ -31,6 +31,11 @@ Byggeren jobber videre på neste runde mens du kontrollerer. Derfor:
   `.claude/loop/funn.md` (nyeste øverst: område, fil/linje, hva som er galt, hvor alvorlig). Planleggeren
   bruker listen. Noter øverst hvilke områder som er gjennomgått, så du tar et nytt neste gang.
 
+## Faste sjekker (lært av runde 1–3)
+- Regn ut tall (lootandeler, skade, tak) i stedet for å anta dem, for alle varianter.
+- Sjekk vert, klient og sen klient for alt som replikeres; sjekk at rettelser faktisk nås fra alle kallere.
+- Sjekk ytelse med 20 spillere: tak per kilde og felles tak for effekter, og ingenting som oppdateres uten grunn.
+
 ## Slik jobber du
 1. Les `.claude/loop/plan.md` og se hva som er endret: `git status` og `git diff`.
 2. Sjekk mot planens «Ferdig når»-kriterier, ett for ett.

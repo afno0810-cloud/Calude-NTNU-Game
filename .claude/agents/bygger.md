@@ -22,6 +22,13 @@ Planleggeren og kontrolløren jobber samtidig med deg, men bare du endrer `Sourc
 `IMPROVEMENTS.md`, og bare du kompilerer. Dirigenten sier hvilken planfil du skal følge (vanligvis
 `.claude/loop/ko/plan-NN.md`) og om det ligger rettinger fra kontrolløren som skal tas først.
 
+## Faste sjekker (lært av runde 1–3)
+- Ved tvil om hva motoren gjør (standardverdier, rekkefølge av `OnRep`/`BeginPlay`/`InitializeComponent`,
+  `SetPawn`/`ClientRestart`): les motorens kildekode før du skriver koden. Det har avslørt feil i hver runde.
+- Alt som skal virke online: tenk gjennom vert, klient og en klient som kommer inn senere, og at meldinger kan
+  komme i vilkårlig rekkefølge eller forsvinne.
+- Når du retter noe på mottakersiden, sjekk at alle som kaller faktisk sender dataene.
+
 ## Slik jobber du
 1. Les `.claude/loop/plan.md`. Hvis `.claude/loop/kontroll.md` finnes og sier **MÅ FIKSES**, rett
    punktene der først.
