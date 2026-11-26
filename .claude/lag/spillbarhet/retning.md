@@ -35,28 +35,26 @@ spillet til kampen er over skal henge sammen, forklare seg selv og være rettfer
 1. **[plan-01, runde 1] CTF-grunnmuren.** Lag (`Team`), `AGSFlag` (ta, bære, miste, hente hjem, erobre),
    lagpoeng og kampslutt ved 3 erobringer, spawn ved egen base, statusstripe og lobby-forklaring i `GSHelp.*`,
    lagbytte med L, ren kampstart (funn 6, 7, 15, S1, S2 + Kamps bestilling). Se `ko/plan-01.md`.
-2. **[plan-02] Hovedmenyen (0b) med lagvalg og taster** i nye `GSMenu.*`, C++ uten .uasset:
-   - Vises når spillet starter alene (ikke koblet til noen): campus bak som rolig bakgrunn, spilleren frosset
-     (`SetIgnoreMoveInput/LookInput`, musepeker på). Tegnes med samme krok som `GSHelp` (ett bestilt kall fra
-     `GSHUD`, reserve via `AHUD::OnHUDPostRender`); mus via `GetMousePosition` + `WasInputKeyJustPressed`.
-   - **Start spill** (vert, `open Gloshaugen?listen`), **Bli med** (skriv inn IP: tall, punktum, slett, lim inn;
-     siste adresse huskes – lagets funn F1), **Innstillinger** (grafikk, oppløsning, strålesporing, følsomhet,
-     lyd, spillernavn – F2; lagres), **Kontroller**, **Avslutt**. Bekreftelse før «Start spill» og «Avslutt».
-   - **Lagvalg i lobbyen** med mus (to kolonner Rødt/Blått med navn, «Bytt lag», «Klar»), oppå `RequestTeam` og
-     `ServerRequestTeam` fra plan-01. Vertsvalg: venneild av/på, kamplengde, antall erobringer, «Start nå».
-   - **Taster som kan endres** (keybinds) med Enhanced Input sine brukerinnstillinger, lagres, og samme liste
-     (`GSHelp::Controls()`) vises i menyen og i H-oversikten. Krever bestilling hos Kamp (`GSPlayerController`
-     lager i dag `MapKey` i kode) – del i to runder hvis det blir for stort: først menyen, så ombinding.
-   - Åpent for byggeren: lydstyrke uten .uasset (undersøk `FAudioDevice::SetTransientPrimaryVolume`).
+2. **[plan-02, skrevet 26. nov.] Hovedmenyen (0b), lagvalg med mus og taster** i nye `GSMenu.*`, C++ uten .uasset.
+   Se `ko/plan-02.md`. Kort: hovedmeny i standalone (Start spill med egne adresser, Bli med med tekstfelt og liming,
+   Øv alene, Innstillinger, Kontroller, Avslutt), «Kobler til …» med 20 s-grense, feilmeldinger ved brutt/mislykket
+   tilkobling (F1, F6), bekreftelse før man forlater en kamp, eget navn renset på serveren (F2), grafikk/skjermmodus/
+   V-sync/bildefrekvens/følsomhet/lydstyrke lagret, taster som kan endres, lagvalg-panel med mus i lobbyen. Innputt via
+   `UGameViewportClient`-krokene (svelger alt mens menyen er åpen, funn I3 for våre flater), tekst via egen
+   `UGSGameViewportClient::InputChar`. Bare én liten bestilling til Kamp (Esc-menyens knapper og hinttekster); menyen
+   fanger klikkene deres til den er levert.
 3. **[plan-03] CTF ferdig for det nye kartet + knappehjelpen (0a).**
    - Les baser, spawn og område fra `GSCampus::Bases()`/`PlayArea()` (hvis ikke gjort i plan-01). Regel for dem
      som går ut av området (varsel, så skade) – Grafikks ønske c. Sidebytte mellom kampene (ønske e).
    - Flaggbæreren blir synlig for motstanderne etter 20 s (Andreas' godkjente forslag). Flagg som ligger: eget lag
      må stå ved det i 3 s for å hente det hjem (i stedet for berøring) hvis berøring føles for lett.
    - Respawn i bølger (hvert 10. s) ved egen base, aldri i sikte av en fiende; kort venting vist på skjermen.
+   - **Vertsvalg i lagvalg-panelet** (flyttet fra plan-02): venneild av/på, kamplengde, antall erobringer, «Start nå»
+     (krever at `CaptureLimit`/`MatchMinutes` blir replikerte verdier i `GSGameState`).
    - **Knappehjelpen**: H-oversikt over alle taster, hint første gang noe er aktuelt (loot, låst kasse, PC,
      printer, skadet, sulten, tomt magasin, første gang du ser/tar/mister flagget). Utkastet ligger i
-     `ko/utkast-knappehjelp.md` – oppdater tekstene til CTF og bygg oppå `GSHelp.*` fra plan-01.
+     `ko/utkast-knappehjelp.md` – oppdater tekstene til CTF og bygg oppå `GSHelp.*` fra plan-01. Tastene leses fra
+     `GSMenu::Controls()`/`KeyName()` (plan-02), så hintene viser det spilleren faktisk har valgt.
 4. **[plan-04] Våpendata som følger virkeligheten (Kamps bestilling, funn R5–R7, R13) + loot for CTF.**
    - Kalibertabell i `catalog.py`: `MuzzleVelocity`, `BulletMassG`, `PenClass`, skade etter patron, riktige
      kalibre med egne ammoesker, `ProtClass` på vester og hjelmer, ekte prosjektilfarter.
@@ -85,6 +83,12 @@ spillet til kampen er over skal henge sammen, forklare seg selv og være rettfer
 - **Feiljakt som gjenstår i egne filer:** `GSTerminal` videre, lootplassering per bygg, til-/frakobling.
 
 ## Endringer i retningen
+- 2026-11-26 (plan-02): **Taster lagres i `[Gloshaugen.Keys]` og settes rett inn i Kamps `UInputMappingContext`**
+  (som lages i kode og er `public`), i stedet for Enhanced Input sine brukerinnstillinger. Brukerinnstillingene ville
+  krevd `PlayerMappableKeySettings` på hver handling i Kamps fil, Config-endring og SaveGame (funn I2) – en stor
+  bestilling for samme resultat. Kan flyttes dit senere uten å endre menyen. Menyen tar innputt gjennom
+  `UGameViewportClient`-krokene og tegner via `OnHUDPostRender`, så den virker uten Kamps filer. Vertsvalg (venneild,
+  kamplengde, erobringer, «Start nå») er flyttet til plan-03 for å holde plan-02 innenfor én runde.
 - 2026-11-26 kl. 17.20+: **Andreas bestemte én modus, Capture the Flag.** Retningen er skrevet om rundt CTF.
   Plan-01 er CTF-grunnmuren (ikke hovedmenyen), fordi Kamp, Grafikk, menyens lagvalg og knappehjelpen alle
   trenger lagfeltene, flagget og reglene først, og fordi den kan spilles og testes alene uten andre lags filer.
