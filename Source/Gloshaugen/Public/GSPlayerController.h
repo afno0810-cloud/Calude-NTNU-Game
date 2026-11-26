@@ -119,6 +119,9 @@ public:
 	UFUNCTION(Exec) void Opplosning(int32 Percent);
 	/** Console: "Straaling 1" = hardware ray tracing in Lumen (RTX), "Straaling 0" = software Lumen (faster). */
 	UFUNCTION(Exec) void Straaling(int32 On);
+	/** Console: "Bildefrekvens 60" = highest frame rate (30-240). Default 60, so a laptop does not run hot and throttle. Saved. */
+	UFUNCTION(Exec) void Bildefrekvens(int32 Fps);
+	int32 GetFrameLimit() const { return FrameLimit; }
 
 protected:
 	/** Your pawn, or your body while you are dead (what the view goes back to after a security camera). */
@@ -129,6 +132,10 @@ protected:
 	float ServerNextTrackTime = 0.f;
 	int32 TrackPulsesLeft = 0;
 	FTimerHandle TrackTimer;
+
+	/** Sets t.MaxFPS (works in the editor's Play too) and, in the packaged game, the saved user setting. */
+	void ApplyFrameLimit(bool bSave);
+	int32 FrameLimit = 60;
 
 	void ShowScoreboard() { bShowScoreboard = true; }
 	void HideScoreboard() { bShowScoreboard = false; }

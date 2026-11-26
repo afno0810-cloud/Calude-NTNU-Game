@@ -89,6 +89,8 @@ public:
 	void ApplyFlash(const FVector& Location, float Radius, const AController* Thrower = nullptr);
 	/** Server: true when From is another player on our own team and friendly fire is off. What you do to yourself always counts. */
 	bool IsSparedFrom(const AController* From) const;
+	/** Capture the Flag team of the player in this body (GSTeam: 0 none, 1 red, 2 blue). Works on every machine. */
+	uint8 GetTeam() const;
 	/** Server: special rounds of the shot that is hitting us right now (GSAmmoType). */
 	uint8 IncomingAmmoType = 0;
 	bool bIncomingMelee = false;   // server: the hit being applied is a blade/fist
@@ -251,6 +253,14 @@ protected:
 	 *  for the body others see, if one is in the project. The cylinder and sphere are the stand-in when none is found; hits land on HitZones. */
 	void SetupHumanBody();
 	bool bHumanBody = false;
+	/** Team look that others see: the body's paint (jacket) and a cloth armband on each upper arm in the team's
+	 *  colour. The team lives in the player state, so it is the same after every respawn. */
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> ArmbandL;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> ArmbandR;
+	void ApplyTeamLook();
+	/** Puts one armband around the upper arm bone (found from the skeleton, so it fits Manny, Quinn and the old mannequin). */
+	void PlaceArmband(UStaticMeshComponent* Band, FName UpperArm, FName LowerArm);
+	uint8 AppliedTeam = 255;   // 255 = not applied yet
 	void UpdateFocusPickup();
 	void UpdateLocalVisuals(float DeltaSeconds);
 	void UpdateWeaponAnimation(float DeltaSeconds);
@@ -289,7 +299,7 @@ protected:
 	UFUNCTION(Server, Reliable) void ServerDropItem(int32 Index);
 	UFUNCTION(Server, Reliable) void ServerGrapple(FVector_NetQuantize Target);
 	UFUNCTION(Server, Reliable) void ServerToggleFlashlight();
-	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantize End, uint8 Flags);   // Flags: bit 1 = suppressed, bit 2 = no tracer
+	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Start, FVector_NetQuantize End, uint8 Flags);   // Flags: bit 1 = suppressed, bit 2 = no tracer, bit 4 = launcher (the one-shot tube is already gone from the weapon list)
 	UFUNCTION(NetMulticast, Unreliable) void MulticastPelletFX(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed, int32 Pellets, float ConeDeg);
 	UFUNCTION(NetMulticast, Unreliable) void MulticastMeleeFX();
 	/** Everyone: this body was just hit here, from this direction (GSWound kind, strength 0..255). */
@@ -392,6 +402,7 @@ protected:
 	// Being hit (local only): burst of hits for the edge flash, sound de-duplication, heartbeat
 	float HurtBurstLost = 0.f;          // health lost in the current burst (shotgun pellets arrive together)
 	float LastHurtSoundTime = -100.f;
+	float LastLimbJoltTime = -100.f;   // the knee buckling / the gun knocked in your hands, once per instant
 	int32 LastHurtSoundRank = -1;
 	float NextHeartbeat = 0.f;
 	float LastHeartbeatTime = -100.f;

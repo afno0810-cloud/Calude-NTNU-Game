@@ -244,6 +244,10 @@ void AGSPlayerController::BeginPlay()
 	GConfig->GetFloat(TEXT("Gloshaugen"), TEXT("MouseSensitivity"), MouseSensitivity, GGameUserSettingsIni);
 	MouseSensitivity = FMath::Clamp(MouseSensitivity, 0.2f, 3.f);
 	GConfig->GetString(TEXT("Gloshaugen"), TEXT("LastJoinAddress"), LastJoinAddress, GGameUserSettingsIni);
+	// Frame rate cap (default 60): without one a laptop renders as fast as it can, runs hot and throttles.
+	GConfig->GetInt(TEXT("Gloshaugen"), TEXT("FrameLimit"), FrameLimit, GGameUserSettingsIni);
+	FrameLimit = FMath::Clamp(FrameLimit, 30, 240);
+	ApplyFrameLimit(false);
 	if (GIsEditor) return;
 
 	// First time the game runs: settings that look good and stay smooth on a laptop RTX 3050 (6 GB).
@@ -254,7 +258,7 @@ void AGSPlayerController::BeginPlay()
 	if (bDone) return;
 	S->SetOverallScalabilityLevel(2);          // High
 	S->SetResolutionScaleValueEx(72.f);       // percent; TSR upscales to full resolution
-	S->SetFrameRateLimit(0.f);
+	S->SetFrameRateLimit(static_cast<float>(FrameLimit));
 	S->ApplySettings(false);
 	S->SaveSettings();
 	GConfig->SetBool(TEXT("Gloshaugen"), TEXT("GraphicsDefaultsApplied"), true, GGameUserSettingsIni);
@@ -326,9 +330,46 @@ void AGSPlayerController::Opplosning(int32 Percent)
 	}
 }
 
+void AGSPlayerController::ApplyFrameLimit(bool bSave)
+{
+	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS")))
+	{
+		V->Set(static_cast<float>(FrameLimit), ECVF_SetByGameSetting);
+	}
+	if (!GIsEditor)
+	{
+		if (UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr)
+		{
+			if (!FMath::IsNearlyEqual(S->GetFrameRateLimit(), static_cast<float>(FrameLimit)))
+			{
+				S->SetFrameRateLimit(static_cast<float>(FrameLimit));
+				S->ApplySettings(false);
+				S->SaveSettings();
+			}
+		}
+	}
+	if (bSave)
+	{
+		GConfig->SetInt(TEXT("Gloshaugen"), TEXT("FrameLimit"), FrameLimit, GGameUserSettingsIni);
+		GConfig->Flush(false, GGameUserSettingsIni);
+	}
+}
+
+void AGSPlayerController::Bildefrekvens(int32 Fps)
+{
+	FrameLimit = FMath::Clamp(Fps, 30, 240);
+	ApplyFrameLimit(true);
+	ClientMessage(FString::Printf(TEXT("Bildefrekvens: h\u00F8yst %d bilder i sekundet"), FrameLimit));
+}
+
 void AGSPlayerController::Straaling(int32 On)
 {
 	const bool bOn = On != 0;
+	// The whole ray tracing pipeline, not only Lumen's use of it: off really frees the GPU time and memory.
+	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.RayTracing.Enable")))
+	{
+		V->Set(bOn ? 1 : 0, ECVF_SetByConsole);
+	}
 	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.HardwareRayTracing")))
 	{
 		V->Set(bOn ? 1 : 0, ECVF_SetByConsole);

@@ -32,24 +32,27 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
 - Runde 1: dødskamera, drapskort, treffmarkører.
 - Runde 2 (`94f1370`, godkjent): å bli truffet – blodkant, retningspiler, rustningslyder, hjerteslag.
 - Feilretting 1 (`57493cb`): drap med prosjektil telles, granater flyr riktig hos klienter, miner blir liggende.
+- Runde 3 (`f19d059`): blod i verden – sky, sprut, dråper, pøl, kropper ligger i 90 s og faller slik kula traff.
+- Feilretting 2 (`2f04300`): musehjul, prosjektilretning, miner hos sene klienter, dødskort, kast fra klient.
+- Runde 4 (`60a516c`): kroppssoner – sju treffbokser, bein- og armskade, vest bare på overkroppen, V1 og V3.
+- Lag i kamp, første del (`2f6f46b`): ingen venneild, flaggbæreren går på 85 % fart.
 
 ## I arbeid / planlagt
-- **Runde 3** (`ko/plan-03.md`, bygges): blod i verden – sky og dråper ved såret, sprut bak, pøl under kroppen,
-  kropper ligger i 90 s og faller slik kula traff.
-- **Rettinger** (`rettinger.md`, byggeren tar dem før runde 4): prosjektilretning, mine hos sene klienter,
-  dødskort etter respawn, mineregel, musehjul.
-- **Runde 4** (`ko/plan-04.md`): kroppssoner – sju treffbokser med ekte mål, skade etter kroppsdel, beinskade
-  (halter, ingen sprint) og armskade (ustøtt sikte, treg lading), vest bare på overkroppen, hjelm ikke i ansiktet.
-  Samtidig V1 (sikting til serveren), V3 (skuddtakt), V5 (rakettkasterlyd), kroppen andre ser står på bakken,
-  og HUD mister «LAVT LIV», hvitt blink og «HODESKUDD».
-- **Runde 5** (`ko/plan-05.md`): ballistikk del 1 – kuler som raske prosjektiler på serveren (ny fil `GSBallistics.*`)
-  med kulefart, luftmotstand og fall per kaliber (reservetabell til Spillbarhet leverer våpendata), skadefall over
-  avstand, innskutte sikter, holdemerker i kikkerten, overlydssmell når kuler passerer, lysspor bare for sporlys og
-  hver femte MG-kule. Samtidig V2 (serveren bestemmer spredningen), V7 (`ServerFire` upålitelig) og funn 9 i `ServerFire`.
+- **Lagfarger og CTF-HUD** (byggeren, pågår): lagfarge på kroppen og flaggstatus i HUD. Venneild av og bærerfart
+  85 % er inne (`2f6f46b`).
+- **Runde 5 = 5a** (`ko/plan-05.md`, skrevet om etter forhåndssjekk): ballistikk-kjernen. Ny fil `GSBallistics.*`,
+  kulefart, luftmotstand og fall per kaliber, innskutte sikter, skadefall med full skade ut til innskytingsavstanden,
+  hagl som kuler, serverens spredning (skuddnummer med hopp ≤ 3, klientens kjegle klemt til 0,85–1,15 ×),
+  retningskrav, start høyst 120 cm fra øyet og aldri bak vegg, levetids- og områdegrenser, framspoling med
+  ping/2 (maks 0,1 s). `ServerFire` forblir pålitelig.
+- **Runde 6 = 5b** (`ko/plan-06.md`): upålitelig ild bare for automatvåpen (V7), flygende lysspor som én flyttet
+  strek per kule med felles tak, overlydssmell og sus, holdemerker for 150–300 m i sterke kikkerter.
+- **Runde 7 (neste etter 5b): V8, tilbakespoling av treffbokser** til skytterens tid når kula skytes. Med flytid og
+  små treffbokser er klienter ellers i klar bakleksa mot verten. Flyttet opp fra «ballistikk del 2».
 
 ## Neste ideer (backlog, viktigst øverst)
-1. **[Spor 8] Lag i kamp (CTF)** – kandidat runde 6, så snart lag Spillbarhet har levert lagfeltet (bestilling
-   ligger inne). Gammelt: `TakeDamage` får én lagsjekk øverst (venneild av = ingen skade, blod, lemskade eller
+1. **[Spor 8] Lag i kamp (CTF), resten** – lagfeltene er levert; venneild og bærerfart er inne, lagfarger og
+   CTF-HUD bygges nå. Gjenstår det som står under og ikke er tatt der. Gammelt: `TakeDamage` får én lagsjekk øverst (venneild av = ingen skade, blod, lemskade eller
    treffmarkør på lagkamerater), eksplosjoner og miner følger samme regel, drapskort og drapslogg viser lagfarge.
    Nytt: lagkamerater vises med et lite, dempet navn over hodet på nært hold (ingen markør gjennom vegger),
    flagget henger synlig på ryggen til bæreren og bæreren går tregere, egen lyd og retningskile i HUD når flagget
@@ -59,8 +62,8 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
    etter kaliber, med tapt fart (bygger på `UGSBallistics::Step` fra runde 5: kula fortsetter med lavere fart i stedet
    for å stoppe); kulehull som blir værende, splinter, dører som kan skytes opp (Andreas liker
    glass som knuser). Gammelt: nedslagseffekten får form etter materialet. Trenger materialmerking fra Grafikk
-   (bestilt); uten den er alt betong. Ta samtidig V8 (forsinkelseskompensasjon: spol treffboksene tilbake til
-   skytterens tid når kula skytes) og la klientens nedslag følge serverens treff (fjerner restjukset med `SpreadKey`).
+   (bestilt); uten den er alt betong. V8 er tatt ut herfra og er egen runde rett etter 5b (se over). La klientens
+   nedslag følge serverens treff (fjerner restjukset: beste av tre mønstre og 15 % kjegle).
 3. **[Spor 1] Blødning og blodspor** (sammen med Spillbarhet: Kamp eier skadelogikken, de eier bandasje/
    tourniquet). Nytt: replikert blødning som tapper liv til den stoppes, mest ved mageskudd; dråpespor man kan
    følge. Gammelt: bandasje får sin egentlige oppgave, hjerteslaget følger blodtapet. Bygger på sonene fra runde 4.
@@ -73,7 +76,7 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
    haltebevegelse og holder ikke våpenet. Nytt: animasjoner fra Game Animation Sample/Lyra, treffbokser festet til
    beina på skjelettet (da stemmer løpende bein og armer også), halting som synes for andre.
 7. **[Spor 3] Ekte lyd på avstand** (R11). Nytt: smellet forsinkes med avstanden (343 m/s), lengre rekkevidde med
-   demping (overlydssmell og sus når en kule passerer kom i runde 5). Gammelt: lyddempet våpen høres lenger enn 40 m, demper
+   demping (overlydssmell og sus når en kule passerer kommer i 5b). Gammelt: lyddempet våpen høres lenger enn 40 m, demper
    trekker ikke skade, hagle med demper (V6).
 8. **[Spor 1] Sår som synes**. Nytt: blodflekker på kroppen der kula traff (per sone), blod på egne hender når du
    er skadet, lik kan treffes og blør (R15). Gammelt: blodmaterialet fra runde 3.
@@ -92,7 +95,7 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
 15. **[Spor 1] Eksplosjoner som ødelegger**: sot, trykkbølge, øresus, splinter som egne treff per sone.
 16. **[Spor 2] Lommelykt og nattsikte montert på våpen; vind på lange skudd** (leser vær fra Grafikk; vinden legges
     som en ekstra kraft i `UGSBallistics::Step`).
-17. **[Spor 7] Åpne funn i egne filer**: kast som starter bak vegg (funn 9, `ThrowItem`; skudd ble rettet i runde 5), spesialammo som varer evig (V4),
+17. **[Spor 7] Åpne funn i egne filer**: kast som starter bak vegg (funn 9, `ThrowItem`; skudd rettes i 5a), spesialammo som varer evig (V4),
     lyddemper på alt (V12), røyk/ild for sene spillere (funn 10).
 
 ### Strøket (arkade – skal ikke bygges)
@@ -101,6 +104,13 @@ lederen, lysstråle i sjeldenhetsfarge på loot, glødende omriss rundt drapsman
 rundeslutt med «høydepunkter». Statistikk kan vises nøkternt på resultattavla etter kampen, ikke underveis.
 
 ## Endringer i retningen
+- 2026-11-26 (plan 5 delt): **Ballistikk del 1 er delt i 5a og 5b** etter kontrollørens forhåndssjekk (BØR ENDRES).
+  5a er kjernen med rettelsene: skuddnummeret klienten velger kan bare hoppe 3 (ellers trekker serveren selv),
+  klientens kjegle sendes med og klemmes til ±15 %, skadefallet begynner først etter innskytingsavstanden (drap-
+  tersklene i katalogen står), kuler ryddes når de forlater banen, serverens kule spoles fram med halve pingen, og
+  `ServerFire` forblir pålitelig. 5b tar det spilleren ser og hører (lysspor, smell, holdemerker) og upålitelig ild
+  bare for automatvåpen – ett dyrt skudd skal aldri forsvinne. V8 (tilbakespoling) er løftet fra backlog til runden
+  rett etter 5b, fordi flytid + ping + små treffbokser ellers gir verten for stor fordel.
 - 2026-11-26 (runde 5): **Ballistikk før lag i kamp.** Lagfeltene fra Spillbarhet er ikke levert, så backlogens
   punkt 2 (ballistikk del 1) ble rundens arbeid, med V2 og V7 fra `funn.md`. Kulene flyr i en egen, ny fil
   (`GSBallistics.*`, lag Kamp eier den) slik at gjennomslag (del 2) og vind senere bare endrer ett steg i kulas bane.

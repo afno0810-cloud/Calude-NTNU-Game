@@ -5,8 +5,11 @@
 #include "GSHUD.generated.h"
 
 class AGSCharacter;
+class AGSGameState;
+class APlayerState;
 
-/** Canvas HUD: crosshair, health/armor/hunger/thirst, ammo, backpack bar, boosts, pickups, kill feed, scoreboard, inventory. */
+/** Canvas HUD: crosshair, health/armor/hunger/thirst, ammo, backpack bar, boosts, pickups, kill feed, team scoreboard,
+ *  inventory, names over team mates and the radio line for flag events. The CTF status line is drawn by GSHelp. */
 UCLASS()
 class GLOSHAUGEN_API AGSHUD : public AHUD
 {
@@ -35,8 +38,12 @@ protected:
 	void DrawCompass(AGSCharacter* C);
 	/** Always-on minimap (player-up, rotates with you): roads, buildings with their names, loot beams, you. */
 	void DrawMinimap(AGSCharacter* C);
-	/** Lobby list with ready marks, countdown, match clock and the winner screen. */
+	/** Lobby list with ready marks and teams, countdown, match clock and the result (which team won, or a draw). */
 	void DrawMatch();
+	/** Small name over team mates you can see within 25 m. Nothing is ever drawn over enemies. */
+	void DrawTeamTags(AGSCharacter* C);
+	/** A flag was taken, dropped, returned or captured (AGSGameState::OnFlagEvent): short radio sound and one line. */
+	void HandleFlagEvent(uint8 Event, uint8 FlagTeam, const FVector& Where, APlayerState* Who);
 	/** Black scope with a reticle while scoped in. */
 	void DrawScope(AGSCharacter* C);
 	/** Red wedges (up to 4) pointing to where recent hits came from; they turn as you turn. */
@@ -55,9 +62,9 @@ protected:
 	void DrawBinoculars();
 	void DrawTopRight();
 	void DrawKillFeed();
-	void DrawScoreboard();
+	/** Two groups, one per team: team score, then captures, returns, kills, deaths and ping per player. Y < 0 = default place. */
+	void DrawScoreboard(float Y = -1.f);
 	void DrawDeathScreen();
-	void DrawHelp();
 	void DrawTerminal(AGSCharacter* C, class AGSPlayerController* PC);
 	void DrawPrinter(AGSCharacter* C, class AGSPlayerController* PC, class AGSTerminal* T);
 	void DrawComputer(AGSCharacter* C, class AGSPlayerController* PC, class AGSTerminal* T);
@@ -68,6 +75,10 @@ protected:
 	void Frame(float X, float Y, float W, float H, const FLinearColor& Color, float T = 2.f);
 	void Bar(float X, float Y, float W, float H, float Fraction, const FLinearColor& Color);
 
-	float StartTime = -1.f;
 	TArray<TPair<FVector, float>> Shots;
+	/** The game state whose flag events we listen to (it can arrive after the HUD on a client). */
+	TWeakObjectPtr<AGSGameState> BoundGameState;
+	FString RadioText;
+	float RadioTime = -100.f;
+	bool bRadioWarning = false;
 };

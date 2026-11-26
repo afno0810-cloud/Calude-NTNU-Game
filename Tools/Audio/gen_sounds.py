@@ -217,6 +217,43 @@ def hurt_sounds():
     save("Ear_Ring", x, 0.35)
 
 
+def flag_sounds():
+    """Radio cues for Capture the Flag:  python Tools/Audio/gen_sounds.py flag  (writes only these four).
+
+    A hand radio breaking in: squelch click, one to three plain tones through a narrow speaker, squelch tail.
+    Sober on purpose: no fanfare, no arcade jingle.
+    """
+    def cue(name, notes, peak):
+        # notes: (start s, frequency Hz, length s)
+        length = max(s + d for s, _, d in notes) + 0.22
+        n = int(length * SR)
+        x = np.zeros(n)
+        for start, f, d in notes:
+            i0 = int(start * SR)
+            m = min(n - i0, int(d * SR))
+            tt = np.arange(m) / SR
+            tone = np.sin(2 * np.pi * f * tt) + 0.25 * np.sin(2 * np.pi * 2 * f * tt)
+            e = np.minimum(1.0, tt / 0.008) * np.minimum(1.0, (d - tt) / 0.03).clip(0, 1)
+            x[i0:i0 + m] += tone * e
+        # carrier hiss while the channel is open, squelch click at both ends
+        hiss = highpass(lowpass(noise(length), 3200), 700) * 0.10
+        x += hiss
+        click = int(0.018 * SR)
+        x[:click] += highpass(rng.standard_normal(click), 1500) * np.linspace(1, 0, click) * 0.9
+        tail0 = n - int(0.12 * SR)
+        m = n - tail0
+        x[tail0:] += highpass(lowpass(rng.standard_normal(m), 3500), 900) * env(m, 0.0, 0.03) * 0.8
+        # small radio speaker: nothing below 400 Hz or above 3 kHz, a little clipped
+        x = highpass(lowpass(x, 3000), 400)
+        x = np.tanh(x * 1.6)
+        save(name, x, peak)
+
+    cue("Flag_Info", [(0.03, 880, 0.11)], 0.5)                                       # something happened
+    cue("Flag_Alert", [(0.03, 620, 0.13), (0.21, 620, 0.13)], 0.55)                  # your flag is in danger
+    cue("Flag_Good", [(0.03, 660, 0.10), (0.16, 880, 0.14)], 0.5)                    # your flag is safe again
+    cue("Flag_Score", [(0.03, 660, 0.10), (0.15, 880, 0.10), (0.27, 990, 0.20)], 0.55)   # your team captured
+
+
 def loop_save(name, x, peak):
     # crossfade the ends so it loops without a click
     f = int(0.5 * SR)
@@ -269,6 +306,9 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "hurt":
         hurt_sounds()
         raise SystemExit
+    if len(sys.argv) > 1 and sys.argv[1] == "flag":
+        flag_sounds()
+        raise SystemExit
     gunshot("Shot_Pistol", 160, 0.8, 0.9, 0.9, 0.3)
     gunshot("Shot_SMG", 180, 0.7, 0.7, 0.8, 0.3)
     gunshot("Shot_Rifle", 120, 1.2, 1.3, 1.4, 0.35)
@@ -299,3 +339,4 @@ if __name__ == "__main__":
     birds()
     city_night()
     hurt_sounds()
+    flag_sounds()

@@ -267,6 +267,17 @@ AGSCharacter::AGSCharacter()
 	HelmetMesh->SetVisibility(false);
 	SetupVisual(HelmetMesh);
 
+	// Team armbands: placed on the upper arms once the body and the team are known (ApplyTeamLook).
+	for (int32 I = 0; I < 2; ++I)
+	{
+		UStaticMeshComponent* Band = CreateDefaultSubobject<UStaticMeshComponent>(I == 0 ? TEXT("ArmbandL") : TEXT("ArmbandR"));
+		Band->SetupAttachment(GetMesh());
+		Band->SetOwnerNoSee(true);
+		Band->SetVisibility(false);
+		SetupVisual(Band);
+		(I == 0 ? ArmbandL : ArmbandR) = Band;
+	}
+
 	Flashlight = CreateDefaultSubobject<USpotLightComponent>(TEXT("Flashlight"));
 	Flashlight->SetupAttachment(Camera);
 	Flashlight->SetRelativeLocation(FVector(10.f, 15.f, -10.f));
@@ -286,6 +297,8 @@ AGSCharacter::AGSCharacter()
 	HelmetMesh->SetStaticMesh(SphF.Object);
 	BodyMesh->SetStaticMesh(CylF.Object);
 	HeadMesh->SetStaticMesh(SphF.Object);
+	ArmbandL->SetStaticMesh(CylF.Object);
+	ArmbandR->SetStaticMesh(CylF.Object);
 }
 
 void AGSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -323,12 +336,11 @@ void AGSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Each player gets a body color from their name so you can tell people apart.
-	const uint32 Hash = GetTypeHash(GetName());
-	const FLinearColor BodyColor = FLinearColor::MakeFromHSV8(uint8(Hash % 255), 120, 150);
-	GSUtils::SetColor(BodyMesh, BodyColor);
 	GSUtils::SetColor(HeadMesh, FLinearColor(0.85f, 0.68f, 0.55f));
 	SetupHumanBody();
+	// The body is in the team's colour (the team may not have arrived yet on a client: Tick applies it when it does).
+	AppliedTeam = 255;
+	ApplyTeamLook();
 
 	if (HasAuthority() && Weapons.Num() == 0)
 	{
@@ -874,7 +886,9 @@ void AGSCharacter::ServerFire_Implementation(FVector_NetQuantize Start, FVector_
 	// Shot account: one shot is earned per FireInterval (5 % slack, the same the client allows itself). Up to
 	// 0.15 s worth may be saved up, so shots that arrive bunched together after a network hiccup still count,
 	// but the average rate can never beat the weapon's own.
-	const float MaxCredit = FMath::Clamp(0.15f / FMath::Max(S.FireInterval, 0.01f), 1.1f, 3.f);
+	// The account always holds at least two shots: the server only sees shots when its own frame starts (33 ms
+	// on a 30 fps host) and the net jitters, so two honest shots can land in the same server frame.
+	const float MaxCredit = 1.f + FMath::Clamp(0.15f / FMath::Max(S.FireInterval, 0.01f), 0.5f, 2.f);
 	ShotCredit = FMath::Min(MaxCredit, ShotCredit + (Now - ShotCreditTime) / FMath::Max(S.FireInterval * 0.95f, 0.01f));
 	ShotCreditTime = Now;
 	if (ShotCredit < 1.f) return;
@@ -1814,8 +1828,11 @@ void AGSCharacter::ClientTookHit_Implementation(FVector_NetQuantize From, bool b
 		FlinchSign = FMath::RandBool() ? 1.f : -1.f;
 	}
 	// You feel where it hit: the knee gives way, or the gun is knocked in your hands.
-	if (HealthLost > 0.f && Zone == GSZone::Leg) CamDipVel -= 90.f + 140.f * FMath::Clamp(HealthLost / 30.f, 0.f, 1.f);
-	if (HealthLost > 0.f && Zone == GSZone::Arm)
+	// Once per instant: nine shotgun pellets in the leg are one buckle, not nine.
+	const bool bJolt = HealthLost > 0.f && (Zone == GSZone::Leg || Zone == GSZone::Arm) && Now - LastLimbJoltTime > 0.06f;
+	if (bJolt) LastLimbJoltTime = Now;
+	if (bJolt && Zone == GSZone::Leg) CamDipVel -= 90.f + 140.f * FMath::Clamp(HealthLost / 30.f, 0.f, 1.f);
+	if (bJolt && Zone == GSZone::Arm)
 	{
 		const FGSWeaponSlot* W = GetCurrentWeapon();
 		AddWeaponKick(2.5f, W ? GetStats(*W).Class : EGSWeaponClass::Rifle);
@@ -2615,6 +2632,70 @@ void AGSCharacter::TickEffects()
 	}
 }
 
+uint8 AGSCharacter::GetTeam() const
+{
+	const AGSPlayerState* PS = GetPlayerState<AGSPlayerState>();
+	return PS ? PS->Team : GSTeam::None;
+}
+
+void AGSCharacter::PlaceArmband(UStaticMeshComponent* Band, FName UpperArm, FName LowerArm)
+{
+	USkeletalMeshComponent* Skel = GetMesh();
+	const USkeletalMesh* Asset = Skel ? Skel->GetSkeletalMeshAsset() : nullptr;
+	if (!Band || !Asset) return;
+	const FReferenceSkeleton& Ref = Asset->GetRefSkeleton();
+	const int32 Lower = Ref.FindBoneIndex(LowerArm);
+	if (Ref.FindBoneIndex(UpperArm) == INDEX_NONE || Lower == INDEX_NONE) return;
+	// Where the elbow sits in the upper arm's own space tells which way the arm points (the right arm is mirrored).
+	const FVector ToElbow = FVector(Ref.GetRefBonePose()[Lower].GetTranslation());
+	const float Length = ToElbow.Size();
+	if (Length < 5.f) return;
+	const FVector Dir = ToElbow / Length;
+	Band->AttachToComponent(Skel, FAttachmentTransformRules::SnapToTargetNotIncludingScale, UpperArm);
+	Band->SetRelativeLocation(Dir * Length * 0.5f);
+	Band->SetRelativeRotation(FRotationMatrix::MakeFromZ(Dir).Rotator());   // the cylinder's axis along the arm
+	Band->SetRelativeScale3D(FVector(0.135f, 0.135f, 0.085f));              // 13.5 cm across, 8.5 cm wide
+}
+
+void AGSCharacter::ApplyTeamLook()
+{
+	if (GetNetMode() == NM_DedicatedServer) return;
+	const uint8 Team = GetTeam();
+	if (Team == AppliedTeam) return;
+	AppliedTeam = Team;
+	// Sober cloth colours (GSTeam::Color), plain grey before the team is known. Nothing glows.
+	const FLinearColor Cloth = GSTeam::Color(Team);
+	const FLinearColor Jacket = Team == GSTeam::None ? FLinearColor(0.22f, 0.22f, 0.21f) : FMath::Lerp(Cloth, FLinearColor(0.12f, 0.12f, 0.12f), 0.25f);
+	GSUtils::SetColor(BodyMesh, Jacket);   // stand-in body when no mannequin is found
+	if (bHumanBody)
+	{
+		static const FName PaintTint(TEXT("Paint Tint"));
+		for (USkeletalMeshComponent* Skel : { GetMesh(), FPLegs.Get() })
+		{
+			if (!Skel || !Skel->GetSkeletalMeshAsset()) continue;
+			for (int32 Slot = 0; Slot < Skel->GetNumMaterials(); ++Slot)
+			{
+				if (UMaterialInstanceDynamic* MID = Skel->CreateDynamicMaterialInstance(Slot))
+				{
+					MID->SetVectorParameterValue(PaintTint, Jacket);
+				}
+			}
+		}
+		if (ArmbandL->GetAttachSocketName().IsNone())
+		{
+			PlaceArmband(ArmbandL, TEXT("upperarm_l"), TEXT("lowerarm_l"));
+			PlaceArmband(ArmbandR, TEXT("upperarm_r"), TEXT("lowerarm_r"));
+		}
+	}
+	const bool bBands = bHumanBody && Team != GSTeam::None && !ArmbandL->GetAttachSocketName().IsNone();
+	for (UStaticMeshComponent* Band : { ArmbandL.Get(), ArmbandR.Get() })
+	{
+		// A little brighter than the jacket so the band reads against it, still plain cloth.
+		if (bBands) GSUtils::SetColor(Band, FMath::Lerp(Cloth, FLinearColor::White, 0.18f));
+		Band->SetVisibility(bBands);
+	}
+}
+
 bool AGSCharacter::IsSparedFrom(const AController* From) const
 {
 	if (!From || From == GetController()) return false;
@@ -3067,7 +3148,7 @@ void AGSCharacter::OnRep_Dead()
 	DeathEyeRot = Camera->GetComponentRotation();
 	bDeathCamInit = false;
 	// The death cam looks at your own body: show it to you too, and hide the first-person arms, gun and item.
-	if (bHumanBody) GetMesh()->SetOwnerNoSee(false);
+	if (bHumanBody) { GetMesh()->SetOwnerNoSee(false); ArmbandL->SetOwnerNoSee(false); ArmbandR->SetOwnerNoSee(false); }
 	else { BodyMesh->SetOwnerNoSee(false); HeadMesh->SetOwnerNoSee(false); }
 	for (UPrimitiveComponent* FP : TInlineComponentArray<UPrimitiveComponent*>(this))
 	{
@@ -3463,11 +3544,21 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		if (!UseItemId.IsNone() && GetServerTime() >= UseEndTime) CompleteUse();
 	}
 
+	// Team colours on the body: a cheap guard that only does work when the team changed (it arrives after the
+	// body on clients, changes with L in the lobby and when the teams are evened out at match start).
+	// A dead body keeps the colours it died in (it loses its player state when the player gets a new body).
+	if (!bDead && AppliedTeam != GetTeam()) ApplyTeamLook();
+
+	// Carrying the flag (the player state is replicated to everyone, so all machines agree).
+	const AGSPlayerState* FlagPS = bDead ? nullptr : GetPlayerState<AGSPlayerState>();
+	const bool bCarriesFlag = FlagPS && FlagPS->CarriedFlagTeam != GSTeam::None;
+
 	// Stamina (server is authoritative, owner predicts)
 	const bool bMoving = GetVelocity().Size2D() > 50.f;
 	if (bSprinting && bMoving)
 	{
-		Stamina = FMath::Max(0.f, Stamina - 14.f * Mods.StaminaDrain * DeltaSeconds);
+		// Running with the pole on your back wears you out faster: the carrier cannot sprint for long.
+		Stamina = FMath::Max(0.f, Stamina - 14.f * Mods.StaminaDrain * (bCarriesFlag ? 1.6f : 1.f) * DeltaSeconds);
 		if (Stamina <= 0.f) SetSprinting(false);
 	}
 	else
@@ -3482,10 +3573,10 @@ void AGSCharacter::Tick(float DeltaSeconds)
 	if (bSprinting && LegPain >= 0.5f && (HasAuthority() || IsLocallyControlled())) SetSprinting(false);
 	float Speed = bSprinting ? SprintSpeed : (bAiming ? AimSpeed : WalkSpeed);
 	if (!UseItemId.IsNone()) Speed = FMath::Min(Speed, AimSpeed);
-	// Carrying the flag slows you a little (the player state is replicated to everyone, so all machines agree).
-	const AGSPlayerState* FlagPS = bDead ? nullptr : GetPlayerState<AGSPlayerState>();
-	const float FlagSpeed = FlagPS && FlagPS->CarriedFlagTeam != GSTeam::None ? 0.85f : 1.f;
+	const float FlagSpeed = bCarriesFlag ? 0.85f : 1.f;   // carrying the flag slows you a little
 	Move->MaxWalkSpeed = Speed * Mods.Speed * GearSpeed * (1.f - 0.45f * LegPain) * FlagSpeed;
+	// The same limp while crouched (a slide sets its own speed and puts 200 back when it ends).
+	if (!bSliding) Move->MaxWalkSpeedCrouched = 200.f * (1.f - 0.45f * LegPain) * FlagSpeed;
 	Move->JumpZVelocity = 430.f * Mods.Jump * (1.f - 0.4f * LegPain);
 	if (Mods.bGlide && Move->IsFalling())
 	{
@@ -3540,6 +3631,9 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		BodyMesh->SetVisibility(bVisible && !bHumanBody);
 		HeadMesh->SetVisibility(bVisible && !bHumanBody);
 		if (bHumanBody) GetMesh()->SetVisibility(bVisible);
+		const bool bBands = bVisible && bHumanBody && AppliedTeam != GSTeam::None && AppliedTeam != 255 && !ArmbandL->GetAttachSocketName().IsNone();
+		ArmbandL->SetVisibility(bBands);
+		ArmbandR->SetVisibility(bBands);
 		TPWeaponMesh->SetHiddenInGame(!bVisible, true); // hides its attachments with it
 		VestMesh->SetVisibility(bVisible && !BodyArmor.IsNone());
 		HelmetMesh->SetVisibility(bVisible && !Helmet.IsNone());

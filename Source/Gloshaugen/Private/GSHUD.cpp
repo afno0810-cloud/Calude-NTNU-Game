@@ -8,6 +8,9 @@
 #include "GSGameMode.h"
 #include "GSTerminal.h"
 #include "GSCampus.h"
+#include "GSHelp.h"
+#include "GSFlag.h"
+#include "GSAudio.h"
 #include "Engine/Canvas.h"
 #include "CanvasItem.h"
 #include "Engine/Engine.h"
@@ -59,7 +62,15 @@ void AGSHUD::DrawHUD()
 {
 	Super::DrawHUD();
 	if (!Canvas) return;
-	if (StartTime < 0.f) StartTime = GetWorld()->GetTimeSeconds();
+
+	// Flag events: listen once per game state (on a client it can arrive after the HUD exists).
+	AGSGameState* MatchState = GetWorld()->GetGameState<AGSGameState>();
+	if (MatchState && BoundGameState.Get() != MatchState)
+	{
+		BoundGameState = MatchState;
+		MatchState->OnFlagEvent.AddUObject(this, &AGSHUD::HandleFlagEvent);
+	}
+	const bool bEnded = MatchState && MatchState->Phase == EGSMatchPhase::Ended;
 
 	AGSCharacter* C = Cast<AGSCharacter>(GetOwningPawn());
 	const AGSPlayerController* PC = Cast<AGSPlayerController>(PlayerOwner);
@@ -82,10 +93,10 @@ void AGSHUD::DrawHUD()
 			}
 			DrawWallhack(C, bLong ? 20000.f : 4000.f);
 		}
-		if (C->IsUsingBinoculars()) DrawBinoculars();
-
 		// Hurt / low-health / healed edges go over the scope (so you see them scoped in too) but under the crosshair.
 		const bool bScope = C->IsScopedIn() && C->GetAimBlend() > 0.85f;
+		if (!bScope && !C->IsUsingBinoculars()) DrawTeamTags(C);
+		if (C->IsUsingBinoculars()) DrawBinoculars();
 		if (bScope) DrawScope(C);
 		DrawHurtOverlay(C);
 		if (!bScope) DrawCrosshair(C);
@@ -112,7 +123,7 @@ void AGSHUD::DrawHUD()
 			}
 		}
 	}
-	else
+	else if (!bEnded)   // the result and the scoreboard own the screen once the match is over
 	{
 		DrawDeathScreen();
 	}
@@ -120,9 +131,9 @@ void AGSHUD::DrawHUD()
 	DrawTopRight();
 	DrawMatch();
 	DrawKillFeed();
-	DrawHelp();
+	GSHelp::Draw(this, Canvas);   // CTF status line, lobby intro, L = switch team (Spillbarhet's panel)
 
-	if (PC && PC->bShowScoreboard) DrawScoreboard();
+	if (PC && PC->bShowScoreboard && !bEnded) DrawScoreboard();   // DrawMatch already shows it when the match is over
 	if (PC && PC->bMenuOpen) DrawMenu(const_cast<AGSPlayerController*>(PC));
 }
 
@@ -242,7 +253,7 @@ void AGSHUD::DrawBars(AGSCharacter* C)
 		float IY = Y - 52.f;
 		const FLinearColor Col(0.85f, 0.45f, 0.4f, 0.85f);
 		if (C->ArmInjury > 0.05f) { Text(C->ArmInjury > 0.5f ? TEXT("Armen er hardt skadd") : TEXT("Armen er skadd"), X, IY, Col, 0.75f); IY -= 18.f; }
-		if (C->LegInjury > 0.05f) { Text(C->LegInjury >= 0.5f ? TEXT("Beinet er hardt skadd - du kan ikke løpe") : TEXT("Beinet er skadd"), X, IY, Col, 0.75f); }
+		if (C->LegInjury > 0.05f) { Text(C->GetLegPain() >= 0.5f ? TEXT("Beinet er hardt skadd - du kan ikke løpe") : C->LegInjury >= 0.5f ? TEXT("Beinet er hardt skadd") : TEXT("Beinet er skadd"), X, IY, Col, 0.75f); }
 	}
 	Text(FString::Printf(TEXT("HELSE  %d"), FMath::RoundToInt(C->Health)), X, Y - 26.f, FLinearColor::White);
 	const float HP = C->Health / C->MaxHealth;
@@ -763,6 +774,8 @@ void AGSHUD::DrawMatch()
 			const AGSPlayerState* PS = Cast<AGSPlayerState>(P);
 			if (!PS) continue;
 			const bool bMe = PS == Mine;
+			// Team mark in the team's cloth colour in front of the name
+			if (PS->Team != GSTeam::None) Box(X + 10.f, RY + 4.f, 6.f, 14.f, GSTeam::Color(PS->Team).CopyWithNewOpacity(0.95f));
 			Text(PS->GetPlayerName() + (bMe ? TEXT("  (deg)") : TEXT("")), X + 24.f, RY, bMe ? FLinearColor(0.5f, 0.85f, 1.f) : FLinearColor::White, 0.9f);
 			Text(PS->bReady ? TEXT("KLAR") : TEXT("venter"), X + W - 24.f, RY, PS->bReady ? FLinearColor(0.3f, 1.f, 0.4f) : FLinearColor(1.f, 0.7f, 0.3f), 0.9f, false, true);
 			RY += 24.f;
@@ -776,7 +789,7 @@ void AGSHUD::DrawMatch()
 			const bool bReady = Mine && Mine->bReady;
 			Text(bReady ? TEXT("Du er klar. Trykk Enter for \u00E5 angre.") : TEXT("Trykk Enter n\u00E5r du er klar"),
 				CX, Y + H - 26.f, FLinearColor(1.f, 1.f, 1.f, 0.85f), 0.85f, true);
-			Text(FString::Printf(TEXT("F\u00F8rst til %d drap eller %d minutter"), AGSGameState::KillLimit, int32(AGSGameState::MatchMinutes)),
+			Text(FString::Printf(TEXT("Capture the Flag: f\u00F8rste lag til %d erobringer, ellers flest etter %d minutter"), AGSGameState::CaptureLimit, int32(AGSGameState::MatchMinutes)),
 				CX, Y + H + 8.f, FLinearColor(0.8f, 0.8f, 0.8f, 0.8f), 0.75f, true);
 		}
 		break;
@@ -790,12 +803,22 @@ void AGSHUD::DrawMatch()
 	}
 	case EGSMatchPhase::Ended:
 	{
-		Box(0.f, Canvas->SizeY * 0.3f, Canvas->SizeX, 130.f, FLinearColor(0.f, 0.f, 0.f, 0.6f));
-		Text(TEXT("KAMPEN ER OVER"), CX, Canvas->SizeY * 0.3f + 14.f, FLinearColor(1.f, 0.85f, 0.3f), 2.2f, true);
-		Text(GS->Winner.IsEmpty() ? FString(TEXT("Ingen vinner")) : FString::Printf(TEXT("Vinner: %s"), *GS->Winner),
-			CX, Canvas->SizeY * 0.3f + 66.f, FLinearColor::White, 1.4f, true);
-		Text(FString::Printf(TEXT("Tilbake til lobbyen om %d"), Sec), CX, Canvas->SizeY * 0.3f + 100.f, FLinearColor(0.8f, 0.8f, 0.8f), 0.8f, true);
-		DrawScoreboard();
+		// Which team won (or a draw), from the score itself so it is right on every machine; the scoreboard
+		// sits under the box instead of on top of it.
+		const int32 R = GS->RedScore, B = GS->BlueScore;
+		const uint8 Won = R > B ? GSTeam::Red : (B > R ? GSTeam::Blue : GSTeam::None);
+		const FString Result = Won == GSTeam::None ? FString::Printf(TEXT("Uavgjort  %d\u2013%d"), R, B)
+			: FString::Printf(TEXT("%s vant  %d\u2013%d"), GSTeam::Name(Won), FMath::Max(R, B), FMath::Min(R, B));
+		const FLinearColor ResultCol = Won == GSTeam::None ? FLinearColor(0.9f, 0.9f, 0.9f) : FMath::Lerp(GSTeam::Color(Won), FLinearColor::White, 0.5f);
+		const float BY = FMath::Max(96.f, Canvas->SizeY * 0.12f);
+		Box(0.f, BY, Canvas->SizeX, 122.f, FLinearColor(0.f, 0.f, 0.f, 0.62f));
+		Text(TEXT("KAMPEN ER OVER"), CX, BY + 12.f, FLinearColor(0.85f, 0.86f, 0.87f), 1.3f, true);
+		Text(Result, CX, BY + 46.f, ResultCol, 1.8f, true);
+		const AGSPlayerState* Mine = PlayerOwner ? PlayerOwner->GetPlayerState<AGSPlayerState>() : nullptr;
+		const FString Own = !Mine || Mine->Team == GSTeam::None || Won == GSTeam::None ? FString()
+			: (Mine->Team == Won ? FString(TEXT("Laget ditt vant.  ")) : FString(TEXT("Laget ditt tapte.  ")));
+		Text(Own + FString::Printf(TEXT("Tilbake til lobbyen om %d"), Sec), CX, BY + 94.f, FLinearColor(0.8f, 0.8f, 0.8f), 0.8f, true);
+		DrawScoreboard(BY + 136.f);
 		break;
 	}
 	}
@@ -804,7 +827,9 @@ void AGSHUD::DrawMatch()
 void AGSHUD::DrawCompass(AGSCharacter* C)
 {
 	const float Yaw = FRotator::NormalizeAxis(C->GetControlRotation().Yaw);
-	const float CX = Canvas->SizeX * 0.5f, Y = 18.f, W = 400.f;
+	// Bottom centre, just above the backpack bar: the top of the screen belongs to the CTF status line, the
+	// match clock and the flag lines.
+	const float CX = Canvas->SizeX * 0.5f, Y = Canvas->SizeY - 152.f, W = 400.f;
 	Box(CX - W * 0.5f, Y, W, 22.f, FLinearColor(0.f, 0.f, 0.f, 0.35f));
 	// World +X is east, +Y is south
 	struct FMark { float Angle; const TCHAR* Label; };
@@ -891,40 +916,174 @@ void AGSHUD::DrawKillFeed()
 		Text(Line, 30.f, Y, E.bHeadshot ? FLinearColor(1.f, 0.6f, 0.3f) : FLinearColor::White, 0.9f);
 		Y += 20.f;
 	}
+	// Radio line for the last flag event, said from your own team's side: 5 s, then a 1 s fade.
+	const float Age = GetWorld()->GetTimeSeconds() - RadioTime;
+	if (Age >= 0.f && Age < 6.f && !RadioText.IsEmpty() && GS->Phase == EGSMatchPhase::Playing)
+	{
+		const float A = FMath::Clamp(6.f - Age, 0.f, 1.f);
+		Text(RadioText, 30.f, Y + 8.f, bRadioWarning ? FLinearColor(0.92f, 0.72f, 0.5f, A) : FLinearColor(0.8f, 0.86f, 0.8f, A), 0.85f);
+	}
 }
 
-void AGSHUD::DrawScoreboard()
+void AGSHUD::HandleFlagEvent(uint8 Event, uint8 FlagTeam, const FVector& Where, APlayerState* Who)
+{
+	const AGSPlayerState* Mine = PlayerOwner ? PlayerOwner->GetPlayerState<AGSPlayerState>() : nullptr;
+	const uint8 MyTeam = Mine ? Mine->Team : GSTeam::None;
+	const bool bOurFlag = MyTeam != GSTeam::None && FlagTeam == MyTeam;
+	const bool bMe = Who && Who == Mine;
+	const FString Name = Who ? Who->GetPlayerName().Left(20) : FString();
+
+	// Sound: a short radio break-in with one or a few plain tones. Bad news for your team sounds lower.
+	const TCHAR* Sound = TEXT("Flag_Info");
+	float Pitch = 1.f;
+	FString Line;
+	bool bWarn = false;
+	switch (Event)
+	{
+	case GSFlagEvent::Taken:
+		if (bOurFlag)
+		{
+			Sound = TEXT("Flag_Alert"); bWarn = true;
+			Line = Name.IsEmpty() ? FString(TEXT("Flagget v\u00E5rt er tatt.")) : FString::Printf(TEXT("Flagget v\u00E5rt er tatt av %s."), *Name);
+		}
+		else
+		{
+			Line = bMe ? FString(TEXT("Du har flagget deres. B\u00E6r det til basen.")) : FString::Printf(TEXT("%s har flagget deres. Dekk b\u00E6reren."), *Name);
+		}
+		break;
+	case GSFlagEvent::Dropped:
+		Pitch = bOurFlag ? 1.f : 0.9f;
+		Line = bOurFlag ? TEXT("Flagget v\u00E5rt ligger ute. G\u00E5 bort til det, s\u00E5 er det hjemme.") : TEXT("Flagget deres ligger ute. Plukk det opp igjen.");
+		break;
+	case GSFlagEvent::Returned:
+		if (bOurFlag) { Sound = TEXT("Flag_Good"); Line = TEXT("Flagget v\u00E5rt er hjemme igjen."); }
+		else { Pitch = 0.9f; Line = TEXT("De har f\u00E5tt flagget sitt hjem."); }
+		break;
+	case GSFlagEvent::Captured:
+		if (bOurFlag) { Sound = TEXT("Flag_Alert"); Pitch = 0.84f; bWarn = true; Line = TEXT("Motstanderen erobret flagget v\u00E5rt."); }
+		else { Sound = TEXT("Flag_Score"); Line = bMe ? FString(TEXT("Du erobret flagget.")) : FString::Printf(TEXT("%s erobret flagget deres."), *Name); }
+		break;
+	default:
+		return;
+	}
+	const bool bNoTeam = MyTeam == GSTeam::None;
+	GSAudio::Play2D(this, bNoTeam ? TEXT("Flag_Info") : Sound, 0.55f, bNoTeam ? 1.f : Pitch);
+	if (bNoTeam) return;   // no side yet: the neutral line in the status panel is enough
+	RadioText = FString(TEXT("Radio:  ")) + Line;
+	RadioTime = GetWorld()->GetTimeSeconds();
+	bRadioWarning = bWarn;
+}
+
+void AGSHUD::DrawTeamTags(AGSCharacter* C)
+{
+	const uint8 MyTeam = C->GetTeam();
+	if (MyTeam == GSTeam::None || !PlayerOwner) return;
+	FVector ViewLoc;
+	FRotator ViewRot;
+	PlayerOwner->GetPlayerViewPoint(ViewLoc, ViewRot);
+	constexpr float Range = 2500.f, FadeFrom = 1800.f;   // cm: names only at close range
+	for (TActorIterator<AGSCharacter> It(GetWorld()); It; ++It)
+	{
+		AGSCharacter* Mate = *It;
+		if (Mate == C || Mate->bDead || Mate->GetTeam() != MyTeam) continue;   // never anything over enemies
+		const FVector Head = Mate->GetActorLocation() + FVector(0.f, 0.f, Mate->GetSimpleCollisionHalfHeight() + 20.f);
+		const float Dist = FVector::Dist(ViewLoc, Head);
+		if (Dist > Range) continue;
+		// Only team mates you actually see: no names through walls.
+		FCollisionQueryParams Params(SCENE_QUERY_STAT(GSTeamTag), false, C);
+		Params.AddIgnoredActor(Mate);
+		if (GetWorld()->LineTraceTestByChannel(ViewLoc, Head, ECC_Visibility, Params)) continue;
+		FVector2D Screen;
+		if (!PlayerOwner->ProjectWorldLocationToScreen(Head, Screen)) continue;
+		const APlayerState* PS = Mate->GetPlayerState();
+		const float A = 0.8f * FMath::Clamp((Range - Dist) / (Range - FadeFrom), 0.f, 1.f);
+		const FLinearColor Cloth = GSTeam::Color(MyTeam);
+		Box(Screen.X - 2.f, Screen.Y - 4.f, 4.f, 4.f, FLinearColor(Cloth.R, Cloth.G, Cloth.B, A));
+		if (PS) Text(PS->GetPlayerName().Left(16), Screen.X, Screen.Y - 20.f, FMath::Lerp(Cloth, FLinearColor::White, 0.6f).CopyWithNewOpacity(A), 0.65f, true);
+	}
+}
+
+void AGSHUD::DrawScoreboard(float Y)
 {
 	const AGSGameState* GS = GetWorld()->GetGameState<AGSGameState>();
 	if (!GS) return;
 
-	TArray<AGSPlayerState*> Players;
-	for (APlayerState* PS : GS->PlayerArray)
+	// One group per team (red, blue), and a third only if somebody has no team yet.
+	TArray<const AGSPlayerState*> Groups[3];
+	for (const APlayerState* PS : GS->PlayerArray)
 	{
-		if (AGSPlayerState* G = Cast<AGSPlayerState>(PS)) Players.Add(G);
+		if (const AGSPlayerState* G = Cast<AGSPlayerState>(PS)) Groups[G->Team <= GSTeam::Blue ? G->Team : 0].Add(G);
 	}
-	Players.Sort([](const AGSPlayerState& A, const AGSPlayerState& B) { return A.Kills > B.Kills; });
+	for (TArray<const AGSPlayerState*>& G : Groups)
+	{
+		G.Sort([](const AGSPlayerState& A, const AGSPlayerState& B)
+		{
+			if (A.Captures != B.Captures) return A.Captures > B.Captures;
+			if (A.Kills != B.Kills) return A.Kills > B.Kills;
+			return A.Returns > B.Returns;
+		});
+	}
+	static const uint8 Order[3] = { GSTeam::Red, GSTeam::Blue, GSTeam::None };
+	const int32 NumGroups = Groups[0].Num() > 0 ? 3 : 2;
 
-	const float W = 560.f, RowH = 26.f;
-	const float H = 70.f + Players.Num() * RowH;
-	const float X = (Canvas->SizeX - W) * 0.5f, Y = Canvas->SizeY * 0.2f;
-	Box(X, Y, W, H, FLinearColor(0.f, 0.f, 0.f, 0.6f));
-	Text(TEXT("POENGTAVLE"), X + W * 0.5f, Y + 10.f, FLinearColor::White, 1.2f, true);
-	Text(TEXT("Spiller"), X + 20.f, Y + 40.f, FLinearColor(0.7f, 0.7f, 0.7f));
-	Text(TEXT("Kills"), X + 360.f, Y + 40.f, FLinearColor(0.7f, 0.7f, 0.7f));
-	Text(TEXT("D\u00F8d"), X + 430.f, Y + 40.f, FLinearColor(0.7f, 0.7f, 0.7f));
-	Text(TEXT("Ping"), X + 490.f, Y + 40.f, FLinearColor(0.7f, 0.7f, 0.7f));
+	const float W = 660.f, RowH = 24.f, HeadH = 28.f, GroupGap = 10.f;
+	float H = 40.f + 24.f + 8.f;
+	for (int32 I = 0; I < NumGroups; ++I) H += HeadH + FMath::Max(1, Groups[Order[I]].Num()) * RowH + GroupGap;
+	const float X = (Canvas->SizeX - W) * 0.5f;
+	if (Y < 0.f) Y = Canvas->SizeY * 0.2f;
+	Y = FMath::Max(10.f, FMath::Min(Y, Canvas->SizeY - H - 10.f));
+
+	// Right edges of the number columns
+	const float CCap = X + 410.f, CRet = X + 482.f, CKill = X + 540.f, CDeath = X + 596.f, CPing = X + W - 16.f;
+	const FLinearColor Dim(0.66f, 0.68f, 0.7f);
+	Box(X, Y, W, H, FLinearColor(0.02f, 0.025f, 0.03f, 0.8f));
+	Text(TEXT("POENGTAVLE"), X + 20.f, Y + 9.f, FLinearColor(0.9f, 0.9f, 0.9f), 1.05f);
+	Text(FString::Printf(TEXT("Capture the Flag  \u00B7  f\u00F8rst til %d"), AGSGameState::CaptureLimit), X + W - 16.f, Y + 12.f, Dim, 0.8f, false, true);
+	float RY = Y + 40.f;
+	Text(TEXT("Spiller"), X + 24.f, RY, Dim, 0.8f);
+	Text(TEXT("Erobringer"), CCap, RY, Dim, 0.8f, false, true);
+	Text(TEXT("Returer"), CRet, RY, Dim, 0.8f, false, true);
+	Text(TEXT("Drap"), CKill, RY, Dim, 0.8f, false, true);
+	Text(TEXT("D\u00F8d"), CDeath, RY, Dim, 0.8f, false, true);
+	Text(TEXT("Ping"), CPing, RY, Dim, 0.8f, false, true);
+	RY += 24.f;
 
 	const APlayerState* Me = PlayerOwner ? PlayerOwner->PlayerState : nullptr;
-	float RY = Y + 64.f;
-	for (const AGSPlayerState* P : Players)
+	for (int32 I = 0; I < NumGroups; ++I)
 	{
-		const FLinearColor Col = P == Me ? FLinearColor(1.f, 0.9f, 0.4f) : FLinearColor::White;
-		Text(P->GetPlayerName().Left(28), X + 20.f, RY, Col);
-		Text(FString::FromInt(P->Kills), X + 360.f, RY, Col);
-		Text(FString::FromInt(P->Deaths), X + 430.f, RY, Col);
-		Text(FString::FromInt(FMath::RoundToInt(P->GetPingInMilliseconds())), X + 490.f, RY, Col);
-		RY += RowH;
+		const uint8 Team = Order[I];
+		const FLinearColor Cloth = GSTeam::Color(Team);
+		// Team header: a band in the team's cloth colour with the team score
+		Box(X + 8.f, RY, W - 16.f, HeadH - 4.f, Cloth.CopyWithNewOpacity(Team == GSTeam::None ? 0.25f : 0.6f));
+		Text(GSTeam::Name(Team), X + 24.f, RY + 2.f, FLinearColor(0.95f, 0.95f, 0.95f), 0.95f);
+		if (Team != GSTeam::None)
+		{
+			Text(FString::Printf(TEXT("%d"), GS->TeamScore(Team)), CCap, RY + 1.f, FLinearColor::White, 1.05f, false, true);
+			Text(FString::Printf(TEXT("%d spillere"), Groups[Team].Num()), CPing, RY + 4.f, FLinearColor(0.9f, 0.9f, 0.9f, 0.75f), 0.75f, false, true);
+		}
+		RY += HeadH;
+		if (Groups[Team].Num() == 0)
+		{
+			Text(TEXT("(ingen spillere)"), X + 24.f, RY, Dim * FLinearColor(1.f, 1.f, 1.f, 0.7f), 0.8f);
+			RY += RowH;
+		}
+		for (const AGSPlayerState* P : Groups[Team])
+		{
+			const bool bMe = P == Me;
+			if (bMe) Box(X + 8.f, RY - 1.f, W - 16.f, RowH - 2.f, FLinearColor(1.f, 1.f, 1.f, 0.07f));
+			const FLinearColor Col = bMe ? FLinearColor::White : FLinearColor(0.84f, 0.85f, 0.86f);
+			Box(X + 8.f, RY - 1.f, 3.f, RowH - 2.f, Cloth.CopyWithNewOpacity(0.9f));
+			FString Name = P->GetPlayerName().Left(24);
+			if (P->CarriedFlagTeam != GSTeam::None) Name += TEXT("   (b\u00E6rer flagget)");
+			Text(Name, X + 24.f, RY, Col, 0.9f);
+			Text(FString::FromInt(P->Captures), CCap, RY, Col, 0.9f, false, true);
+			Text(FString::FromInt(P->Returns), CRet, RY, Col, 0.9f, false, true);
+			Text(FString::FromInt(P->Kills), CKill, RY, Col, 0.9f, false, true);
+			Text(FString::FromInt(P->Deaths), CDeath, RY, Col, 0.9f, false, true);
+			Text(FString::FromInt(FMath::RoundToInt(P->GetPingInMilliseconds())), CPing, RY, Dim, 0.9f, false, true);
+			RY += RowH;
+		}
+		RY += GroupGap;
 	}
 }
 
@@ -1011,22 +1170,6 @@ void AGSHUD::DrawDeathScreen()
 	Box(X, CY + 28.f, W, 4.f, FLinearColor(1.f, 1.f, 1.f, 0.15f * FadeIn));
 	Box(X, CY + 28.f, W * FMath::Clamp(Since / Delay, 0.f, 1.f), 4.f, FLinearColor(0.95f, 0.75f, 0.2f, 0.9f * FadeIn));
 	Text(TEXT("Tingene dine ligger der du d\u00F8de."), CX, CY + 42.f, FLinearColor(0.7f, 0.7f, 0.7f, 0.8f * FadeIn), 0.85f, true);
-}
-
-void AGSHUD::DrawHelp()
-{
-	const float Since = GetWorld()->GetTimeSeconds() - StartTime;
-	if (Since > 30.f) return;
-	const float A = FMath::Clamp(30.f - Since, 0.f, 1.f);
-	const float CX = Canvas->SizeX * 0.5f, Y = Canvas->SizeY * 0.5f + 150.f;
-	Text(TEXT("WASD g\u00E5 \u00B7 Shift l\u00F8p \u00B7 Space hopp/klatre \u00B7 C huk (l\u00F8p+C = skli) \u00B7 Mus1 skyt \u00B7 Mus2 sikt \u00B7 R lad \u00B7 V slag"),
-		CX, Y, FLinearColor(1.f, 1.f, 1.f, A), 0.9f, true);
-	Text(TEXT("1-4 v\u00E5pen \u00B7 E plukk opp \u00B7 F bruk \u00B7 Q neste ting \u00B7 G slipp \u00B7 I inventar \u00B7 T se p\u00E5 v\u00E5penet \u00B7 Tab poeng \u00B7 Esc/F10 meny"),
-		CX, Y + 22.f, FLinearColor(1.f, 1.f, 1.f, A), 0.9f, true);
-	Text(TEXT("Alt du finner har en farge: gr\u00E5 vanlig, gr\u00F8nn uvanlig, bl\u00E5 sjelden, lilla episk, gull legendarisk, r\u00F8d mytisk."),
-		CX, Y + 44.f, FLinearColor(0.8f, 0.9f, 1.f, A), 0.85f, true);
-	Text(TEXT("Spis og drikk, ellers mister du helse. L\u00E5ste kasser trenger adgangskort eller dirkesett. Mytisk kasse i Lysg\u00E5rden!"),
-		CX, Y + 66.f, FLinearColor(0.8f, 0.9f, 1.f, A), 0.85f, true);
 }
 
 // ---------------------------------------------------------------- PCs and 3D printers
@@ -1160,29 +1303,56 @@ void AGSHUD::DrawComputer(AGSCharacter* C, AGSPlayerController* PC, AGSTerminal*
 
 void AGSHUD::DrawTrackerMap(AGSPlayerController* PC, float X, float Y, float W, float H)
 {
-	// Campus in meters: X east (-280..430), Y south (-110..520). Keep the aspect ratio.
-	const float MinX = -290.f, MaxX = 440.f, MinY = -120.f, MaxY = 530.f;
+	// The play area in meters (X east, Y south) with 40 m around it, so the map fills the window. Keep the aspect ratio.
+	const FBox2D Area = GSCampus::PlayArea().ExpandBy(40.f);
+	const float MinX = Area.Min.X, MaxX = Area.Max.X, MinY = Area.Min.Y, MaxY = Area.Max.Y;
 	const float S = FMath::Min(W / (MaxX - MinX), H / (MaxY - MinY));
 	const float OX = X + (W - (MaxX - MinX) * S) * 0.5f, OY = Y + (H - (MaxY - MinY) * S) * 0.5f;
 	auto ToScreen = [&](float MX, float MY) { return FVector2D(OX + (MX - MinX) * S, OY + (MY - MinY) * S); };
+	const FBox2D Clip(FVector2D(OX, OY), FVector2D(OX + (MaxX - MinX) * S, OY + (MaxY - MinY) * S));
 	Box(OX, OY, (MaxX - MinX) * S, (MaxY - MinY) * S, FLinearColor(0.05f, 0.1f, 0.08f, 1.f));
+	// Roads and buildings are cut at the edge of the map (scenery buildings stand partly outside it).
 	for (const GSCampus::FRoad& R : GSCampus::Roads())
 	{
-		const FVector2D A = ToScreen(R.A.X, R.A.Y), B = ToScreen(R.B.X, R.B.Y);
-		Canvas->K2_DrawLine(A, B, FMath::Max(1.f, R.Width * S), FLinearColor(0.25f, 0.27f, 0.3f));
+		const FVector2D D = (R.B - R.A).GetSafeNormal();
+		const FVector2D N = FVector2D(-D.Y, D.X) * R.Width * 0.5f;
+		FillClipped({ ToScreen(R.A.X + N.X, R.A.Y + N.Y), ToScreen(R.B.X + N.X, R.B.Y + N.Y),
+			ToScreen(R.B.X - N.X, R.B.Y - N.Y), ToScreen(R.A.X - N.X, R.A.Y - N.Y) }, Clip, FLinearColor(0.25f, 0.27f, 0.3f));
 	}
 	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
 	{
-		const FVector2D P = ToScreen(B.X - B.SizeX * 0.5f, B.Y - B.SizeY * 0.5f);
-		Box(P.X, P.Y, B.SizeX * S, B.SizeY * S, FLinearColor(0.35f, 0.4f, 0.48f, 0.9f));
+		const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
+		FillClipped({ ToScreen(B.X - HX, B.Y - HY), ToScreen(B.X + HX, B.Y - HY), ToScreen(B.X + HX, B.Y + HY), ToScreen(B.X - HX, B.Y + HY) },
+			Clip, B.bBackdrop ? FLinearColor(0.22f, 0.25f, 0.3f, 0.9f) : FLinearColor(0.35f, 0.4f, 0.48f, 0.9f));
+		const FVector2D Centre = ToScreen(B.X, B.Y);
+		if (!B.bBackdrop && B.bEnterable && Clip.IsInside(Centre))
+		{
+			Text(FString(B.Name).Replace(TEXT("_"), TEXT(" ")), Centre.X, Centre.Y - 7.f, FLinearColor(0.85f, 0.88f, 0.92f, 0.8f), 0.6f, true);
+		}
 	}
+	// Team of each tracked player, looked up by name (the tracker only sends names and positions).
+	const AGSGameState* GS = GetWorld()->GetGameState<AGSGameState>();
+	const AGSPlayerState* Mine = PC->GetPlayerState<AGSPlayerState>();
+	auto IsTeamMate = [GS, Mine](const FString& Name)
+	{
+		if (!GS || !Mine || Mine->Team == GSTeam::None) return false;
+		for (const APlayerState* P : GS->PlayerArray)
+		{
+			const AGSPlayerState* PS = Cast<AGSPlayerState>(P);
+			if (PS && PS != Mine && PS->Team == Mine->Team && PS->GetPlayerName() == Name) return true;
+		}
+		return false;
+	};
 	const float Now = GetWorld()->GetTimeSeconds();
 	const float Pulse = 0.5f + 0.5f * FMath::Sin(Now * 6.f);
 	for (const FGSTrackedPlayer& P : PC->Tracked)
 	{
 		const FVector2D D = ToScreen(P.Location.X / 100.f, P.Location.Y / 100.f);
-		const FLinearColor Col = P.bSelf ? FLinearColor(0.3f, 0.7f, 1.f) : FLinearColor(1.f, 0.2f, 0.15f);
-		const float R = 5.f + (P.bSelf ? 0.f : 3.f * Pulse);
+		if (!Clip.IsInside(D)) continue;
+		// You: white. Team mates: calm green. Everyone else: red and pulsing.
+		const bool bMate = !P.bSelf && IsTeamMate(P.Name);
+		const FLinearColor Col = P.bSelf ? FLinearColor(0.92f, 0.94f, 0.96f) : bMate ? FLinearColor(0.45f, 0.8f, 0.5f) : FLinearColor(1.f, 0.2f, 0.15f);
+		const float R = 5.f + (P.bSelf || bMate ? 0.f : 3.f * Pulse);
 		Box(D.X - R, D.Y - R, R * 2.f, R * 2.f, Col);
 		Text(P.bSelf ? FString(TEXT("Deg")) : P.Name, D.X + 10.f, D.Y - 8.f, Col, 0.7f);
 	}
