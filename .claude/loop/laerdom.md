@@ -35,4 +35,6 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Effekter som utløses per treff trenger en «én gang per øyeblikk»-vakt (hagl). (runde 4)
 - Unity-bygg: globale navn i anonyme namespace i én .cpp kan kollidere med navn i en annen. Bruk navngitte namespace (f.eks. `GSMenuImpl`) eller unike prefiks. (Spillbarhet runde 2)
 - Avsløring av fiender skal være realistisk (radiomelding om sted), ikke veggsyn med markør og avstand. (plan Spillbarhet 3)
+- Tall som pakkes for nettet må ha finere trinn enn den minste verdien de skal bære. (runde 5a)
+- Det en kule trenger når den treffer (lag, våpen, startpunkt) lagres når den skytes. (runde 5a)
 

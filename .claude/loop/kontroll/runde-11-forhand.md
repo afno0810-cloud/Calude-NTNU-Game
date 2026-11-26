@@ -1,3 +1,5 @@
+**ENDELIG (commit `86ecf6c`, lest sammen med `a28c23e`): GODKJENT.** Bygget er gått gjennom (`Result: Succeeded`), og commiten stemmer med det som ble forhåndssjekket. F1, lobbydelen av F3, F4 og F6 er rettet i `a28c23e` (446–449). F2, resten av F3 (overlapp med `GSHelp`, Spillbarhets filer), F5 (poengtavla på 720p) og F7 (lik uten armbind for sene klienter) står igjen som små ting til senere.
+
 **FORHÅNDSSJEKK (ikke bygget): ingen sikre kompileringsfeil funnet i lag Kamps filer. Kan bygges når editoren er lukket. Små ting bør rettes, se under.**
 
 Lest fra arbeidsmappen (ucommittet), ikke bygget, fordi Andreas har editoren åpen. Endelig GODKJENT kan først gis
