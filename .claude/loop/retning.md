@@ -36,19 +36,22 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
 - Feilretting 2 (`2f04300`): musehjul, prosjektilretning, miner hos sene klienter, dødskort, kast fra klient.
 - Runde 4 (`60a516c`): kroppssoner – sju treffbokser, bein- og armskade, vest bare på overkroppen, V1 og V3.
 - Lag i kamp, første del (`2f6f46b`): ingen venneild, flaggbæreren går på 85 % fart.
+- Runde 11 (`86ecf6c`): lagfarger og armbind, CTF-poengtavle og sluttskjerm, navn på lagkamerater, flagg-radio,
+  PC-kart for det nye området, 60 fps-tak.
+- Runde 5a (`a28c23e`): ballistikk-kjernen – kulefart, luftmotstand og fall, skadefall, serverens spredning, framspoling.
+- Runde 12 = 5b (`4d74e7c`, kontrolleres): upålitelig ild for automatvåpen, flygende lysspor, overlydssmell og sus,
+  holdemerker.
 
 ## I arbeid / planlagt
-- **Lagfarger og CTF-HUD** (byggeren, pågår): lagfarge på kroppen og flaggstatus i HUD. Venneild av og bærerfart
-  85 % er inne (`2f6f46b`).
-- **Runde 5 = 5a** (`ko/plan-05.md`, skrevet om etter forhåndssjekk): ballistikk-kjernen. Ny fil `GSBallistics.*`,
-  kulefart, luftmotstand og fall per kaliber, innskutte sikter, skadefall med full skade ut til innskytingsavstanden,
-  hagl som kuler, serverens spredning (skuddnummer med hopp ≤ 3, klientens kjegle klemt til 0,85–1,15 ×),
-  retningskrav, start høyst 120 cm fra øyet og aldri bak vegg, levetids- og områdegrenser, framspoling med
-  ping/2 (maks 0,1 s). `ServerFire` forblir pålitelig.
-- **Runde 6 = 5b** (`ko/plan-06.md`): upålitelig ild bare for automatvåpen (V7), flygende lysspor som én flyttet
-  strek per kule med felles tak, overlydssmell og sus, holdemerker for 150–300 m i sterke kikkerter.
-- **Runde 7 (neste etter 5b): V8, tilbakespoling av treffbokser** til skytterens tid når kula skytes. Med flytid og
-  små treffbokser er klienter ellers i klar bakleksa mot verten. Flyttet opp fra «ballistikk del 2».
+- **Runde 13** (`ko/plan-07.md`): blødning (replikert `BleedLevel`, mest ved mageskudd, størkner av seg selv),
+  bandasje/plaster/skrin stopper den (Id-tabell, uavhengig av `Heal`), blodspor med eget tak, blodflekk festet til beinet
+  der kula traff, drap og dødskort ved blødning (retting 9) og brann (S3), pøl etter blødningsdød, hjerteslag etter
+  blodtap. Pluss bestillingene: `PawnLeavingGame` (C1), Esc-meny → `GSMenu`, grafikknivå, stille bildefrekvens, taster i
+  hint, ammoesken.
+- **Runde 14: V8, tilbakespoling av treffbokser** til skytterens tid. Og, hvis Spillbarhets plan-04 er committet:
+  «sist sett»-punkt for avslørt bærer på minikart/PC-kart for eierlaget.
+- **Runde 15: N1, nettrelevans** (`IsNetRelevantFor`): fiender langt unna uten fri sikt sendes ikke, veid mot lyd på
+  avstand og figurer som popper inn.
 
 ## Neste ideer (backlog, viktigst øverst)
 1. **[Spor 8] Lag i kamp (CTF), resten** – lagfeltene er levert; venneild og bærerfart er inne, lagfarger og
@@ -64,9 +67,8 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
    glass som knuser). Gammelt: nedslagseffekten får form etter materialet. Trenger materialmerking fra Grafikk
    (bestilt); uten den er alt betong. V8 er tatt ut herfra og er egen runde rett etter 5b (se over). La klientens
    nedslag følge serverens treff (fjerner restjukset: beste av tre mønstre og 15 % kjegle).
-3. **[Spor 1] Blødning og blodspor** (sammen med Spillbarhet: Kamp eier skadelogikken, de eier bandasje/
-   tourniquet). Nytt: replikert blødning som tapper liv til den stoppes, mest ved mageskudd; dråpespor man kan
-   følge. Gammelt: bandasje får sin egentlige oppgave, hjerteslaget følger blodtapet. Bygger på sonene fra runde 4.
+3. ~~[Spor 1] Blødning og blodspor~~ – tatt i runde 13 (plan-07). Gjenstår etterpå: tourniquet/trykkbandasje som egen
+   gjenstand (Spillbarhet, `Kind = "tourniquet"` er avtalt), blod på egne hender, blødning som gjør deg svakere (utholdenhet).
 4. **[Spor 4] Bruke ting med animasjon** (Andreas' ønske): sprøyte, pille, bandasje, spise/drikke, ta på vest og
    hjelm – realistisk lengde, kan avbrytes, sårbar imens. Gammelt: `UpdateItemUse`. Og mer detaljert lading per
    våpentype (taktisk mot tom lading, magasin som faller, +1 i kammer, skudd-for-skudd som kan avbrytes – R8).
@@ -78,8 +80,8 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
 7. **[Spor 3] Ekte lyd på avstand** (R11). Nytt: smellet forsinkes med avstanden (343 m/s), lengre rekkevidde med
    demping (overlydssmell og sus når en kule passerer kommer i 5b). Gammelt: lyddempet våpen høres lenger enn 40 m, demper
    trekker ikke skade, hagle med demper (V6).
-8. **[Spor 1] Sår som synes**. Nytt: blodflekker på kroppen der kula traff (per sone), blod på egne hender når du
-   er skadet, lik kan treffes og blør (R15). Gammelt: blodmaterialet fra runde 3.
+8. **[Spor 1] Sår som synes, resten**. Blodflekk på kroppen der kula traff kommer i runde 13. Gjenstår: blod på egne
+   hender når du er skadet, lik kan treffes og blør (R15), skitt og blod som setter seg på klærne (Andreas del 5).
 9. **[Spor 7] Bestilling fra Spillbarhet** (`lag/spillbarhet/funn.md`): S3 brann-drap går til skytteren og får
     riktig dødsårsak, S5 serveren vet om du sitter ved PC-en og sporing stopper når du går, S10 sluttskjermen
     overlapper poengtavla, F2 spillernavn, B2 sult/tørst med tidlige følger. Tas som små tillegg i rundene over
@@ -104,6 +106,11 @@ lederen, lysstråle i sjeldenhetsfarge på loot, glødende omriss rundt drapsman
 rundeslutt med «høydepunkter». Statistikk kan vises nøkternt på resultattavla etter kampen, ikke underveis.
 
 ## Endringer i retningen
+- 2026-11-26 (runde 13): **Blødning før V8.** Hovedagenten foreslo blødning + de små åpne bestillingene; det er det
+  Andreas merker mest («veldig groteskt», ønsket om skader som må bandasjeres) og trenger ingenting fra andre lag
+  (bandasjen finnes; tourniquet kan komme senere uten mer kode). V8 blir runde 14 sammen med «sist sett»-punktet på
+  kartet (venter på Spillbarhets plan-04), N1 (nettrelevans) runde 15. Blødningstallene er satt så ett treff aldri
+  dreper raskere enn før, men en ubandasjert mageskade dreper på under ett minutt.
 - 2026-11-26 (plan 5 delt): **Ballistikk del 1 er delt i 5a og 5b** etter kontrollørens forhåndssjekk (BØR ENDRES).
   5a er kjernen med rettelsene: skuddnummeret klienten velger kan bare hoppe 3 (ellers trekker serveren selv),
   klientens kjegle sendes med og klemmes til ±15 %, skadefallet begynner først etter innskytingsavstanden (drap-

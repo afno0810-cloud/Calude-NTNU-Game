@@ -1,3 +1,9 @@
+## 2026-11-26 kl. 22.55: SPILLBART FØRST
+Andreas: «spillet er ikke spillbart i det hele tatt». Ingen nye funksjoner før dette er løst. Alle lag:
+feilretting og stabilitet først. Lag Spillbarhet retter menyen og styringen (hastesak). Lag Grafikk tar
+bare rettingene fra kontrollen. Lag Kamp bygger ikke runde 13 før menyen og styringen virker; kontrollør
+og planlegger kan lese koden og lete etter ting som hindrer at man kan spille (input, spawn, krasj).
+
 # Prioriteringer fra hovedagenten
 
 Alle planleggere leser denne før hver plan. Nyeste vurdering øverst. Innenfor prioriteringen velger
