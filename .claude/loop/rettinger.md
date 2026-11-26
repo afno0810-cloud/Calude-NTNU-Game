@@ -10,3 +10,8 @@ Fra kontroll av feilretting 1 (.claude/loop/kontroll/feilretting-01.md). Byggere
 6. **RETTET** – HØY (spillbarhet-feiljakt G1): granater, miner og nærkampslag fra klienter går alltid vannrett – serveren bruker kameraretning som bare oppdateres for lokal spiller. Send sikteretning til serveren.
 
 Alle seks RETTET av bygger (Kamp) 26. nov., IMPROVEMENTS 376–385. G1 (punkt 6): kast og nærkamp bruker GetBaseAimRotation() på serveren (kontrollerens sikteretning, som serveren alt har), så ingen ny RPC trengs. Bygget: OK.
+
+## Nye (fra kontroll av feilretting 2) – tas sammen med neste runde
+7. Styreflate/jevn rulling: `Scroll` må samle utslag til ±1 før ett trinn (Andreas tester på laptop).
+8. I terminalen skal hjul opp bla oppover (i dag sender begge retninger «Q»).
+9. Blør man i hjel etter en mine, må `Die` få med prosjektilet så dødskortet ikke bruker kasterens nye kropp.

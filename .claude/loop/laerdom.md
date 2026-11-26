@@ -21,3 +21,6 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Upålitelige multicaster som setter lokal tilstand trenger et tidsvindu, et én-gangs-flagg og kall fra begge sider. (runde 3)
 - En sporing (trace) som filtrerer bort treff må skille «filtrert treff» fra «ingen treff». (runde 3)
 - Kosmetiske effekter trenger både et tak per kilde og et felles tak per maskin. (runde 3)
+- Musehjul/styreflate sender brøkdeler: samle utslag til hele trinn (±1) før ett steg. Andreas tester på laptop. (feilretting 2)
+- Server-kode skal aldri bruke kamerakomponenten for klienters sikteretning; bruk `GetBaseAimRotation()` eller send retningen i RPC-en. (feilretting 2)
+- Kontrolløren sjekker byggerens forklaringer om motoren mot motorkoden, ikke bare selve rettelsen. (feilretting 2)
