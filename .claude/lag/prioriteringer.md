@@ -18,12 +18,36 @@ før noe føles ferdig.
 4. Tone ned arkade-preg i HUD («LAVT LIV»-tekst, hvitt blink).
 
 **Lag Grafikk og kart**
+0. **Ny retning fra Andreas (26. nov.): mindre kart, mye mer detaljert.** Velg et mindre, sammenhengende
+   utsnitt av campus (kjernen rundt Hovedbygningen er et naturlig valg, men laget velger), stram inn
+   spillområdet til det, og legg all innsatsen i detaljer der: fasader, innganger, rom innvendig, møbler,
+   skilt, bakke, vegetasjon, lys. Det som faller utenfor blir kulisse eller fjernes. Dette går foran
+   punktene under. Spawnpunkter og lootplasser må følge med (bestilling til lag Spillbarhet).
 1. Finn det som ser minst ekte ut når man står midt på campus, og gjør det ordentlig. Ett bygg eller ett
    uteområde om gangen, helt ferdig, heller enn litt overalt.
 2. Lys og vær som i en ekte novemberkveld i Trondheim.
 3. Flater som kan ta imot blod og kulehull fra lag Kamp (bestillinger kommer i `bestillinger.md`).
 
 **Lag Spillbarhet**
+0c. **Fra Andreas (26. nov.): invitere venner fra menyen.** Gjør det i steg, etter hovedmenyen (0b):
+   (1) uten kontoer: «Finn spill på nettverket» (LAN-søk som lister åpne spill) og en invitasjonskode/IP
+   man kan kopiere og lime inn; (2) ekte venneliste og invitasjoner over internett via Steam eller Epic
+   Online Services. Steg 2 krever at Andreas oppretter en utviklerkonto/app-ID – hovedagenten avklarer
+   det med ham; planlegg og bygg steg 1 først, og gjør koden klar for steg 2 (OnlineSubsystem-sesjoner).
+0b. **Fra Andreas (26. nov.): en ordentlig hovedmeny.** Når spillet starter kommer man til en meny med
+   Start spill (vert), Bli med (skriv inn IP), Innstillinger (grafikk, følsomhet, lyd – lagres),
+   Kontroller (samme oversikt som 0a) og Avslutt. Skal kunne brukes med mus, se nøktern og ferdig ut,
+   og erstatte konsollkommandoene `Host`/`Join` for vanlige spillere. Lag den i egne nye filer laget eier
+   (f.eks. `GSMenu.*`), i C++ uten .uasset. Henger sammen med 0a; planlegg dem som to runder etter
+   hverandre eller én hvis det er lite nok.
+0a. **Fra Andreas (26. nov.): vis spilleren hvilke knapper som gjør hva og hvordan man spiller.** En
+   kontrolloversikt man kan slå av og på (f.eks. F1), korte hint som dukker opp når de er relevante
+   (ved loot: «E plukk opp», ved PC, ved printer, første gang man er skadet/sulten), og en kort innføring
+   i lobbyen om hva kampen går ut på. Nøkternt og lite, ikke arkade. Lag det i egne nye filer som laget
+   eier (f.eks. `GSHelp.*`), og bestill bare ett lite kall fra `GSHUD`/`GSPlayerController` hos lag Kamp.
+   Ta dette tidlig (runde 1 eller 2).
+0. Kartet blir mindre (se lag Grafikk og kart): spawn, loot-tetthet og kamplengde må passe et mindre
+   område når det kommer. Følg med i `bestillinger.md`.
 1. De åpne funnene i `.claude/loop/funn.md` i egne filer: kampstart som ikke rydder, griefing i lobbyen,
    loot gjennom vegger, spawn, ammoeske-feil, ytelse for pickups.
 2. Våpendata som følger virkeligheten: riktig kaliber, skade etter patron, beskyttelsesklasser for vester

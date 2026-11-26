@@ -15,3 +15,6 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Planleggeren leser `funn.md` før en rettelse planlegges, så samme hull ikke blir stående. (runde 2)
 - Lokale tilstander som nullstilles i `UpdateLocalVisuals` må også nullstilles i `OnRep_Dead`. (runde 2)
 - Nye mål fra Andreas midt i en runde: dirigenten sjekker planer i køen mot `andreas.md` før de bygges, og sender dem tilbake hvis de strider mot målene. (runde 3)
+- Verdier satt på en komponent før `FinishSpawning` kan bli tolket om av `InitializeComponent`: les motorens standardverdier (f.eks. `bInitialVelocityInLocalSpace`). (feilretting 1)
+- Hos klienter kjøres `OnRep` for startverdier før `BeginPlay`, så `BeginPlay` må ikke overskrive replikert tilstand. (feilretting 1)
+- Trekninger i flere trinn (loot) må regnes ut per gjenstand og for alle `MinRarity`-nivåer før de godkjennes. (feilretting 1)

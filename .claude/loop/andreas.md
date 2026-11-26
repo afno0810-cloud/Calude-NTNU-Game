@@ -29,6 +29,11 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26: Funksjoner for å invitere venner osv. i menyen.
+- 2026-11-26: Lag en hjem-/hovedmeny som man kan bruke.
+- 2026-11-26: Spillet skal informere spilleren om hvilke knapper som gjør hva, og hvordan man spiller.
+- 2026-11-26: **Kartet skal være mindre og mye mer detaljert** i stedet for stort og tynt. Heller et
+  mindre utsnitt av Gløshaugen der hvert bygg, rom og uteområde er gjennomarbeidet.
 - 2026-11-26: En hovedagent styrer alle ni. Det er den Andreas snakker med, og den kan selv påvirke hva
   lagene jobber med ut fra hva den mener er lurt.
 - 2026-11-26: Tre lag med samme oppsett (ni agenter): det første fortsetter som før, ett fokuserer på
