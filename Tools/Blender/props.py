@@ -587,26 +587,47 @@ def p_ParkBench(k, m):
             k.cyl((x, y, 0.0), 0.04, 0.02, m.dark, verts=10)
 
 
+class _Shift:
+    """Wraps a MeshKit so a prop builder can be placed at an offset (bikes in the rack)."""
+    def __init__(self, k, dx, dy):
+        self.k, self.d = k, (dx, dy)
+
+    def _p(self, c):
+        return (c[0] + self.d[0], c[1] + self.d[1], c[2])
+
+    def box(self, c, size, mi, rot=(0, 0, 0)):
+        self.k.box(self._p(c), size, mi, rot)
+
+    def cyl(self, c, *a, **kw):
+        self.k.cyl(self._p(c), *a, **kw)
+
+    def cyl_axis(self, c, *a, **kw):
+        self.k.cyl_axis(self._p(c), *a, **kw)
+
+    def ring_y(self, c, *a, **kw):
+        self.k.ring_y(self._p(c), *a, **kw)
+
+    def tube(self, path, *a, **kw):
+        self.k.tube([self._p(c) for c in path], *a, **kw)
+
+
 @prop
 def p_BikeRack(k, m):
-    """Rack with 5 bikes."""
+    """Galvanised wave rack on a concrete strip with four parked city bikes in different colours."""
+    k.box((0, 0, 0.02), (1.0, 3.2, 0.04), m.concrete)
     for i in range(6):
         y = -1.5 + i * 0.6
-        k.box((0, y, 0.38), (0.9, 0.04, 0.04), m.metal)
-        for x in (-0.45, 0.45):
-            k.box((x, y, 0.19), (0.04, 0.04, 0.38), m.metal)
-    k.box((0, 0, 0.02), (1.0, 3.2, 0.04), m.concrete)
-    for i in range(5):
-        y = -1.2 + i * 0.6
-        c = (m.blue, m.red, m.dark, m.green, m.yellow)[i]
-        for x in (-0.5, 0.5):
-            k.cyl_axis((x, y, 0.35), 0.33, 0.04, m.rubber, axis="Y", verts=20)
-            k.cyl_axis((x, y, 0.35), 0.29, 0.045, m.metal, axis="Y", verts=20)
-        k.ramp((-0.5, y, 0.35), (0.0, y, 0.85), 0.03, 0.04, c)
-        k.ramp((0.0, y, 0.85), (0.5, y, 0.35), 0.03, 0.04, c)
-        k.box((0.05, y, 0.55), (0.8, 0.03, 0.04), c)
-        k.box((-0.1, y, 0.95), (0.25, 0.1, 0.05), m.rubber)
-        k.box((0.45, y, 1.0), (0.05, 0.6, 0.03), m.dark)
+        k.tube([(-0.35, y, 0.04), (-0.35, y, 0.6), (-0.3, y, 0.72), (0.3, y, 0.72), (0.35, y, 0.6), (0.35, y, 0.04)], 0.024, m.metal, segs=10)
+        for x in (-0.35, 0.35):
+            k.cyl((x, y, 0.04), 0.05, 0.01, m.metal, verts=12)
+    k.tube([(-0.35, -1.5, 0.3), (-0.35, 1.5, 0.3)], 0.02, m.metal, segs=8)
+    k.tube([(0.35, -1.5, 0.3), (0.35, 1.5, 0.3)], 0.02, m.metal, segs=8)
+    paints = (m.blue, m.red, m.dark, m.green)
+    for i, y in enumerate((-1.2, -0.6, 0.3, 0.9)):
+        mm = Mats.__new__(Mats)
+        mm.__dict__.update(m.__dict__)
+        mm.red = paints[i]
+        p_Bike(_Shift(k, 0.08 if i % 2 else -0.08, y), mm)
 
 
 @prop
@@ -680,13 +701,45 @@ def p_OutdoorBin(k, m):
 
 @prop
 def p_NTNUSign(k, m):
-    k.box((0, 0, 0.3), (0.4, 2.6, 0.6), m.concrete)
-    k.box((0, 0, 1.2), (0.12, 2.4, 1.2), m.ntnu)
-    for i in range(4):  # "NTNU" letters as blocks
-        y = -0.8 + i * 0.53
-        k.box((0.065, y, 1.25), (0.02, 0.32, 0.6), m.white)
-        k.box((0.07, y, 1.25), (0.02, 0.14, 0.45), m.ntnu)
-    k.box((0.065, 0, 0.75), (0.02, 2.0, 0.08), m.white)
+    """Campus entrance sign: rounded concrete plinth, blue slab with a raised border and real N-T-N-U letter shapes."""
+    k.loft([(x, 0.0, 0.6, 1.3) for x in [-0.2 + 0.4 * i / 4 for i in range(5)]], m.concrete, segs=20, power=10.0)
+    k.box((0, 0, 0.62), (0.44, 2.64, 0.04), m.dark)
+    k.loft([(x, 0.64, 1.86, 1.2) for x in (-0.06, -0.03, 0.03, 0.06)], m.ntnu, segs=24, power=12.0)
+    k.box((0.062, 0, 1.25), (0.004, 2.3, 1.1), m.ntnu)
+    for z in (0.72, 1.78):
+        k.box((0.065, 0, z), (0.006, 2.3, 0.02), m.white)
+    s, t, d = 0.42, 0.075, 0.025
+
+    def bar(y0, z0, y1, z1):
+        L = math.hypot(y1 - y0, z1 - z0)
+        ang = math.degrees(math.atan2(y1 - y0, z1 - z0))
+        # Unreal is left-handed: seen from +X, the viewer's right is -Y, so text runs toward -Y
+        k.box((0.075, -(y0 + y1) / 2, (z0 + z1) / 2), (d, t, L + t * 0.6), m.white, rot=(ang, 0, 0))
+
+    zb, zt = 1.08, 1.08 + s
+    def N(y):
+        bar(y, zb, y, zt)
+        bar(y + 0.3, zb, y + 0.3, zt)
+        bar(y + 0.02, zt - 0.02, y + 0.28, zb + 0.02)
+
+    def T(y):
+        bar(y, zt - t / 2, y + 0.3, zt - t / 2)
+        bar(y + 0.15, zb, y + 0.15, zt - t / 2)
+
+    def U(y):
+        bar(y, zb + 0.08, y, zt)
+        bar(y + 0.3, zb + 0.08, y + 0.3, zt)
+        k.tube([(0.075, -y, zb + 0.08), (0.075, -y - 0.04, zb + 0.02), (0.075, -y - 0.15, zb + 0.0), (0.075, -y - 0.26, zb + 0.02), (0.075, -y - 0.3, zb + 0.08)], t / 2, m.white, segs=8)
+
+    x0 = -0.92
+    N(x0)
+    T(x0 + 0.48)
+    N(x0 + 0.96)
+    U(x0 + 1.44)
+    k.box((0.072, 0, 0.88), (0.01, 1.9, 0.05), m.white)
+    for y in (-1.0, 1.0):
+        k.cyl((0.35, y, 0.0), 0.06, 0.1, m.dark, verts=12)
+        k.cyl((0.35, y, 0.1), 0.03, 0.02, m.white, verts=12)
 
 
 @prop
