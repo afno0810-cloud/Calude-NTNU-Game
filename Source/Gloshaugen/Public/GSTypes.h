@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/NetSerialization.h"
 #include "GSTypes.generated.h"
 
 UENUM(BlueprintType)
@@ -121,6 +122,9 @@ struct FGSDeathInfo
 	UPROPERTY() float KillerMaxHealth = 100.f;
 	UPROPERTY() float KillerArmor = 0.f;     // vest + helmet points left
 	UPROPERTY() bool bHeadshot = false;
+	/** Where the killer stood when you died (the death cam turns there if his pawn is too far away to be seen). */
+	UPROPERTY() FVector_NetQuantize KillerLocation = FVector::ZeroVector;
+	UPROPERTY() bool bHasKillerLocation = false;
 };
 
 namespace GSNames

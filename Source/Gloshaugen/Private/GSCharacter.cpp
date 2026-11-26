@@ -1600,10 +1600,127 @@ bool AGSCharacter::IsScopedIn() const
 	return GetStats(*W).AimFOV <= 30.f;
 }
 
-void AGSCharacter::ClientDamageFrom_Implementation(FVector_NetQuantize From)
+namespace
 {
-	LastDamageFrom = From;
-	LastDamageFromTime = GetWorld()->GetTimeSeconds();
+	/** Which hurt kind wins when several hits land at once (shotgun pellets): the most serious one. */
+	int32 HurtRank(uint8 Kind)
+	{
+		switch (Kind)
+		{
+		case GSHurtKind::ArmorBroke: return 4;
+		case GSHurtKind::Head:       return 3;
+		case GSHurtKind::HeadArmor:  return 2;
+		case GSHurtKind::Body:       return 1;
+		default:                     return 0;   // Armor
+		}
+	}
+}
+
+void AGSCharacter::ClientTookHit_Implementation(FVector_NetQuantize From, bool bHasFrom, float HealthLost, uint8 Kind)
+{
+	const float Now = GetWorld()->GetTimeSeconds();
+	HealthLost = FMath::Max(0.f, HealthLost);
+
+	// Direction wedge: hits from (nearly) the same direction share one wedge, up to 4 directions at once.
+	if (bHasFrom)
+	{
+		LastDamageFrom = From;
+		LastDamageFromTime = Now;
+		RecentHits.RemoveAll([Now](const FGSRecentHit& H) { return Now - H.Time > 2.f; });
+		const FVector Me = GetActorLocation();
+		const float Yaw = (FVector(From) - Me).Rotation().Yaw;
+		FGSRecentHit* Same = nullptr;
+		for (FGSRecentHit& H : RecentHits)
+		{
+			if (FMath::Abs(FRotator::NormalizeAxis((H.From - Me).Rotation().Yaw - Yaw)) <= 25.f) { Same = &H; break; }
+		}
+		if (Same)
+		{
+			// Pellets from one shot (same instant) add up; a later separate hit keeps half of the old size.
+			const bool bSameBurst = Now - Same->Time < 0.1f;
+			Same->BurstLost = bSameBurst ? Same->BurstLost + HealthLost : HealthLost;
+			const float NewStrength = FMath::Clamp(Same->BurstLost / 35.f, 0.35f, 1.f);
+			Same->Strength = FMath::Max(bSameBurst ? Same->Strength : Same->Strength * 0.5f, NewStrength);
+			Same->From = From;
+			Same->Time = Now;
+		}
+		else
+		{
+			if (RecentHits.Num() >= 4)
+			{
+				int32 Oldest = 0;
+				for (int32 i = 1; i < RecentHits.Num(); ++i)
+				{
+					if (RecentHits[i].Time < RecentHits[Oldest].Time) Oldest = i;
+				}
+				RecentHits.RemoveAt(Oldest);
+			}
+			FGSRecentHit& H = RecentHits.AddDefaulted_GetRef();
+			H.From = From;
+			H.Time = Now;
+			H.Strength = FMath::Clamp(HealthLost / 35.f, 0.35f, 1.f);
+			H.BurstLost = HealthLost;
+		}
+	}
+
+	// Nothing got through and no armor was hit (e.g. a damage-immunity boost): only the wedge.
+	if (HealthLost <= 0.f && (Kind == GSHurtKind::Body || Kind == GSHurtKind::Head)) return;
+
+	// Screen-edge flash: hits in the same instant add up, and the most serious kind decides the look.
+	const bool bBurst = Now - LastHurtFlashTime < 0.1f;
+	HurtBurstLost = bBurst ? HurtBurstLost + HealthLost : HealthLost;
+	const float Strength = FMath::Clamp(HurtBurstLost / 40.f, 0.25f, 1.f);
+	LastHurtFlashStrength = bBurst ? FMath::Max(LastHurtFlashStrength, Strength) : Strength;
+	LastHurtBlood = FMath::Clamp(HurtBurstLost / 40.f, 0.f, 1.f);
+	if (Kind != GSHurtKind::Armor && Kind != GSHurtKind::HeadArmor) LastHurtBlood = FMath::Max(LastHurtBlood, 0.25f);
+	if (!bBurst || HurtRank(Kind) >= HurtRank(LastHurtKind)) LastHurtKind = Kind;
+	LastHurtFlashTime = Now;
+
+	// Headshots you survive jerk the view harder (the normal flinch starts from the health change).
+	const bool bHead = Kind == GSHurtKind::Head || Kind == GSHurtKind::HeadArmor;
+	if (bHead)
+	{
+		FlinchScale = 2.2f;
+		FlinchStart = Now;
+		FlinchSign = FMath::RandBool() ? 1.f : -1.f;
+	}
+
+	// One sound per instant: nine shotgun pellets must not play nine sounds on top of each other,
+	// but a more serious hit in the same instant (the vest breaking) is still heard.
+	const int32 Rank = HurtRank(Kind);
+	if (Now - LastHurtSoundTime < 0.04f && Rank <= LastHurtSoundRank) return;
+	LastHurtSoundTime = Now;
+	LastHurtSoundRank = Rank;
+	switch (Kind)
+	{
+	case GSHurtKind::Armor:
+		GSAudio::Play2D(this, TEXT("Hit_Armor"), 0.7f, FMath::FRandRange(0.95f, 1.05f));
+		if (HealthLost > 1.f) GSAudio::Play2D(this, TEXT("Hit_Body"), 0.3f, FMath::FRandRange(0.9f, 1.1f));
+		break;
+	case GSHurtKind::Head:
+		GSAudio::Play2D(this, TEXT("Hit_Head"), 0.9f, 1.f);
+		GSAudio::Play2D(this, TEXT("Ear_Ring"), 0.45f, 1.f);
+		GSAudio::Play2D(this, TEXT("Hit_Body"), 0.6f, FMath::FRandRange(0.9f, 1.1f));
+		break;
+	case GSHurtKind::HeadArmor:
+		GSAudio::Play2D(this, TEXT("Hit_Armor"), 0.8f, 1.25f);
+		GSAudio::Play2D(this, TEXT("Ear_Ring"), 0.3f, 1.f);
+		break;
+	case GSHurtKind::ArmorBroke:
+		GSAudio::Play2D(this, TEXT("Armor_Break"), 0.9f, 1.f);
+		GSAudio::Play2D(this, TEXT("Hit_Body"), 0.5f, FMath::FRandRange(0.9f, 1.1f));
+		break;
+	default:
+		GSAudio::Play2D(this, TEXT("Hit_Body"), 0.8f, FMath::FRandRange(0.9f, 1.1f));
+		break;
+	}
+}
+
+float AGSCharacter::GetLowHealthAlpha() const
+{
+	if (bDead) return 0.f;
+	const float F = Health / FMath::Max(MaxHealth, 1.f);
+	return FMath::Clamp((0.35f - F) / 0.35f, 0.f, 1.f);
 }
 
 void AGSCharacter::TickRecoil(float Dt)
@@ -2425,7 +2542,9 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	else if (Ammo == GSAmmoType::Shock) AddEffect(TEXT("Sjokk"));
 
 	// Armor soaks up part of the damage until it breaks.
+	const float HealthBefore = Health;
 	bool bArmorHit = false;
+	bool bArmorBroke = false;
 	if (bHeadshot && !Helmet.IsNone())
 	{
 		const FGSItemDef* H = GSItems::Find(Helmet);
@@ -2433,7 +2552,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		HelmetPoints -= Soak;
 		Damage -= Soak;
 		bArmorHit = Soak > 0.f;
-		if (HelmetPoints <= 0.5f) { Helmet = NAME_None; HelmetPoints = 0.f; ApplyGearVisuals(); ClientToast(TEXT("Hjelmen gikk i stykker!")); }
+		if (HelmetPoints <= 0.5f) { Helmet = NAME_None; HelmetPoints = 0.f; bArmorBroke = true; ApplyGearVisuals(); ClientToast(TEXT("Hjelmen gikk i stykker!")); }
 	}
 	else if (!bHeadshot && !BodyArmor.IsNone())
 	{
@@ -2442,12 +2561,20 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		ArmorPoints -= Soak;
 		Damage -= Soak;
 		bArmorHit = Soak > 0.f;
-		if (ArmorPoints <= 0.5f) { BodyArmor = NAME_None; ArmorPoints = 0.f; ApplyGearVisuals(); ClientToast(TEXT("Vesten er \u00F8delagt!")); }
+		if (ArmorPoints <= 0.5f) { BodyArmor = NAME_None; ArmorPoints = 0.f; bArmorBroke = true; ApplyGearVisuals(); ClientToast(TEXT("Vesten er \u00F8delagt!")); }
 	}
 
 	Health = FMath::Max(0.f, Health - Damage);
 	LastDamageTakenTime = GetWorld()->GetTimeSeconds();
-	if (Shooter && Shooter != this) ClientDamageFrom(Shooter->GetActorLocation());
+	// Tell the one who was hit where it came from, how hard, and whether the vest/helmet took it. Sent before
+	// OnRep_Health below so a listen-server host does not also play the generic hurt sound.
+	{
+		const uint8 Kind = bArmorBroke ? GSHurtKind::ArmorBroke
+			: bHeadshot ? (bArmorHit ? GSHurtKind::HeadArmor : GSHurtKind::Head)
+			: bArmorHit ? GSHurtKind::Armor : GSHurtKind::Body;
+		const bool bHasFrom = Shooter && Shooter != this;
+		ClientTookHit(bHasFrom ? Shooter->GetActorLocation() : GetActorLocation(), bHasFrom, HealthBefore - Health, Kind);
+	}
 	LastDamageWeapon = WeaponName;
 	LastDamageInstigator = EventInstigator;
 	OnRep_Health();
@@ -2456,7 +2583,11 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	if (Shooter && Shooter != this)
 	{
 		const float Steal = Shooter->GetMods().Lifesteal;
-		if (Steal > 0.f) Shooter->Health = FMath::Min(Shooter->MaxHealth, Shooter->Health + Damage * Steal);
+		if (Steal > 0.f)
+		{
+			Shooter->Health = FMath::Min(Shooter->MaxHealth, Shooter->Health + Damage * Steal);
+			Shooter->OnRep_Health();   // a listen-server host sees the change like a client does
+		}
 	}
 
 	bool bKilled = Health <= 0.f;
@@ -2464,6 +2595,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	{
 		// Foniks: get back up once.
 		Health = 50.f;
+		OnRep_Health();
 		Effects.RemoveAll([](const FGSActiveEffect& E) { return E.Id == FxFoniks; });
 		AddEffect(FName(TEXT("Adrenalin")));
 		ClientToast(TEXT("F\u00D8NIKS! Du reiste deg fra de d\u00F8de."));
@@ -2482,10 +2614,28 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 
 void AGSCharacter::OnRep_Health()
 {
-	if (IsLocallyControlled() && Health < LastSeenHealth - 0.5f)
+	if (IsLocallyControlled())
 	{
-		LastDamageTakenTime = GetWorld()->GetTimeSeconds();
-		GSAudio::Play2D(this, TEXT("Hit_Body"), 0.8f, FMath::FRandRange(0.9f, 1.1f));
+		const float Now = GetWorld()->GetTimeSeconds();
+		if (Health < LastSeenHealth - 0.5f)
+		{
+			LastDamageTakenTime = Now;
+			// Weapon hits already played their own sound and flash (ClientTookHit). This is hunger, thirst,
+			// poison and the like: a softer thud and a faint red edge.
+			if (Now - LastHurtFlashTime >= 0.3f)
+			{
+				GSAudio::Play2D(this, TEXT("Hit_Body"), 0.4f, FMath::FRandRange(0.9f, 1.1f));
+				LastHurtFlashTime = Now;
+				LastHurtKind = GSHurtKind::Body;
+				LastHurtFlashStrength = 0.25f;
+				LastHurtBlood = 0.25f;
+				HurtBurstLost = 0.f;   // a weapon hit arriving right after this adds its own damage, not this
+			}
+		}
+		else if (Health > LastSeenHealth + 4.f)
+		{
+			LastHealTime = Now;   // food, bandage, syringe: short green edge
+		}
 	}
 	LastSeenHealth = Health;
 }
@@ -2512,9 +2662,16 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 	FGSDeathInfo Info;
 	Info.Weapon = WeaponName;
 	Info.bHeadshot = bHeadshot;
-	if (KillerPawn)
+	// The name is shown even if the killer has no pawn any more (his bullet or grenade got you after he died);
+	// killing yourself (own grenade) leaves it empty.
+	if (Killer && Killer != GetController())
 	{
 		Info.Killer = Killer->PlayerState ? Killer->PlayerState->GetPlayerName() : FString(TEXT("?"));
+	}
+	if (KillerPawn)
+	{
+		Info.KillerLocation = KillerPawn->GetActorLocation();
+		Info.bHasKillerLocation = true;
 		Info.DistanceM = FVector::Dist(KillerPawn->GetActorLocation(), GetActorLocation()) / 100.f;
 		if (const AGSCharacter* K = Cast<AGSCharacter>(KillerPawn))
 		{
@@ -2610,6 +2767,12 @@ void AGSCharacter::OnRep_Dead()
 		if (FP && FP->bOnlyOwnerSee) FP->SetVisibility(false);
 	}
 	if (FPLegs) FPLegs->SetVisibility(false);
+	// The death cam keeps this camera's post-process: drop the low-health grey (no more local ticks may come
+	// once the controller lets go of the body).
+	{
+		const FGSEffectMods Mods = GetMods();
+		ApplyLowHealthPostProcess(bNightVisionGoggles || Mods.bNightVision ? 7 : Mods.Visual, 0.f);
+	}
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HeadMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -2653,9 +2816,22 @@ void AGSCharacter::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
 	const FVector FallLoc = DeathEyeLoc - FVector(0.f, 0.f, 45.f * FallA * FallA);
 	const FRotator FallRot(DeathEyeRot.Pitch - 20.f * FallA, DeathEyeRot.Yaw, 18.f * FallA);
 
+	// Turn toward the killer: his live position if your game can see his pawn, otherwise where he stood when
+	// you died (he was too far away to be replicated to you).
 	APawn* Killer = DeathCamKiller.Get();
 	const AGSCharacter* KillerChar = Cast<AGSCharacter>(Killer);
-	const bool bLookAtKiller = Killer && !(KillerChar && KillerChar->bDead);
+	bool bLookAtKiller = false;
+	FVector KillerLook = FVector::ZeroVector;
+	if (Killer)
+	{
+		bLookAtKiller = !(KillerChar && KillerChar->bDead);
+		KillerLook = Killer->GetActorLocation();
+	}
+	else if (bDeathCamHasKillerLoc)
+	{
+		bLookAtKiller = true;
+		KillerLook = DeathCamKillerLoc;
+	}
 
 	FVector Desired = FallLoc;
 	if (T >= FallTime)
@@ -2724,7 +2900,7 @@ void AGSCharacter::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
 	}
 	else
 	{
-		const FVector LookAt = bLookAtKiller ? Killer->GetActorLocation() + FVector(0.f, 0.f, 60.f) : Focus;
+		const FVector LookAt = bLookAtKiller ? KillerLook + FVector(0.f, 0.f, 60.f) : Focus;
 		Rot = FMath::RInterpTo(DeathCamRot, (LookAt - Final).Rotation(), Dt, 2.5f);
 	}
 	DeathCamRot = Rot;
@@ -2753,9 +2929,10 @@ void AGSCharacter::TickSurvival(float DeltaSeconds)
 	const float Change = FMath::TruncToFloat(StarveAccumulator);
 	StarveAccumulator -= Change;
 	Health = FMath::Clamp(Health + Change, 0.f, MaxHealth);
+	OnRep_Health();   // a listen-server host hears and sees hunger/thirst damage like a client does
 	if (Health <= 0.f)
 	{
-		if (Mods.bPhoenix) { Health = 50.f; Effects.RemoveAll([](const FGSActiveEffect& E) { return E.Id == FxFoniks; }); return; }
+		if (Mods.bPhoenix) { Health = 50.f; OnRep_Health(); Effects.RemoveAll([](const FGSActiveEffect& E) { return E.Id == FxFoniks; }); return; }
 		const FString Cause = Hunger <= 0.f ? TEXT("Sult") : Thirst <= 0.f ? TEXT("T\u00F8rst") : TEXT("Overdose");
 		Die(nullptr, false, Cause);
 	}
@@ -2821,6 +2998,16 @@ void AGSCharacter::UpdateLocalVisuals(float DeltaSeconds)
 	}
 	if (Visual == 6) PP.AutoExposureBias = 1.5f;
 
+	// Low health: greyer picture, darker edges and a heartbeat that speeds up the lower you get.
+	const float Low = GetLowHealthAlpha();
+	ApplyLowHealthPostProcess(Visual, Low);
+	if (Low > 0.f && T >= NextHeartbeat)
+	{
+		GSAudio::Play2D(this, TEXT("Heartbeat"), 0.35f + 0.5f * Low, 1.f);
+		LastHeartbeatTime = T;
+		NextHeartbeat = T + FMath::Lerp(1.05f, 0.55f, Low);
+	}
+
 	// Shaky hands / swaying world (the camera follows the controller, so nudge that)
 	if (Visual == 3)
 	{
@@ -2842,11 +3029,16 @@ void AGSCharacter::UpdateLocalVisuals(float DeltaSeconds)
 	if (LastDamageTakenTime > FlinchSeenTime + 0.01f)
 	{
 		FlinchSeenTime = LastDamageTakenTime;
-		FlinchStart = T;
-		FlinchSign = FMath::RandBool() ? 1.f : -1.f;
+		// A headshot has just started a harder flinch (ClientTookHit): let it play instead of restarting it.
+		if (FlinchScale <= 1.f || T - FlinchStart > 0.15f)
+		{
+			FlinchStart = T;
+			FlinchSign = FMath::RandBool() ? 1.f : -1.f;
+			FlinchScale = 1.f;
+		}
 	}
 	const float FA = T - FlinchStart;
-	const float Flinch = FA < 0.6f ? FMath::Exp(-FA * 7.f) * FMath::Sin(FA * 30.f) : 0.f;
+	const float Flinch = FA < 0.6f ? FMath::Exp(-FA * 7.f) * FMath::Sin(FA * 30.f) * FlinchScale : 0.f;
 
 	const bool bFalling = GetCharacterMovement()->IsFalling();
 	if (bFalling) CamFallSpeed = FMath::Max(CamFallSpeed, -Vel.Z);
@@ -2871,6 +3063,25 @@ void AGSCharacter::UpdateLocalVisuals(float DeltaSeconds)
 	{
 		const FRotator CamRot(Breath + Flinch * 2.5f, Flinch * FlinchSign * 1.2f, CamLean + Flinch * FlinchSign * 3.f);
 		Camera->AddAdditiveOffset(FTransform(CamRot, FVector(0.f, 0.f, CamDip)), 0.f);
+	}
+}
+
+void AGSCharacter::ApplyLowHealthPostProcess(int32 Visual, float Low)
+{
+	FPostProcessSettings& PP = Camera->PostProcessSettings;
+	const bool bLow = Low > 0.01f;
+	// Drug visuals 2 and 5 set their own saturation: leave those alone. Otherwise switch the override off
+	// again explicitly, or the picture would stay grey after you are healed.
+	if (Visual != 2 && Visual != 5)
+	{
+		const float S = 1.f - 0.6f * Low;
+		PP.bOverride_ColorSaturation = bLow;
+		PP.ColorSaturation = FVector4(S, S, S, 1.f);
+	}
+	if (Visual == 0)
+	{
+		PP.bOverride_VignetteIntensity = bLow;
+		PP.VignetteIntensity = bLow ? 0.4f + 0.6f * Low : 0.6f;
 	}
 }
 

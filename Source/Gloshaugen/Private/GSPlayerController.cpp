@@ -269,6 +269,9 @@ void AGSPlayerController::ClientDeathCam_Implementation(AGSCharacter* Body, APaw
 	if (!Body) return;
 	DeathCamBody = Body;
 	Body->DeathCamKiller = KillerPawn;
+	// The killer's pawn is null here when it is not relevant to us (too far away): turn toward where he stood instead.
+	Body->DeathCamKillerLoc = Info.KillerLocation;
+	Body->bDeathCamHasKillerLoc = Info.bHasKillerLocation;
 	// The camera manager follows a viewed pawn's player state to that player's next pawn. The server has already
 	// cleared it on the body; do the same here at once, or the view jumps away when that update arrives.
 	if (Body->GetPlayerState()) Body->SetPlayerState(nullptr);

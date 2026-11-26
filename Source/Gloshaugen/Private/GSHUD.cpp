@@ -84,14 +84,11 @@ void AGSHUD::DrawHUD()
 		}
 		if (C->IsUsingBinoculars()) DrawBinoculars();
 
-		// Red flash when hit
-		const float SinceHurt = GetWorld()->GetTimeSeconds() - C->GetLastDamageTakenTime();
-		if (SinceHurt < 0.5f)
-		{
-			Box(0, 0, Canvas->SizeX, Canvas->SizeY, FLinearColor(0.6f, 0.f, 0.f, 0.35f * (1.f - SinceHurt / 0.5f)));
-		}
-		if (C->IsScopedIn() && C->GetAimBlend() > 0.85f) DrawScope(C);
-		else DrawCrosshair(C);
+		// Hurt / low-health / healed edges go over the scope (so you see them scoped in too) but under the crosshair.
+		const bool bScope = C->IsScopedIn() && C->GetAimBlend() > 0.85f;
+		if (bScope) DrawScope(C);
+		DrawHurtOverlay(C);
+		if (!bScope) DrawCrosshair(C);
 		DrawDamageDirection(C);
 		DrawBars(C);
 		DrawAmmo(C);
@@ -641,20 +638,110 @@ void AGSHUD::DrawScope(AGSCharacter* C)
 
 void AGSHUD::DrawDamageDirection(AGSCharacter* C)
 {
-	const float Age = GetWorld()->GetTimeSeconds() - C->LastDamageFromTime;
-	if (Age > 1.6f) return;
-	const FVector D = C->LastDamageFrom - C->GetActorLocation();
-	const float Rel = FMath::DegreesToRadians(FRotator::NormalizeAxis(D.Rotation().Yaw - C->GetControlRotation().Yaw));
-	const float CX = Canvas->SizeX * 0.5f, CY = Canvas->SizeY * 0.5f, Rad = Canvas->SizeY * 0.17f;
-	const FVector2D Dir(FMath::Sin(Rel), -FMath::Cos(Rel));
-	const FVector2D Side(-Dir.Y, Dir.X);
-	const FVector2D Tip = FVector2D(CX, CY) + Dir * (Rad + 26.f);
-	const FVector2D Base = FVector2D(CX, CY) + Dir * Rad;
-	const FLinearColor Col(1.f, 0.1f, 0.05f, 0.85f * (1.f - Age / 1.6f));
-	FCanvasUVTri T;
-	T.V0_Pos = Tip; T.V1_Pos = Base + Side * 34.f; T.V2_Pos = Base - Side * 34.f;
-	T.V0_Color = T.V1_Color = T.V2_Color = Col;
-	Canvas->K2_DrawTriangle(nullptr, TArray<FCanvasUVTri>{ T });
+	if (C->RecentHits.Num() == 0) return;
+	const float Now = GetWorld()->GetTimeSeconds();
+	const FVector2D Center(Canvas->SizeX * 0.5f, Canvas->SizeY * 0.5f);
+	const float Rad = Canvas->SizeY * 0.17f;
+	const FVector Me = C->GetActorLocation();
+	const float ViewYaw = C->GetControlRotation().Yaw;
+	TArray<FCanvasUVTri> Shadows, Wedges;
+	for (const FGSRecentHit& H : C->RecentHits)
+	{
+		const float Age = Now - H.Time;
+		if (Age < 0.f || Age >= 2.f) continue;
+		const float Alpha = 0.9f * (1.f - Age / 2.f);
+		// Relative to where you look now, so the wedge turns as you turn
+		const float Rel = FMath::DegreesToRadians(FRotator::NormalizeAxis((H.From - Me).Rotation().Yaw - ViewYaw));
+		const FVector2D Dir(FMath::Sin(Rel), -FMath::Cos(Rel));
+		const FVector2D Side(-Dir.Y, Dir.X);
+		const float Half = 24.f + 18.f * H.Strength;   // harder hits give a bigger wedge
+		const float Len = 20.f + 16.f * H.Strength;
+		const FVector2D Base = Center + Dir * Rad;
+		const FVector2D Tip = Base + Dir * Len;
+
+		// Dark outline 2 px bigger underneath, so the wedge shows on snow and bright sky
+		FCanvasUVTri S;
+		S.V0_Pos = Tip + Dir * 2.f;
+		S.V1_Pos = Base - Dir * 2.f + Side * (Half + 2.f);
+		S.V2_Pos = Base - Dir * 2.f - Side * (Half + 2.f);
+		S.V0_Color = S.V1_Color = S.V2_Color = FLinearColor(0.f, 0.f, 0.f, 0.4f * Alpha);
+		Shadows.Add(S);
+
+		FCanvasUVTri T;
+		T.V0_Pos = Tip;
+		T.V1_Pos = Base + Side * Half;
+		T.V2_Pos = Base - Side * Half;
+		T.V0_Color = T.V1_Color = T.V2_Color = FLinearColor(1.f, 0.1f, 0.05f, Alpha);
+		Wedges.Add(T);
+	}
+	if (Wedges.Num() == 0) return;
+	Canvas->K2_DrawTriangle(nullptr, Shadows);
+	Canvas->K2_DrawTriangle(nullptr, Wedges);
+}
+
+void AGSHUD::EdgeGlow(const FLinearColor& Col, float Alpha, float Depth)
+{
+	if (Alpha <= 0.003f || Depth < 1.f) return;
+	const float SX = Canvas->SizeX, SY = Canvas->SizeY;
+	constexpr int32 Bands = 8;
+	const float B = Depth / Bands;
+	for (int32 i = 0; i < Bands; ++i)
+	{
+		const float F = 1.f - float(i) / Bands;
+		const FLinearColor C(Col.R, Col.G, Col.B, Alpha * F * F);
+		Box(0.f, i * B, SX, B, C);              // top
+		Box(0.f, SY - (i + 1) * B, SX, B, C);   // bottom
+		Box(i * B, 0.f, B, SY, C);              // left
+		Box(SX - (i + 1) * B, 0.f, B, SY, C);   // right
+	}
+}
+
+void AGSHUD::DrawHurtOverlay(AGSCharacter* C)
+{
+	const float Now = GetWorld()->GetTimeSeconds();
+	const float SX = Canvas->SizeX, SY = Canvas->SizeY;
+
+	// Low health: dark red edge pulsing with the heartbeat, and a short warning when it is really bad
+	const float Low = C->GetLowHealthAlpha();
+	if (Low > 0.f)
+	{
+		const float P = FMath::Exp(-FMath::Max(0.f, Now - C->GetLastHeartbeatTime()) * 6.f);
+		EdgeGlow(FLinearColor(0.45f, 0.f, 0.f), (0.25f + 0.35f * P) * Low, SY * (0.18f + 0.06f * P));
+		if (Low > 0.6f)
+		{
+			Text(TEXT("LAVT LIV - finn dekning og heal"), SX * 0.5f, SY * 0.28f, FLinearColor(1.f, 0.35f, 0.3f, 0.5f + 0.5f * P), 0.8f, true);
+		}
+	}
+
+	// The hit you just took: blood-red edge, deeper and stronger the more health you lost; blue-grey when the
+	// vest or helmet took it.
+	const float Age = Now - C->LastHurtFlashTime;
+	if (Age >= 0.f && Age < 0.6f)
+	{
+		const float Fade = FMath::Pow(1.f - Age / 0.6f, 1.5f);
+		const uint8 K = C->LastHurtKind;
+		const float Blood = C->LastHurtBlood;
+		if (Blood > 0.f)
+		{
+			EdgeGlow(FLinearColor(0.55f, 0.f, 0.f), 0.55f * Blood * Fade, SY * (0.12f + 0.10f * Blood));
+		}
+		if (K == GSHurtKind::Armor || K == GSHurtKind::HeadArmor)
+		{
+			EdgeGlow(FLinearColor(0.55f, 0.7f, 0.9f), 0.35f * C->LastHurtFlashStrength * Fade, SY * 0.08f);
+		}
+		// Headshot you survived: a quick white flash, a bit dizzy
+		if ((K == GSHurtKind::Head || K == GSHurtKind::HeadArmor) && Age < 0.25f)
+		{
+			Box(0.f, 0.f, SX, SY, FLinearColor(1.f, 1.f, 1.f, 0.35f * (1.f - Age / 0.25f)));
+		}
+	}
+
+	// Healed (food, bandage, syringe): short green edge
+	const float SinceHeal = Now - C->LastHealTime;
+	if (SinceHeal >= 0.f && SinceHeal < 0.7f)
+	{
+		EdgeGlow(FLinearColor(0.2f, 0.9f, 0.35f), 0.22f * (1.f - SinceHeal / 0.7f), SY * 0.08f);
+	}
 }
 
 void AGSHUD::DrawMatch()
@@ -883,7 +970,10 @@ void AGSHUD::DrawDeathScreen()
 	if (bKiller)
 	{
 		Text(FString::Printf(TEXT("DREPT AV %s"), *Info.Killer.Left(24)), X + Pad, Y + 12.f, White, 1.4f);
-		Text(FString::Printf(TEXT("%s  \u00B7  %d m"), *Info.Weapon, FMath::RoundToInt(Info.DistanceM)), X + Pad, Y + 50.f, Grey, 1.f);
+		// No position = the killer had already died himself (his bullet or grenade got you afterwards)
+		const FString Detail = Info.bHasKillerLocation ? FString::Printf(TEXT("%s  \u00B7  %d m"), *Info.Weapon, FMath::RoundToInt(Info.DistanceM))
+			: FString::Printf(TEXT("%s  \u00B7  han er selv d\u00F8d"), *Info.Weapon);
+		Text(Detail, X + Pad, Y + 50.f, Grey, 1.f);
 		if (Info.bHeadshot) Text(TEXT("HODESKUDD"), X + W - Pad, Y + 50.f, Gold, 1.f, false, true);
 
 		// How hurt the killer was: health (red -> green) and armor (blue, vest + helmet, max 200)

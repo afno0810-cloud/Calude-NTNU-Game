@@ -5,6 +5,7 @@ Scanned/recorded sounds can replace any of these later by importing a SoundWave 
 into /Game/Sounds (the game only looks up names).
 """
 import os
+import sys
 import wave
 
 import numpy as np
@@ -164,6 +165,58 @@ def pickup():
     save("Pickup", x, 0.5)
 
 
+def hurt_sounds():
+    """What you hear when YOU are hit:  python Tools/Audio/gen_sounds.py hurt  (writes only these five)."""
+    # Bullet on your vest/helmet: metallic plink/clonk with a short dull knock
+    length = 0.35
+    n = int(length * SR)
+    tt = t(length)
+    x = lowpass(noise(length), 600) * env(n, 0.0, 0.02) * 0.8
+    for f, d, a in ((1900, 0.12, 0.5), (3100, 0.08, 0.35), (4700, 0.05, 0.25)):
+        x += np.sin(2 * np.pi * f * tt) * env(n, 0.0, d) * a
+    save("Hit_Armor", x, 0.7)
+
+    # Headshot you survive: hard crack and a deep thud
+    length = 0.4
+    n = int(length * SR)
+    tt = t(length)
+    x = highpass(noise(length), 3000) * env(n, 0.0, 0.006) + np.sin(2 * np.pi * 55 * tt) * env(n, 0.001, 0.06) * 1.2
+    save("Hit_Head", x, 0.85)
+
+    # Vest/helmet breaks: a few metallic clicks and a crunch
+    length = 0.6
+    n = int(length * SR)
+    tt = t(length)
+    x = lowpass(noise(length), 1200) * env(n, 0.002, 0.15) * 0.6
+    for start, fs in ((0.0, (1700, 2900)), (0.06, (2300, 3600)), (0.13, (1500, 4100))):
+        i0 = int(start * SR)
+        m = n - i0
+        ct = tt[:m]
+        click = highpass(rng.standard_normal(m), 3000) * env(m, 0.0, 0.004) * 0.5
+        for f in fs:
+            click += np.sin(2 * np.pi * f * ct) * env(m, 0.0, 0.04) * 0.35
+        x[i0:] += click
+    save("Armor_Break", x, 0.8)
+
+    # One heartbeat ("lub-dub"), played once per beat by the game
+    length = 0.55
+    n = int(length * SR)
+    tt = t(length)
+    x = np.zeros(n)
+    for start, f, a in ((0.0, 48, 1.0), (0.17, 40, 0.75)):
+        i0 = int(start * SR)
+        m = n - i0
+        x[i0:] += np.sin(2 * np.pi * f * tt[:m]) * env(m, 0.005, 0.07) * a
+    save("Heartbeat", lowpass(x, 180), 0.9)
+
+    # Ringing ears after a headshot: 3600 Hz with a faint beat
+    length = 1.6
+    n = int(length * SR)
+    tt = t(length)
+    x = (np.sin(2 * np.pi * 3600 * tt) + 0.5 * np.sin(2 * np.pi * 3610 * tt)) * env(n, 0.02, 0.6)
+    save("Ear_Ring", x, 0.35)
+
+
 def loop_save(name, x, peak):
     # crossfade the ends so it loops without a click
     f = int(0.5 * SR)
@@ -213,6 +266,9 @@ def city_night():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "hurt":
+        hurt_sounds()
+        raise SystemExit
     gunshot("Shot_Pistol", 160, 0.8, 0.9, 0.9, 0.3)
     gunshot("Shot_SMG", 180, 0.7, 0.7, 0.8, 0.3)
     gunshot("Shot_Rifle", 120, 1.2, 1.3, 1.4, 0.35)
@@ -242,3 +298,4 @@ if __name__ == "__main__":
     rain()
     birds()
     city_night()
+    hurt_sounds()

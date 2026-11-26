@@ -39,8 +39,13 @@ protected:
 	void DrawMatch();
 	/** Black scope with a reticle while scoped in. */
 	void DrawScope(AGSCharacter* C);
-	/** Red wedge pointing to where the last hit came from. */
+	/** Red wedges (up to 4) pointing to where recent hits came from; they turn as you turn. */
 	void DrawDamageDirection(AGSCharacter* C);
+	/** Being hit: blood-red screen edge (blue-grey off armor), white flash on headshots, red pulse with the
+	 *  heartbeat at low health, short green edge when healed. */
+	void DrawHurtOverlay(AGSCharacter* C);
+	/** A glow along all four screen edges, Alpha at the edge fading to nothing Depth pixels in. */
+	void EdgeGlow(const FLinearColor& Col, float Alpha, float Depth);
 	/** Fills a convex polygon (screen space) clipped to a rectangle. */
 	void FillClipped(TArray<FVector2D> Poly, const FBox2D& Clip, const FLinearColor& Color);
 	/** Game menu (Esc): clickable buttons. */

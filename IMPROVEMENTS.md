@@ -3,6 +3,21 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 7: å bli truffet (26. nov.)
+
+301. Når du blir truffet blør kanten av skjermen i stedet for at hele bildet blinker rødt, sterkere jo mer liv du mistet
+302. Opptil fire røde piler viser samtidig hvor skuddene kommer fra, også når to skyter på deg fra ulike kanter
+303. Pilene har skygge så de synes på snø og himmel, og blir større ved harde treff
+304. Eget metallisk «klonk» og blågrå kant når vesten eller hjelmen tar kula
+305. Egen lyd når vesten eller hjelmen ryker
+306. Hodeskudd du overlever gir hvitt blink, øresus og et kraftigere rykk i kameraet
+307. Hagl som treffer samtidig gir én lyd, ikke ni oppå hverandre
+308. Under 35 % liv hører du hjertet slå, raskere jo lavere livet er
+309. Bildet blir gråere og mørkere i kantene når du har lite liv, med rød puls i takt med hjertet
+310. Kort grønt skjær i kanten når du heles
+311. Dødskortet viser navnet på drapsmannen også når han selv døde før kula eller granaten hans traff deg
+312. Dødskameraet snur seg mot drapsmannen også når han står for langt unna til at spillet ditt ser ham
+
 ## Runde 6: kamp-tilbakemelding (26. nov.)
 
 289. Dødskamera: når du dør faller bildet, trekker seg bakover og viser kroppen din i stedet for å fryse i øyehøyde

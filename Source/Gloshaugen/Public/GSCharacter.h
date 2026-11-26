@@ -21,6 +21,25 @@ namespace GSHitKind
 	constexpr uint8 Kill = 3;
 }
 
+/** What kind of hit YOU just took (sound and screen edge differ for each). */
+namespace GSHurtKind
+{
+	constexpr uint8 Body = 0;        // flesh
+	constexpr uint8 Armor = 1;       // the vest took part of it
+	constexpr uint8 Head = 2;        // headshot, no helmet
+	constexpr uint8 HeadArmor = 3;   // headshot, the helmet took part of it
+	constexpr uint8 ArmorBroke = 4;  // the vest or helmet broke from this hit
+}
+
+/** A recent hit on you, for the HUD direction wedges (local only). */
+struct FGSRecentHit
+{
+	FVector From = FVector::ZeroVector;
+	float Time = -100.f;       // local time of the latest hit from this direction
+	float Strength = 0.f;      // 0.35..1, bigger wedge for harder hits
+	float BurstLost = 0.f;     // health lost from this direction in the current burst (shotgun pellets add up)
+};
+
 UCLASS()
 class GLOSHAUGEN_API AGSCharacter : public ACharacter
 {
@@ -38,6 +57,9 @@ public:
 	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult) override;
 	/** Local: who the death cam turns toward (set by the player controller when you die). */
 	TWeakObjectPtr<APawn> DeathCamKiller;
+	/** Local: where the killer stood when you died, for when his pawn is too far away for your game to see it. */
+	FVector DeathCamKillerLoc = FVector::ZeroVector;
+	bool bDeathCamHasKillerLoc = false;
 
 	static constexpr int32 MaxWeapons = 4;
 	static constexpr int32 BaseBackpackSlots = 6;
@@ -100,8 +122,21 @@ public:
 	/** Where the last hit on you came from (world), and when (local time), for the HUD damage indicator. */
 	FVector LastDamageFrom = FVector::ZeroVector;
 	float LastDamageFromTime = -100.f;
-	UFUNCTION(Client, Unreliable) void ClientDamageFrom(FVector_NetQuantize From);
+	/** You were hit: where from (if anyone shot), how much health you lost, and what kind of hit (GSHurtKind). */
+	UFUNCTION(Client, Unreliable) void ClientTookHit(FVector_NetQuantize From, bool bHasFrom, float HealthLost, uint8 Kind);
 	float GetLastDamageTakenTime() const { return LastDamageTakenTime; }
+	/** Local: up to 4 directions you were recently hit from (HUD wedges). */
+	TArray<FGSRecentHit> RecentHits;
+	/** Local: the screen-edge flash for the last hit you took (GSHurtKind), and when you were last healed. */
+	float LastHurtFlashTime = -100.f;
+	float LastHurtFlashStrength = 0.f;   // 0..1, how deep the edge reaches
+	float LastHurtBlood = 0.f;           // 0..1, how red it is (0 when the vest/helmet took all of it)
+	uint8 LastHurtKind = GSHurtKind::Body;
+	float LastHealTime = -100.f;
+	/** 0 above 35 % health, rising to 1 at 0 health (heartbeat, grey picture, red pulse). Always 0 when dead. */
+	float GetLowHealthAlpha() const;
+	/** Local time of the last heartbeat sound, so the HUD pulse beats with it. */
+	float GetLastHeartbeatTime() const { return LastHeartbeatTime; }
 	int32 GetBackpackSlots() const { return BaseBackpackSlots + BackpackBonus; }
 	int32 CountItem(FName Id) const;
 	bool HasItemKind(FName Kind) const;
@@ -305,7 +340,16 @@ protected:
 	float FlinchSeenTime = -100.f;
 	float FlinchStart = -100.f;
 	float FlinchSign = 1.f;
+	float FlinchScale = 1.f;            // headshots you survive jerk the view harder
 	float LastSeenHealth = 100.f;
+	// Being hit (local only): burst of hits for the edge flash, sound de-duplication, heartbeat
+	float HurtBurstLost = 0.f;          // health lost in the current burst (shotgun pellets arrive together)
+	float LastHurtSoundTime = -100.f;
+	int32 LastHurtSoundRank = -1;
+	float NextHeartbeat = 0.f;
+	float LastHeartbeatTime = -100.f;
+	/** Low-health grey picture and vignette on top of the drug visuals (Visual 2/5 keep their own saturation). */
+	void ApplyLowHealthPostProcess(int32 Visual, float Low);
 	// Fire animation and recoil (local only)
 	FVector2D RecoilPending = FVector2D::ZeroVector;  // pitch, yaw (degrees) still to apply
 	FVector2D RecoilRecover = FVector2D::ZeroVector;  // part that drifts back after the burst
