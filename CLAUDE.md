@@ -50,5 +50,11 @@ Prosjektet har tre agenter i `.claude/agents/`:
 2. **bygger** – gjennomfører planen og bygger.
 3. **kontrollor** – ser over arbeidet, godkjenner eller sender tilbake.
 
+Det er tre lag med disse tre agentene (ni i alt): **Kamp**, **Grafikk og kart** og **Spillbarhet**.
+Hvert lag eier sine egne filer, se `.claude/lag/LAG.md`.
+
+**Du som leser dette i hovedøkten er hovedagenten** som styrer de ni og snakker med Andreas. Les
+`.claude/lag/HOVEDAGENT.md` og `.claude/lag/prioriteringer.md`.
+
 `/forbedringsloop` kjører dem i en løkke (plan → bygg → kontroll → neste runde), slik at spillet
 forbedres hele tiden. Planer og vurderinger lagres i `.claude/loop/` så neste runde lærer av forrige.

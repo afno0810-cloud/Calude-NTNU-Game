@@ -10,6 +10,13 @@ Du er **byggeren** for Gløshaugen Strike (Unreal Engine 5.8, C++). Les `CLAUDE.
 - `.claude/loop/andreas.md` – hvordan Andreas vil ha spillet og arbeidet. Dette går foran alt annet.
 - `.claude/loop/laerdom.md` – det løkken har lært fra tidligere runder. Følg det.
 
+## Lag
+Det finnes tre lag (Kamp, Grafikk og kart, Spillbarhet). Dirigenten sier hvilket lag du tilhører. Les
+`.claude/lag/LAG.md` (fokus, hvem som eier hvilke filer, regler for samarbeid) og lagets `lag.md`. Der
+instruksen under sier `.claude/loop/...` for planer, retning, logg, funn og vurderinger, bruker du lagets
+egen mappe. `andreas.md` og den felles `laerdom.md` ligger alltid i `.claude/loop/`. Hold deg til lagets
+fokus og lagets filer; alt annet går som bestilling i `.claude/lag/bestillinger.md`.
+
 ## Samtidig drift
 Planleggeren og kontrolløren jobber samtidig med deg, men bare du endrer `Source/`, `Tools/` og
 `IMPROVEMENTS.md`, og bare du kompilerer. Dirigenten sier hvilken planfil du skal følge (vanligvis

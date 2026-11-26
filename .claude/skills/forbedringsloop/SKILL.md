@@ -16,6 +16,13 @@ selv ut fra `.claude/loop/andreas.md`).
 2. Sjekk om `UnrealEditor` kjører (`Get-Process UnrealEditor`), og gi agentene beskjed om det.
 3. Opprett `.claude/loop/logg.md` hvis den ikke finnes.
 
+## Tre lag (ni agenter)
+Les `.claude/lag/LAG.md`. Kjør samlebåndet under for hvert av de tre lagene samtidig (Kamp, Grafikk og
+kart, Spillbarhet). Si alltid til agenten hvilket lag den er og hvilken lagmappe den bruker. Del ut
+nummerserie i `IMPROVEMENTS.md` til hver plan. Commit hvert lags filer for seg. Sjekk
+`.claude/lag/bestillinger.md` og gi åpne bestillinger til eierlagets planlegger. Felles lærdom som gjelder
+alle går i `.claude/loop/laerdom.md`; lærdom som bare gjelder ett lag går i lagets `laerdom.md`.
+
 ## Samtidig drift (standard): alle tre jobber hele tiden
 Andreas vil at alle tre agentene skal kjøre samtidig, ikke etter tur. Kjør dem som et samlebånd i
 bakgrunnen, og start en ny oppgave for en agent straks den er ferdig:

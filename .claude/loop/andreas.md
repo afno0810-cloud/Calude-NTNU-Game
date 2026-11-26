@@ -29,6 +29,10 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26: En hovedagent styrer alle ni. Det er den Andreas snakker med, og den kan selv påvirke hva
+  lagene jobber med ut fra hva den mener er lurt.
+- 2026-11-26: Tre lag med samme oppsett (ni agenter): det første fortsetter som før, ett fokuserer på
+  grafikk og kartet, og ett på å gjøre spillet mer spillbart.
 - 2026-11-26: **Fast regel:** etter hver iterasjon skal minst én gammel funksjon eller ting i spillet
   være forbedret, og minst én ny ting være lagt til.
 - 2026-11-26: «jeg ønsker at alle tre skal kjøre hele tiden». Planlegger, bygger og kontrollør jobber
