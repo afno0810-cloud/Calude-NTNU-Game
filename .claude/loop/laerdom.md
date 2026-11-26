@@ -33,4 +33,6 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Tidssjekker på serveren må regnes mot serverens bildetid og vanlig jitter; en konto må alltid romme minst to hendelser i samme serverbilde. (runde 4)
 - Følger som ganges inn i fart må ganges inn i alle fartsverdiene (gå, huk, sikte). (runde 4)
 - Effekter som utløses per treff trenger en «én gang per øyeblikk»-vakt (hagl). (runde 4)
+- Unity-bygg: globale navn i anonyme namespace i én .cpp kan kollidere med navn i en annen. Bruk navngitte namespace (f.eks. `GSMenuImpl`) eller unike prefiks. (Spillbarhet runde 2)
+- Avsløring av fiender skal være realistisk (radiomelding om sted), ikke veggsyn med markør og avstand. (plan Spillbarhet 3)
 

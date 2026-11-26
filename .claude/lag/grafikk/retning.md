@@ -17,17 +17,24 @@ Koordinater i meter, X = øst, Y = sør, origo midt i Hovedbygningen (som i `GSC
 - **Spillområdet:** X −165 … 165, Y −125 … 140 (`GSCampus::PlayArea()`).
 - **Base vest: Gamle fysikk** (midt −125, 10). **Base øst: Gamle kjemi** (midt 125, 10). To røde
   teglbygg som står mot hverandre med Hovedbygningen imellom. Ca. 250 m mellom flaggene (rundt 45 s løp).
-- **Midten: Hovedbygningen** med Lysgården (mytisk kasse, scenen, galleriene, tårnet).
+- **Midten: Hovedbygningen** med Lysgården (mytisk kasse på sokkel, trappa, galleriene). Klokketårnet bak
+  fjernes i runde 2 (finnes ikke i virkeligheten); der blir det en møblert bakgård med bakdør inn til Lysgården.
 - **Tre ruter mellom basene:**
   1. *Nordruta (ute, åpen):* stien langs fasaden over forplassen. Lange siktlinjer, trær og biler som dekning.
   2. *Midtruta (under tak):* inn endedøra på Hovedbygningen, korridoren, Lysgården, ut den andre endedøra.
-  3. *Sørruta (ute, trang):* passasjene, bakgården mellom fløyene rundt tårnet, promenaden i sør, Kjelhuset.
-  Fløyene (Hovedbygningen vest/øst) og tårnet er flanke- og utkikksposisjoner.
+  3. *Sørruta (ute, trang):* passasjene, bakgården mellom fløyene, promenaden i sør, Kjelhuset.
+  Fløyene (Hovedbygningen vest/øst) er flanke- og utkikksposisjoner.
 - **Kulisser:** Sentralbygg 1 og 2 (høyblokkene i sør), Bergbygget, Elektrobygget. Ingen loot, ingen møbler.
 - **Tatt ut:** IT-bygget, Stripa, Kjemiblokkene, Varmeteknisk, Realfagbygget, Idrettsbygget
   (modellfilene ligger igjen i `SourceArt/Models`, de bare brukes ikke).
-- **Kjent skjevhet:** Gamle kjemi er 10 m lengre enn Gamle fysikk, og Kjelhuset finnes bare på vestsiden.
-  Rettes i baserunden (backlog 2), eller ved at lagene bytter side mellom kampene (Spillbarhet).
+- **Symmetri (fra runde 2):** begge basene er 46 × 22 m, og Gamle kjemi er snudd 180°, så banen er lik fra
+  begge sider (snudd om punktet (0, 10)). Dekning i rutene legges alltid likt på begge sider.
+  Gjenstående skjevhet: Kjelhuset finnes bare på vestsiden.
+- **Spawn (fra runde 2):** bak egen base, i et riggområde mellom bygget og gjerdet.
+- **Kanten (fra runde 2):** byggegjerder 0,5 m innenfor `PlayArea()`, sperringer der veier krysser, og en
+  usynlig vegg nøyaktig på kanten bak gjerdet.
+- **Regel for ruter:** ingen sti skal ha mer enn ca. 80 m fri sikt. Brytes med ting som finnes på en
+  campus under ombygging (gravefelt med gjerde, parkerte biler, containere), ikke med tilfeldige kasser.
 
 ### Faste regler for laget
 - Verden holder «spillskala» på lys: en solbelyst vegg er ca. 10 lux, og effekter (røyk, munningsild,
@@ -37,56 +44,58 @@ Koordinater i meter, X = øst, Y = sør, origo midt i Hovedbygningen (som i `GSC
   `"C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" --background --python <skript> -- <argumenter>`.
   Nye og endrede modeller skal alltid rendres til et bilde (`contact_sheet.py` / `render_building.py`)
   som kontrolløren ser på, siden editoren ikke er åpen.
+- Alt som står inne får materialnavn som slutter på `_In` (Blender-skriptene) eller står i
+  `INDOOR_MODELS` (`gs_materials.py`), så det ikke får snø og regn (fra runde 2).
+- Ytelse går foran pynt: maskinen er en RTX 3050 6 GB Laptop. Nye ting som settes ut i mengder skal være
+  instanser med få trekanter, uten skygge når de er lave, og uten vind/WPO på avstand.
 - Poly Haven-ressursene Andreas har hentet (`Content/PolyHaven`, `SourceArt/PolyHaven`: 25 materialer, 28
   modeller) brukes der de er bedre enn våre egne. Vi endrer dem ikke.
 
 ## Neste ideer (backlog, viktigst øverst)
-1. **Kanten av kartet.** Når Spillbarhet har flyttet spawn og loot: steng spillområdet på en måte som
-   finnes i virkeligheten. Byggegjerder (campus er en byggeplass i disse årene) med presenning og skilt,
-   hekker, parkerte anleggsmaskiner, låste porter. Ingen usynlige vegger uten noe synlig foran.
-   Gatelys, benker og småting bare innenfor og like utenfor kanten.
-2. **Basene.** Lette å kjenne igjen og forsvare: lagfarget banner/fane på fasaden og over dørene
-   (ny Blender-modell), ett tydelig flaggrom i første etasje, færre åpne dører (noen stengt med
-   sperringer), dekning inne. Gjør de to byggene like store (regenerer `SM_Bygg_Gamle_kjemi` 46 m bred
-   eller begge 50 m) og gi østsiden et motstykke til Kjelhuset.
-3. **Materialmerking for kuler (bestilling fra Kamp):** fysisk materiale på hver materialinstans
-   (`gs_materials.py`: glass, tre, puss, tegl, betong, metall, jord) og ekte tykkelse på dører og tynne
-   vegger. Glassrutene merkes allerede i runde 1 (`Mat_Glass`).
-4. **Novemberkveld: lyset** (ferdig utredet i runde 1, se «Utredet» under).
-5. **Hovedbygningens fasade og inngang** (`building_hovedbygningen.py`): ordentlig trapp og dør,
-   vindusdetaljer, takrenner og nedløp, lykter som lyser, skilt. Render og sammenlign med foto.
-6. **Lysgården og midtruta inne:** gulv, søyler, rekkverk, dører i korridoren, skilt, oppslagstavler,
-   lys i taket som faktisk lyser (ikke bare glødende plater).
-7. **Knusbare vinduer og klatreruter** (Andreas liker glass som knuser og klatring): vinduer i
-   første etasje på basene og Hovedbygningen som innganger, stillas/containere/nedløp som klatrerute opp
-   til andre etasje og tak, som alternative veier til flagget. Samordnes med lag Kamp.
-8. **Bakgården og sørruta:** brostein med renner og kummer, sykkelstativ, varelevering ved Kjelhuset,
-   containere, lasterampe. Dekning som ser ut som den hører hjemme.
-9. **Forplassen og nordruta:** plenkanter, lave murer, trapper, flaggstenger, lyktestolper på rekke.
-10. **Trær i november:** nakne lønner og bjørker (greinverk uten blader, noen få brune), løv på bakken,
-    gran som før. `nature.py` + render.
-11. **Bakke som ikke er flat:** svak helling ned mot Høgskoleringen (krever at spawn/loot følger bakken:
-    bestilling), rennestein på bilveien, sluk der vannet faktisk ville rent.
-12. **Vær:** regn som ekte dråper og striper (ikke 900 terninger), sølepytter der bakken er lav, snø som
-    legger seg på tak og biler, skydekke som følger været.
-13. **Innvendig i basene:** ordentlige rom med vegger og dører (i dag er hver etasje én åpen hall med
-    møbelgrupper), trapper i stedet for ramper.
-14. **Kulissene:** enklere modeller uten innside (billigere), lys i noen vinduer om kvelden.
-15. **Flater for blod og kulehull** når lag Kamp bestiller.
-16. **Fra Andreas' godkjente lister (se `prioriteringer.md` og `.claude/lag/onskeliste.md`), tas inn der de
-    passer i rundene over:** vær som påvirker spillet (replikerte verdier for regn, tåke og vind som Kamp
-    kan lese); bygg man kan bruke (lysbrytere, heis, brannalarm); dører og vegger som kan sprenges og
-    åpner nye ruter; flyttbare pulter og stoler som barrikader; mer liv inne (rot, papirer, oppslag,
-    NTNU-skilt); flimrende lysrør og sollys gjennom vinduer; trær og gress i vind; ytelse på RTX 3050
-    (mål og logg før/etter), raskere oppstart.
+Gjort: runde 1 (CTF-utsnitt, baser, åpne dører og ramper, plasser, allé).
+I køen: `ko/plan-02.md` (ytelse P1/P2/P8 og litt P3, kanten, dekning og spawn K4, tårn og roboter bort,
+Lysgården åpnet, like baser K5, K1–K3, K6, F3, F9) og `ko/plan-03.md` (flaggrommene, faner, K7).
 
-### Åpne funn fra kontrolløren (`funn.md`) som ikke er tatt i runde 1
-F3 (snø og regn inne – `gs_materials.py`, runde 2), F5 (dør foran tverrvegg i Hovedbygningen), F8 (sola
-flyttes hver frame – ytelse), F9 (lyktestolper forsvinner på 90 m), F10 (gatelys gjennom vegger – lysrunden),
-F11–F16, og realismehullene R1–R13 (R1/R2 innvendige rom og trapper = backlog 13, R3 like fasader, R4 flatt
-terreng = backlog 11, R5 tårnet bak Hovedbygningen finnes ikke i virkeligheten – spør hovedagenten før det
-fjernes, R7–R9 = lys og vær, R10 gul midtlinje og hydranter, R11 roboter som pynt – Andreas' eget innhold,
-spør før de fjernes, R12 glass uten kollisjon = backlog 7).
+1. **Ytelse, del 2** (etter at Andreas har målt plan-02 med `stat unit`/`stat gpu`): Nanite for trær,
+   busker og hekker (P3), ny vind som slås av på avstand (F23), regn/snø ut av strålesporing og
+   distansefelt (P6), LOD for biler og glass (P10), Nanite-kopi av kuben (P2). P4 (Lumen «hit lighting»,
+   to linjer i `DefaultEngine.ini`) er Andreas' fil: foreslås via hovedagenten. Automatisk grafikknivå og
+   DLSS/FSR (ønske 46, 49).
+2. **Novemberkveld: lyset** (ferdig utredet, se «Utredet» under): riktig solbane for Trondheim i
+   november, låst eksponering, gatelys som spotlys med skygge (F10) og lampehoder som gløder (F21), lys i
+   vinduer. Må ses i editoren av Andreas.
+3. **Basene, del 3:** rom og vegger i 2.–4. etasje, trapper i stedet for ramper (R1/R2), dørblad med ekte
+   tykkelse, et motstykke til Kjelhuset på østsiden, flaggsokkel og flaggmodell (bestilt av Spillbarhet).
+4. **Materialmerking for kuler (bestilling fra Kamp):** fysisk materiale på hver materialinstans
+   (`gs_materials.py`). `_In`-instansene arver fra forelderen, så det holder å merke foreldrene.
+5. **Teksturer og modeller som ser feil ut på nært hold:** skjøt hver 2. meter på mur og granitt (F18),
+   bark-UV (F19), biler uten hjulbuer (F20), sykler i stativet (F22), JPEG som ødelegger ARM/normal (F24),
+   treverk og moiré (F25), bladatlas med svart kant (F26), bakgrunnsbyen (F17 hvis ikke tatt i plan-02).
+6. **Hovedbygningens fasade og inngang:** ordentlig trapp og dør, vindusdetaljer, takrenner og nedløp,
+   lykter som lyser, skilt, irret kobber på tårnhjelmene foran. Render og sammenlign med foto.
+7. **Lysgården og midtruta inne:** gulv, søyler, rekkverk, dører i korridoren (F5), skilt, oppslagstavler,
+   NTNU-plakater (ønske 30), lys i taket som faktisk lyser, buene uten søyler (F16).
+8. **Knusbare vinduer og klatreruter** (Andreas liker glass som knuser og klatring): vinduer i første
+   etasje som innganger, stillas/containere/nedløp som klatrerute til andre etasje og tak. Samordnes med Kamp.
+9. **Trær i november:** nakne lønner og bjørker, løv på bakken, snø på greiner og bar (resten av F3).
+10. **Rutene ute, del 2:** brostein med renner og kummer, varelevering ved Kjelhuset, lave murer, trapper,
+    flaggstenger, lyktestolper på rekke, gul midtlinje og ingen hydranter (R10). Kanten: anleggsmaskin og
+    brakkerigg bak gjerdet, låst port, hekk og parkskråning i nord.
+11. **Bakke som ikke er flat** (krever at spawn/loot følger bakken: bestilling), rennestein, sluk.
+12. **Vær:** regn som ekte dråper, ikke regn gjennom tak (F13), sølepytter, snø på tak og biler, skydekke
+    som følger været (R8).
+13. **Kulissene:** enklere modeller uten innside, lys i noen vinduer om kvelden.
+14. **Flater for blod og kulehull** når lag Kamp bestiller.
+15. **Fra Andreas' godkjente lister (`prioriteringer.md`, `onskeliste.md`), tas inn der de passer:** vær som
+    påvirker spillet; lysbrytere, heis, brannalarm; dører og vegger som kan sprenges; flyttbare pulter og
+    stoler; mer liv inne; flimrende lysrør og sollys gjennom vinduer; trær og gress i vind; kjellerganger,
+    tak som utkikk, bibliotek, auditorier, kantine (ønske 21–25); raskere oppstart.
+
+### Åpne funn (`funn.md`, `kontroll/runde-01.md`) som ikke er med i plan-02/03
+Feiljakt 1: F5, F10, F11, F12, F13, F14 (delvis tatt), F15, F16, R1/R2 (øvre etasjer, trapper), R3, R4, R6,
+R7–R9, R10, R12, R13. Feiljakt 2: P3 (Nanite), P6, P10, F17 (valgfri i plan-02), F18–F26. Hos andre lag
+(bestilt av hovedagenten): P1 punkt 3–4, P5, P7, P9 for `GSTerminal`. Andreas' fil: P4.
+Tatt i plan-02: F3 (unntatt løv), F8/P1, F9, P2, P8, P9 (gatelys), R5, R11, K1–K6. Plan-03: K7, R1 (1. etasje).
 
 ### Utredet: novemberkveld-lyset (til backlog 4)
 Funn fra gjennomgangen av `GSEnvironment.cpp` og gatelysene, så neste plan kan skrives raskt:
@@ -108,6 +117,11 @@ Funn fra gjennomgangen av `GSEnvironment.cpp` og gatelysene, så neste plan kan 
 - Bestilling som hører til: Spillbarhet lar kampen starte mellom kl. 13.30 og 17.30 (skumring til kveld).
 
 ## Endringer i retningen
+- 2026-11-26 (runde 2): Hovedagenten setter ytelse først (feiljakt 2: RTX 3050 6 GB, skygger som tegnes
+  på nytt hver frame), så dekning og spawn for CTF (K4) sammen med kanten, så tårn og roboter (Andreas'
+  avgjørelse) og småfeilene. Detaljløftet er delt ut i plan-03 (flaggrommene). Valgt foran lysrunden
+  fordi flaggrom kan sjekkes med stråler og bilder uten editor; lyset må ses i spillet. Basene gjøres
+  like store og snus om midten. Ny fast regel: ingen sti med mer enn ca. 80 m fri sikt.
 - 2026-11-26 (runde 1, kl. 17.20): Andreas har bestemt Capture the Flag som eneste modus.
   Utsnittet er derfor valgt som en CTF-bane: Gamle fysikk og Gamle kjemi som baser, Hovedbygningen i
   midten, tre ruter. Baserunden er flyttet opp til nr. 2 i backlogen.
