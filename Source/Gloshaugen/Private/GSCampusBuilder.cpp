@@ -473,17 +473,22 @@ void AGSCampusBuilder::BuildPerimeter()
 	}
 
 	// 3. Invisible walls exactly on the edges of the play area, 0.35 m behind the fence: the fence is 2.0 m high and
-	// players climb 2.2 m. They also stop bullets and grenades, so they must never stand inside the map.
+	// players climb 2.2 m. They also stop grenades, so they must never stand inside the map.
+	// 100 m high with a lid on top: the grapple hook (35 m, up to 26 m/s + 4.5 m/s lift) carries you about 47 m above
+	// where you fire it, and hooking the wall itself twice from a 16 m base roof would reach about 110 m, so the box is
+	// closed at the top. The hook stops on the wall (WorldStatic blocks), so nothing outside the map can be hooked.
+	// Bullets, bullet holes and roof checks (Visibility) ignore it: a shot over the fence flies on and leaves the map.
 	PerimeterBlock = NewObject<UInstancedStaticMeshComponent>(this);
 	PerimeterBlock->SetMobility(EComponentMobility::Static);
 	PerimeterBlock->SetStaticMesh(GSUtils::Cube());
 	PerimeterBlock->SetupAttachment(RootComponent);
 	PerimeterBlock->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+	PerimeterBlock->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 	PerimeterBlock->SetVisibility(false);
 	PerimeterBlock->SetHiddenInGame(true);
 	PerimeterBlock->SetCastShadow(false);
 	PerimeterBlock->RegisterComponent();
-	constexpr float BlockT = 0.3f, BlockH = 14.f;
+	constexpr float BlockT = 0.3f, BlockH = 100.f;
 	const FVector2D Mid = Area.GetCenter();
 	const FVector2D Size = Area.GetSize();
 	for (const double Y : { Area.Min.Y, Area.Max.Y })
@@ -494,6 +499,7 @@ void AGSCampusBuilder::BuildPerimeter()
 	{
 		Queue(PerimeterBlock, FTransform(FRotator::ZeroRotator, FVector(X, Mid.Y, BlockH * 0.5f) * CmPerM, FVector(BlockT, Size.Y + BlockT, BlockH)));
 	}
+	Queue(PerimeterBlock, FTransform(FRotator::ZeroRotator, FVector(Mid.X, Mid.Y, BlockH) * CmPerM, FVector(Size.X + BlockT, Size.Y + BlockT, BlockT)));   // the lid
 
 	// 4. Shipping containers just inside the fence, long side along the edge: solid cover on the flanks.
 	struct FContainerSpot { const TCHAR* Name; float X, Y, Yaw; };
@@ -513,12 +519,19 @@ void AGSCampusBuilder::BuildPerimeter()
 	}
 
 	// 5. Rig area behind each base: tarpaulin fences from the edge in towards the outer corners of the base building,
-	// with a 4 m opening next to the building. Players spawn in here, out of sight from all three routes.
-	const float EdgeX = Line.Max.X;
-	for (const float Sgn : { -1.f, 1.f })   // west, east
+	// with a 4 m opening next to the building that leads into a sluice (GSCampus::RigFences). Players spawn in here,
+	// out of sight from all three routes.
+	for (const GSCampus::FFence& F : GSCampus::RigFences())
 	{
-		Panels += FenceRun(FVector2D(Sgn * EdgeX, -3.f), FVector2D(Sgn * 152.f, -3.f), false);
-		Panels += FenceRun(FVector2D(Sgn * EdgeX, 23.f), FVector2D(Sgn * 152.f, 23.f), false);
+		Panels += FenceRun(F.A, F.B, false);                                        // west
+		Panels += FenceRun(GSCampus::Mirror(F.A), GSCampus::Mirror(F.B), false);    // east
+	}
+	// nothing (trees, bushes, benches) in the sluices: they are only 1.9 m wide between the fences
+	for (const FVector2D& S : { FVector2D(-151.5f, -3.25f), FVector2D(-151.5f, 23.25f) })
+	{
+		Reserved.Add(FVector(S.X, S.Y, 5.6f));
+		const FVector2D E = GSCampus::Mirror(S);
+		Reserved.Add(FVector(E.X, E.Y, 5.6f));
 	}
 	// a pallet and a stack of crates in each, against the fence and at least 3 m from every spawn point
 	// (the east side is the west side turned 180 degrees about (0, 10))

@@ -77,10 +77,10 @@ Trykk Play. Da får du ett vindu per spiller, koblet sammen som et ekte online-s
 - Loot i alle etasjer i alle bygg, låste kasser med god loot (adgangskort/dirkesett), mytisk kasse i Lysgården
 - Dør du, ligger tingene dine igjen der du døde
 - Server-styrt treff og skade, død, respawn langt unna fiender, kill-feed og poengtavle
-- **Hovedbygningen som ekte 3D-modell**: Lysgården med trapp, scene og gallerier, korridorer og rom i fire etasjer, ramper, og tårnet med spiralrampe helt opp til klokketårnet
+- **Hovedbygningen som ekte 3D-modell**: Lysgården med trapp og gallerier og en åpen midtrute gjennom hallen, korridorer og rom i fire etasjer, og ramper mellom etasjene
 - **Kartet er kjernen rundt Hovedbygningen, laget for Capture the Flag** (330 × 265 m): Gamle fysikk (base vest) og Gamle kjemi (base øst), Kjelhuset og fløyene bak Hovedbygningen, med etasjer, vinduer, dører og ramper mellom etasjene. Tre ruter mellom basene: langs fasaden, gjennom Hovedbygningen og Lysgården, og gjennom bakgården. Brolagt forplass og bakgård, allé opp til hovedinngangen. Sentralbygg 1 og 2, Bergbygget og Elektrobygget står som kulisser utenfor banen
 - **Møbler i alle bygg**: klasserom, kontorer, laber, kantiner, bibliotek, salonger og serverrom (pulter, stoler, skap, hyller, tavler, PC-er, automater ...)
-- **Ute på campus**: benker, sykkelstativ, sparkesykler, busskur, søppelkasser, containere, piknikbord, byggegjerder, NTNU-skilt og roboter (robothund, vaktrobot, leveringsrobot)
+- **Ute på campus**: benker, sykkelstativ, sparkesykler, busskur, søppelkasser, containere, piknikbord og NTNU-skilt. Banen er inngjerdet med byggegjerder hele veien rundt (veiene ut er sperret), og inngjerdede gravefelt, containere og parkerte biler gir dekning langs rutene. Hvert lag starter i et skjermet riggområde bak sin egen base
 - Tilfeldig vær (klart, overskyet, tåke, regn, snø) og dag/natt-syklus (ett døgn = 48 minutter) med gatelys om natta
 - Opptil 20 spillere
 

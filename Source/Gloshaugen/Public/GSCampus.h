@@ -111,6 +111,29 @@ namespace GSCampus
 		return List;
 	}
 
+	/** Turn a point 180 degrees about (0, 10): the west half of the map becomes the east half. */
+	inline FVector2D Mirror(const FVector2D& P) { return FVector2D(-P.X, 20.f - P.Y); }
+
+	/** Tarpaulin fences of the rig area behind the WEST base (m), A -> B. The east base gets the same, Mirror()ed.
+	 *  Two fences run from the edge fence (0.5 m inside the play area) towards the outer corners of the base building.
+	 *  The 4 m openings next to the building are sluices: a second fence 2.5 m further out and a short closing leg
+	 *  against the building wall, so you walk out sideways (towards the edge) and nobody on a path can look in.
+	 *  The legs end 0.2 m inside the 0.4 m thick wall. Checked by Tools/Blender/check_campus.py g) and h). */
+	struct FFence { FVector2D A, B; };
+
+	inline const TArray<FFence>& RigFences()
+	{
+		static const TArray<FFence> List = {
+			{ FVector2D(-164.5f, -3.f),  FVector2D(-152.f, -3.f) },    // north side of the rig
+			{ FVector2D(-157.f, -5.5f),  FVector2D(-146.f, -5.5f) },   // north sluice
+			{ FVector2D(-146.f, -5.5f),  FVector2D(-146.f, -0.8f) },   // its leg against the north wall
+			{ FVector2D(-164.5f, 23.f),  FVector2D(-152.f, 23.f) },    // south side of the rig
+			{ FVector2D(-157.f, 25.5f),  FVector2D(-146.f, 25.5f) },   // south sluice
+			{ FVector2D(-146.f, 25.5f),  FVector2D(-146.f, 20.8f) },   // its leg against the south wall
+		};
+		return List;
+	}
+
 	/** Outdoor spawn points (m): the base spawns plus four in front of and south of Hovedbygningen, all inside PlayArea(). */
 	inline const TArray<FVector2D>& SpawnPoints()
 	{
