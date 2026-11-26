@@ -183,3 +183,10 @@ void AGSPickup::Respawn()
 {
 	Roll();
 }
+
+void AGSPickup::ResetForMatch()
+{
+	GetWorldTimerManager().ClearTimer(RespawnTimer);
+	Roll();
+	ForceNetUpdate();
+}

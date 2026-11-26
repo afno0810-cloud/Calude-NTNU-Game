@@ -4,7 +4,9 @@
 #include "GameFramework/GameModeBase.h"
 #include "GSGameMode.generated.h"
 
-/** Free roam deathmatch on Gloshaugen: run around, find weapons, shoot each other, respawn. */
+class AGSPlayerState;
+
+/** Capture the Flag on Gloshaugen: two teams, two bases, take the enemy flag and carry it home. */
 UCLASS()
 class GLOSHAUGEN_API AGSGameMode : public AGameModeBase
 {
@@ -19,6 +21,7 @@ public:
 	void OnPlayerKilled(AController* Killer, AController* Victim, const FString& WeaponName, bool bHeadshot);
 
 	static constexpr float RespawnDelay = 4.f;
+	static constexpr int32 MaxPerTeam = 10;
 
 	virtual void Tick(float DeltaSeconds) override;
 	/** Lobby: a player toggles ready. */
@@ -26,14 +29,33 @@ public:
 	/** Damage only counts while a match is running (the lobby is warm-up). */
 	bool DamageEnabled() const;
 
+	/** Lobby: switch team, only if it does not make the teams more uneven. */
+	void RequestTeam(AGSPlayerState* PS, uint8 NewTeam);
+	/** A flag was brought home by ScoringTeam (called by AGSFlag). */
+	void OnFlagCaptured(uint8 ScoringTeam);
+	/** Where team 1 (red) / 2 (blue) has its flag, in meters. The one place that knows where the bases are. */
+	static FVector BasePointM(uint8 Team);
+
 protected:
-	void StartCountdown();
+	void StartCountdown(bool bForced);
 	void StartMatch();
 	void EndMatch();
 	void BackToLobby();
 	float LobbyStartedAt = 0.f;
-	FTransform PickSpawnTransform() const;
+	/** The countdown started because the lobby timer ran out: one player cannot stop it. */
+	bool bCountdownForced = false;
+	int32 LobbyPlayersLast = 0;
+	/** The match was started by a single player (stopped when a friend joins). */
+	bool bSoloMatch = false;
+	FTransform PickSpawnTransform(const AController* For) const;
 	void SpawnPickups();
 	/** PCs, 3D printers and security cameras in the buildings and around campus. */
 	void SpawnTerminals();
+	/** One flag at each base. */
+	void SpawnFlags();
+	/** Puts a player without a team on the smaller team. */
+	void AssignTeam(AGSPlayerState* PS);
+	int32 TeamCount(uint8 Team) const;
+	/** Match start: remove mines, fire, smoke, dropped items and bodies; refill all loot; flags home. */
+	void CleanWorldForMatch();
 };

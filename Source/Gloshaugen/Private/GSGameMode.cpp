@@ -8,6 +8,8 @@
 #include "GSPickup.h"
 #include "GSTerminal.h"
 #include "GSCampus.h"
+#include "GSFlag.h"
+#include "GSProjectile.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
@@ -36,9 +38,10 @@ void AGSGameMode::SetReady(AController* Who, bool bReady)
 	AGSPlayerState* PS = Who ? Who->GetPlayerState<AGSPlayerState>() : nullptr;
 	if (!GS || !PS || (GS->Phase != EGSMatchPhase::Lobby && GS->Phase != EGSMatchPhase::Countdown)) return;
 	PS->bReady = bReady;
-	if (!bReady && GS->Phase == EGSMatchPhase::Countdown)
+	// Someone changed their mind. A countdown started because the lobby time ran out cannot be stopped by one player.
+	if (!bReady && GS->Phase == EGSMatchPhase::Countdown && !bCountdownForced)
 	{
-		GS->Phase = EGSMatchPhase::Lobby; // someone changed their mind
+		GS->Phase = EGSMatchPhase::Lobby;
 	}
 }
 
@@ -52,54 +55,91 @@ void AGSGameMode::Tick(float DeltaSeconds)
 	{
 	case EGSMatchPhase::Lobby:
 	{
-		// Start when everyone is ready, or automatically after 90 s with at least two players.
+		// Start when everyone is ready, or automatically 90 s after the second player came in.
 		int32 Total = 0, Ready = 0;
 		for (APlayerState* P : GS->PlayerArray)
 		{
 			if (const AGSPlayerState* PS = Cast<AGSPlayerState>(P)) { ++Total; Ready += PS->bReady ? 1 : 0; }
 		}
-		if (Total > 0 && Ready == Total) StartCountdown();
-		else if (Total >= 2 && Now - LobbyStartedAt > 90.f) StartCountdown();
+		if (Total >= 2 && LobbyPlayersLast < 2) LobbyStartedAt = Now;   // the 90 s start when player two arrives
+		LobbyPlayersLast = Total;
+		GS->PhaseEndsAt = Total >= 2 ? LobbyStartedAt + AGSGameState::LobbyAutoStartSeconds : 0.f;
+		if (Total > 0 && Ready == Total) StartCountdown(false);
+		else if (Total >= 2 && Now - LobbyStartedAt > AGSGameState::LobbyAutoStartSeconds) StartCountdown(true);
 		break;
 	}
 	case EGSMatchPhase::Countdown:
 		if (Now >= GS->PhaseEndsAt) StartMatch();
 		break;
 	case EGSMatchPhase::Playing:
-	{
-		bool bLimit = false;
-		for (APlayerState* P : GS->PlayerArray)
+		if (GS->RedScore >= AGSGameState::CaptureLimit || GS->BlueScore >= AGSGameState::CaptureLimit || Now >= GS->PhaseEndsAt)
 		{
-			if (const AGSPlayerState* PS = Cast<AGSPlayerState>(P)) bLimit |= PS->Kills >= AGSGameState::KillLimit;
+			EndMatch();
 		}
-		if (bLimit || Now >= GS->PhaseEndsAt) EndMatch();
+		else if (bSoloMatch && GS->PlayerArray.Num() >= 2)
+		{
+			// A friend arrived during a match started alone: back to the lobby so you can start together.
+			BackToLobby();
+		}
 		break;
-	}
 	case EGSMatchPhase::Ended:
 		if (Now >= GS->PhaseEndsAt) BackToLobby();
 		break;
 	}
 }
 
-void AGSGameMode::StartCountdown()
+void AGSGameMode::StartCountdown(bool bForced)
 {
 	AGSGameState* GS = GetGameState<AGSGameState>();
 	GS->Phase = EGSMatchPhase::Countdown;
 	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + AGSGameState::CountdownSeconds;
+	bCountdownForced = bForced;
 }
 
 void AGSGameMode::StartMatch()
 {
 	AGSGameState* GS = GetGameState<AGSGameState>();
+	// 1. Clock and scores: everyone starts fresh.
 	GS->Phase = EGSMatchPhase::Playing;
 	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + AGSGameState::MatchMinutes * 60.f;
 	GS->Winner.Empty();
 	GS->KillFeed.Reset();
-	// Everyone starts fresh: scores to zero, new body at a random spawn with empty pockets.
+	GS->RedScore = 0;
+	GS->BlueScore = 0;
+	TArray<AGSPlayerState*> States;
 	for (APlayerState* P : GS->PlayerArray)
 	{
-		if (AGSPlayerState* PS = Cast<AGSPlayerState>(P)) { PS->Kills = 0; PS->Deaths = 0; PS->SetScore(0.f); }
+		if (AGSPlayerState* PS = Cast<AGSPlayerState>(P))
+		{
+			PS->Kills = 0;
+			PS->Deaths = 0;
+			PS->Captures = 0;
+			PS->Returns = 0;
+			PS->CarriedFlagTeam = 0;
+			PS->SetScore(0.f);
+			States.Add(PS);
+		}
 	}
+
+	// 2. Even teams: nobody without a team, and never more than one player difference.
+	for (AGSPlayerState* PS : States)
+	{
+		if (PS->Team == GSTeam::None) AssignTeam(PS);
+	}
+	for (int32 Guard = 0; Guard < 40; ++Guard)
+	{
+		const int32 Red = TeamCount(GSTeam::Red), Blue = TeamCount(GSTeam::Blue);
+		if (FMath::Abs(Red - Blue) <= 1) break;
+		const uint8 Big = Red > Blue ? GSTeam::Red : GSTeam::Blue;
+		TArray<AGSPlayerState*> Candidates = States.FilterByPredicate([Big](const AGSPlayerState* PS) { return PS->Team == Big; });
+		if (Candidates.Num() == 0) break;
+		Candidates[FMath::RandRange(0, Candidates.Num() - 1)]->Team = GSTeam::Other(Big);
+	}
+
+	// 3. A match started alone is stopped when a friend comes in.
+	bSoloMatch = States.Num() == 1;
+
+	// 4. Remove all old bodies first (no new bodies yet) ...
 	TArray<AController*> Players;
 	for (APlayerState* P : GS->PlayerArray)
 	{
@@ -112,6 +152,12 @@ void AGSGameMode::StartMatch()
 			C->UnPossess();
 			Old->Destroy();
 		}
+	}
+	// 5. ... clean campus ...
+	CleanWorldForMatch();
+	// 6. ... and only then a new body at the own base, with empty pockets.
+	for (AController* C : Players)
+	{
 		RestartPlayer(C);
 	}
 }
@@ -119,15 +165,12 @@ void AGSGameMode::StartMatch()
 void AGSGameMode::EndMatch()
 {
 	AGSGameState* GS = GetGameState<AGSGameState>();
-	const AGSPlayerState* Best = nullptr;
-	for (APlayerState* P : GS->PlayerArray)
-	{
-		const AGSPlayerState* PS = Cast<AGSPlayerState>(P);
-		if (PS && (!Best || PS->Kills > Best->Kills || (PS->Kills == Best->Kills && PS->Deaths < Best->Deaths))) Best = PS;
-	}
-	GS->Winner = Best ? Best->GetPlayerName() : FString();
+	const int32 Red = GS->RedScore, Blue = GS->BlueScore;
+	// Empty = draw.
+	GS->Winner = Red > Blue ? FString(GSTeam::Name(GSTeam::Red)) : (Blue > Red ? FString(GSTeam::Name(GSTeam::Blue)) : FString());
 	GS->Phase = EGSMatchPhase::Ended;
 	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + AGSGameState::ResultsSeconds;
+	for (TActorIterator<AGSFlag> It(GetWorld()); It; ++It) It->ResetHome();
 }
 
 void AGSGameMode::BackToLobby()
@@ -135,9 +178,125 @@ void AGSGameMode::BackToLobby()
 	AGSGameState* GS = GetGameState<AGSGameState>();
 	GS->Phase = EGSMatchPhase::Lobby;
 	LobbyStartedAt = GS->GetServerWorldTimeSeconds();
+	LobbyPlayersLast = 0;   // the 90 s start again now
+	bSoloMatch = false;
+	bCountdownForced = false;
 	for (APlayerState* P : GS->PlayerArray)
 	{
 		if (AGSPlayerState* PS = Cast<AGSPlayerState>(P)) PS->bReady = false;
+	}
+	for (TActorIterator<AGSFlag> It(GetWorld()); It; ++It) It->ResetHome();
+}
+
+void AGSGameMode::OnFlagCaptured(uint8 ScoringTeam)
+{
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	if (!GS || GS->Phase != EGSMatchPhase::Playing) return;
+	if (ScoringTeam == GSTeam::Red) GS->RedScore++;
+	else if (ScoringTeam == GSTeam::Blue) GS->BlueScore++;
+	// The end of the match is checked in Tick.
+}
+
+int32 AGSGameMode::TeamCount(uint8 Team) const
+{
+	int32 N = 0;
+	if (const AGSGameState* GS = GetGameState<AGSGameState>())
+	{
+		for (APlayerState* P : GS->PlayerArray)
+		{
+			const AGSPlayerState* PS = Cast<AGSPlayerState>(P);
+			if (PS && PS->Team == Team) ++N;
+		}
+	}
+	return N;
+}
+
+void AGSGameMode::AssignTeam(AGSPlayerState* PS)
+{
+	if (!PS) return;
+	const int32 Red = TeamCount(GSTeam::Red), Blue = TeamCount(GSTeam::Blue);
+	PS->Team = Red < Blue ? GSTeam::Red : (Blue < Red ? GSTeam::Blue : (FMath::RandBool() ? GSTeam::Red : GSTeam::Blue));
+	PS->ForceNetUpdate();
+}
+
+void AGSGameMode::RequestTeam(AGSPlayerState* PS, uint8 NewTeam)
+{
+	const AGSGameState* GS = GetGameState<AGSGameState>();
+	if (!PS || !GS || GS->Phase != EGSMatchPhase::Lobby) return;
+	if (NewTeam != GSTeam::Red && NewTeam != GSTeam::Blue) return;
+	const uint8 Old = PS->Team;
+	if (NewTeam == Old) return;
+	// Never make the teams more uneven.
+	const int32 NewCount = TeamCount(NewTeam);
+	const int32 OldCount = Old == GSTeam::None ? TeamCount(GSTeam::Other(NewTeam)) + 1 : TeamCount(Old);
+	if (NewCount >= OldCount || NewCount >= MaxPerTeam) return;
+
+	PS->Team = NewTeam;
+	PS->bReady = false;
+	PS->ForceNetUpdate();
+	// Move to the new base
+	if (AController* C = PS->GetOwningController())
+	{
+		if (APawn* P = C->GetPawn())
+		{
+			C->UnPossess();
+			P->Destroy();
+		}
+		RestartPlayer(C);
+	}
+}
+
+FVector AGSGameMode::BasePointM(uint8 Team)
+{
+	// Bases from the map data: index 0 = west (Gamle fysikk) is red, index 1 = east (Gamle kjemi) is blue.
+	const TArray<GSCampus::FBase>& Bases = GSCampus::Bases();
+	const int32 Index = Team == GSTeam::Blue ? 1 : 0;
+	if (Bases.IsValidIndex(Index)) return Bases[Index].Flag;
+	return Team == GSTeam::Blue ? FVector(60.f, -80.f, 0.f) : FVector(-60.f, -80.f, 0.f);
+}
+
+void AGSGameMode::SpawnFlags()
+{
+	UWorld* World = GetWorld();
+	for (uint8 Team = GSTeam::Red; Team <= GSTeam::Blue; ++Team)
+	{
+		const FVector Base = BasePointM(Team) * 100.f;
+		FVector Loc(Base.X, Base.Y, Base.Z);
+		FHitResult Hit;
+		if (World->LineTraceSingleByChannel(Hit, Base + FVector(0.f, 0.f, 300.f), Base - FVector(0.f, 0.f, 300.f), ECC_WorldStatic))
+		{
+			Loc = Hit.ImpactPoint;
+		}
+		const TArray<GSCampus::FBase>& Bases = GSCampus::Bases();
+		const int32 Index = Team == GSTeam::Blue ? 1 : 0;
+		const float Yaw = Bases.IsValidIndex(Index) ? Bases[Index].SpawnYaw : 0.f;
+		FActorSpawnParameters P;
+		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		if (AGSFlag* Flag = World->SpawnActor<AGSFlag>(Loc, FRotator(0.f, Yaw, 0.f), P))
+		{
+			Flag->Team = Team;
+			Flag->ResetHome();
+		}
+	}
+}
+
+void AGSGameMode::CleanWorldForMatch()
+{
+	UWorld* World = GetWorld();
+	// Collect first, destroy afterwards (never destroy while iterating).
+	TArray<AActor*> Doomed;
+	for (TActorIterator<AGSProjectile> It(World); It; ++It) Doomed.Add(*It);   // mines, fire, smoke, grenades, bullets
+	for (TActorIterator<AGSPickup> It(World); It; ++It)
+	{
+		if (!It->bRespawns) Doomed.Add(*It);   // dropped items and loot from the dead
+		else It->ResetForMatch();
+	}
+	for (TActorIterator<AGSTerminal> It(World); It; ++It) It->CancelPrint();
+	for (TActorIterator<AGSFlag> It(World); It; ++It) It->ResetHome();
+	for (TActorIterator<AGSCharacter> It(World); It; ++It) Doomed.Add(*It);   // bodies still lying around
+	for (AActor* A : Doomed)
+	{
+		if (IsValid(A)) A->Destroy();
 	}
 }
 
@@ -146,6 +305,7 @@ void AGSGameMode::BeginPlay()
 	Super::BeginPlay();
 	SpawnPickups();
 	SpawnTerminals();
+	SpawnFlags();   // campus is built before this (UGSWorldSubsystem::OnWorldBeginPlay)
 }
 
 void AGSGameMode::SpawnPickups()
@@ -209,12 +369,13 @@ void AGSGameMode::SpawnPickups()
 	// The big one: a mythic crate in the middle of Lysgaarden
 	Spawn(bCustomMain ? FVector(0.f, -7.5f, 0.85f) : FVector(0.f, 4.f, 0.35f), true, EGSRarity::Mythic); // on the stage
 
-	// Outdoors: scattered around campus, not inside buildings
-	for (int32 I = 0; I < 60; ++I)
+	// Outdoors: scattered over the play area (5 m in from the edge), not inside buildings
+	const FBox2D Area = GSCampus::PlayArea().ExpandBy(-5.f);
+	for (int32 I = 0; I < 20; ++I)
 	{
 		for (int32 Try = 0; Try < 20; ++Try)
 		{
-			const FVector2D P(Rng.FRandRange(-280.f, 430.f), Rng.FRandRange(-110.f, 520.f));
+			const FVector2D P(Rng.FRandRange(Area.Min.X, Area.Max.X), Rng.FRandRange(Area.Min.Y, Area.Max.Y));
 			bool bInside = false;
 			for (const GSCampus::FBuilding& B : Buildings)
 			{
@@ -226,40 +387,89 @@ void AGSGameMode::SpawnPickups()
 	UE_LOG(LogTemp, Log, TEXT("Gloshaugen: spawned %d loot spots"), Total);
 }
 
-FTransform AGSGameMode::PickSpawnTransform() const
+FTransform AGSGameMode::PickSpawnTransform(const AController* For) const
 {
-	const TArray<FVector2D>& Points = GSCampus::SpawnPoints();
+	UWorld* World = GetWorld();
+	const AGSPlayerState* PS = For ? For->GetPlayerState<AGSPlayerState>() : nullptr;
+	const uint8 Team = PS && PS->Team != GSTeam::None ? PS->Team : GSTeam::Red;
+	const FVector Base = BasePointM(Team) * 100.f;
+	const FVector EnemyBase = BasePointM(GSTeam::Other(Team)) * 100.f;
+	const FVector Away = (Base - EnemyBase).GetSafeNormal2D();
 
-	// Prefer the spawn point furthest from living players.
-	TArray<FVector> Enemies;
-	for (TActorIterator<AGSCharacter> It(GetWorld()); It; ++It)
+	// Candidates: the base's own spawn points from the map data, or a fan behind the base if there are none.
+	TArray<FVector> Candidates;
+	float Yaw = (EnemyBase - Base).Rotation().Yaw;   // look towards the enemy
+	const TArray<GSCampus::FBase>& Bases = GSCampus::Bases();
+	const int32 BaseIndex = Team == GSTeam::Blue ? 1 : 0;
+	if (Bases.IsValidIndex(BaseIndex) && Bases[BaseIndex].Spawns.Num() > 0)
 	{
-		if (!It->bDead) Enemies.Add(It->GetActorLocation());
+		for (const FVector2D& S : Bases[BaseIndex].Spawns) Candidates.Add(FVector(S.X * 100.f, S.Y * 100.f, Base.Z));
+		Yaw = Bases[BaseIndex].SpawnYaw;
 	}
-
-	int32 Best = FMath::RandRange(0, Points.Num() - 1);
-	if (Enemies.Num() > 0)
+	else
 	{
-		float BestScore = -1.f;
-		for (int32 I = 0; I < Points.Num(); ++I)
+		for (int32 I = 0; I < 12; ++I)
 		{
-			const FVector P(Points[I].X * 100.f, Points[I].Y * 100.f, 0.f);
-			float Closest = TNumericLimits<float>::Max();
-			for (const FVector& E : Enemies) Closest = FMath::Min(Closest, FVector::Dist2D(P, E));
-			const float Score = Closest + FMath::FRandRange(0.f, 3000.f); // a bit of randomness
-			if (Score > BestScore) { BestScore = Score; Best = I; }
+			const float A = -100.f + 200.f * I / 11.f;
+			const float R = (I % 2 == 0) ? 700.f : 1300.f;
+			Candidates.Add(Base + Away.RotateAngleAxis(A, FVector::UpVector) * R);
 		}
 	}
 
-	const FVector Loc(Points[Best].X * 100.f, Points[Best].Y * 100.f, 120.f);
-	const FRotator Rot(0.f, FMath::FRandRange(0.f, 360.f), 0.f);
-	return FTransform(Rot, Loc);
+	TArray<FVector> Living;
+	for (TActorIterator<AGSCharacter> It(World); It; ++It)
+	{
+		if (!It->bDead) Living.Add(It->GetActorLocation());
+	}
+
+	// On the ground, room for a body, and nobody standing there.
+	auto TryPlace = [&](FVector Loc, FVector& Out) -> bool
+	{
+		FHitResult Hit;
+		if (World->LineTraceSingleByChannel(Hit, Loc + FVector(0.f, 0.f, 400.f), Loc - FVector(0.f, 0.f, 300.f), ECC_WorldStatic))
+		{
+			Loc.Z = Hit.ImpactPoint.Z + 100.f;
+		}
+		else
+		{
+			Loc.Z = Base.Z + 120.f;
+		}
+		if (World->OverlapBlockingTestByChannel(Loc, FQuat::Identity, ECC_Pawn, FCollisionShape::MakeCapsule(42.f, 92.f))) return false;
+		for (const FVector& L : Living)
+		{
+			if (FVector::Dist(L, Loc) < 150.f) return false;
+		}
+		Out = Loc;
+		return true;
+	};
+
+	TArray<FVector> Valid;
+	for (const FVector& C : Candidates)
+	{
+		FVector Loc;
+		if (TryPlace(C, Loc)) Valid.Add(Loc);
+	}
+	if (Valid.Num() == 0)
+	{
+		// All taken: try a little to the side of each one.
+		for (const FVector& C : Candidates)
+		{
+			const FVector Side = FVector(1.f, 0.f, 0.f).RotateAngleAxis(FMath::FRandRange(0.f, 360.f), FVector::UpVector) * FMath::FRandRange(200.f, 350.f);
+			FVector Loc;
+			if (TryPlace(C + Side, Loc)) { Valid.Add(Loc); break; }
+		}
+	}
+	const FVector Loc = Valid.Num() > 0 ? Valid[FMath::RandRange(0, Valid.Num() - 1)] : Base + FVector(0.f, 0.f, 120.f);
+	return FTransform(FRotator(0.f, Yaw, 0.f), Loc);
 }
 
 void AGSGameMode::RestartPlayer(AController* NewPlayer)
 {
 	if (!NewPlayer || NewPlayer->IsPendingKillPending()) return;
-	RestartPlayerAtTransform(NewPlayer, PickSpawnTransform());
+	// The team is set before the body is made, so it spawns at the right base.
+	AGSPlayerState* PS = NewPlayer->GetPlayerState<AGSPlayerState>();
+	if (PS && PS->Team == GSTeam::None) AssignTeam(PS);
+	RestartPlayerAtTransform(NewPlayer, PickSpawnTransform(NewPlayer));
 }
 
 void AGSGameMode::OnPlayerKilled(AController* Killer, AController* Victim, const FString& WeaponName, bool bHeadshot)
@@ -268,7 +478,9 @@ void AGSGameMode::OnPlayerKilled(AController* Killer, AController* Victim, const
 	AGSPlayerState* VictimPS = Victim ? Victim->GetPlayerState<AGSPlayerState>() : nullptr;
 
 	if (VictimPS) VictimPS->Deaths++;
-	if (KillerPS && KillerPS != VictimPS)
+	// Killing a team mate gives no kill and no points.
+	const bool bTeamKill = KillerPS && VictimPS && KillerPS != VictimPS && KillerPS->Team != GSTeam::None && KillerPS->Team == VictimPS->Team;
+	if (KillerPS && KillerPS != VictimPS && !bTeamKill)
 	{
 		KillerPS->Kills++;
 		KillerPS->SetScore(KillerPS->GetScore() + 1.f);

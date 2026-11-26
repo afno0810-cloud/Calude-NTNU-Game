@@ -175,6 +175,14 @@ void AGSTerminal::FinishPrint()
 	ForceNetUpdate();
 }
 
+void AGSTerminal::CancelPrint()
+{
+	GetWorldTimerManager().ClearTimer(PrintTimer);
+	PrintingId = NAME_None;
+	PrintStart = PrintEnd = 0.f;
+	ForceNetUpdate();
+}
+
 // ------------------------------------------------------------------------------------------------ AGSSecurityCamera
 
 AGSSecurityCamera::AGSSecurityCamera()

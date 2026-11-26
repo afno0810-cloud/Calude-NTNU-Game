@@ -33,6 +33,8 @@ public:
 	/** Server: someone took Taken items. */
 	void OnTaken(int32 Taken);
 	void Unlock();
+	/** Server, match start: new loot now (relocks crates), no respawn timer running. */
+	void ResetForMatch();
 
 	UPROPERTY(ReplicatedUsing = OnRep_State) FName ItemId;
 	UPROPERTY(ReplicatedUsing = OnRep_State) int32 Count = 1;

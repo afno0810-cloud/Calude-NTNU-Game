@@ -3,6 +3,42 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 1 (Spillbarhet): Capture the Flag, grunnmuren (26. nov.)
+
+346. Ny spillmodus: Capture the Flag. To lag, rødt og blått, med hver sin base og hvert sitt flagg
+347. Du settes automatisk på laget med færrest spillere, og lagene jevnes ut når kampen starter
+348. I lobbyen bytter du lag med L, så lenge det ikke gjør lagene skjevere
+349. Flagget tas ved å gå bort til det, og bæres synlig på ryggen så alle ser hvem som har det
+350. Dør bæreren, blir flagget liggende der han falt. Motstanderne kan plukke det opp igjen, og eget lag henter det hjem ved å gå bort til det
+351. Du erobrer ved å bære flagget til din egen base, men bare når ditt eget flagg står hjemme
+352. Første lag til 3 erobringer vinner, ellers laget med flest når tiden er ute. Lik stilling gir uavgjort
+353. Du starter og kommer tilbake ved din egen base, på en ledig plass, vendt mot motstanderen (før: tilfeldig sted på hele campus)
+354. Stripe øverst på skjermen viser stillingen og om hvert flagg står hjemme, bæres (og av hvem) eller ligger ute
+355. Alle får beskjed når et flagg tas, mistes, hentes hjem eller erobres, også i hendelseslista til venstre
+356. Lobbyen forklarer Capture the Flag i korte linjer, viser hvilket lag du er på og når kampen starter av seg selv
+357. Kampstart rydder campus: miner, ild, røyk, slupne ting og lik fjernes, og all loot og alle låste kasser fylles på nytt
+358. Nedtelling som starter fordi tiden er ute kan ikke stoppes av én spiller, og fristen på 90 sekunder starter først når spiller nummer to er inne
+359. En kamp du startet alene avbrytes når en venn kobler til, så dere kan starte sammen. Drap på lagkamerat gir ikke poeng
+
+## Runde 9 (Kamp): kroppssoner (26. nov.)
+
+360. Kroppen har sju treffsoner med mål som en ekte kropp (hode, bryst, mage, to armer, to bein) i stedet for én sylinder og en kule; hodet er like stort som et ekte hode, før var treffområdet nesten dobbelt så stort
+361. Styreflate og mus med jevn rulling blar ett trinn per hele hakk i stedet for å rase gjennom alle våpnene, og ved 3D-printeren og kameraene på PC-en blar hjul opp oppover (før gikk begge veier nedover)
+362. Skudd i arm eller bein gjør mindre skade enn skudd i brystet, og mageskudd litt mindre
+363. Vesten beskytter bare overkroppen, ikke armer og bein
+364. Hjelmen beskytter skallen, ikke ansiktet når skuddet kommer forfra
+365. Skudd i beinet: du går saktere, hopper lavere, halter i bildet og kan ikke løpe når skaden er stor
+366. Skudd i armen: siktet vandrer og skjelver, rekylen blir verre og lading tar lengre tid
+367. Plaster, bandasje og førstehjelpsskrin behandler skadde armer og bein, og smertestillende demper følgene mens de virker
+368. Du kjenner hvor du ble truffet: kneet svikter ved beinskudd, våpenet rykker i hendene ved armskudd, og en liten tekst over helsa sier hva som er skadd
+369. Treffsonene følger med når du huker eller sklir
+370. Hodeskudd som knuser hjelmen gir fortsatt øresus og hardt rykk
+371. Sikting sendes til serveren: slutt på rykking når du går og sikter online, haglene treffer der du ser dem, og andre ser at du løfter våpenet til øyet
+372. Serveren godtar ikke lenger raskere skuddtakt enn våpenet har (før opptil 43 % for fort)
+373. Rakettkastere og granatkasteren smeller høyt for alle og vises på walkie-talkien, i stedet for å høres lyddempet ut
+374. Kroppen andre ser står med føttene på bakken hos alle spillere, også etter huking
+375. Mindre arkade i bildet: «LAVT LIV»-teksten, det hvite blinket ved hodeskudd og «HODESKUDD» under siktet er fjernet
+
 ## Rettinger (Kamp) (26. nov.)
 
 376. Granater, miner, C4, raketter, 40 mm og piler flyr dit du sikter; før ble retningen dreid en gang til, så et kast mot øst gikk mot sør

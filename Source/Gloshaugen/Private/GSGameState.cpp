@@ -1,4 +1,6 @@
 #include "GSGameState.h"
+#include "GSHelp.h"
+#include "GameFramework/PlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/World.h"
 
@@ -19,6 +21,19 @@ void AGSGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AGSGameState, Phase);
 	DOREPLIFETIME(AGSGameState, PhaseEndsAt);
 	DOREPLIFETIME(AGSGameState, Winner);
+	DOREPLIFETIME(AGSGameState, RedScore);
+	DOREPLIFETIME(AGSGameState, BlueScore);
+	DOREPLIFETIME(AGSGameState, bFriendlyFire);
+}
+
+void AGSGameState::MulticastFlagEvent_Implementation(uint8 Event, uint8 FlagTeam, FVector_NetQuantize Where, APlayerState* Who)
+{
+	LastFlagEvent.Event = Event;
+	LastFlagEvent.FlagTeam = FlagTeam;
+	LastFlagEvent.Where = Where;
+	LastFlagEvent.Who = Who ? Who->GetPlayerName() : FString();
+	LastFlagEvent.LocalTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+	OnFlagEvent.Broadcast(Event, FlagTeam, LastFlagEvent.Where, Who);
 }
 
 EGSWeather AGSGameState::RollWeather(EGSWeather Avoid) const
@@ -42,6 +57,7 @@ EGSWeather AGSGameState::RollWeather(EGSWeather Avoid) const
 
 void AGSGameState::BeginPlay()
 {
+	if (GetNetMode() != NM_DedicatedServer) GSHelp::EnsureHooked();
 	Super::BeginPlay();
 	if (HasAuthority())
 	{

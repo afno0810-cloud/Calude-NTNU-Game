@@ -47,6 +47,8 @@ public:
 
 	/** Server: start printing recipe Index for Who. Returns an error text, or empty on success. */
 	FString StartPrint(class AGSCharacter* Who, int32 Index);
+	/** Server, match start: stop a print that is running (nothing comes out). */
+	void CancelPrint();
 
 	static const TArray<FGSPrintRecipe>& Recipes();
 

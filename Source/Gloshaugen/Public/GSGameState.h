@@ -41,6 +41,25 @@ public:
 	/** Seconds left of the current phase (countdown, match or results). */
 	float PhaseSecondsLeft() const { return FMath::Max(0.f, PhaseEndsAt - GetServerWorldTimeSeconds()); }
 
+	// --- Capture the Flag ---
+	UPROPERTY(Replicated) uint8 RedScore = 0;
+	UPROPERTY(Replicated) uint8 BlueScore = 0;
+	/** Off: team mates cannot hurt each other (checked in AGSCharacter::TakeDamage by the combat team). */
+	UPROPERTY(Replicated) bool bFriendlyFire = false;
+	int32 TeamScore(uint8 Team) const { return Team == 1 ? RedScore : (Team == 2 ? BlueScore : 0); }
+	static constexpr int32 CaptureLimit = 3;
+	static constexpr float LobbyAutoStartSeconds = 90.f;
+
+	/** Event: 1 taken, 2 dropped, 3 returned, 4 captured (GSFlagEvent in GSFlag.h). Runs on every machine. */
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastFlagEvent(uint8 Event, uint8 FlagTeam, FVector_NetQuantize Where, APlayerState* Who);
+	/** Last flag event on this machine (for the status line and for sounds). LocalTime = GetWorld()->GetTimeSeconds(). */
+	struct FLastFlagEvent { uint8 Event = 0; uint8 FlagTeam = 0; FVector Where = FVector::ZeroVector; FString Who; float LocalTime = -100.f; };
+	FLastFlagEvent LastFlagEvent;
+	DECLARE_MULTICAST_DELEGATE_FourParams(FOnFlagEvent, uint8 /*Event*/, uint8 /*FlagTeam*/, const FVector& /*Where*/, APlayerState* /*Who*/);
+	/** The combat team binds sounds / HUD cues here. */
+	FOnFlagEvent OnFlagEvent;
+
 	/** Real minutes for one full in-game day. */
 	static constexpr float DayLengthMinutes = 48.f;
 	/** Weather changes roughly this often (seconds). */
