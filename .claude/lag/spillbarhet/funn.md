@@ -23,6 +23,15 @@ våpen/skyting. De gjentas ikke her.
 
 ## Funn
 
+### Fra forhåndssjekken av plan-03 (2026-11-26)
+N1. **Flaggbærerens (og alle andres) pawn replikeres til alle klienter hele tiden** – Middels (juks)
+   - Fil: `GSCharacter.*` (nettrelevans). Eier: Kamp → bestilling (ført i `bestillinger.md`, ÅPEN).
+   - Hva: det nye kartet (330 × 265 m) er mindre enn relevansavstanden, så en jukser med endret klient ser hvor alle
+     er, også bæreren før de 20 sekundene er gått. Avsløringsregelen (plan-04) er derfor en spilleregel, ikke et vern.
+   - Forslag: `IsNetRelevantFor` i `AGSCharacter`: fiender lenger unna enn ca. 80–100 m uten fri sikt sendes ikke
+     (lagkamerater alltid; den som skyter eller nylig er sett alltid). Må veies mot lyd på avstand (fottrinn, skudd)
+     og mot at figurer «popper» inn. Egen runde hos Kamp.
+
 Alvorlighet: **Høy** = ødelegger kamper, gjør en hel funksjon ubrukelig eller kan utnyttes lett.
 **Middels** = merkes tydelig. **Lav** = pirk som tas når man likevel er i filen.
 Linjenumrene står ved hver feiljakt. Alt er funnet ved å lese koden, ikke ved å spille.

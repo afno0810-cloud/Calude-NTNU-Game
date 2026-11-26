@@ -43,34 +43,35 @@ spillet til kampen er over skal henge sammen, forklare seg selv og være rettfer
    `UGameViewportClient`-krokene (svelger alt mens menyen er åpen, funn I3 for våre flater), tekst via egen
    `UGSGameViewportClient::InputChar`. Bare én liten bestilling til Kamp (Esc-menyens knapper og hinttekster); menyen
    fanger klikkene deres til den er levert.
-3. **[plan-03, skrevet 26. nov.] Knappehjelp (0a) + CTF-regler som mangler.** Se `ko/plan-03.md`. Kort: H-oversikt
-   (taster fra `GSMenu::Controls`, CTF-reglene), 12 hint som vises høyst to ganger (loot, kasse, PC, printer, tomt
-   magasin, skadet, flagget) med tastene fra `GSMenu::KeyName`, flaggbæreren avsløres etter 20 s (markør «sist sett»,
-   oppdatert hvert 2. s), overtid (ønske 33: til flagget er erobret/hjemme, høyst 2 min, ingen nye flagg fra basen),
-   `Logout` legger ned flagget (C1), beskjed ved sen innkobling (C2), og Grafikks ytelsesbestilling for
-   `GSPickup`/`GSTerminal` (snurrer bare nær spilleren, ingen skygge, lys med avstandsgrense).
-4. **[plan-04] Vertsvalg og resten av CTF for det nye kartet.**
+3. **[plan-03 «3A», skrevet om 26. nov.] Knappehjelp (0a).** Se `ko/plan-03.md`. H-oversikt (taster fra
+   `GSMenu::Controls`, CTF-reglene), 11 hint som vises høyst to ganger og aldri to ganger på rad (tastene fra
+   `GSMenu::KeyName`), H reservert i menyen, «Vis hintene på nytt», beskjed ved sen innkobling (C2). IMPROVEMENTS 460–467.
+4. **[plan-04 «3B», skrevet 26. nov.] CTF-regler som mangler + ytelse.** Se `ko/plan-04.md`. Overtid bare når flagget som
+   er ute kan avgjøre (ønske 33), hjemmeflagg kan ikke tas når tiden er ute, flaggbæreren meldes etter 20 s som
+   **radiomelding med sted** («Flagget sist sett: inne i Gamle fysikk, 2. etasje», hvert 5. s – ingen markør), `Logout`
+   legger ned flagget (C1), og Grafikks ytelsesbestilling for `GSPickup`/`GSTerminal`. IMPROVEMENTS 468–475.
+4b. **[plan-05] Vertsvalg og resten av CTF for det nye kartet.**
    - **Vertsvalg i lagvalg-panelet** (`GSMenu`): venneild av/på, kamplengde, antall erobringer, «Start nå». Nye replikerte
      `CaptureGoal`/`MatchLengthMinutes` i `GSGameState` (konstantene `CaptureLimit`/`MatchMinutes` blir standardverdier;
-     Kamp leser dem i dag, så de fjernes ikke). Verten er listen-server, så valget settes rett i `GSGameMode` uten RPC.
+     Kamp leser dem, så de fjernes ikke). Verten er listen-server, så valget settes rett i `GSGameMode` uten RPC.
    - Regel for dem som går ut av `GSCampus::PlayArea()` (varsel, så skade) – Grafikks ønske c. Sidebytte mellom
      kampene (ønske e / ønskeliste 34). Utendørs loot innenfor området og færre plasser (Grafikks ønske a), hvis ikke gjort.
    - Respawn i bølger (hvert 10. s) ved egen base, aldri i sikte av en fiende; kort spawnbeskyttelse.
-   - Når Kamp har levert `PawnLeavingGame`: drap til siste skytter og utstyr som blir liggende når noen kobler fra.
-     Lag som står tomt midt i en kamp (alle koblet fra): jevn ut eller avslutt.
+   - Når Kamp har levert `PawnLeavingGame`: drap til siste skytter og utstyr som blir liggende ved frakobling.
+     Lag som står tomt midt i en kamp; av/på-kobling som fyller hendelseslista.
    - Eget lag må stå ved et mistet flagg i 3 s for å sende det hjem, hvis berøring viser seg for lett i testing.
-5. **[plan-05] Våpendata som følger virkeligheten (Kamps bestilling, funn R5–R7, R13) + loot for CTF.**
+5. **[plan-06] Våpendata som følger virkeligheten (Kamps bestilling, funn R5–R7, R13) + loot for CTF.**
    - Kalibertabell i `catalog.py`: `MuzzleVelocity`, `BulletMassG`, `PenClass`, skade etter patron, riktige
      kalibre med egne ammoesker, `ProtClass` på vester og hjelmer, ekte prosjektilfarter.
    - `RandomLoot`: ammovekt per kaliber, sjeldenhet som ikke snus i små grupper, våpen oftere i låste kasser
      (Kamps kontroll-bestilling). Loot-tetthet for det lille kartet; det beste lootet i midtområdet, ikke i basene.
    - Medisin: «Skinne» og «Tourniquet»/trykkbandasje med `Kind` Kamp kan lese (avtales i `bestillinger.md`).
      Kikkert-teksten «Hold F» rettes (funn G6).
-6. **[plan-06] Utstyr/klasse før runden.** Velg startpakke i lobbyen (f.eks. gevær, sanitet, støtte, speider),
+6. **[plan-07] Utstyr/klasse før runden.** Velg startpakke i lobbyen (f.eks. gevær, sanitet, støtte, speider),
    realistisk utstyr og vekt; loot blir tillegg, ikke grunnlag.
-7. **[plan-07] Invitere venner, steg 1 (0c):** «Finn spill på nettverket» (LAN-søk) og kode/IP man kan kopiere;
+7. **[plan-08] Invitere venner, steg 1 (0c):** «Finn spill på nettverket» (LAN-søk) og kode/IP man kan kopiere;
    koden legges opp mot OnlineSubsystem-sesjoner så Steam/EOS kan komme når Andreas har konto.
-8. **[plan-08] Lagverktøy:** markere fiender og ping for laget; kart/minikart med flagg, baser og lagkamerater
+8. **[plan-09] Lagverktøy:** markere fiender og ping for laget; kart/minikart med flagg, baser og lagkamerater
    (egne filer + ett bestilt tegnekall); nærradio/stemmechat (Unreal VoIP) som egen runde.
 
 ### Deretter
@@ -88,6 +89,11 @@ spillet til kampen er over skal henge sammen, forklare seg selv og være rettfer
 - **Feiljakt som gjenstår i egne filer:** `GSTerminal` videre, lootplassering per bygg, til-/frakobling.
 
 ## Endringer i retningen
+- 2026-11-26 (etter forhåndssjekk av plan-03): **Delt i 3A (plan-03: hjelp) og 3B (plan-04: regler og ytelse)**, fordi
+  runden var for stor. **Avslørt bærer vises som radiomelding med stedsnavn, ikke som markør** (hovedagentens valg: en
+  firkant med meter gjennom vegger er veggsyn i praksis, siden nesten alle flaggløp varer over 20 s). Overtid spør nå
+  «kan flagget som er ute avgjøre?», ikke bare «er et flagg ute?». Hint maser ikke (60 s og vilkåret usant imellom).
+  Vertsvalg m.m. er nå plan-05, våpendata plan-06, og resten ett hakk ned.
 - 2026-11-26 (plan-03): **Plan-03 er delt i to.** Knappehjelpen (0a) og de små CTF-reglene (avsløring etter 20 s,
   overtid, frakobling, sen innkobling) tas nå; vertsvalg, regel utenfor området, sidebytte og respawn i bølger er ny
   plan-04, fordi vertsvalget bygger på `GSMenu` som ennå ikke er kontrollert. Våpendata/loot flyttes til plan-05 og
