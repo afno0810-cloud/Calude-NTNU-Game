@@ -24,6 +24,7 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void PostNetReceiveVelocity(const FVector& NewVelocity) override;
 
 	static AGSProjectile* Launch(UWorld* World, AGSCharacter* Owner, FName Kind, FName ItemId, const FVector& Location,
 		const FVector& Velocity, float GravityScale, float Damage, float Radius, float Fuse);
@@ -35,6 +36,13 @@ public:
 	float Radius = 0.f;   // cm
 	float Fuse = 0.f;     // seconds until it goes off (0 = on impact)
 
+	/** Flight setup the clients need to simulate the same arc as the server between network updates. */
+	UPROPERTY(ReplicatedUsing = OnRep_Flight) float NetGravityScale = 1.f;
+	UPROPERTY(ReplicatedUsing = OnRep_Flight) bool bNetBounce = false;
+
+	/** Who threw / fired it. Kept here because the pawn loses its controller when it dies. */
+	TWeakObjectPtr<AController> OwnerController;
+
 protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USphereComponent> Collision;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Mesh;
@@ -43,10 +51,13 @@ protected:
 	UFUNCTION() void OnStop(const FHitResult& Hit);
 	UFUNCTION() void OnRep_Visual();
 	UFUNCTION() void OnRep_Exploded();
+	UFUNCTION() void OnRep_Flight();
 
 	void Explode();
 	void DamageAround(const FVector& Center, float Amount, float R, bool bFalloff);
 	bool IsKind(const TCHAR* Name) const { return Kind == FName(Name); }
+	/** The thrower's controller, also after the thrower has died or respawned. */
+	AController* KillerController() const;
 
 	float SpawnTime = 0.f;
 	float LastAreaTick = 0.f;

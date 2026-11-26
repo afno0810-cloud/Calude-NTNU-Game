@@ -210,22 +210,59 @@ const TCHAR* GSItems::CategoryName(EGSItemCat C)
 
 FName GSItems::RandomLoot(FRandomStream& Rng, EGSRarity MinRarity)
 {
-	// How common each rarity and category is.
+	// Three draws: first what kind of thing it is, then how rare, then which item of that kind and rarity.
+	// (Weighting every item on its own made loot follow the size of the catalog: 59 weapons drowned 5 medicines.)
 	static const float RarityWeight[] = { 40.f, 28.f, 17.f, 9.f, 4.5f, 1.5f };
-	static const float CatWeight[] = { 24.f, 6.f, 4.f, 22.f, 10.f, 12.f, 8.f, 14.f }; // order of EGSItemCat
+	// Share of all loot per group, tuned for 20 players on ~410 loot spots. Order of EGSItemCat, plus ammo
+	// (ammo boxes are gadgets in the catalog, but are needed far more often than other gadgets).
+	enum { GroupAmmo = (int32)EGSItemCat::MAX, NumGroups };
+	static const float GroupWeight[NumGroups] = { 20.f, 7.f, 5.f, 20.f, 8.f, 13.f, 7.f, 8.f, 12.f };
+	static const FName KindAmmo(TEXT("ammo"));
+	auto GroupOf = [](const FGSItemDef& D) -> int32
+	{
+		return (D.Kind == KindAmmo || D.Rounds > 0) ? (int32)GroupAmmo : (int32)D.Cat;
+	};
 
-	float Total = 0.f;
+	// 1) Group, among those that have anything at this rarity or better.
+	const int32 NumRarities = (int32)EGSRarity::MAX;
+	int32 Count[NumGroups][(int32)EGSRarity::MAX] = {};
 	for (const FGSItemDef& D : All())
 	{
-		if (D.Rarity < MinRarity) continue;
-		Total += RarityWeight[(int32)D.Rarity] * CatWeight[(int32)D.Cat];
+		if (D.Rarity >= MinRarity) ++Count[GroupOf(D)][(int32)D.Rarity];
 	}
+	auto GroupTotal = [&](int32 G) { int32 N = 0; for (int32 R = 0; R < NumRarities; ++R) N += Count[G][R]; return N; };
+	float Total = 0.f;
+	for (int32 G = 0; G < NumGroups; ++G) if (GroupTotal(G) > 0) Total += GroupWeight[G];
+	if (Total <= 0.f) return All().Last().Id;
+	int32 Group = INDEX_NONE;
 	float Pick = Rng.FRandRange(0.f, Total);
+	for (int32 G = 0; G < NumGroups; ++G)
+	{
+		if (GroupTotal(G) == 0) continue;
+		Group = G;
+		Pick -= GroupWeight[G];
+		if (Pick <= 0.f) break;
+	}
+
+	// 2) Rarity, among those the group has.
+	Total = 0.f;
+	for (int32 R = 0; R < NumRarities; ++R) if (Count[Group][R] > 0) Total += RarityWeight[R];
+	int32 Rarity = 0;
+	Pick = Rng.FRandRange(0.f, Total);
+	for (int32 R = 0; R < NumRarities; ++R)
+	{
+		if (Count[Group][R] == 0) continue;
+		Rarity = R;
+		Pick -= RarityWeight[R];
+		if (Pick <= 0.f) break;
+	}
+
+	// 3) One of the items in that group with that rarity, all equally likely.
+	int32 Index = Rng.RandRange(0, Count[Group][Rarity] - 1);
 	for (const FGSItemDef& D : All())
 	{
-		if (D.Rarity < MinRarity) continue;
-		Pick -= RarityWeight[(int32)D.Rarity] * CatWeight[(int32)D.Cat];
-		if (Pick <= 0.f) return D.Id;
+		if (D.Rarity < MinRarity || GroupOf(D) != Group || (int32)D.Rarity != Rarity) continue;
+		if (Index-- == 0) return D.Id;
 	}
 	return All().Last().Id;
 }

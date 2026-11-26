@@ -3,6 +3,14 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Feilrettinger etter feiljakt (26. nov.)
+
+313. Drap med granat, mine, molotov, rakett og pil telles nå også når den som kastet eller skjøt er død før det smeller
+314. Tilfeldig loot trekkes nå per type først og sjeldenhet etterpå, så det finnes nok medisin, vester, hjelmer og granater til 20 spillere
+315. Ammo er en egen gruppe i lootfordelingen (omtrent hver åttende lootplass), i stedet for å drukne blant annet utstyr
+316. Granater, raketter og piler flyr jevnt og i riktig bue hos alle spillere, ikke bare hos verten
+317. Snubletrådminen blir liggende til noen går i den, i stedet for å forsvinne etter ett minutt
+
 ## Runde 7: å bli truffet (26. nov.)
 
 301. Når du blir truffet blør kanten av skjermen i stedet for at hele bildet blinker rødt, sterkere jo mer liv du mistet

@@ -38,6 +38,8 @@ AGSProjectile::AGSProjectile()
 	Movement->bRotationFollowsVelocity = true;
 	Movement->MaxSpeed = 20000.f;
 	Movement->InitialSpeed = 0.f;
+	Movement->Bounciness = 0.3f;   // same on server and clients
+	Movement->Friction = 0.4f;
 }
 
 void AGSProjectile::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -46,6 +48,8 @@ void AGSProjectile::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AGSProjectile, Kind);
 	DOREPLIFETIME(AGSProjectile, ItemId);
 	DOREPLIFETIME(AGSProjectile, bExploded);
+	DOREPLIFETIME(AGSProjectile, NetGravityScale);
+	DOREPLIFETIME(AGSProjectile, bNetBounce);
 }
 
 AGSProjectile* AGSProjectile::Launch(UWorld* World, AGSCharacter* Owner, FName Kind, FName ItemId, const FVector& Location,
@@ -60,12 +64,11 @@ AGSProjectile* AGSProjectile::Launch(UWorld* World, AGSCharacter* Owner, FName K
 	Proj->Damage = Damage;
 	Proj->Radius = Radius;
 	Proj->Fuse = Fuse;
+	Proj->OwnerController = Owner ? Owner->GetController() : nullptr;
 	Proj->Movement->Velocity = Velocity;
-	Proj->Movement->ProjectileGravityScale = GravityScale;
-	const bool bBouncy = Kind == FName(TEXT("frag")) || Kind == FName(TEXT("smoke")) || Kind == FName(TEXT("flash"));
-	Proj->Movement->bShouldBounce = bBouncy;
-	Proj->Movement->Bounciness = 0.3f;
-	Proj->Movement->Friction = 0.4f;
+	Proj->NetGravityScale = GravityScale;
+	Proj->bNetBounce = Kind == FName(TEXT("frag")) || Kind == FName(TEXT("smoke")) || Kind == FName(TEXT("flash"));
+	Proj->OnRep_Flight();
 	Proj->FinishSpawning(FTransform(Velocity.Rotation(), Location));
 	return Proj;
 }
@@ -80,8 +83,45 @@ void AGSProjectile::BeginPlay()
 		Movement->OnProjectileStop.AddDynamic(this, &AGSProjectile::OnStop);
 		SetLifeSpan(60.f);
 	}
+	else
+	{
+		OnRep_Flight(); // gravity and bounce arrive with the spawn, before BeginPlay
+	}
 	// Bolts, rockets and 40 mm hit people too: let the sphere also block pawns' meshes via a sweep in Tick.
 	OnRep_Visual();
+}
+
+AController* AGSProjectile::KillerController() const
+{
+	return OwnerController.IsValid() ? OwnerController.Get() : GetInstigatorController();
+}
+
+void AGSProjectile::OnRep_Flight()
+{
+	Movement->bShouldBounce = bNetBounce;
+	// Lying still or gone off: no gravity, or a client would pull it down between network updates.
+	const bool bResting = bExploded || (!HasAuthority() && HasActorBegunPlay() && !Movement->UpdatedComponent);
+	Movement->ProjectileGravityScale = bResting ? 0.f : NetGravityScale;
+}
+
+void AGSProjectile::PostNetReceiveVelocity(const FVector& NewVelocity)
+{
+	Super::PostNetReceiveVelocity(NewVelocity);
+	// The engine moves the actor to the server's position but does not hand the speed to the movement
+	// component. Without it the client lets the projectile drop straight down between updates.
+	if (bExploded) return;
+	if (NewVelocity.IsNearlyZero(1.f))
+	{
+		// Stuck or at rest on the server.
+		Movement->Velocity = FVector::ZeroVector;
+		Movement->ProjectileGravityScale = 0.f;
+		return;
+	}
+	// Still flying on the server: wake our own simulation if it stopped too early (hit something first here).
+	if (!Movement->UpdatedComponent) Movement->SetUpdatedComponent(Collision);
+	Movement->Velocity = NewVelocity;
+	Movement->ProjectileGravityScale = NetGravityScale;
+	Movement->UpdateComponentVelocity();
 }
 
 void AGSProjectile::OnRep_Visual()
@@ -137,7 +177,7 @@ void AGSProjectile::Tick(float DeltaSeconds)
 				if (IsKind(TEXT("arrow")))
 				{
 					FPointDamageEvent Event(Damage, Hit, Vel.GetSafeNormal(), nullptr);
-					Victim->TakeDamage(Damage, Event, GetInstigatorController(), this);
+					Victim->TakeDamage(Damage, Event, KillerController(), this);
 					Destroy();
 					return;
 				}
@@ -181,6 +221,8 @@ void AGSProjectile::OnStop(const FHitResult& Hit)
 	{
 		Explode();
 	}
+	// A placed trip mine lies there until someone walks into it (the 60 s from BeginPlay only covers the throw).
+	if (IsKind(TEXT("mine"))) SetLifeSpan(0.f);
 	// frag/smoke/flash: wait for the fuse. c4/mine: stick where they land.
 }
 
@@ -197,7 +239,7 @@ void AGSProjectile::DamageAround(const FVector& Center, float Amount, float R, b
 		Params.AddIgnoredActor(C);
 		if (GetWorld()->LineTraceSingleByChannel(Block, Center + FVector(0.f, 0.f, 20.f), C->GetActorLocation(), ECC_WorldStatic, Params)) continue;
 		const float Scale = bFalloff ? FMath::Clamp(1.f - Dist / R, 0.15f, 1.f) : 1.f;
-		C->TakeDamage(Amount * Scale, FDamageEvent(), GetInstigatorController(), this);
+		C->TakeDamage(Amount * Scale, FDamageEvent(), KillerController(), this);
 	}
 }
 
@@ -233,6 +275,11 @@ void AGSProjectile::Explode()
 void AGSProjectile::OnRep_Exploded()
 {
 	if (!bExploded) return;
+	if (!HasAuthority())
+	{
+		Movement->StopMovementImmediately();
+		Movement->ProjectileGravityScale = 0.f;
+	}
 	UWorld* World = GetWorld();
 	const FVector Loc = GetActorLocation();
 	Mesh->SetVisibility(false);
