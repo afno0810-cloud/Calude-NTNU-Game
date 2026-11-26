@@ -91,6 +91,12 @@ namespace GSMenuImpl
 		bool bShift = false, bCtrl = false;
 		FVector2D CanvasSize = FVector2D::ZeroVector;
 		uint64 LastDrawFrame = 0;
+		// Our input hooks on this window. The editor's "Play in selected viewport" binds its own key hook first,
+		// so ours is put in front of it (the old one still runs), and checked every frame by its handle.
+		FDelegateHandle KeyHook, AxisHook;
+		bool bHookLive = false;            // our key hook is the one the window calls: without it nothing may be modal
+		bool bCursorShown = false;         // the mouse cursor is on: without it nothing may be modal
+		bool bPIENoteLogged = false;
 
 		void ResetWorld(UWorld* NewWorld)
 		{
@@ -147,8 +153,10 @@ namespace GSMenuImpl
 
 	bool IsModalState(const FState& S)
 	{
-		// Modal needs us to be drawing: if the canvas goes away, no input is swallowed.
-		return (S.bMainOpen || S.bTeamOpen || S.Dialog != EDialog::None) && GFrameCounter - S.LastDrawFrame <= 30;
+		// Modal needs us to be drawing, our key hook to be the one the window calls (so Esc and clicks reach us) and the
+		// mouse cursor to be on. If any of them is missing, no input is swallowed.
+		return (S.bMainOpen || S.bTeamOpen || S.Dialog != EDialog::None) && GFrameCounter - S.LastDrawFrame <= 30
+			&& S.bHookLive && S.bCursorShown;
 	}
 
 	// ------------------------------------------------------------------ config
@@ -434,9 +442,11 @@ namespace GSMenuImpl
 			|| NewKey == EKeys::MouseScrollUp || NewKey == EKeys::MouseScrollDown || Reserved.Contains(NewKey))
 		{
 			S.KeyNote = TEXT("Esc, F10, H, musa og hjulet er satt av og kan ikke brukes.");
+			UE_LOG(LogTemp, Log, TEXT("GSMenu: tasten %s kan ikke brukes"), *NewKey.ToString());
 			return;
 		}
 		const FKeyRow& Row = Rows[RowIndex];
+		UE_LOG(LogTemp, Log, TEXT("GSMenu: %s -> %s (var %s)"), *Row.Id, *NewKey.ToString(), *Row.Current.ToString());
 		S.KeyNote.Empty();
 		if (Row.Current == NewKey) return;
 		for (int32 I = 0; I < Rows.Num(); ++I)
@@ -669,7 +679,11 @@ namespace GSMenuImpl
 			Mode.SetHideCursorDuringCapture(false);
 			PC->SetInputMode(Mode);
 			// A key held while the panel opens must not hang: we swallow its release.
-			if (!S.bModalApplied) PC->FlushPressedKeys();
+			if (!S.bModalApplied)
+			{
+				PC->FlushPressedKeys();
+				UE_LOG(LogTemp, Log, TEXT("GSMenu: menyen tar mus og tastatur (musepeker på, spill og meny)"));
+			}
 			S.bModalApplied = true;
 		}
 		else if (!bWant && S.bModalApplied)
@@ -681,7 +695,9 @@ namespace GSMenuImpl
 			S.Focus = NAME_None;
 			S.ListenRow = INDEX_NONE;
 			S.DragSlider = NAME_None;
+			UE_LOG(LogTemp, Log, TEXT("GSMenu: input sluppet til spillet (musepeker av, bare spill)"));
 		}
+		S.bCursorShown = PC->ShouldShowMouseCursor();
 		// The main menu covers everything: the combat HUD is not drawn under it.
 		if (AHUD* HUD = PC->MyHUD)
 		{
@@ -734,8 +750,9 @@ namespace GSMenuImpl
 		}
 	}
 
-	void OpenMainImpl(AGSPlayerController* PC, FState& S)
+	void OpenMainImpl(AGSPlayerController* PC, FState& S, const TCHAR* Why = TEXT("kall"))
 	{
+		if (!S.bMainOpen) UE_LOG(LogTemp, Log, TEXT("GSMenu: hovedmenyen åpnes (%s)"), Why);
 		S.bTeamOpen = false;
 		S.bMainOpen = true;
 		S.Page = S.bConnecting ? EPage::Connecting : EPage::Root;
@@ -744,8 +761,9 @@ namespace GSMenuImpl
 		SyncModal(PC, S);
 	}
 
-	void CloseMain(AGSPlayerController* PC, FState& S)
+	void CloseMain(AGSPlayerController* PC, FState& S, const TCHAR* Why = TEXT("kall"))
 	{
+		if (S.bMainOpen) UE_LOG(LogTemp, Log, TEXT("GSMenu: hovedmenyen lukkes (%s)"), Why);
 		SetFocus(PC, S, NAME_None);
 		S.bMainOpen = false;
 		S.bMainDismissed = true;
@@ -1138,7 +1156,7 @@ namespace GSMenuImpl
 			Button(U, N.Id, N.Label, LX, Y, BW, BH, bEnabled, N.bSelected);
 			Y += BH + 6.f;
 		}
-		Text(U.C, TEXT("Esc: tilbake"), LX, SY - 36.f, DimColor, 0.75f);
+		Text(U.C, TEXT("Esc: lukk menyen"), LX, SY - 36.f, DimColor, 0.75f);
 
 		if (S.Page == EPage::Root) return;
 
@@ -1404,7 +1422,7 @@ namespace GSMenuImpl
 		else if (Id == TEXT("Nav.Join")) SetPage(PC, S, EPage::Join);
 		else if (Id == TEXT("Nav.Settings")) SetPage(PC, S, EPage::Settings);
 		else if (Id == TEXT("Nav.Controls")) SetPage(PC, S, EPage::Controls);
-		else if (Id == TEXT("Nav.Solo") || Id == TEXT("Nav.Resume")) CloseMain(PC, S);
+		else if (Id == TEXT("Nav.Solo") || Id == TEXT("Nav.Resume")) CloseMain(PC, S, *Id);
 		else if (Id == TEXT("Nav.Leave")) S.Dialog = EDialog::Leave;
 		else if (Id == TEXT("Nav.Quit")) S.Dialog = EDialog::Quit;
 		else if (Id == TEXT("Host.Go"))
@@ -1451,17 +1469,16 @@ namespace GSMenuImpl
 		}
 	}
 
+	/** Esc: the way out that always works. Dialog, text field, page and the menu itself close in one press, and the
+	 *  controls go back to the game (only "waiting for a new key" takes Esc as "cancel", see OnKey). */
 	void Back(AGSPlayerController* PC, UWorld* World, FState& S)
 	{
-		if (S.Dialog != EDialog::None) { DialogNo(S); return; }
-		if (S.Focus != NAME_None) { SetFocus(PC, S, NAME_None); return; }
-		if (S.bMainOpen)
-		{
-			if (S.Page == EPage::Connecting) CancelConnect(PC, World, S);
-			else if (S.Page != EPage::Root) SetPage(PC, S, EPage::Root);
-			else if (InMatch(World, S)) CloseMain(PC, S);
-			return;   // alone at the root: nothing
-		}
+		UE_LOG(LogTemp, Log, TEXT("GSMenu: Esc lukker alt (meny %d, lagpanel %d, dialog %d)"), S.bMainOpen ? 1 : 0, S.bTeamOpen ? 1 : 0, int32(S.Dialog));
+		if (S.Dialog != EDialog::None) DialogNo(S);
+		S.Dialog = EDialog::None;
+		if (S.bMainOpen && S.Page == EPage::Connecting) CancelConnect(PC, World, S);
+		if (S.bMainOpen) CloseMain(PC, S, TEXT("Esc"));
+		SetFocus(PC, S, NAME_None);
 		if (S.bTeamOpen) CloseTeam(S);
 	}
 
@@ -1550,7 +1567,7 @@ namespace GSMenuImpl
 					if (Name == FName(TEXT("Host")) || Name == FName(TEXT("Join")))
 					{
 						PC->CloseMenu();
-						OpenMainImpl(PC, S);
+						OpenMainImpl(PC, S, TEXT("knapp i Kamp-menyen"));
 						return true;
 					}
 					if (Name == FName(TEXT("Quit")))
@@ -1561,6 +1578,17 @@ namespace GSMenuImpl
 						return true;
 					}
 				}
+				return false;
+			}
+			// Esc / F10 open our menu (it has everything the combat team's Esc menu has). Their menu still closes with
+			// Esc if it is open, and Esc still leaves a PC terminal first.
+			if (Ev == IE_Pressed && (Key == EKeys::Escape || Key == EKeys::F10) && !PC->bMenuOpen && !PC->IsOnTerminal())
+			{
+				OpenMainImpl(PC, S, Key == EKeys::Escape ? TEXT("Esc") : TEXT("F10"));
+				if (IsModalState(S)) return true;
+				// The cursor did not come on: give up at once, so the menu never holds the controls without it.
+				UE_LOG(LogTemp, Warning, TEXT("GSMenu: musepekeren kom ikke på, menyen lukkes igjen"));
+				CloseMain(PC, S, TEXT("ingen musepeker"));
 				return false;
 			}
 			// Team panel in the lobby
@@ -1591,7 +1619,11 @@ namespace GSMenuImpl
 		if (S.ListenRow != INDEX_NONE)
 		{
 			if (!bPress) return true;
-			if (Key == EKeys::Escape) S.ListenRow = INDEX_NONE;
+			if (Key == EKeys::Escape)
+			{
+				S.ListenRow = INDEX_NONE;
+				UE_LOG(LogTemp, Log, TEXT("GSMenu: Esc avbryter ny tast"));
+			}
 			else AssignKey(PC, S, S.ListenRow, Key);
 			return true;
 		}
@@ -1599,6 +1631,7 @@ namespace GSMenuImpl
 		if (Key == EKeys::LeftMouseButton)
 		{
 			const FVector2D Pos = MouseOnCanvas(S, Args.Viewport);
+			const FIntPoint VSize = Args.Viewport ? Args.Viewport->GetSizeXY() : FIntPoint::ZeroValue;
 			bool bFound = false;
 			for (int32 I = S.Hits.Num() - 1; I >= 0; --I)
 			{
@@ -1606,12 +1639,19 @@ namespace GSMenuImpl
 				if (Pos.X >= H.X0 && Pos.X <= H.X1 && Pos.Y >= H.Y0 && Pos.Y <= H.Y1)
 				{
 					const FHit Copy = H;   // the click may change the list
+					UE_LOG(LogTemp, Log, TEXT("GSMenu: klikk (%.0f, %.0f) på lerret %.0fx%.0f, vindu %dx%d -> %s (%d)"),
+						Pos.X, Pos.Y, S.CanvasSize.X, S.CanvasSize.Y, VSize.X, VSize.Y, *Copy.Id.ToString(), Copy.Arg);
 					HandleClick(PC, World, S, Copy);
 					bFound = true;
 					break;
 				}
 			}
-			if (!bFound) SetFocus(PC, S, NAME_None);
+			if (!bFound)
+			{
+				UE_LOG(LogTemp, Log, TEXT("GSMenu: klikk (%.0f, %.0f) på lerret %.0fx%.0f, vindu %dx%d -> ingen knapp (%d knapper)"),
+					Pos.X, Pos.Y, S.CanvasSize.X, S.CanvasSize.Y, VSize.X, VSize.Y, S.Hits.Num());
+				SetFocus(PC, S, NAME_None);
+			}
 		}
 		else if (Key == EKeys::Escape)
 		{
@@ -1655,6 +1695,48 @@ namespace GSMenuImpl
 	{
 		const FState* S = FindState(WeakVC.Get());
 		return S && IsModalState(*S);   // mouse look and the wheel do not reach the game
+	}
+
+	/** Puts our key and axis hooks on the window, in front of any hook already there (that one still runs after ours).
+	 *  The editor's "Play in selected viewport" binds its own key hook before the game starts; checking only
+	 *  IsBound() left ours out, so no click or Esc ever reached the menu while it swallowed mouse look. */
+	void InstallHooks(UGameViewportClient* VC, FState& S)
+	{
+		const TWeakObjectPtr<UGameViewportClient> WeakVC(VC);
+		FOverrideInputKeyHandler& KeyHook = VC->OnOverrideInputKey();
+		if (!KeyHook.IsBound() || KeyHook.GetHandle() != S.KeyHook)
+		{
+			const bool bChained = KeyHook.IsBound();
+			const FOverrideInputKeyHandler Old = KeyHook;
+			KeyHook.BindLambda([WeakVC, Old](FInputKeyEventArgs& Args) -> bool
+			{
+				// If someone wraps ours and we wrap theirs again, ours still runs only once per key.
+				static int32 Depth = 0;
+				const bool bOurs = Depth == 0;
+				TGuardValue<int32> Guard(Depth, Depth + 1);
+				if (bOurs && OnKey(Args, WeakVC)) return true;
+				return Old.IsBound() && Old.Execute(Args);
+			});
+			S.KeyHook = KeyHook.GetHandle();
+			UE_LOG(LogTemp, Log, TEXT("GSMenu: tastekrok koblet til vinduet%s"), bChained ? TEXT(" (foran en krok som var der fra før, f.eks. editorens)") : TEXT(""));
+		}
+		FOverrideInputAxisHandler& AxisHook = VC->OnOverrideInputAxis();
+		if (!AxisHook.IsBound() || AxisHook.GetHandle() != S.AxisHook)
+		{
+			const bool bChained = AxisHook.IsBound();
+			const FOverrideInputAxisHandler Old = AxisHook;
+			AxisHook.BindLambda([WeakVC, Old](FInputKeyEventArgs& Args, float& Delta, float& DeltaTime, int32& NumSamples) -> bool
+			{
+				static int32 Depth = 0;
+				const bool bOurs = Depth == 0;
+				TGuardValue<int32> Guard(Depth, Depth + 1);
+				if (bOurs && OnAxis(Args, Delta, DeltaTime, NumSamples, WeakVC)) return true;
+				return Old.IsBound() && Old.Execute(Args, Delta, DeltaTime, NumSamples);
+			});
+			S.AxisHook = AxisHook.GetHandle();
+			UE_LOG(LogTemp, Log, TEXT("GSMenu: musekrok koblet til vinduet%s"), bChained ? TEXT(" (foran en krok som var der fra før)") : TEXT(""));
+		}
+		S.bHookLive = KeyHook.IsBound() && KeyHook.GetHandle() == S.KeyHook;
 	}
 
 	// ------------------------------------------------------------------ network failures
@@ -1753,14 +1835,7 @@ namespace GSMenuImpl
 		FState& S = *SP;
 
 		// Hooks per window: both are called before the player controller sees the input.
-		if (!VC->OnOverrideInputKey().IsBound())
-		{
-			VC->OnOverrideInputKey().BindStatic(&OnKey, TWeakObjectPtr<UGameViewportClient>(VC));
-		}
-		if (!VC->OnOverrideInputAxis().IsBound())
-		{
-			VC->OnOverrideInputAxis().BindStatic(&OnAxis, TWeakObjectPtr<UGameViewportClient>(VC));
-		}
+		InstallHooks(VC, S);
 
 		if (S.World.Get() != World) S.ResetWorld(World);
 		S.CanvasSize = FVector2D(Canvas->SizeX, Canvas->SizeY);
@@ -1831,9 +1906,19 @@ namespace GSMenuImpl
 		// 5. What opens by itself
 		const AGSGameState* GS = World->GetGameState<AGSGameState>();
 		const AGSPlayerState* PS = PC->GetPlayerState<AGSPlayerState>();
+		// The start menu opens by itself only in the real game. In the editor's Play you start playing at once, and
+		// Esc opens the menu (you test the game more often than the menu, and Play must never start locked).
 		if (NetMode == NM_Standalone && !S.bMainDismissed && !S.bMainOpen)
 		{
-			OpenMainImpl(PC, S);
+			if (!World->IsPlayInEditor())
+			{
+				OpenMainImpl(PC, S, TEXT("start av spillet"));
+			}
+			else if (!S.bPIENoteLogged)
+			{
+				S.bPIENoteLogged = true;
+				UE_LOG(LogTemp, Log, TEXT("GSMenu: Play i editoren: hovedmenyen åpnes ikke av seg selv. Esc eller F10 åpner den."));
+			}
 		}
 		if (S.bMsgPending && S.Dialog == EDialog::None)
 		{
@@ -1855,6 +1940,15 @@ namespace GSMenuImpl
 			}
 		}
 		if (S.bMainOpen) S.bTeamOpen = false;
+		// Safety: without our key hook neither Esc nor a click can reach us, so nothing of ours may stay open.
+		if (!S.bHookLive && (S.bMainOpen || S.bTeamOpen || S.Dialog != EDialog::None))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GSMenu: fikk ikke tastekroken på vinduet, menyen lukkes så spillet kan styres"));
+			S.Dialog = EDialog::None;
+			S.bMsgPending = false;
+			S.bTeamOpen = false;
+			CloseMain(PC, S, TEXT("ingen tastekrok"));
+		}
 		SyncModal(PC, S);
 
 		// 6. Draw
@@ -1870,9 +1964,10 @@ namespace GSMenuImpl
 
 		if (S.bMainOpen)
 		{
-			if (!InMatch(World, S))
+			if (!InMatch(World, S) && !S.bMainDismissed)
 			{
-				// Campus turns slowly behind the menu (also while connecting from it).
+				// Campus turns slowly behind the start menu (also while connecting from it). Not when Esc opened the
+				// menu while practising: then the player's own view must stay where it was.
 				const float Dt = FMath::Min(World->GetDeltaSeconds(), 0.1f);
 				FRotator R = PC->GetControlRotation();
 				R.Yaw += 2.f * Dt;
@@ -1928,7 +2023,7 @@ namespace GSMenu
 		UWorld* World = PC ? PC->GetWorld() : nullptr;
 		FState* S = GSMenuImpl::StateFor(World);
 		if (!S || S->World.Get() != World) return;
-		GSMenuImpl::OpenMainImpl(PC, *S);
+		GSMenuImpl::OpenMainImpl(PC, *S, TEXT("GSMenu::OpenMain"));
 	}
 
 	void AskQuit(AGSPlayerController* PC)
