@@ -37,4 +37,7 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Avsløring av fiender skal være realistisk (radiomelding om sted), ikke veggsyn med markør og avstand. (plan Spillbarhet 3)
 - Tall som pakkes for nettet må ha finere trinn enn den minste verdien de skal bære. (runde 5a)
 - Det en kule trenger når den treffer (lag, våpen, startpunkt) lagres når den skytes. (runde 5a)
+- En melding som gjøres upålitelig må selv ha med det den ellers trenger fra pålitelige meldinger (f.eks. våpenet). (runde 12)
+- Før en plan sletter en funksjon, søk etter alle som bruker den. (runde 12)
+- **Alt som fanger input (menyer, paneler) må testes i editorens Play (PIE) før det leveres, og må alltid kunne lukkes med Esc. Andreas' første test av hovedmenyen satt fast: klikk, styring, tastebytte og utgang virket ikke. Kompilering beviser ingenting om input.** (Spillbarhet runde 2)
 

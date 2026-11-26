@@ -31,6 +31,7 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-26 (fra testing): «du må fikse kontroller osv, det greiene der fungerer ikke» – klikk i menyen, styre figuren, endre taster og komme ut av menyen virket ikke. Hastesak.
 - 2026-11-26: Svarte «ja» på om klokketårnet bak Hovedbygningen (finnes ikke i virkeligheten) og robotene
   som pynt skal bort. Tolket som: fjern begge, for realismen.
 - 2026-11-26: «legg til alle 50» – hele lista står i `.claude/lag/onskeliste.md`, fordelt på lagene.
