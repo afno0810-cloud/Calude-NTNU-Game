@@ -21,6 +21,9 @@ I lagmappen ligger lagets egne filer: `lag.md` (fokus), `retning.md`, `logg.md`,
 | `GSGameMode.*`, `GSGameState.*`, `GSPlayerState.*`, `GSItems.*`, `GSPickup.*`, `GSTerminal.*`, `Tools/ItemCatalog/` (og den genererte `GSItemCatalog.gen.inl`), nye `GSHelp.*`, `GSMenu.*` og `GSFlag.*` | Spillbarhet |
 | `GSTypes.h`, `Gloshaugen.Build.cs`, `IMPROVEMENTS.md` | Felles: bare små tillegg, aldri omskriving. Legg til nederst i en struct/enum, ikke endre andres linjer. |
 
+## Avgjørelser om delte ting
+- Bildefrekvens-taket eies av Kamp (`GSPlayerController`: `Bildefrekvens`, `t.MaxFPS`). Menyen viser og endrer det via Kamps funksjoner. (26. nov.)
+
 ## Regler for samarbeid
 - **Trenger du en endring i et annet lags fil?** Ikke gjør den selv. Skriv en bestilling i
   `.claude/lag/bestillinger.md` (hvem ber, hvilken fil, nøyaktig hva, hvorfor). Eierlagets planlegger tar
