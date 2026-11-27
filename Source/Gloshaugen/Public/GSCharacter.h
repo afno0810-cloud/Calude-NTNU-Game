@@ -500,6 +500,8 @@ protected:
 	float TPReload = 0.f; // others see the gun tilted and lowered while you reload
 	float LastRemoteShotTime = -100.f;
 	float StepDistance = 0.f;
+	uint8 StepCount = 0;        // sprinting: the gear rattles every other step
+	bool bSlideHeard = false;   // the slide sound has played for the slide going on now
 	FVector2D LookSwayInput = FVector2D::ZeroVector;
 	FRotator SwayRot = FRotator::ZeroRotator;
 	FVector KickPos = FVector::ZeroVector;

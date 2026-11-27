@@ -7,6 +7,8 @@
 #include "GSPlayerController.h"
 #include "GSPlayerState.h"
 #include "GSTypes.h"
+#include "GSAudio.h"
+#include "GSMapState.h"
 #include "AudioDevice.h"
 #include "AudioDeviceHandle.h"
 #include "CanvasItem.h"
@@ -1485,6 +1487,11 @@ namespace GSMenuImpl
 		}
 		Button(U, TEXT("Goto.Back"), TEXT("Der du sto sist"), IX, Y, BW, 38.f, GSExplore::HasPreviousSpot(PC));
 		Y += 38.f + 12.f;
+		// Interaktiv's test room for doors and glass (server only: it moves the pawn and sets up the room)
+		const AGSGameState* GS = PC->GetWorld() ? PC->GetWorld()->GetGameState<AGSGameState>() : nullptr;
+		const bool bTestRoom = GS && GS->GameKind == GSGameKind::Explore && PC->HasAuthority();
+		Button(U, TEXT("Goto.TestRoom"), TEXT("Testrom for dører og glass"), IX, Y, FMath::Min(2.f * BW + 12.f, MaxW), 38.f, bTestRoom);
+		Y += 38.f + 12.f;
 		Para(U, TEXT("Du settes ned på gulvet der, og fri flyging slås av."), IX, Y, MaxW, DimColor, 0.78f);
 	}
 
@@ -1886,6 +1893,9 @@ namespace GSMenuImpl
 		if (!bField) SetFocus(PC, S, NAME_None);
 
 		if (Hit.Id == NAME_None) return;
+		// A sober click on every button; starting a game or changing a setting (saved at once) confirms
+		const bool bConfirm = Id == TEXT("Host.Go") || Id == TEXT("Bots.Go") || Id == TEXT("Explore.Go") || Id.StartsWith(TEXT("Set."));
+		GSAudio::PlayUI(PC, bConfirm ? TEXT("UI_Confirm") : TEXT("UI_Click"));
 		if (bField) { SetFocus(PC, S, Hit.Id); return; }
 		if (Id == TEXT("Dlg.Yes")) { DialogYes(PC, World, S); return; }
 		if (Id == TEXT("Dlg.No")) { DialogNo(S); return; }
@@ -1940,6 +1950,16 @@ namespace GSMenuImpl
 		{
 			CloseMain(PC, S, *Id);
 			GSExplore::TeleportBack(PC);
+		}
+		else if (Id == TEXT("Goto.TestRoom"))
+		{
+			const AGSGameState* GS = World->GetGameState<AGSGameState>();
+			if (GS && GS->GameKind == GSGameKind::Explore && PC->HasAuthority())
+			{
+				UE_LOG(LogTemp, Log, TEXT("GSMenu: gå til testrommet"));
+				CloseMain(PC, S, *Id);
+				GSMapState::EnterTestRoom(PC);
+			}
 		}
 		else if (Id == TEXT("Light.Clock"))
 		{
@@ -1998,6 +2018,7 @@ namespace GSMenuImpl
 	void Back(AGSPlayerController* PC, UWorld* World, FState& S, const TCHAR* Why)
 	{
 		UE_LOG(LogTemp, Log, TEXT("GSMenu: %s lukker alt (meny %d, lagpanel %d, dialog %d)"), Why, S.bMainOpen ? 1 : 0, S.bTeamOpen ? 1 : 0, int32(S.Dialog));
+		if (S.bMainOpen || S.bTeamOpen || S.Dialog != EDialog::None) GSAudio::PlayUI(PC, TEXT("UI_Back"));
 		if (S.Dialog != EDialog::None) DialogNo(S);
 		S.Dialog = EDialog::None;
 		if (S.bMainOpen && S.Page == EPage::Connecting) CancelConnect(PC, World, S);

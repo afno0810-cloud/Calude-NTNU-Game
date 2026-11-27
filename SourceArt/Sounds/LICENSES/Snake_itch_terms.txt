@@ -1,0 +1,16 @@
+Snake's Authentic Gun Sounds – vilkår slik de står på nedlastingssiden
+=====================================================================
+
+Side:        https://f8studios.itch.io/snakes-authentic-gun-sounds
+Utgiver:     SnakeF8 (F8 Studios)
+Fil:         Snake's Authentic Gun Sounds And More.zip (11 MB, 71 WAV + 71 MP3)
+Lastet ned:  2026-11-27, gratis ("No thanks, just take me to the downloads"; ingen konto, ingen betaling, ingen skjema)
+Pris:        gratis / valgfri donasjon (minstepris 0)
+
+Sidens egen tekst om bruk (sitert ordrett, lest 2026-11-27):
+
+    "All sounds can be used commercially, and credit is not needed (I would appreciate it a lot though!)."
+
+Pakken har ingen egen lisensfil. Siden sier også at lydene kan brukes som de er eller redigeres, og at det ikke
+er brukt generativ KI ("No generative AI was used"). Vi krediterer likevel utgiveren i CREDITS.md, fordi han
+ber om det.

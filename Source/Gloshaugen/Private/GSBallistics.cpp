@@ -210,6 +210,7 @@ void UGSBallistics::FireReal(AGSCharacter* Shooter, const FVector& Start, const 
 	if (Left > 0.f)
 	{
 		FCollisionQueryParams Params(SCENE_QUERY_STAT(GSBulletAdvance), true, Shooter);
+		Params.bReturnPhysicalMaterial = true;   // impact sound by material
 		while (Left > KINDA_SMALL_NUMBER)
 		{
 			const float Dt = FMath::Min(Left, StepSeconds);
@@ -225,6 +226,7 @@ void UGSBallistics::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if (Bullets.Num() == 0) return;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSBullet), true);   // once per tick; only the ignored shooter changes
+	Params.bReturnPhysicalMaterial = true;   // impact sound by material
 	const float Dt = FMath::Min(DeltaTime, 0.1f);
 	if (Dt <= 0.f) return;
 	UWorld* World = GetWorld();
@@ -353,7 +355,7 @@ bool UGSBallistics::Step(FGSBullet& B, float Dt, const FCollisionQueryParams& Pa
 		else if (!Victim)
 		{
 			// Dust and a hole where the bullet lands. Blood on a body comes from the server (MulticastWoundFX).
-			AGSShortFX::SpawnImpact(World, Hit.ImpactPoint, Hit.ImpactNormal);
+			AGSShortFX::SpawnImpact(World, Hit.ImpactPoint, Hit.ImpactNormal, GSAudio::SurfaceAt(Hit));
 		}
 		B.Pos = End;   // the last stretch is known to Tick (a crack from a bullet that hit the wall beside you)
 		return false;

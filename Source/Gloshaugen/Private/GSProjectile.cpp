@@ -1,6 +1,7 @@
 #include "GSProjectile.h"
 #include "GSCharacter.h"
 #include "GSEffects.h"
+#include "GSAudio.h"
 #include "GSItems.h"
 #include "GSUtils.h"
 #include "Components/SphereComponent.h"
@@ -320,6 +321,7 @@ void AGSProjectile::OnRep_Exploded()
 	else if (IsKind(TEXT("flash")))
 	{
 		AGSShortFX::SpawnSprite(World, Loc, 300.f, 500.f, FLinearColor(1.f, 1.f, 1.f), 1.f, 0.15f, FVector::ZeroVector, true, 80.f);
+		GSAudio::PlayExplosion(World, Loc, Radius, true);   // sharp bang; long ringing for those inside the radius
 		AGSShortFX::SpawnSmokeCloud(World, Loc, 80.f, FLinearColor(0.7f, 0.7f, 0.7f), 3.f, 4);
 	}
 	else if (IsKind(TEXT("fire")))
@@ -334,5 +336,7 @@ void AGSProjectile::OnRep_Exploded()
 	else
 	{
 		AGSShortFX::SpawnExplosion(World, Loc, FMath::Max(Radius, 150.f));
+		// close bang / indoor boom / far rumble, the room's tail and debris coming down; a pressure wave close by
+		GSAudio::PlayExplosion(World, Loc, FMath::Max(Radius, 150.f));
 	}
 }

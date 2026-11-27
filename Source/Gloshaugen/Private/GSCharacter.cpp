@@ -939,7 +939,8 @@ void AGSCharacter::FireOnce()
 	BarrelHeat = FMath::Min(BarrelHeat + (S.Class == EGSWeaponClass::Shotgun || S.Class == EGSWeaponClass::Sniper ? 3.f : 1.f), 30.f);
 	if (bHuman)
 	{
-		GSAudio::Play2D(this, GSAudio::ShotName(S.Class, S.bSilent), S.bSilent ? 0.6f : 1.f, FMath::FRandRange(0.96f, 1.04f));
+		// close-up recording, the mechanism and the tail of the room you stand in (from the muzzle)
+		GSAudio::PlayOwnShot(this, S.Class, S.bSilent, MuzzleStart);
 		if (W->Ammo <= 1) GSAudio::Play2D(this, TEXT("Dry_Fire"), 0.5f);
 	}
 
@@ -970,17 +971,19 @@ void AGSCharacter::FireOnce()
 		CycleStart = Now;
 		bCycleBolt = bBolt;
 		const EGSWeaponClass Cls = S.Class;
-		const TCHAR* First = bBolt ? TEXT("Reload_Out") : TEXT("Pump_Back");
-		const TCHAR* Second = bBolt ? TEXT("Reload_In") : TEXT("Pump_Fwd");
+		// a recorded bolt cycle has both movements in one sound; the old synthetic one needs two
+		const bool bBoltRec = bBolt && GSAudio::Has(TEXT("Bolt_Sniper"));
+		const FString First = bBolt ? (bBoltRec ? TEXT("Bolt_Sniper") : TEXT("Reload_Out")) : TEXT("Pump_Back");
+		const FString Second = bBolt ? (bBoltRec ? TEXT("") : TEXT("Reload_In")) : TEXT("Pump_Fwd");
 		FTimerHandle H1, H2;
-		GetWorldTimerManager().SetTimer(H1, FTimerDelegate::CreateWeakLambda(this, [this, First, Cls]()
+		GetWorldTimerManager().SetTimer(H1, FTimerDelegate::CreateWeakLambda(this, [this, First, Cls, bBoltRec]()
 		{
-			GSAudio::Play2D(this, First, 0.7f, 1.05f);
+			GSAudio::Play2D(this, First, 0.7f, bBoltRec ? 1.f : 1.05f);
 			SpawnShellFX(Cls);
 		}), bBolt ? 0.35f : 0.18f, false);
 		GetWorldTimerManager().SetTimer(H2, FTimerDelegate::CreateWeakLambda(this, [this, Second]()
 		{
-			GSAudio::Play2D(this, Second, 0.7f, 0.9f);
+			if (!Second.IsEmpty()) GSAudio::Play2D(this, Second, 0.7f, 0.9f);
 		}), bBolt ? 0.7f : 0.38f, false);
 	}
 	else if (S.Class != EGSWeaponClass::Launcher && S.Class != EGSWeaponClass::Bow)
@@ -1165,6 +1168,7 @@ void AGSCharacter::DoMeleeHit(bool bQuick)
 	const FVector Start = Camera->GetComponentLocation();
 	const FVector End = Start + Aim * Reach;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSMelee), false, this);
+	Params.bReturnPhysicalMaterial = true;   // the impact sound follows the material
 	FHitResult Hit;
 	if (GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(22.f), Params))
 	{
@@ -1177,7 +1181,7 @@ void AGSCharacter::DoMeleeHit(bool bQuick)
 		}
 		else
 		{
-			AGSShortFX::SpawnImpact(GetWorld(), Hit.ImpactPoint, Hit.ImpactNormal);
+			AGSShortFX::SpawnImpact(GetWorld(), Hit.ImpactPoint, Hit.ImpactNormal, GSAudio::SurfaceAt(Hit));
 		}
 	}
 	MulticastMeleeFX();
@@ -1395,7 +1399,9 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 		bMagDropped = false;
 		bEmptyReload = W && W->Ammo <= 0;
 		// mag out, mag in, charging handle (timed to the procedural reload animation)
-		const TCHAR* Steps[] = { TEXT("Reload_Out"), TEXT("Reload_In"), TEXT("Slide") };
+		// mag out, mag in, bolt/charging handle: recorded per weapon type (rifle, pistol, sniper, shotgun shells)
+		const EGSWeaponClass RCls = W ? S.Class : EGSWeaponClass::Rifle;
+		const FString Steps[] = { GSAudio::MechName(RCls, TEXT("Mag_Out")), GSAudio::MechName(RCls, TEXT("Mag_In")), GSAudio::MechName(RCls, TEXT("Bolt")) };
 		const float At[] = { 0.25f, 0.6f, 0.8f };
 		for (int32 i = 0; i < 3; ++i)
 		{
@@ -2107,7 +2113,7 @@ void AGSCharacter::SpawnShellFX(EGSWeaponClass Class)
 	TWeakObjectPtr<AStaticMeshActor> WeakShell(Shell);
 	World->GetTimerManager().SetTimer(H, FTimerDelegate::CreateWeakLambda(this, [this, WeakShell]()
 	{
-		if (WeakShell.IsValid()) GSAudio::PlayAt(this, GSAudio::Variant(TEXT("Shell"), 3), WeakShell->GetActorLocation(), 0.4f, 12.f, FMath::FRandRange(0.9f, 1.2f));
+		if (WeakShell.IsValid()) GSAudio::PlayAt(this, TEXT("Shell"), WeakShell->GetActorLocation(), 0.4f, 12.f, FMath::FRandRange(0.9f, 1.2f));
 	}), FMath::FRandRange(0.45f, 0.7f), false);
 }
 
@@ -4345,7 +4351,12 @@ void AGSCharacter::UpdateLocalVisuals(float DeltaSeconds)
 	if (bCamWasFalling && !bFalling)
 	{
 		CamDipVel -= FMath::Clamp(CamFallSpeed * 0.25f, 40.f, 260.f);
-		GSAudio::PlayAt(this, TEXT("Land"), GetActorLocation() - FVector(0.f, 0.f, 90.f), FMath::Clamp(CamFallSpeed / 900.f, 0.3f, 1.f), 20.f);
+		{
+			// landing follows the floor (terrazzo, parquet, steel stairs ...)
+			const FVector Feet = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+			GSAudio::PlayAt(this, GSAudio::StepName(TEXT("Land"), GSAudio::SurfaceBelow(this, Feet)), Feet + FVector(0.f, 0.f, 15.f),
+				FMath::Clamp(CamFallSpeed / 900.f, 0.3f, 1.f), 20.f);
+		}
 		CamFallSpeed = 0.f;
 	}
 	bCamWasFalling = bFalling;
@@ -4459,6 +4470,13 @@ void AGSCharacter::Tick(float DeltaSeconds)
 	// Footsteps (every machine that renders): one step per stride, grass sounds soft, hard floors click.
 	if (GetNetMode() != NM_DedicatedServer && !bDead && !Move->IsFalling())
 	{
+		// A slide starts: the body scraping over the floor (bSliding reaches the others by replication).
+		if (bSliding && !bSlideHeard)
+		{
+			const FVector Feet = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+			GSAudio::PlayAt(this, GSAudio::StepName(TEXT("Slide"), GSAudio::SurfaceBelow(this, Feet)), Feet + FVector(0.f, 0.f, 15.f), 0.75f, 22.f);
+		}
+		bSlideHeard = bSliding;
 		const float Speed2D = GetVelocity().Size2D();
 		if (Speed2D > 120.f)
 		{
@@ -4468,20 +4486,13 @@ void AGSCharacter::Tick(float DeltaSeconds)
 			{
 				StepDistance = 0.f;
 				const FVector Feet = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-				FHitResult Hit;
-				FCollisionQueryParams Params(SCENE_QUERY_STAT(GSStep), false, this);
-				bool bGrass = false;
-				if (GetWorld()->LineTraceSingleByChannel(Hit, Feet + FVector(0.f, 0.f, 20.f), Feet - FVector(0.f, 0.f, 60.f), ECC_Visibility, Params))
-				{
-					if (const UPrimitiveComponent* C = Hit.GetComponent())
-					{
-						const UMaterialInterface* Mat = C->GetMaterial(0);
-						bGrass = Mat && Mat->GetName().Contains(TEXT("Grass"));
-					}
-				}
+				// the floor decides the step: terrazzo, parquet, linoleum, steel, concrete, carpet, grass, glass shards
+				const FName Surface = GSAudio::SurfaceBelow(this, Feet);
 				const float Vol = bIsCrouched ? 0.25f : bSprinting ? 1.f : 0.6f;
-				GSAudio::PlayAt(this, GSAudio::Variant(bGrass ? TEXT("Step_Grass") : TEXT("Step_Hard"), 4), Feet, Vol, bSprinting ? 30.f : 18.f,
-					FMath::FRandRange(0.92f, 1.08f));
+				const FVector At = Feet + FVector(0.f, 0.f, 15.f);   // just above the floor, so the floor never hides it
+				GSAudio::PlayAt(this, GSAudio::StepName(TEXT("Step"), Surface), At, Vol, bSprinting ? 30.f : 18.f, FMath::FRandRange(0.92f, 1.08f));
+				// sprinting: magazines and buckles rattle every other step, loud enough for those around you
+				if (bSprinting && (++StepCount % 2) == 0) GSAudio::PlayAt(this, TEXT("Gear_Rattle"), GetActorLocation(), 0.35f, 22.f);
 			}
 		}
 		else

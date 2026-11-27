@@ -1,0 +1,3427 @@
+{
+ "_doc": "Fasit for Tools/Audio/prep_sounds.py: hver linje blir SourceArt/Sounds/S_GS_<name>.wav. src = <bibliotekmappe>/<sti i zip>.",
+ "libraries": {
+  "Snake_AuthenticGunSounds": {
+   "library": "Snake's Authentic Gun Sounds",
+   "publisher": "SnakeF8 (F8 Studios)",
+   "license": "Fri bruk, også kommersielt, kreditering ikke påkrevd (sidens vilkår, se LICENSES/Snake_itch_terms.txt)",
+   "license_id": "Snake-itch-free",
+   "url": "https://f8studios.itch.io/snakes-authentic-gun-sounds",
+   "downloaded": "2026-11-27"
+  },
+  "Kenney_ImpactSounds": {
+   "library": "Impact Sounds 1.0",
+   "publisher": "Kenney (www.kenney.nl)",
+   "license": "CC0 1.0 (LICENSES/CC0-1.0.txt, LICENSES/Kenney_ImpactSounds_License.txt)",
+   "license_id": "CC0-1.0",
+   "url": "https://kenney.nl/assets/impact-sounds",
+   "downloaded": "2026-11-27"
+  },
+  "Kenney_InterfaceSounds": {
+   "library": "Interface Sounds",
+   "publisher": "Kenney (www.kenney.nl)",
+   "license": "CC0 1.0 (LICENSES/CC0-1.0.txt, LICENSES/Kenney_InterfaceSounds_License.txt)",
+   "license_id": "CC0-1.0",
+   "url": "https://kenney.nl/assets/interface-sounds",
+   "downloaded": "2026-11-27"
+  }
+ },
+ "sounds": [
+  {
+   "name": "Shot_Rifle_Close_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Mid_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.017,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Far_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.017,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Close_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.268,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Mid_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.268,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Far_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.268,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Close_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.43,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Mid_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.43,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Far_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.43,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Close_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Spray Slow Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.63,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Mid_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Spray Slow Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.63,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Rifle_Close_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.251,
+   "speed": 1.0,
+   "gain_db": 0,
+   "fade_cut": 0.03
+  },
+  {
+   "name": "Shot_Rifle_Mid_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.017,
+   "len": 0.251,
+   "speed": 1.0,
+   "gain_db": 0,
+   "fade_cut": 0.03
+  },
+  {
+   "name": "Shot_Rifle_Close_6",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.049,
+   "len": 0.215,
+   "speed": 1.0,
+   "gain_db": 0,
+   "fade_cut": 0.03
+  },
+  {
+   "name": "Shot_Rifle_Mid_6",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.049,
+   "len": 0.215,
+   "speed": 1.0,
+   "gain_db": 0,
+   "fade_cut": 0.03
+  },
+  {
+   "name": "Shot_Rifle_FP_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Single WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Rifle_FP_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.268,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Rifle_FP_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Burst WAV.wav",
+   "category": "Weapon",
+   "start": 0.43,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Rifle_FP_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Spray Slow WAV.wav",
+   "category": "Weapon",
+   "start": 0.63,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Rifle_FP_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.251,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo",
+   "fade_cut": 0.05
+  },
+  {
+   "name": "Shot_Rifle_FP_6",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Burst WAV.wav",
+   "category": "Weapon",
+   "start": 0.049,
+   "len": 0.215,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo",
+   "fade_cut": 0.05
+  },
+  {
+   "name": "Shot_SMG_Close_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Mid_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.017,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Far_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.017,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Close_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.268,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Mid_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.268,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Far_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.268,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Close_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.43,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Mid_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.43,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Far_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.43,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Close_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Spray Slow Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.63,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Mid_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Spray Slow Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.63,
+   "len": 0.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Close_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.251,
+   "speed": 1.1,
+   "gain_db": -1,
+   "fade_cut": 0.03,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_Mid_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.017,
+   "len": 0.251,
+   "speed": 1.1,
+   "gain_db": -1,
+   "fade_cut": 0.03,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_FP_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Single WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 1.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "channels": "stereo",
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_FP_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.268,
+   "len": 1.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "channels": "stereo",
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_FP_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Burst WAV.wav",
+   "category": "Weapon",
+   "start": 0.43,
+   "len": 1.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "channels": "stereo",
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_FP_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Spray Slow WAV.wav",
+   "category": "Weapon",
+   "start": 0.63,
+   "len": 1.7,
+   "speed": 1.1,
+   "gain_db": -1,
+   "channels": "stereo",
+   "highpass": 120
+  },
+  {
+   "name": "Shot_SMG_FP_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.251,
+   "speed": 1.1,
+   "gain_db": -1,
+   "channels": "stereo",
+   "fade_cut": 0.05,
+   "highpass": 120
+  },
+  {
+   "name": "Shot_Pistol_Close_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Mid_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.017,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Far_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.017,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Close_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.268,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Mid_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.268,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Far_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.268,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Close_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.43,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Mid_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.43,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Far_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.43,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Close_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Spray Slow Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.63,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Mid_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Spray Slow Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.63,
+   "len": 0.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Close_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.251,
+   "speed": 1.17,
+   "gain_db": -1,
+   "fade_cut": 0.03,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_Mid_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.017,
+   "len": 0.251,
+   "speed": 1.17,
+   "gain_db": -1,
+   "fade_cut": 0.03,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_FP_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Single WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 1.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "channels": "stereo",
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_FP_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.268,
+   "len": 1.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "channels": "stereo",
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_FP_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Burst WAV.wav",
+   "category": "Weapon",
+   "start": 0.43,
+   "len": 1.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "channels": "stereo",
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_FP_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Spray Slow WAV.wav",
+   "category": "Weapon",
+   "start": 0.63,
+   "len": 1.7,
+   "speed": 1.17,
+   "gain_db": -1,
+   "channels": "stereo",
+   "highpass": 160
+  },
+  {
+   "name": "Shot_Pistol_FP_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/5.56/WAV/556 Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.251,
+   "speed": 1.17,
+   "gain_db": -1,
+   "channels": "stereo",
+   "fade_cut": 0.05,
+   "highpass": 160
+  },
+  {
+   "name": "Shot_LMG_Close_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.009,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Mid_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.009,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Far_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.009,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Close_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.193,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Mid_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.193,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Far_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.193,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Close_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.384,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Mid_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.384,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Far_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.384,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Close_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Spray Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.318,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Mid_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Spray Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.318,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_LMG_Close_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.009,
+   "len": 0.184,
+   "speed": 1.0,
+   "gain_db": 0,
+   "fade_cut": 0.03
+  },
+  {
+   "name": "Shot_LMG_Mid_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.009,
+   "len": 0.184,
+   "speed": 1.0,
+   "gain_db": 0,
+   "fade_cut": 0.03
+  },
+  {
+   "name": "Shot_LMG_Close_6",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.029,
+   "len": 0.186,
+   "speed": 1.0,
+   "gain_db": 0,
+   "fade_cut": 0.03
+  },
+  {
+   "name": "Shot_LMG_Mid_6",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.029,
+   "len": 0.186,
+   "speed": 1.0,
+   "gain_db": 0,
+   "fade_cut": 0.03
+  },
+  {
+   "name": "Shot_LMG_FP_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x39/WAV/762x39 Single WAV.wav",
+   "category": "Weapon",
+   "start": 0.009,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_LMG_FP_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x39/WAV/762x39 Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.193,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_LMG_FP_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x39/WAV/762x39 Burst WAV.wav",
+   "category": "Weapon",
+   "start": 0.384,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_LMG_FP_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x39/WAV/762x39 Spray WAV.wav",
+   "category": "Weapon",
+   "start": 0.318,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_LMG_FP_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x39/WAV/762x39 Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.009,
+   "len": 0.184,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo",
+   "fade_cut": 0.05
+  },
+  {
+   "name": "Shot_LMG_FP_6",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x39/WAV/762x39 Burst WAV.wav",
+   "category": "Weapon",
+   "start": 0.029,
+   "len": 0.186,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo",
+   "fade_cut": 0.05
+  },
+  {
+   "name": "Shot_Sniper_Close_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Mid_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.013,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Far_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.013,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Close_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.262,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Mid_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.262,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Far_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.262,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Close_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.512,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Mid_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.512,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Far_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.512,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Close_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Spray Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.388,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Mid_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Spray Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.388,
+   "len": 0.7,
+   "speed": 1.0,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Sniper_Close_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.249,
+   "speed": 1.0,
+   "gain_db": 0,
+   "fade_cut": 0.03
+  },
+  {
+   "name": "Shot_Sniper_Mid_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.013,
+   "len": 0.249,
+   "speed": 1.0,
+   "gain_db": 0,
+   "fade_cut": 0.03
+  },
+  {
+   "name": "Shot_Sniper_FP_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x54R/WAV/762x54r Single WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Sniper_FP_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x54R/WAV/762x54r Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.262,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Sniper_FP_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x54R/WAV/762x54r Burst WAV.wav",
+   "category": "Weapon",
+   "start": 0.512,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Sniper_FP_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x54R/WAV/762x54r Spray WAV.wav",
+   "category": "Weapon",
+   "start": 0.388,
+   "len": 1.7,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Sniper_FP_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x54R/WAV/762x54r Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.249,
+   "speed": 1.0,
+   "gain_db": 0,
+   "channels": "stereo",
+   "fade_cut": 0.05
+  },
+  {
+   "name": "Shot_Shotgun_Close_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_Mid_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.013,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_Far_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.013,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_Close_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.262,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_Mid_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.262,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_Far_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.262,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_Close_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.512,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_Mid_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.512,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_Far_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "far",
+   "peak_db": -4,
+   "max_len": 3.0,
+   "start": 0.512,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_Close_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Spray Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.388,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_Mid_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Spray Isolated WAV.wav",
+   "category": "Weapon",
+   "fx": "mid",
+   "peak_db": -3,
+   "start": 0.388,
+   "len": 0.7,
+   "speed": 0.8,
+   "gain_db": 0
+  },
+  {
+   "name": "Shot_Shotgun_FP_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x54R/WAV/762x54r Single WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 1.7,
+   "speed": 0.8,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Shotgun_FP_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x54R/WAV/762x54r Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.262,
+   "len": 1.7,
+   "speed": 0.8,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Shotgun_FP_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x54R/WAV/762x54r Burst WAV.wav",
+   "category": "Weapon",
+   "start": 0.512,
+   "len": 1.7,
+   "speed": 0.8,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Shotgun_FP_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/7.62x54R/WAV/762x54r Spray WAV.wav",
+   "category": "Weapon",
+   "start": 0.388,
+   "len": 1.7,
+   "speed": 0.8,
+   "gain_db": 0,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shot_Silenced_Close_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/.22LR/WAV/22LR Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.137,
+   "len": 0.7,
+   "speed": 0.9,
+   "gain_db": 0,
+   "lowpass": 3800,
+   "peak_db": -6
+  },
+  {
+   "name": "Shot_Silenced_Close_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/.22LR/WAV/22LR Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.209,
+   "len": 0.7,
+   "speed": 0.9,
+   "gain_db": 0,
+   "lowpass": 3800,
+   "peak_db": -6
+  },
+  {
+   "name": "Shot_Silenced_Close_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/.22LR/WAV/22LR Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.526,
+   "len": 0.7,
+   "speed": 0.9,
+   "gain_db": 0,
+   "lowpass": 3800,
+   "peak_db": -6
+  },
+  {
+   "name": "Shot_Silenced_Close_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/.22LR/WAV/22LR Double Tap Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.011,
+   "len": 0.198,
+   "speed": 0.9,
+   "gain_db": 0,
+   "fade_cut": 0.03,
+   "lowpass": 3800,
+   "peak_db": -6
+  },
+  {
+   "name": "Shot_Silenced_Close_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/.22LR/WAV/22LR Burst Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.269,
+   "speed": 0.9,
+   "gain_db": 0,
+   "fade_cut": 0.03,
+   "lowpass": 3800,
+   "peak_db": -6
+  },
+  {
+   "name": "Shot_Silenced_FP_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/.22LR/WAV/22LR Single WAV.wav",
+   "category": "Weapon",
+   "start": 0.137,
+   "len": 1.7,
+   "speed": 0.9,
+   "gain_db": 0,
+   "channels": "stereo",
+   "lowpass": 4200,
+   "peak_db": -5
+  },
+  {
+   "name": "Shot_Silenced_FP_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/.22LR/WAV/22LR Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.209,
+   "len": 1.7,
+   "speed": 0.9,
+   "gain_db": 0,
+   "channels": "stereo",
+   "lowpass": 4200,
+   "peak_db": -5
+  },
+  {
+   "name": "Shot_Silenced_FP_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/.22LR/WAV/22LR Burst WAV.wav",
+   "category": "Weapon",
+   "start": 0.526,
+   "len": 1.7,
+   "speed": 0.9,
+   "gain_db": 0,
+   "channels": "stereo",
+   "lowpass": 4200,
+   "peak_db": -5
+  },
+  {
+   "name": "Shot_Silenced_FP_4",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/.22LR/WAV/22LR Double Tap WAV.wav",
+   "category": "Weapon",
+   "start": 0.011,
+   "len": 0.198,
+   "speed": 0.9,
+   "gain_db": 0,
+   "channels": "stereo",
+   "fade_cut": 0.05,
+   "lowpass": 4200,
+   "peak_db": -5
+  },
+  {
+   "name": "Shot_Silenced_FP_5",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Full Sound/.22LR/WAV/22LR Burst WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.269,
+   "speed": 0.9,
+   "gain_db": 0,
+   "channels": "stereo",
+   "fade_cut": 0.05,
+   "lowpass": 4200,
+   "peak_db": -5
+  },
+  {
+   "name": "Shot_Rifle_Mech_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AR Bolt Release WAV.wav",
+   "category": "Mech",
+   "start": 0.025,
+   "len": 0.16,
+   "speed": 1.15
+  },
+  {
+   "name": "Shot_Rifle_Mech_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AR Bolt Release WAV.wav",
+   "category": "Mech",
+   "start": 0.025,
+   "len": 0.16,
+   "speed": 1.2189999999999999
+  },
+  {
+   "name": "Shot_LMG_Mech_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AK Rack WAV.wav",
+   "category": "Mech",
+   "start": 0.39,
+   "len": 0.16,
+   "speed": 1.05
+  },
+  {
+   "name": "Shot_LMG_Mech_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AK Rack WAV.wav",
+   "category": "Mech",
+   "start": 0.39,
+   "len": 0.16,
+   "speed": 1.1130000000000002
+  },
+  {
+   "name": "Shot_SMG_Mech_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Semi 22LR Rack WAV.wav",
+   "category": "Mech",
+   "start": 0.125,
+   "len": 0.12,
+   "speed": 1.1
+  },
+  {
+   "name": "Shot_SMG_Mech_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Semi 22LR Rack WAV.wav",
+   "category": "Mech",
+   "start": 0.125,
+   "len": 0.12,
+   "speed": 1.1660000000000001
+  },
+  {
+   "name": "Shot_Pistol_Mech_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Semi 22LR Rack WAV.wav",
+   "category": "Mech",
+   "start": 0.125,
+   "len": 0.12,
+   "speed": 1.2
+  },
+  {
+   "name": "Shot_Pistol_Mech_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Semi 22LR Rack WAV.wav",
+   "category": "Mech",
+   "start": 0.125,
+   "len": 0.12,
+   "speed": 1.272
+  },
+  {
+   "name": "Shot_Silenced_Mech_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Semi 22LR Rack WAV.wav",
+   "category": "Mech",
+   "start": 0.045,
+   "len": 0.2,
+   "speed": 1.0
+  },
+  {
+   "name": "Shot_Silenced_Mech_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Semi 22LR Rack WAV.wav",
+   "category": "Mech",
+   "start": 0.045,
+   "len": 0.2,
+   "speed": 1.06
+  },
+  {
+   "name": "Tail_Small_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.7,
+   "fx": "tail:small",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Small_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.009,
+   "len": 0.7,
+   "fx": "tail:small",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Small_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.7,
+   "fx": "tail:small",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Corridor_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.7,
+   "fx": "tail:corridor",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Corridor_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.009,
+   "len": 0.7,
+   "fx": "tail:corridor",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Corridor_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.7,
+   "fx": "tail:corridor",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Large_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.7,
+   "fx": "tail:large",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Large_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.009,
+   "len": 0.7,
+   "fx": "tail:large",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Large_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.7,
+   "fx": "tail:large",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Stair_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.7,
+   "fx": "tail:stair",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Stair_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.009,
+   "len": 0.7,
+   "fx": "tail:stair",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Stair_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.7,
+   "fx": "tail:stair",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Out_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/5.56/WAV/556 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.017,
+   "len": 0.7,
+   "fx": "tail:out",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Out_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x39/WAV/762x39 Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.009,
+   "len": 0.7,
+   "fx": "tail:out",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Tail_Out_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Isolated/7.62x54R/WAV/762x54r Single Isolated WAV.wav",
+   "category": "Weapon",
+   "start": 0.013,
+   "len": 0.7,
+   "fx": "tail:out",
+   "peak_db": -9,
+   "max_len": 4.0
+  },
+  {
+   "name": "Mag_Out_Rifle_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AR Reload Part 1 WAV.wav",
+   "category": "Mech",
+   "start": 0.15,
+   "len": 0.4,
+   "channels": "stereo"
+  },
+  {
+   "name": "Mag_Out_Rifle_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AK Reload Part 1 WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.45,
+   "channels": "stereo"
+  },
+  {
+   "name": "Mag_In_Rifle_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AR Reload Part 2 WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.75,
+   "channels": "stereo"
+  },
+  {
+   "name": "Mag_In_Rifle_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AK Reload Part 2 WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.5,
+   "channels": "stereo"
+  },
+  {
+   "name": "Bolt_Rifle_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AR Charging Handle WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.7,
+   "channels": "stereo"
+  },
+  {
+   "name": "Bolt_Rifle_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AK Rack WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.8,
+   "channels": "stereo"
+  },
+  {
+   "name": "Bolt_Rifle_3",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/AR Bolt Release WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.4,
+   "channels": "stereo"
+  },
+  {
+   "name": "Mag_Out_Pistol_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Semi 22LR Reload Part 1 WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.45,
+   "channels": "stereo"
+  },
+  {
+   "name": "Mag_Out_Pistol_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Angel Mag Reload Part 1 WAV.wav",
+   "category": "Mech",
+   "start": 0.05,
+   "len": 0.5,
+   "channels": "stereo"
+  },
+  {
+   "name": "Mag_In_Pistol_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Semi 22LR Reload Part 2 WAV.wav",
+   "category": "Mech",
+   "start": 0.08,
+   "len": 0.5,
+   "channels": "stereo"
+  },
+  {
+   "name": "Mag_In_Pistol_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Angel Mag Reload Part 2 WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.6,
+   "channels": "stereo"
+  },
+  {
+   "name": "Bolt_Pistol_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Semi 22LR Rack WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.65,
+   "channels": "stereo"
+  },
+  {
+   "name": "Mag_Out_Sniper_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/308 Magazine Part 1 WAV.wav",
+   "category": "Mech",
+   "start": 0.18,
+   "len": 0.32,
+   "channels": "stereo"
+  },
+  {
+   "name": "Mag_In_Sniper_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/308 Magazine Part 2 WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.7,
+   "channels": "stereo"
+  },
+  {
+   "name": "Bolt_Sniper_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/308 Bolt Cycle WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.88,
+   "channels": "stereo"
+  },
+  {
+   "name": "Bolt_Sniper_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Mosin Bolt Cycle WAV.wav",
+   "category": "Mech",
+   "start": 0.1,
+   "len": 0.9,
+   "channels": "stereo"
+  },
+  {
+   "name": "Pump_Back_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Pump Reload Part 1 WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.45,
+   "channels": "stereo"
+  },
+  {
+   "name": "Pump_Fwd_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Pump Reload Part 2 WAV.wav",
+   "category": "Mech",
+   "start": 0.05,
+   "len": 0.5,
+   "channels": "stereo"
+  },
+  {
+   "name": "Pump_Back_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Pump Reload Full Fast WAV.wav",
+   "category": "Mech",
+   "start": 0.0,
+   "len": 0.3,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shell_Load_1",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Pump Shell Load WAV.wav",
+   "category": "Mech",
+   "start": 0.04,
+   "len": 0.45,
+   "channels": "stereo"
+  },
+  {
+   "name": "Shell_Load_2",
+   "src": "Snake_AuthenticGunSounds/Snake's Authentic Gun Sounds/Reloads, Cycling & More/WAV/Pump Shell Load WAV.wav",
+   "category": "Mech",
+   "start": 0.41,
+   "len": 0.4,
+   "channels": "stereo"
+  },
+  {
+   "name": "Step_Concrete_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_000.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Concrete_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_001.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Concrete_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_002.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Concrete_4",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_003.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Concrete_5",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_004.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Wood_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_wood_000.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Wood_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_wood_001.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Wood_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_wood_002.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Wood_4",
+   "src": "Kenney_ImpactSounds/Audio/footstep_wood_003.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Wood_5",
+   "src": "Kenney_ImpactSounds/Audio/footstep_wood_004.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Carpet_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_000.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Carpet_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_001.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Carpet_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_002.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Carpet_4",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_003.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Carpet_5",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_004.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Grass_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_grass_000.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Grass_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_grass_001.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Grass_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_grass_002.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Grass_4",
+   "src": "Kenney_ImpactSounds/Audio/footstep_grass_003.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Grass_5",
+   "src": "Kenney_ImpactSounds/Audio/footstep_grass_004.ogg",
+   "category": "Step"
+  },
+  {
+   "name": "Step_Stone_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_000.ogg",
+   "category": "Step",
+   "speed": 1.12,
+   "highpass": 180
+  },
+  {
+   "name": "Step_Stone_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_001.ogg",
+   "category": "Step",
+   "speed": 1.12,
+   "highpass": 180
+  },
+  {
+   "name": "Step_Stone_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_002.ogg",
+   "category": "Step",
+   "speed": 1.12,
+   "highpass": 180
+  },
+  {
+   "name": "Step_Stone_4",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_003.ogg",
+   "category": "Step",
+   "speed": 1.12,
+   "highpass": 180
+  },
+  {
+   "name": "Step_Stone_5",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_004.ogg",
+   "category": "Step",
+   "speed": 1.12,
+   "highpass": 180
+  },
+  {
+   "name": "Step_Lino_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_000.ogg",
+   "category": "Step",
+   "speed": 1.08,
+   "highpass": 140
+  },
+  {
+   "name": "Step_Lino_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_001.ogg",
+   "category": "Step",
+   "speed": 1.08,
+   "highpass": 140
+  },
+  {
+   "name": "Step_Lino_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_002.ogg",
+   "category": "Step",
+   "speed": 1.08,
+   "highpass": 140
+  },
+  {
+   "name": "Step_Lino_4",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_003.ogg",
+   "category": "Step",
+   "speed": 1.08,
+   "highpass": 140
+  },
+  {
+   "name": "Step_Lino_5",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_004.ogg",
+   "category": "Step",
+   "speed": 1.08,
+   "highpass": 140
+  },
+  {
+   "name": "Step_Metal_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_000.ogg",
+   "category": "Step",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_000.ogg",
+     "gain_db": -9,
+     "speed": 0.75
+    }
+   ]
+  },
+  {
+   "name": "Step_Glass_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_002.ogg",
+   "category": "Step",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_000.ogg",
+     "gain_db": -8,
+     "delay": 0.01
+    }
+   ]
+  },
+  {
+   "name": "Step_Metal_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_001.ogg",
+   "category": "Step",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_001.ogg",
+     "gain_db": -9,
+     "speed": 0.75
+    }
+   ]
+  },
+  {
+   "name": "Step_Glass_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_003.ogg",
+   "category": "Step",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_001.ogg",
+     "gain_db": -8,
+     "delay": 0.01
+    }
+   ]
+  },
+  {
+   "name": "Step_Metal_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_002.ogg",
+   "category": "Step",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_002.ogg",
+     "gain_db": -9,
+     "speed": 0.75
+    }
+   ]
+  },
+  {
+   "name": "Step_Glass_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_004.ogg",
+   "category": "Step",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_002.ogg",
+     "gain_db": -8,
+     "delay": 0.01
+    }
+   ]
+  },
+  {
+   "name": "Step_Metal_4",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_003.ogg",
+   "category": "Step",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_003.ogg",
+     "gain_db": -9,
+     "speed": 0.75
+    }
+   ]
+  },
+  {
+   "name": "Step_Glass_4",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_000.ogg",
+   "category": "Step",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_003.ogg",
+     "gain_db": -8,
+     "delay": 0.01
+    }
+   ]
+  },
+  {
+   "name": "Step_Metal_5",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_004.ogg",
+   "category": "Step",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_004.ogg",
+     "gain_db": -9,
+     "speed": 0.75
+    }
+   ]
+  },
+  {
+   "name": "Step_Glass_5",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_001.ogg",
+   "category": "Step",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_004.ogg",
+     "gain_db": -8,
+     "delay": 0.01
+    }
+   ]
+  },
+  {
+   "name": "Land_Concrete_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_000.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_concrete_003.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_000.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Concrete_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_001.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_concrete_004.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_001.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Concrete_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_002.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_concrete_000.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_002.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Wood_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_wood_000.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_wood_003.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_000.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Wood_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_wood_001.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_wood_004.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_001.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Wood_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_wood_002.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_wood_000.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_002.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Carpet_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_000.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_carpet_003.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_000.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Carpet_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_001.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_carpet_004.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_001.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Carpet_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_002.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_carpet_000.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_002.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Grass_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_grass_000.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_grass_003.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_medium_000.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Grass_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_grass_001.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_grass_004.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_medium_001.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Grass_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_grass_002.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_grass_000.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_medium_002.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Stone_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_000.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_concrete_003.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_000.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Stone_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_001.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_concrete_004.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_001.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Stone_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_002.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_concrete_000.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_002.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Metal_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_000.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_concrete_003.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPlate_heavy_000.ogg",
+     "speed": 0.85,
+     "gain_db": -12
+    }
+   ]
+  },
+  {
+   "name": "Land_Metal_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_001.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_concrete_004.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPlate_heavy_001.ogg",
+     "speed": 0.85,
+     "gain_db": -12
+    }
+   ]
+  },
+  {
+   "name": "Land_Metal_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_concrete_002.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_concrete_000.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPlate_heavy_002.ogg",
+     "speed": 0.85,
+     "gain_db": -12
+    }
+   ]
+  },
+  {
+   "name": "Land_Lino_1",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_000.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_carpet_003.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_000.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Lino_2",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_001.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_carpet_004.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_001.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Land_Lino_3",
+   "src": "Kenney_ImpactSounds/Audio/footstep_carpet_002.ogg",
+   "category": "Step",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/footstep_carpet_000.ogg",
+     "speed": 0.75,
+     "delay": 0.035,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_002.ogg",
+     "speed": 0.85,
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Impact_Concrete_1",
+   "src": "Kenney_ImpactSounds/Audio/impactMining_000.ogg",
+   "category": "Impact",
+   "speed": 1.05
+  },
+  {
+   "name": "Impact_Concrete_2",
+   "src": "Kenney_ImpactSounds/Audio/impactMining_001.ogg",
+   "category": "Impact",
+   "speed": 1.05
+  },
+  {
+   "name": "Impact_Concrete_3",
+   "src": "Kenney_ImpactSounds/Audio/impactMining_002.ogg",
+   "category": "Impact",
+   "speed": 1.05
+  },
+  {
+   "name": "Impact_Concrete_4",
+   "src": "Kenney_ImpactSounds/Audio/impactMining_003.ogg",
+   "category": "Impact",
+   "speed": 1.05
+  },
+  {
+   "name": "Impact_Concrete_5",
+   "src": "Kenney_ImpactSounds/Audio/impactMining_004.ogg",
+   "category": "Impact",
+   "speed": 1.05
+  },
+  {
+   "name": "Impact_Plaster_1",
+   "src": "Kenney_ImpactSounds/Audio/impactGeneric_light_000.ogg",
+   "category": "Impact",
+   "speed": 1.05
+  },
+  {
+   "name": "Impact_Plaster_2",
+   "src": "Kenney_ImpactSounds/Audio/impactGeneric_light_001.ogg",
+   "category": "Impact",
+   "speed": 1.05
+  },
+  {
+   "name": "Impact_Plaster_3",
+   "src": "Kenney_ImpactSounds/Audio/impactGeneric_light_002.ogg",
+   "category": "Impact",
+   "speed": 1.05
+  },
+  {
+   "name": "Impact_Plaster_4",
+   "src": "Kenney_ImpactSounds/Audio/impactGeneric_light_003.ogg",
+   "category": "Impact",
+   "speed": 1.05
+  },
+  {
+   "name": "Impact_Plaster_5",
+   "src": "Kenney_ImpactSounds/Audio/impactGeneric_light_004.ogg",
+   "category": "Impact",
+   "speed": 1.05
+  },
+  {
+   "name": "Impact_Wood_1",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_medium_000.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Wood_2",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_medium_001.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Wood_3",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_medium_002.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Wood_4",
+   "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_000.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Wood_5",
+   "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_001.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Metal_1",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_medium_000.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Metal_2",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_medium_001.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Metal_3",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_medium_002.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Metal_4",
+   "src": "Kenney_ImpactSounds/Audio/impactPlate_medium_000.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Metal_5",
+   "src": "Kenney_ImpactSounds/Audio/impactPlate_medium_001.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Glass_1",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_000.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Glass_2",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_001.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Glass_3",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_002.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Glass_4",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_003.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Glass_5",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_004.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Dirt_1",
+   "src": "Kenney_ImpactSounds/Audio/impactSoft_medium_000.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Dirt_2",
+   "src": "Kenney_ImpactSounds/Audio/impactSoft_medium_001.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Dirt_3",
+   "src": "Kenney_ImpactSounds/Audio/impactSoft_medium_002.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Dirt_4",
+   "src": "Kenney_ImpactSounds/Audio/impactSoft_medium_003.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Impact_Dirt_5",
+   "src": "Kenney_ImpactSounds/Audio/impactSoft_medium_004.ogg",
+   "category": "Impact",
+   "speed": 1.0
+  },
+  {
+   "name": "Hit_Body_1",
+   "src": "Kenney_ImpactSounds/Audio/impactPunch_heavy_000.ogg",
+   "category": "Body",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_000.ogg",
+     "speed": 0.8,
+     "gain_db": -4
+    }
+   ]
+  },
+  {
+   "name": "Hit_Armor_1",
+   "src": "Kenney_ImpactSounds/Audio/impactPlate_light_000.ogg",
+   "category": "Body",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPunch_medium_000.ogg",
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Shell_1",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_light_000.ogg",
+   "category": "Mech",
+   "speed": 1.7,
+   "peak_db": -8
+  },
+  {
+   "name": "Hit_Body_2",
+   "src": "Kenney_ImpactSounds/Audio/impactPunch_heavy_001.ogg",
+   "category": "Body",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_001.ogg",
+     "speed": 0.8,
+     "gain_db": -4
+    }
+   ]
+  },
+  {
+   "name": "Hit_Armor_2",
+   "src": "Kenney_ImpactSounds/Audio/impactPlate_light_001.ogg",
+   "category": "Body",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPunch_medium_001.ogg",
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Shell_2",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_light_001.ogg",
+   "category": "Mech",
+   "speed": 1.7,
+   "peak_db": -8
+  },
+  {
+   "name": "Hit_Body_3",
+   "src": "Kenney_ImpactSounds/Audio/impactPunch_heavy_002.ogg",
+   "category": "Body",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_002.ogg",
+     "speed": 0.8,
+     "gain_db": -4
+    }
+   ]
+  },
+  {
+   "name": "Hit_Armor_3",
+   "src": "Kenney_ImpactSounds/Audio/impactPlate_light_002.ogg",
+   "category": "Body",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPunch_medium_002.ogg",
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Shell_3",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_light_002.ogg",
+   "category": "Mech",
+   "speed": 1.7,
+   "peak_db": -8
+  },
+  {
+   "name": "Hit_Body_4",
+   "src": "Kenney_ImpactSounds/Audio/impactPunch_heavy_003.ogg",
+   "category": "Body",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_003.ogg",
+     "speed": 0.8,
+     "gain_db": -4
+    }
+   ]
+  },
+  {
+   "name": "Hit_Armor_4",
+   "src": "Kenney_ImpactSounds/Audio/impactPlate_light_003.ogg",
+   "category": "Body",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPunch_medium_003.ogg",
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Shell_4",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_light_003.ogg",
+   "category": "Mech",
+   "speed": 1.7,
+   "peak_db": -8
+  },
+  {
+   "name": "Hit_Body_5",
+   "src": "Kenney_ImpactSounds/Audio/impactPunch_heavy_004.ogg",
+   "category": "Body",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_004.ogg",
+     "speed": 0.8,
+     "gain_db": -4
+    }
+   ]
+  },
+  {
+   "name": "Hit_Armor_5",
+   "src": "Kenney_ImpactSounds/Audio/impactPlate_light_004.ogg",
+   "category": "Body",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPunch_medium_004.ogg",
+     "gain_db": -6
+    }
+   ]
+  },
+  {
+   "name": "Shell_5",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_light_004.ogg",
+   "category": "Mech",
+   "speed": 1.7,
+   "peak_db": -8
+  },
+  {
+   "name": "Door_Kick_1",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_000.ogg",
+   "category": "World",
+   "speed": 0.75,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_000.ogg",
+     "speed": 0.7,
+     "gain_db": -3
+    }
+   ]
+  },
+  {
+   "name": "Door_Slam_1",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_002.ogg",
+   "category": "World",
+   "speed": 0.85,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_000.ogg",
+     "speed": 0.8,
+     "gain_db": -5,
+     "delay": 0.01
+    }
+   ]
+  },
+  {
+   "name": "Door_LockBreak_1",
+   "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_001.ogg",
+   "category": "World",
+   "speed": 0.9,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_001.ogg",
+     "speed": 0.8,
+     "gain_db": -2,
+     "delay": 0.02
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_000.ogg",
+     "gain_db": -10,
+     "delay": 0.05
+    }
+   ]
+  },
+  {
+   "name": "Glass_Shatter_1",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_000.ogg",
+   "category": "World",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_002.ogg",
+     "delay": 0.03,
+     "speed": 1.1,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_000.ogg",
+     "delay": 0.08,
+     "gain_db": -4
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_000.ogg",
+     "delay": 0.21,
+     "gain_db": -6
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_003.ogg",
+     "delay": 0.34,
+     "gain_db": -9,
+     "speed": 1.2
+    }
+   ]
+  },
+  {
+   "name": "Glass_Crack_1",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_002.ogg",
+   "category": "World",
+   "speed": 0.8,
+   "highpass": 300
+  },
+  {
+   "name": "Glass_Collapse_1",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_001.ogg",
+   "category": "World",
+   "speed": 0.75,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_003.ogg",
+     "delay": 0.12,
+     "speed": 0.85,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_001.ogg",
+     "delay": 0.3,
+     "gain_db": -5
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_002.ogg",
+     "delay": 0.45,
+     "gain_db": -8
+    }
+   ]
+  },
+  {
+   "name": "Glass_Tinkle_1",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_light_000.ogg",
+   "category": "World",
+   "gain_db": -2,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_001.ogg",
+     "delay": 0.11,
+     "speed": 1.15,
+     "gain_db": -5
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_002.ogg",
+     "delay": 0.27,
+     "speed": 1.3,
+     "gain_db": -9
+    }
+   ]
+  },
+  {
+   "name": "Lock_Pick_1",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_light_000.ogg",
+   "category": "World",
+   "speed": 2.2,
+   "peak_db": -12,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_002.ogg",
+     "delay": 0.09,
+     "speed": 2.5,
+     "gain_db": -3
+    }
+   ]
+  },
+  {
+   "name": "Keypad_Break_1",
+   "src": "Kenney_ImpactSounds/Audio/impactPlate_light_000.ogg",
+   "category": "World",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_000.ogg",
+     "delay": 0.02,
+     "gain_db": -4
+    }
+   ]
+  },
+  {
+   "name": "Debris_Fall_1",
+   "src": "Kenney_ImpactSounds/Audio/impactMining_000.ogg",
+   "category": "Blast",
+   "peak_db": -6,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_000.ogg",
+     "delay": 0.14,
+     "gain_db": -3
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMining_002.ogg",
+     "delay": 0.31,
+     "speed": 0.9,
+     "gain_db": -4
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_000.ogg",
+     "delay": 0.47,
+     "gain_db": -8
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMining_004.ogg",
+     "delay": 0.66,
+     "speed": 1.1,
+     "gain_db": -9
+    }
+   ]
+  },
+  {
+   "name": "Door_Kick_2",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_001.ogg",
+   "category": "World",
+   "speed": 0.75,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_001.ogg",
+     "speed": 0.7,
+     "gain_db": -3
+    }
+   ]
+  },
+  {
+   "name": "Door_Slam_2",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_003.ogg",
+   "category": "World",
+   "speed": 0.85,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_001.ogg",
+     "speed": 0.8,
+     "gain_db": -5,
+     "delay": 0.01
+    }
+   ]
+  },
+  {
+   "name": "Door_LockBreak_2",
+   "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_002.ogg",
+   "category": "World",
+   "speed": 0.9,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_002.ogg",
+     "speed": 0.8,
+     "gain_db": -2,
+     "delay": 0.02
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_001.ogg",
+     "gain_db": -10,
+     "delay": 0.05
+    }
+   ]
+  },
+  {
+   "name": "Glass_Shatter_2",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_001.ogg",
+   "category": "World",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_003.ogg",
+     "delay": 0.03,
+     "speed": 1.1,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_001.ogg",
+     "delay": 0.08,
+     "gain_db": -4
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_001.ogg",
+     "delay": 0.21,
+     "gain_db": -6
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_004.ogg",
+     "delay": 0.34,
+     "gain_db": -9,
+     "speed": 1.2
+    }
+   ]
+  },
+  {
+   "name": "Glass_Crack_2",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_003.ogg",
+   "category": "World",
+   "speed": 0.8,
+   "highpass": 300
+  },
+  {
+   "name": "Glass_Collapse_2",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_002.ogg",
+   "category": "World",
+   "speed": 0.75,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_004.ogg",
+     "delay": 0.12,
+     "speed": 0.85,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_002.ogg",
+     "delay": 0.3,
+     "gain_db": -5
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_003.ogg",
+     "delay": 0.45,
+     "gain_db": -8
+    }
+   ]
+  },
+  {
+   "name": "Glass_Tinkle_2",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_light_001.ogg",
+   "category": "World",
+   "gain_db": -2,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_002.ogg",
+     "delay": 0.11,
+     "speed": 1.15,
+     "gain_db": -5
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_003.ogg",
+     "delay": 0.27,
+     "speed": 1.3,
+     "gain_db": -9
+    }
+   ]
+  },
+  {
+   "name": "Lock_Pick_2",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_light_001.ogg",
+   "category": "World",
+   "speed": 2.2,
+   "peak_db": -12,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_003.ogg",
+     "delay": 0.09,
+     "speed": 2.5,
+     "gain_db": -3
+    }
+   ]
+  },
+  {
+   "name": "Keypad_Break_2",
+   "src": "Kenney_ImpactSounds/Audio/impactPlate_light_001.ogg",
+   "category": "World",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_001.ogg",
+     "delay": 0.02,
+     "gain_db": -4
+    }
+   ]
+  },
+  {
+   "name": "Debris_Fall_2",
+   "src": "Kenney_ImpactSounds/Audio/impactMining_001.ogg",
+   "category": "Blast",
+   "peak_db": -6,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_001.ogg",
+     "delay": 0.14,
+     "gain_db": -3
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMining_003.ogg",
+     "delay": 0.31,
+     "speed": 0.9,
+     "gain_db": -4
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_001.ogg",
+     "delay": 0.47,
+     "gain_db": -8
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMining_000.ogg",
+     "delay": 0.66,
+     "speed": 1.1,
+     "gain_db": -9
+    }
+   ]
+  },
+  {
+   "name": "Door_Kick_3",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_002.ogg",
+   "category": "World",
+   "speed": 0.75,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactSoft_heavy_002.ogg",
+     "speed": 0.7,
+     "gain_db": -3
+    }
+   ]
+  },
+  {
+   "name": "Door_Slam_3",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_004.ogg",
+   "category": "World",
+   "speed": 0.85,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_002.ogg",
+     "speed": 0.8,
+     "gain_db": -5,
+     "delay": 0.01
+    }
+   ]
+  },
+  {
+   "name": "Door_LockBreak_3",
+   "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_003.ogg",
+   "category": "World",
+   "speed": 0.9,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactWood_heavy_003.ogg",
+     "speed": 0.8,
+     "gain_db": -2,
+     "delay": 0.02
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_002.ogg",
+     "gain_db": -10,
+     "delay": 0.05
+    }
+   ]
+  },
+  {
+   "name": "Glass_Shatter_3",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_002.ogg",
+   "category": "World",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_004.ogg",
+     "delay": 0.03,
+     "speed": 1.1,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_002.ogg",
+     "delay": 0.08,
+     "gain_db": -4
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_002.ogg",
+     "delay": 0.21,
+     "gain_db": -6
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_000.ogg",
+     "delay": 0.34,
+     "gain_db": -9,
+     "speed": 1.2
+    }
+   ]
+  },
+  {
+   "name": "Glass_Crack_3",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_004.ogg",
+   "category": "World",
+   "speed": 0.8,
+   "highpass": 300
+  },
+  {
+   "name": "Glass_Collapse_3",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_003.ogg",
+   "category": "World",
+   "speed": 0.75,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_heavy_000.ogg",
+     "delay": 0.12,
+     "speed": 0.85,
+     "gain_db": -2
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_medium_003.ogg",
+     "delay": 0.3,
+     "gain_db": -5
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_004.ogg",
+     "delay": 0.45,
+     "gain_db": -8
+    }
+   ]
+  },
+  {
+   "name": "Glass_Tinkle_3",
+   "src": "Kenney_ImpactSounds/Audio/impactGlass_light_002.ogg",
+   "category": "World",
+   "gain_db": -2,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_003.ogg",
+     "delay": 0.11,
+     "speed": 1.15,
+     "gain_db": -5
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_004.ogg",
+     "delay": 0.27,
+     "speed": 1.3,
+     "gain_db": -9
+    }
+   ]
+  },
+  {
+   "name": "Lock_Pick_3",
+   "src": "Kenney_ImpactSounds/Audio/impactMetal_light_002.ogg",
+   "category": "World",
+   "speed": 2.2,
+   "peak_db": -12,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMetal_light_004.ogg",
+     "delay": 0.09,
+     "speed": 2.5,
+     "gain_db": -3
+    }
+   ]
+  },
+  {
+   "name": "Keypad_Break_3",
+   "src": "Kenney_ImpactSounds/Audio/impactPlate_light_002.ogg",
+   "category": "World",
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_002.ogg",
+     "delay": 0.02,
+     "gain_db": -4
+    }
+   ]
+  },
+  {
+   "name": "Debris_Fall_3",
+   "src": "Kenney_ImpactSounds/Audio/impactMining_002.ogg",
+   "category": "Blast",
+   "peak_db": -6,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactPlank_medium_002.ogg",
+     "delay": 0.14,
+     "gain_db": -3
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMining_004.ogg",
+     "delay": 0.31,
+     "speed": 0.9,
+     "gain_db": -4
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactGlass_light_002.ogg",
+     "delay": 0.47,
+     "gain_db": -8
+    },
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactMining_001.ogg",
+     "delay": 0.66,
+     "speed": 1.1,
+     "gain_db": -9
+    }
+   ]
+  },
+  {
+   "name": "UI_Click_1",
+   "src": "Kenney_InterfaceSounds/Audio/click_001.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Click_2",
+   "src": "Kenney_InterfaceSounds/Audio/click_002.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Click_3",
+   "src": "Kenney_InterfaceSounds/Audio/click_003.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Click_4",
+   "src": "Kenney_InterfaceSounds/Audio/click_004.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Click_5",
+   "src": "Kenney_InterfaceSounds/Audio/click_005.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Confirm_1",
+   "src": "Kenney_InterfaceSounds/Audio/confirmation_001.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Confirm_2",
+   "src": "Kenney_InterfaceSounds/Audio/confirmation_002.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Confirm_3",
+   "src": "Kenney_InterfaceSounds/Audio/confirmation_003.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Confirm_4",
+   "src": "Kenney_InterfaceSounds/Audio/confirmation_004.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Back_1",
+   "src": "Kenney_InterfaceSounds/Audio/back_001.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Back_2",
+   "src": "Kenney_InterfaceSounds/Audio/back_002.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Back_3",
+   "src": "Kenney_InterfaceSounds/Audio/back_003.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "UI_Back_4",
+   "src": "Kenney_InterfaceSounds/Audio/back_004.ogg",
+   "category": "UI",
+   "channels": "stereo"
+  },
+  {
+   "name": "Keypad_Beep_1",
+   "src": "Kenney_InterfaceSounds/Audio/select_001.ogg",
+   "category": "UI",
+   "peak_db": -8
+  },
+  {
+   "name": "Keypad_Beep_2",
+   "src": "Kenney_InterfaceSounds/Audio/select_002.ogg",
+   "category": "UI",
+   "peak_db": -8
+  },
+  {
+   "name": "Keypad_Beep_3",
+   "src": "Kenney_InterfaceSounds/Audio/select_003.ogg",
+   "category": "UI",
+   "peak_db": -8
+  },
+  {
+   "name": "Keypad_Error_1",
+   "src": "Kenney_InterfaceSounds/Audio/error_001.ogg",
+   "category": "UI",
+   "peak_db": -8
+  },
+  {
+   "name": "Keypad_Error_2",
+   "src": "Kenney_InterfaceSounds/Audio/error_002.ogg",
+   "category": "UI",
+   "peak_db": -8
+  }
+ ]
+}

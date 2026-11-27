@@ -1008,7 +1008,7 @@ void AGSHUD::HandleFlagEvent(uint8 Event, uint8 FlagTeam, const FVector& Where, 
 		return;
 	}
 	const bool bNoTeam = MyTeam == GSTeam::None;
-	GSAudio::Play2D(this, bNoTeam ? TEXT("Flag_Info") : Sound, 0.55f, bNoTeam ? 1.f : Pitch);
+	GSAudio::PlayRadio(this, bNoTeam ? TEXT("Flag_Info") : Sound, 0.55f, bNoTeam ? 1.f : Pitch);   // never ducked, squelch at the end
 	if (bNoTeam) return;   // no side yet: the neutral line in the status panel is enough
 	RadioText = FString(TEXT("Radio:  ")) + Line;
 	RadioTime = GetWorld()->GetTimeSeconds();

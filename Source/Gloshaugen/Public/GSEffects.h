@@ -17,7 +17,8 @@ public:
 	/** A glowing streak that lives until it is destroyed. GSBallistics owns one per tracer bullet and moves it every frame. */
 	static AGSShortFX* SpawnBulletStreak(UWorld* World);
 	void SetStreak(const FVector& Tail, const FVector& Head);
-	static void SpawnImpact(UWorld* World, const FVector& Location, const FVector& Normal);
+	/** Surface: what was hit (GSAudio::SurfaceAt) for the sound; None = concrete. */
+	static void SpawnImpact(UWorld* World, const FVector& Location, const FVector& Normal, FName Surface = NAME_None);
 	static void SpawnMuzzleFlash(UWorld* World, const FVector& Location, const FVector& Dir, bool bSilent);
 	static void SpawnExplosion(UWorld* World, const FVector& Location, float Radius);
 	/** A plain colored sphere (fallback when the FX materials are missing). */

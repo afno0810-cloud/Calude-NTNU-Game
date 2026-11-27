@@ -167,10 +167,16 @@ void AGSShortFX::SetStreak(const FVector& Tail, const FVector& Head)
 	if (IsHidden()) SetActorHiddenInGame(false);
 }
 
-void AGSShortFX::SpawnImpact(UWorld* World, const FVector& Location, const FVector& Normal)
+void AGSShortFX::SpawnImpact(UWorld* World, const FVector& Location, const FVector& Normal, FName Surface)
 {
 	if (!World || World->GetNetMode() == NM_DedicatedServer) return;
-	GSAudio::PlayAt(World, GSAudio::Variant(TEXT("Impact"), 3), Location, 0.7f, 25.f, FMath::FRandRange(0.85f, 1.15f));
+	// the bullet sounds like what it hit: concrete chips, plaster, wood, metal, glass, dirt
+	FString Mat = Surface.IsNone() ? FString(TEXT("Concrete")) : Surface.ToString();
+	if (Mat == TEXT("Stone")) Mat = TEXT("Concrete");
+	else if (Mat == TEXT("Lino")) Mat = TEXT("Plaster");
+	else if (Mat == TEXT("Carpet") || Mat == TEXT("Grass")) Mat = TEXT("Dirt");
+	const FString Snd = FString::Printf(TEXT("Impact_%s"), *Mat);
+	GSAudio::PlayAt(World, GSAudio::Has(Snd) ? Snd : GSAudio::Variant(TEXT("Impact"), 3), Location + Normal * 5.f, 0.7f, 25.f, FMath::FRandRange(0.92f, 1.08f));
 	FActorSpawnParameters P;
 	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	// Bullet hole: a thin dark chip flush with the surface, turned randomly, stays for a while.

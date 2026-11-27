@@ -330,7 +330,134 @@ def city_night():
     loop_save("Amb_Night", x, 0.3)
 
 
+def round11_sounds():
+    """Sound round 1 (plan-11):  python Tools/Audio/gen_sounds.py lyd1  (writes only these; never the real ones).
+
+    What the downloaded packs (Snake's gun sounds, Kenney impacts/interface) do not have: explosions, gear rattle
+    while sprinting, body sliding on a floor, radio squelch, and more variants of the passing-bullet crack/whiz.
+    Uses scipy filters (fast) instead of the per-sample loops above.
+    """
+    from scipy import signal as sg
+
+    def lp(x, hz, order=4):
+        return sg.sosfilt(sg.butter(order, hz, "low", fs=SR, output="sos"), x)
+
+    def hp(x, hz, order=2):
+        return sg.sosfilt(sg.butter(order, hz, "high", fs=SR, output="sos"), x)
+
+    def bp(x, lo, hi):
+        return sg.sosfilt(sg.butter(2, [lo, hi], "band", fs=SR, output="sos"), x)
+
+    def tail(x, sec, rt60, damp, mix, pre=0.0):
+        n = int(sec * SR)
+        tt = np.arange(n) / SR
+        ir = lp(rng.standard_normal(n) * 10 ** (-3 * tt / rt60), damp, 2)
+        ir = np.concatenate([np.zeros(int(pre * SR)), ir])
+        ir /= np.abs(ir).sum() / 10
+        wet = sg.fftconvolve(x, ir)
+        out = np.zeros(len(wet))
+        out[: len(x)] += x
+        return out * (1 - mix) + wet * mix
+
+    # --- Explosions: a grenade / rocket / mine is a supersonic pressure spike (a hard N-wave with a very fast rise),
+    # a heavy low "body" from the expanding gas (20-80 Hz), the crackle of fragments and debris, and the room/landscape.
+    def blast(length, body_hz, crack, low_cut, rt60, damp, mix, pre, seed):
+        r = np.random.default_rng(seed)
+        n = int(length * SR)
+        tt = np.arange(n) / SR
+        x = np.zeros(n)
+        k = int(0.003 * SR)
+        x[:k] = np.linspace(1.0, -0.7, k) * crack                            # shock front
+        body = np.sin(2 * np.pi * body_hz * tt * (1 + 1.5 * np.exp(-tt * 12))) * np.exp(-tt / 0.35)
+        rumble = lp(r.standard_normal(n), 180) * np.exp(-tt / 0.9) * 3.0
+        roar = lp(r.standard_normal(n), 1400) * np.exp(-tt / 0.12) * 1.4
+        frag = np.zeros(n)                                                   # fragments and stones hitting things
+        for _ in range(60):
+            i = int(r.uniform(0.02, min(length - 0.1, 1.4)) * SR)
+            m = int(0.02 * SR)
+            frag[i:i + m] += hp(r.standard_normal(m), 2500) * np.exp(-np.arange(m) / SR / 0.004) * r.uniform(0.05, 0.4)
+        x += body * 1.6 + rumble + roar + frag
+        x = np.tanh(x * 1.8)                                                 # the microphone/ear overloads
+        x = hp(x, low_cut)
+        return tail(x, rt60 * 1.4, rt60, damp, mix, pre)
+
+    for v in range(3):
+        save(f"Explosion_Close_{v + 1}", blast(3.0, 42 + 6 * v, 1.0, 18, 1.6, 2200, 0.35, 0.06, 100 + v), 0.95)
+        save(f"Explosion_Indoor_{v + 1}", blast(3.2, 48 + 5 * v, 0.9, 25, 1.9, 3500, 0.55, 0.015, 200 + v), 0.95)
+        far = blast(4.5, 36 + 4 * v, 0.4, 20, 3.0, 600, 0.7, 0.12, 300 + v)
+        save(f"Explosion_Far_{v + 1}", lp(far, 500), 0.9)
+
+    # --- Gear rattle while sprinting: fabric swish, magazines and buckles knocking in the pouches.
+    for v in range(4):
+        r = np.random.default_rng(400 + v)
+        length = 0.45
+        n = int(length * SR)
+        tt = np.arange(n) / SR
+        swish = bp(r.standard_normal(n), 600, 3500) * np.sin(np.pi * tt / length) ** 2 * 0.35
+        x = swish
+        for _ in range(r.integers(3, 6)):
+            i = int(r.uniform(0.0, length - 0.08) * SR)
+            m = int(0.06 * SR)
+            ct = np.arange(m) / SR
+            f = r.uniform(1800, 4200)
+            clink = (np.sin(2 * np.pi * f * ct) * 0.4 + hp(r.standard_normal(m), 2000) * 0.6) * np.exp(-ct / 0.008)
+            x[i:i + m] += clink * r.uniform(0.3, 0.8)
+            x[i:i + m] += lp(r.standard_normal(m), 400) * np.exp(-ct / 0.015) * 0.5   # dull knock of a full magazine
+        save(f"Gear_Rattle_{v + 1}", x, 0.5)
+
+    # --- Sliding on the floor: hard floors scrape (bright band noise with grit), grass/carpet hiss softly.
+    for v in range(2):
+        r = np.random.default_rng(500 + v)
+        length = 0.9
+        n = int(length * SR)
+        tt = np.arange(n) / SR
+        e = np.minimum(1, tt / 0.04) * np.exp(-np.maximum(0, tt - 0.15) / 0.35)
+        grit = np.zeros(n)
+        idx = r.integers(0, n - 200, 220)
+        grit[idx] = r.uniform(-1, 1, len(idx))
+        hard = bp(r.standard_normal(n), 900, 5000) * 0.5 + hp(grit, 3000) * 2.0 + lp(r.standard_normal(n), 250) * 0.4
+        save(f"Slide_Hard_{v + 1}", hard * e, 0.55)
+        soft = bp(r.standard_normal(n), 300, 2200) * 0.6 + lp(r.standard_normal(n), 200) * 0.3
+        save(f"Slide_Soft_{v + 1}", soft * e, 0.45)
+
+    # --- Radio squelch: the click and hiss of a hand radio opening/closing.
+    for v in range(2):
+        r = np.random.default_rng(600 + v)
+        length = 0.16
+        n = int(length * SR)
+        tt = np.arange(n) / SR
+        x = bp(r.standard_normal(n), 900, 3200) * np.exp(-tt / 0.05) * 0.6
+        c = int(0.004 * SR)
+        x[:c] += np.linspace(1, 0, c) * (1 if v == 0 else -1)
+        save(f"Radio_Squelch_{v + 1}", np.tanh(x * 2), 0.5)
+
+    # --- Passing bullets: three cracks (different N-wave lengths = different calibres/miss distances) and whizzes.
+    for v in range(3):
+        r = np.random.default_rng(700 + v)
+        length = 0.4
+        n = int(length * SR)
+        tt = np.arange(n) / SR
+        x = np.zeros(n)
+        k = int((0.0007 + 0.0004 * v) * SR)
+        x[:k] = np.linspace(1.0, -1.0, k)
+        x += hp(r.standard_normal(n), 3000) * np.exp(-tt / 0.003) * 0.4
+        x = tail(x, 0.5, 0.35 + 0.15 * v, 4000, 0.3, 0.008)
+        save(f"Bullet_Crack_{v + 1}", x, 0.9)
+        length = 0.3 + 0.05 * v
+        n = int(length * SR)
+        tt = np.arange(n) / SR
+        band = bp(r.standard_normal(n), 500, 3200)
+        band /= np.abs(band).max() + 1e-9
+        freq = np.linspace(1500 - 100 * v, 650 + 50 * v, n)
+        tone = np.sin(2 * np.pi * np.cumsum(freq) / SR)
+        e = np.sin(np.pi * np.clip(tt / length, 0, 1)) ** 3
+        save(f"Bullet_Whiz_{v + 1}", (band * 0.7 + tone * 0.3) * e, 0.6)
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "lyd1":
+        round11_sounds()
+        raise SystemExit
     if len(sys.argv) > 1 and sys.argv[1] == "hurt":
         hurt_sounds()
         raise SystemExit
