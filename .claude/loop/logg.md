@@ -2,6 +2,7 @@
 
 Én linje per runde, nyeste øverst: dato · runde · mål · resultat · rettinger · commit.
 
+- 2026-11-27 · lydrunde 1 · ekte våpenlyd (Snake, Kenney), varianter, okklusjon, romklang, avstandslag, forsinkelse, eksplosjoner · godkjent (F1–F3 til neste runde) · 0 · 01c0051
 - 2026-11-27 · runde 14b · hånd-IK på våpen, fot-IK, rettinger fra 14a, K1 (IsLocalHuman for bots), skarpere bilde (100 % oppløsning) · godkjent (4 små funn til neste runde) · 0 · fe41bb8
 - 2026-11-27 · runde 14a · ekte førsteperson: C++-kroppsanimasjon, egen kropp med bein/føtter, hel skygge · godkjent (5 funn til 14b) · 0 · c616f84
 - 2026-11-27 · runde 13 · blødning, blodspor, sår, frakobling, Esc-meny · godkjent · 0 · b1eb305

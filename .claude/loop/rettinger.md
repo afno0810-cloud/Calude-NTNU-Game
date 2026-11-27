@@ -21,3 +21,8 @@ Alle seks RETTET av bygger (Kamp) 26. nov., IMPROVEMENTS 376–385. G1 (punkt 6)
 11. Én regel for grafikknivå: `ApplyGraphicsLevel` («Grafikk N» og Esc-menyen) skal beholde spillerens egen oppløsning slik hovedmenyen gjør. Skriv IMPROVEMENTS 597 om så den stemmer.
 12. Utvid `gs.FP.ReachTest` med sikte opp/ned (60–80°) og sørg for at høyre hånd ikke slipper grepet.
 13. Utvid den stående beinboksen (knærne 8 cm utenfor midt i et steg).
+
+## Fra kontroll av lydrunde 1 (.claude/loop/kontroll/lyd-01.md)
+14. F1: `GSAudio.cpp:72` – én felles samtidighetsgruppe (24, StopOldest) for alle våpenlyder kutter egne skudd og romhaler. Bruk StopFarthestThenOldest, og egne grupper for halene og egne skudd.
+15. F2: flaggradioen deler gruppe med Hit_Marker/Ear_Ring/Heartbeat/UI_ – gi radio egen gruppe.
+16. F3: selvtesten skal bruke motorens tall (`GetNumActiveSounds`) og prøve 4 samtidige skyttere.
