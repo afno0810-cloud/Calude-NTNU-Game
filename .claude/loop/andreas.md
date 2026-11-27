@@ -33,6 +33,12 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-27: «Etter du er ferdig med det ønsker jeg at du skal optimalisere alt i spillet, gjøre det mer komplett
+  og gjøre så man faktisk kan spille det med venner.» Etter kart + meny/bots: ytelse overalt, alt komplett og
+  ferdig, og ekte flerspiller med venner over internett (ikke bare samme nett).
+- 2026-11-27: «Lag bedre menysystem etter også. Det skal ha spill mot bots, spill online og test mappet-funksjon.»
+  Hovedmenyen skal ha tre tydelige valg: Spill mot bots (CTF med datastyrte lag), Spill online (vert/bli med),
+  og Test kartet (gå fritt rundt i Helgasetr uten kamp).
 - 2026-11-27: «ødelegge ting», «plukke opp ting» – løse ting i bygget (stoler, puffer, flasker, kaffekopper, bøker,
   brannslukker osv.) kan plukkes opp, bæres, kastes og ødelegges; pulter/stoler kan bæres foran dører.
 - 2026-11-27: «vinduer kan knuse», «granater kan få deler av mappet til å sprenge», «man kan skyte hull i vegger» –
