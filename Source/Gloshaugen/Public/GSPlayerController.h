@@ -25,6 +25,8 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void SetPawn(APawn* InPawn) override;
 	virtual void AcknowledgePossession(APawn* P) override;
+	/** Server, when the player's connection is gone: in a match the body dies where it stands instead of vanishing. */
+	virtual void PawnLeavingGame() override;
 
 	// --- Death cam and killer card ---
 	/** Server -> the player who died: look at your body, turn toward the killer, show who killed you and how. */
@@ -78,6 +80,10 @@ public:
 	/** Address used by the menu's "Bli med" button (the last one you joined). */
 	FString LastJoinAddress = TEXT("127.0.0.1");
 	int32 GetGraphicsLevel() const;
+	/** Sets the graphics level 0..4 and keeps your own render resolution. Saved, no chat line (the menus use this). */
+	void ApplyGraphicsLevel(int32 Level);
+	/** Sets the frame rate cap (30-240) and saves it, no chat line (the menus use this). */
+	void SetFrameLimit(int32 Fps);
 	int32 GetResolutionPercent() const;
 	bool IsRayTracingOn() const;
 	/** Lobby: Enter toggles ready. */

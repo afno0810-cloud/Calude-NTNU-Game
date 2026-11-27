@@ -128,6 +128,14 @@ public:
 	/** 0 = fine, 1 = badly shot. Leg: slower, lower jumps, no sprint, limp. Arm: unsteady aim, more recoil, slow reload. */
 	UPROPERTY(Replicated, BlueprintReadOnly) float LegInjury = 0.f;
 	UPROPERTY(Replicated, BlueprintReadOnly) float ArmInjury = 0.f;
+	/** How hard an open wound bleeds, in steps of 1/32 HP/s (0 = not bleeding, 128 = 4 HP/s). Replicated to everyone:
+	 *  others need it for the blood trail. Set only by the server. */
+	UPROPERTY(Replicated, BlueprintReadOnly) uint8 BleedLevel = 0;
+	/** Health lost per second to bleeding right now (every machine). */
+	float GetBleedRate() const { return BleedLevel / 32.f; }
+	/** Server: the player left in the middle of a match. The body falls where it stands, the gear and the flag stay on
+	 *  the ground, and whoever hurt him lately gets the kill. */
+	void DieLeavingGame();
 	/** The injury as it is felt right now (painkillers halve it). */
 	float GetLegPain() const;
 	float GetArmPain() const;
@@ -468,6 +476,30 @@ protected:
 	// Server: at most 3 wound effects per frame per body (a shotgun blast is 8-9 hits at once)
 	uint64 WoundFrame = 0;
 	int32 WoundsThisFrame = 0;
+
+	// Bleeding (server). Bleeding is HP/s; it slows by itself (clotting) and dressings stop it. BleedLevel carries it to everyone.
+	float Bleeding = 0.f;
+	float BleedAccum = 0.f;
+	TWeakObjectPtr<AController> BleedInstigator;   // the last one who opened a wound: his kill if you bleed out
+	FString BleedWeapon;
+	TWeakObjectPtr<APawn> BleedShooterPawn;        // the body that fired it (his health on the death card only if it is still that body)
+	FVector BleedFrom = FVector::ZeroVector;      // where the wounding shot came from
+	bool bHasBleedFrom = false;
+	bool bDyingFromBleed = false;
+	bool bLeftGame = false;
+	// Server: who set you on fire with incendiary rounds (the kill is his if the fire finishes you)
+	TWeakObjectPtr<AController> BurnInstigator;
+	FString BurnWeapon;
+	void TickBleeding(float Dt);
+	void StopBleeding(float Amount);
+	void SyncBleedLevel();
+
+	// Wounds on the body and the blood trail (every machine that renders)
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> BodyWounds;
+	FName BleedBone;          // the bone of the latest wound: the trail drips from there
+	float NextDripIn = 0.f;
+	void AddBodyWound(const FVector& Point, const FVector& Dir, uint8 Kind);
+	void TickBloodTrail(float Dt);
 
 	static constexpr float BodyLifeSeconds = 90.f;   // how long a dead body stays
 	static constexpr float WalkSpeed = 420.f;

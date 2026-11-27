@@ -37,7 +37,14 @@ public:
 	 *  end of LifeSeconds. Stretch > 1 makes it long along Along (spatter that hit at an angle). Delay = seconds
 	 *  before it shows (a falling drop). */
 	static AGSShortFX* SpawnBloodStain(UWorld* World, const FVector& Location, const FVector& Normal, float Size,
-		float GrowSeconds, float LifeSeconds, const FVector& Along = FVector::ZeroVector, float Stretch = 1.f, float Delay = 0.f);
+		float GrowSeconds, float LifeSeconds, const FVector& Along = FVector::ZeroVector, float Stretch = 1.f, float Delay = 0.f,
+		bool bTrail = false);
+	/** One drop from someone who is bleeding: falls straight down from From and lands as a small stain. Trail drops
+	 *  have their own limit per machine, so a trail never takes the place of spatter on walls or pools. */
+	static void SpawnBloodDrip(UWorld* World, const FVector& From, float Size, const AActor* Victim);
+	/** A blood patch (Size cm across) owned by Owner, for sticking to the body where a bullet went in. The caller
+	 *  places and attaches it; it goes when the body goes. No collision, no shadow, no tick. */
+	static class UStaticMeshComponent* MakeBodyWound(AActor* Owner, float Size);
 	/** A hit on a body (GSWound kind): mist and drops at the wound, spatter behind, drops on the floor. Strength 0..1.
 	 *  bOwnView: the local player is the victim (no mist in his own face). */
 	static void SpawnBloodHit(UWorld* World, const FVector& Point, const FVector& Dir, uint8 Kind, float Strength,

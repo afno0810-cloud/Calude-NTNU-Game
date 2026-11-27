@@ -49,6 +49,9 @@ namespace
 	// Every blood stain on this machine, oldest first. The oldest erode away when there are too many.
 	TArray<TWeakObjectPtr<AGSShortFX>> GSStains;
 	constexpr int32 MaxStains = 220;
+	// Drops from people who bleed: their own list, so a long trail never wipes spatter or pools.
+	TArray<TWeakObjectPtr<AGSShortFX>> GSBloodTrailStains;
+	constexpr int32 GSMaxBloodTrail = 90;
 	const FLinearColor BloodFresh(0.16f, 0.005f, 0.005f);
 	const FLinearColor BloodDry(0.045f, 0.008f, 0.006f);
 	const FLinearColor BloodMist(0.125f, 0.004f, 0.004f);   // in the air (unlit sprites): a little darker
@@ -377,16 +380,18 @@ void AGSShortFX::RetireStain()
 }
 
 AGSShortFX* AGSShortFX::SpawnBloodStain(UWorld* World, const FVector& Location, const FVector& Normal, float Size,
-	float GrowSeconds, float LifeSeconds, const FVector& Along, float Stretch, float Delay)
+	float GrowSeconds, float LifeSeconds, const FVector& Along, float Stretch, float Delay, bool bTrail)
 {
 	if (!World || World->GetNetMode() == NM_DedicatedServer || Size < 0.5f) return nullptr;
 
-	// Never more than MaxStains: the oldest make room
-	GSStains.RemoveAll([](const TWeakObjectPtr<AGSShortFX>& S) { return !S.IsValid(); });
-	while (GSStains.Num() >= MaxStains)
+	// Never more than the limit: the oldest make room (trail drops and other blood each in their own list)
+	TArray<TWeakObjectPtr<AGSShortFX>>& List = bTrail ? GSBloodTrailStains : GSStains;
+	const int32 Limit = bTrail ? GSMaxBloodTrail : MaxStains;
+	List.RemoveAll([](const TWeakObjectPtr<AGSShortFX>& S) { return !S.IsValid(); });
+	while (List.Num() >= Limit)
 	{
-		GSStains[0]->RetireStain();
-		GSStains.RemoveAt(0);
+		List[0]->RetireStain();
+		List.RemoveAt(0);
 	}
 
 	// Lies flat on the surface, long side along the way the blood flew
@@ -437,8 +442,58 @@ AGSShortFX* AGSShortFX::SpawnBloodStain(UWorld* World, const FVector& Location, 
 	FX->SetLifeSpan(FX->Life + Wait + 0.1f);
 	FX->SetActorTickEnabled(true);
 	FX->Tick(0.f);
-	GSStains.Add(FX);
+	List.Add(FX);
 	return FX;
+}
+
+void AGSShortFX::SpawnBloodDrip(UWorld* World, const FVector& From, float Size, const AActor* Victim)
+{
+	if (!World || World->GetNetMode() == NM_DedicatedServer) return;
+	FHitResult Hit;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSBloodDrip), true);
+	if (Victim) Params.AddIgnoredActor(Victim);
+	if (!World->LineTraceSingleByChannel(Hit, From, From - FVector(0.f, 0.f, 250.f), ECC_Visibility, Params)) return;
+	if (Cast<APawn>(Hit.GetActor()) || Hit.ImpactNormal.Z <= 0.5f) return;   // on another player, or a wall: nothing
+	// The drop lands after the time it takes to fall that far, small and round, and dries like other blood.
+	SpawnBloodStain(World, Hit.ImpactPoint, Hit.ImpactNormal, Size, 0.12f, FMath::FRandRange(70.f, 100.f), FVector::ZeroVector, 1.f,
+		FMath::Sqrt(2.f * Hit.Distance / 980.f), true);
+}
+
+UStaticMeshComponent* AGSShortFX::MakeBodyWound(AActor* Owner, float Size)
+{
+	if (!Owner) return nullptr;
+	UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Owner);
+	if (!C) return nullptr;
+	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	C->SetGenerateOverlapEvents(false);
+	C->CanCharacterStepUpOn = ECB_No;
+	C->SetCastShadow(false);
+	C->bAffectDynamicIndirectLighting = false;
+	C->bAffectDistanceFieldLighting = false;
+	C->PrimaryComponentTick.bCanEverTick = false;
+	UMaterialInterface* Mat = GSBloodMaterial();
+	UStaticMesh* Plane = Mat ? GSFXPlane() : nullptr;
+	if (Mat && Plane)
+	{
+		C->SetStaticMesh(Plane);
+		UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(Mat, C);
+		M->SetVectorParameterValue(TEXT("Color"), BloodFresh * 0.7f);   // darker than a fresh stain: soaked into cloth
+		M->SetScalarParameterValue(TEXT("Roughness"), 0.25f);
+		M->SetScalarParameterValue(TEXT("Opacity"), 1.f);
+		M->SetScalarParameterValue(TEXT("Soft"), 0.6f);
+		C->SetMaterial(0, M);
+		C->SetWorldScale3D(FVector(Size / 100.f));
+	}
+	else
+	{
+		// Blood material not built yet: a flat dark red disc, as in SpawnBloodStain
+		C->SetStaticMesh(GSUtils::Cylinder());
+		GSUtils::SetColor(C, FLinearColor(0.08f, 0.003f, 0.003f));
+		C->SetWorldScale3D(FVector(Size / 100.f, Size / 100.f, 0.002f));
+	}
+	C->SetCullDistance(3000.f);
+	C->RegisterComponent();
+	return C;
 }
 
 void AGSShortFX::SpawnBloodHit(UWorld* World, const FVector& Point, const FVector& Dir, uint8 Kind, float Strength,

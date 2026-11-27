@@ -9,6 +9,7 @@
 #include "GSTerminal.h"
 #include "GSCampus.h"
 #include "GSHelp.h"
+#include "GSMenu.h"
 #include "GSFlag.h"
 #include "GSAudio.h"
 #include "GSBallistics.h"
@@ -19,6 +20,13 @@
 #include "Engine/Font.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+
+/** The key the player has on this action now (changed in the menu's key settings), Norwegian name. */
+static FString GSHudActionKey(const APlayerController* PC, const TCHAR* Action, const TCHAR* Fallback)
+{
+	const FString K = GSMenu::KeyName(PC, FName(Action));
+	return K.IsEmpty() ? FString(Fallback) : K;
+}
 
 void AGSHUD::Text(const FString& S, float X, float Y, const FLinearColor& Color, float Scale, bool bCenter, bool bRight)
 {
@@ -166,18 +174,18 @@ void AGSHUD::DrawMenu(AGSPlayerController* PC)
 	float MX = 0.f, MY = 0.f;
 	PC->GetMousePosition(MX, MY);
 	const FVector2D Mouse(MX, MY);
-	// The whole menu is about 606 px high: in a lower window (Play in a small editor viewport on a laptop) everything
+	// The whole menu is about 530 px high: in a lower window (Play in a small editor viewport on a laptop) everything
 	// shrinks with the window, so the title and the bottom rows stay on screen.
-	const float S = FMath::Min(1.f, SY / 680.f);
+	const float S = FMath::Min(1.f, SY / 600.f);
 	const float W = 420.f * FMath::Max(S, 0.8f), H = 44.f * S, Gap = 10.f * S;
 	const float X = SX * 0.5f - W * 0.5f;
-	float Y = FMath::Max(8.f, SY * 0.5f - 303.f * S);
+	float Y = FMath::Max(8.f, SY * 0.5f - 265.f * S);
 	Text(TEXT("GL\u00D8SHAUGEN"), SX * 0.5f, Y, FLinearColor(0.95f, 0.75f, 0.2f), 2.6f * S, true);
 	Text(TEXT("NTNU-campus, Trondheim"), SX * 0.5f, Y + 62.f * S, FLinearColor(1.f, 1.f, 1.f, 0.7f), 1.0f * S, true);
 	Y += 110.f * S;
 	MenuButton(TEXT("Resume"), TEXT("Fortsett"), X, Y, W, H, Mouse, true); Y += H + Gap;
-	MenuButton(TEXT("Host"), TEXT("Start server (venner kan bli med)"), X, Y, W, H, Mouse); Y += H + Gap;
-	MenuButton(TEXT("Join"), FString::Printf(TEXT("Bli med: %s"), *PC->LastJoinAddress), X, Y, W, H, Mouse); Y += H + Gap;
+	// Hosting and joining are in the main menu now (with its own address field and confirm dialogs).
+	MenuButton(TEXT("Host"), TEXT("Hovedmeny"), X, Y, W, H, Mouse); Y += H + Gap;
 	static const TCHAR* Levels[] = { TEXT("Lav"), TEXT("Middels"), TEXT("H\u00F8y"), TEXT("Episk"), TEXT("Film") };
 	MenuButton(TEXT("Graphics"), FString::Printf(TEXT("Grafikk: %s"), Levels[PC->GetGraphicsLevel()]), X, Y, W, H, Mouse); Y += H + Gap;
 	MenuButton(TEXT("Resolution"), FString::Printf(TEXT("Oppl\u00F8sning: %d %%"), PC->GetResolutionPercent()), X, Y, W, H, Mouse); Y += H + Gap;
@@ -188,10 +196,9 @@ void AGSHUD::DrawMenu(AGSPlayerController* PC)
 	Text(FString::Printf(TEXT("Musf\u00F8lsomhet: %.1f"), PC->MouseSensitivity), SX * 0.5f, Y + H * 0.5f - 11.f * S, FLinearColor::White, 1.1f * S, true);
 	MenuButton(TEXT("SensUp"), TEXT("+"), X + W - H, Y, H, H, Mouse); Y += H + Gap;
 	MenuButton(TEXT("Quit"), TEXT("Avslutt spillet"), X, Y, W, H, Mouse); Y += H + Gap * 2.f;
-	Text(TEXT("Annen adresse: trykk \u00A7 for konsollen og skriv  Join 192.168.1.20"), SX * 0.5f, Y, FLinearColor(1.f, 1.f, 1.f, 0.6f), 0.9f * S, true);
 	// In the editor's Play Esc stops Play before the game sees it: there the menu closes with F10 or P.
 	Text(PC->IsEditorPlay() ? FString(TEXT("F10 eller P lukker menyen (Esc stopper Play i editoren)")) : FString(TEXT("Esc, F10 eller P lukker menyen")),
-		SX * 0.5f, Y + 24.f * S, FLinearColor(1.f, 1.f, 1.f, 0.6f), 0.9f * S, true);
+		SX * 0.5f, Y, FLinearColor(1.f, 1.f, 1.f, 0.6f), 0.9f * S, true);
 }
 
 void AGSHUD::DrawCrosshair(AGSCharacter* C)
@@ -260,6 +267,7 @@ void AGSHUD::DrawBars(AGSCharacter* C)
 	{
 		float IY = Y - 52.f;
 		const FLinearColor Col(0.85f, 0.45f, 0.4f, 0.85f);
+		if (C->GetBleedRate() > 0.05f) { Text(C->GetBleedRate() >= 1.2f ? TEXT("Du blør kraftig") : TEXT("Du blør"), X, IY, Col, 0.75f); IY -= 18.f; }
 		if (C->ArmInjury > 0.05f) { Text(C->ArmInjury > 0.5f ? TEXT("Armen er hardt skadd") : TEXT("Armen er skadd"), X, IY, Col, 0.75f); IY -= 18.f; }
 		if (C->LegInjury > 0.05f) { Text(C->GetLegPain() >= 0.5f ? TEXT("Beinet er hardt skadd - du kan ikke løpe") : C->LegInjury >= 0.5f ? TEXT("Beinet er hardt skadd") : TEXT("Beinet er skadd"), X, IY, Col, 0.75f); }
 	}
@@ -315,7 +323,7 @@ void AGSHUD::DrawAmmo(AGSCharacter* C)
 		}
 		else if (S.UsesAmmo() && W->Ammo == 0)
 		{
-			Text(TEXT("Trykk R for \u00E5 lade"), X, Y + 56.f, FLinearColor(1.f, 0.4f, 0.4f), 1.f, false, true);
+			Text(FString::Printf(TEXT("Trykk %s for \u00E5 lade"), *GSHudActionKey(PlayerOwner, TEXT("IA_Reload"), TEXT("R"))), X, Y + 56.f, FLinearColor(1.f, 0.4f, 0.4f), 1.f, false, true);
 		}
 		FString Att;
 		static const TPair<uint16, const TCHAR*> AttNames[] = {
@@ -402,11 +410,12 @@ void AGSHUD::DrawEffects(AGSCharacter* C)
 
 void AGSHUD::DrawPrompt(AGSCharacter* C)
 {
+	const FString Use = FString::Printf(TEXT("[%s]"), *GSHudActionKey(PlayerOwner, TEXT("IA_Interact"), TEXT("E")));
 	if (const AGSTerminal* T = C->GetFocusTerminal())
 	{
 		const float CX = Canvas->SizeX * 0.5f, Y = Canvas->SizeY * 0.5f + 60.f;
 		const bool bPC = T->Kind == EGSTerminalKind::Computer;
-		Text(bPC ? TEXT("[E]  Logg inn p\u00E5 PC-en") : TEXT("[E]  Bruk 3D-printeren"), CX, Y, FLinearColor(0.5f, 0.8f, 1.f), 1.1f, true);
+		Text(Use + (bPC ? TEXT("  Logg inn p\u00E5 PC-en") : TEXT("  Bruk 3D-printeren")), CX, Y, FLinearColor(0.5f, 0.8f, 1.f), 1.1f, true);
 		Text(bPC ? TEXT("Overv\u00E5kningskameraer og sporing av spillere") : TEXT("Lag ting av filament-spoler"), CX, Y + 24.f, FLinearColor(0.85f, 0.85f, 0.85f), 0.8f, true);
 		if (!T->Label.IsEmpty()) Text(T->Label, CX, Y + 44.f, FLinearColor(0.7f, 0.7f, 0.7f), 0.75f, true);
 		return;
@@ -417,12 +426,12 @@ void AGSHUD::DrawPrompt(AGSCharacter* C)
 	const float CX = Canvas->SizeX * 0.5f, Y = Canvas->SizeY * 0.5f + 60.f;
 	if (P->bLocked)
 	{
-		Text(TEXT("[E]  L\u00E5st kasse  (adgangskort eller dirkesett)"), CX, Y, FLinearColor(1.f, 0.85f, 0.4f), 1.f, true);
+		Text(FString::Printf(TEXT("%s  L\u00E5st kasse  (adgangskort eller dirkesett)"), *Use), CX, Y, FLinearColor(1.f, 0.85f, 0.4f), 1.f, true);
 		return;
 	}
 	if (!D) return;
 	const FString CountStr = P->Count > 1 ? FString::Printf(TEXT(" x%d"), P->Count) : FString();
-	Text(FString::Printf(TEXT("[E]  %s%s"), *D->Name, *CountStr), CX, Y, GSItems::RarityColor(D->Rarity), 1.1f, true);
+	Text(FString::Printf(TEXT("%s  %s%s"), *Use, *D->Name, *CountStr), CX, Y, GSItems::RarityColor(D->Rarity), 1.1f, true);
 	Text(FString::Printf(TEXT("%s  \u00B7  %s"), GSItems::RarityName(D->Rarity), GSItems::CategoryName(D->Cat)), CX, Y + 24.f, FLinearColor(0.85f, 0.85f, 0.85f), 0.8f, true);
 	if (!D->Desc.IsEmpty()) Text(D->Desc, CX, Y + 44.f, FLinearColor(0.8f, 0.8f, 0.8f, 0.9f), 0.75f, true);
 	if (D->IsWeapon() && C->Weapons.Num() >= AGSCharacter::MaxWeapons)

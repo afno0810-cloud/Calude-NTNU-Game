@@ -35,6 +35,8 @@
 #include "UObject/ConstructorHelpers.h"
 #include "DrawDebugHelpers.h"
 #include "HAL/IConsoleManager.h"
+#include "Kismet/GameplayStatics.h"
+#include "Camera/PlayerCameraManager.h"
 
 namespace
 {
@@ -113,6 +115,25 @@ namespace
 		return D.Cat == EGSItemCat::Gadget && (D.Kind == KindZoom || D.Kind == KindNightVision || D.Kind == KindRadio
 			|| D.Kind == KindCompass || D.Kind == KindJoke || D.Kind == KindKey || D.Kind == KindLockpick
 			|| D.Kind == KindCaliber || D.Kind == KindFilament);
+	}
+}
+
+namespace GSBleed
+{
+	// HP/s of bleeding per HP the hit took. Belly worst (no clotting to speak of), arm least.
+	constexpr float Stomach = 0.065f, Chest = 0.04f, Leg = 0.045f, Arm = 0.035f, Head = 0.04f, Blast = 0.025f, Melee = 0.04f;
+	constexpr float Max = 4.f;        // HP/s
+	constexpr float Clot = 0.02f;     // HP/s per second: a wound slows by itself; total loss untreated = B^2 / (2 * Clot)
+
+	/** How much bleeding (HP/s) a dressing stops: a plaster small wounds, a bandage nearly all, a kit everything.
+	 *  On the item id, not on Heal, so the gameplay team can change the healing freely. */
+	static float StopFor(const FGSItemDef& D)
+	{
+		if (D.Kind == FName(TEXT("tourniquet"))) return 99.f;   // agreed name for the gameplay team's coming item
+		if (D.Id == FName(TEXT("Plaster"))) return 0.6f;
+		if (D.Id == FName(TEXT("Bandage"))) return 2.5f;
+		if (D.Id == FName(TEXT("Medkit")) || D.Id == FName(TEXT("SurgeryKit"))) return 99.f;
+		return 0.f;   // pills, painkillers: no
 	}
 }
 
@@ -330,6 +351,7 @@ void AGSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AGSCharacter, bFlashlightOn);
 	DOREPLIFETIME(AGSCharacter, LegInjury);
 	DOREPLIFETIME(AGSCharacter, ArmInjury);
+	DOREPLIFETIME(AGSCharacter, BleedLevel);
 	DOREPLIFETIME_CONDITION(AGSCharacter, bAiming, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(AGSCharacter, SpreadKey, COND_OwnerOnly);
 }
@@ -1103,6 +1125,8 @@ void AGSCharacter::MulticastWoundFX_Implementation(FVector_NetQuantize Point, FV
 	LastWoundTime = Now;
 	const bool bOwnView = IsLocallyControlled() && !bDead;
 	AGSShortFX::SpawnBloodHit(GetWorld(), LastWoundPoint, LastWoundDir, Kind, LastWoundStrength, this, bOwnView);
+	// A dark patch stays on the body where it went in (follows the body as it moves and falls).
+	if (bHumanBody && Kind != GSWound::Armor && Kind != GSWound::Blast) AddBodyWound(LastWoundPoint, LastWoundDir, Kind);
 	// The one who was hit already has his own 2D sounds (ClientTookHit); everyone else hears it from the body.
 	// Shotgun pellets landing together are one sound.
 	if (!bOwnView && Now - LastWoundSoundTime > 0.06f)
@@ -2223,8 +2247,9 @@ int32 AGSCharacter::TakeFromPickup(AGSPickup* Pickup)
 			W.Reserve += Add;
 			Rounds -= Add;
 		}
-		const int32 UsedBoxes = (Before - Rounds) / Def->Rounds;
-		const int32 LeftBoxes = Pickup->Count - UsedBoxes;
+		// A box that was opened counts as used (rounding down kept a half-emptied box whole: free ammo).
+		const int32 UsedBoxes = FMath::DivideAndRoundUp(Before - Rounds, Def->Rounds);
+		const int32 LeftBoxes = FMath::Max(0, Pickup->Count - UsedBoxes);
 		const int32 Stored = LeftBoxes > 0 ? AddToBackpack(Def->Id, LeftBoxes) : 0;
 		const int32 Taken = UsedBoxes + Stored;
 		if (Before - Rounds > 0) ClientToast(FString::Printf(TEXT("+%d skudd %s"), Before - Rounds, *Def->Name));
@@ -2484,6 +2509,17 @@ void AGSCharacter::CompleteUse()
 			const float Treat = Def->Heal / 60.f;
 			LegInjury = FMath::Max(0.f, LegInjury - Treat);
 			ArmInjury = FMath::Max(0.f, ArmInjury - Treat);
+		}
+		if (Def->Cat == EGSItemCat::Medicine && Bleeding > 0.f)
+		{
+			// Dressing a bleeding wound: a plaster stops small ones, a bandage nearly all, a kit everything.
+			const float Stop = GSBleed::StopFor(*Def);
+			if (Stop <= 0.f) ClientToast(TEXT("Det stopper ikke blødningen"));
+			else
+			{
+				StopBleeding(Stop);
+				ClientToast(Bleeding <= 0.f ? TEXT("Blødningen har stoppet") : TEXT("Blødningen er mindre"));
+			}
 		}
 		Hunger = FMath::Clamp(Hunger + Def->Hunger, 0.f, 100.f);
 		Thirst = FMath::Clamp(Thirst + Def->Thirst, 0.f, 100.f);
@@ -2882,7 +2918,12 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	float AbsorbMul = 1.f;
 	if (Ammo == GSAmmoType::ArmorPiercing) { AbsorbMul = 0.35f; Damage *= 0.95f; }
 	else if (Ammo == GSAmmoType::HollowPoint) Damage *= bArmored ? 0.75f : 1.3f;
-	else if (Ammo == GSAmmoType::Incendiary) AddEffect(TEXT("Brennende"));
+	else if (Ammo == GSAmmoType::Incendiary)
+	{
+		AddEffect(TEXT("Brennende"));
+		BurnInstigator = EventInstigator;   // if the fire finishes you, the kill is his
+		BurnWeapon = WeaponName;
+	}
 	else if (Ammo == GSAmmoType::Shock) AddEffect(TEXT("Sjokk"));
 
 	// Armor soaks up part of the damage until it breaks.
@@ -2909,11 +2950,34 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 	}
 
 	Health = FMath::Max(0.f, Health - Damage);
+	// Where the hit came from. Projectiles: from where it went off (blast) or where it was fired from (bolt, rocket
+	// hitting you), never from the thrower's new body or his corpse.
+	const bool bOwnProjectile = Proj && (Proj->GetOwner() == this || Shooter == this);
+	const bool bHasFrom = Proj ? !bOwnProjectile : (bBullet || (Shooter && Shooter != this));
+	const FVector From = !bHasFrom ? GetActorLocation()
+		: Proj ? (bPointHit ? Proj->LaunchLocation : Proj->GetActorLocation())
+		: bBullet ? IncomingOrigin : Shooter->GetActorLocation();
 	// A hit that draws blood from a limb leaves it hurt until it is treated.
 	if (Health > 0.f && HealthBefore > Health)
 	{
 		if (Zone == GSZone::Leg) LegInjury = FMath::Min(1.f, LegInjury + (HealthBefore - Health) / 45.f);
 		else if (Zone == GSZone::Arm) ArmInjury = FMath::Min(1.f, ArmInjury + (HealthBefore - Health) / 40.f);
+
+		// An open wound keeps bleeding. Not from fire, and not when the plate/helmet stopped it.
+		const float Lost = HealthBefore - Health;
+		if (!bBurn && (bBullet || DamageCauser) && !(bArmorHit && Lost < 12.f))
+		{
+			const float K = bIncomingMelee ? GSBleed::Melee : !bPointHit ? GSBleed::Blast
+				: Zone == GSZone::Stomach ? GSBleed::Stomach : Zone == GSZone::Leg ? GSBleed::Leg
+				: Zone == GSZone::Arm ? GSBleed::Arm : Zone == GSZone::Head ? GSBleed::Head : GSBleed::Chest;
+			Bleeding = FMath::Min(GSBleed::Max, Bleeding + Lost * K);
+			BleedInstigator = EventInstigator;   // the last one who opened a wound gets the kill if you bleed out
+			BleedWeapon = WeaponName;
+			BleedShooterPawn = (Proj && !bShooterThrewIt) ? nullptr : Shooter;
+			BleedFrom = From;
+			bHasBleedFrom = bHasFrom;
+			SyncBleedLevel();
+		}
 	}
 	LastDamageTakenTime = GetWorld()->GetTimeSeconds();
 	// Tell the one who was hit where it came from, how hard, and whether the vest/helmet took it. Sent before
@@ -2922,13 +2986,6 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 		const uint8 Kind = bArmorBroke ? GSHurtKind::ArmorBroke
 			: bHeadshot ? (bArmorHit ? GSHurtKind::HeadArmor : GSHurtKind::Head)
 			: bArmorHit ? GSHurtKind::Armor : GSHurtKind::Body;
-		// Projectiles: from where it went off (blast) or where it was fired from (bolt, rocket hitting you), never
-		// from the thrower's new body or his corpse.
-		const bool bOwnProjectile = Proj && (Proj->GetOwner() == this || Shooter == this);
-		const bool bHasFrom = Proj ? !bOwnProjectile : (bBullet || (Shooter && Shooter != this));
-		const FVector From = !bHasFrom ? GetActorLocation()
-			: Proj ? (bPointHit ? Proj->LaunchLocation : Proj->GetActorLocation())
-			: bBullet ? IncomingOrigin : Shooter->GetActorLocation();
 		ClientTookHit(From, bHasFrom, HealthBefore - Health, static_cast<uint8>(Kind | (Zone << 4)));   // zone in the high bits
 	}
 	// Everyone nearby sees the wound. Only real hits: hunger, thirst and poison never come through here, and fire
@@ -2994,7 +3051,10 @@ void AGSCharacter::OnRep_Health()
 	if (IsLocallyControlled())
 	{
 		const float Now = GetWorld()->GetTimeSeconds();
-		if (Health < LastSeenHealth - 0.5f)
+		// A drop of at most 3 HP while you bleed is the bleeding itself: no thud, no red edge, no flinch, or it would
+		// thump and jerk the view every second. Real hits still get their own sound and flash from ClientTookHit.
+		const bool bBleedTick = BleedLevel > 0 && Health < LastSeenHealth && Health >= LastSeenHealth - 3.f;
+		if (!bBleedTick && Health < LastSeenHealth - 0.5f)
 		{
 			LastDamageTakenTime = Now;
 			// Weapon hits already played their own sound and flash (ClientTookHit). This is hunger, thirst,
@@ -3025,7 +3085,9 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 	bAiming = false;
 	CancelUse();
 
-	if (AGSGameMode* GM = GetWorld()->GetAuthGameMode<AGSGameMode>())
+	// Leaving the match with nobody to credit: no "Verden" line next to the gameplay team's "left the match".
+	AGSGameMode* GM = GetWorld()->GetAuthGameMode<AGSGameMode>();
+	if (GM && !(bLeftGame && !Killer))
 	{
 		GM->OnPlayerKilled(Killer, GetController(), WeaponName, bHeadshot);
 	}
@@ -3040,6 +3102,8 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 	// A grenade or mine from a body that has died since: his new body is not the one who killed you (it may be
 	// across campus). Show where it was thrown from instead, without his health and armor.
 	if (KillingProjectile && KillerPawn && KillerPawn != KillingProjectile->GetOwner()) KillerPawn = nullptr;
+	// Bled out: the shooter may have a new body by now or stand somewhere else. Only the body that fired counts.
+	if (bDyingFromBleed && KillerPawn != BleedShooterPawn.Get()) KillerPawn = nullptr;
 	FGSDeathInfo Info;
 	Info.Weapon = WeaponName;
 	Info.bHeadshot = bHeadshot;
@@ -3068,8 +3132,17 @@ void AGSCharacter::Die(AController* Killer, bool bHeadshot, const FString& Weapo
 		Info.bHasKillerLocation = true;
 		Info.DistanceM = FVector::Dist(KillingProjectile->LaunchLocation, GetActorLocation()) / 100.f;
 	}
+	else if (bDyingFromBleed && bHasBleedFrom && !Info.Killer.IsEmpty())
+	{
+		// Bled out: where the shot that opened the wound came from
+		Info.KillerLocation = BleedFrom;
+		Info.bHasKillerLocation = true;
+		Info.DistanceM = FVector::Dist(BleedFrom, GetActorLocation()) / 100.f;
+	}
 
 	OnRep_Dead();
+	// The player who left has no connection: no death cam for him (the body just stays).
+	if (bLeftGame) VictimPC = nullptr;
 	if (VictimPC) VictimPC->DeathCamBody = this;   // keeps the view on this body when the controller lets go of it
 	DetachFromControllerPendingDestroy();
 	if (VictimPC)
@@ -3224,6 +3297,7 @@ void AGSCharacter::OnRep_Dead()
 	// The death cam looks at your own body: show it to you too, and hide the first-person arms, gun and item.
 	if (bHumanBody) { GetMesh()->SetOwnerNoSee(false); ArmbandL->SetOwnerNoSee(false); ArmbandR->SetOwnerNoSee(false); }
 	else { BodyMesh->SetOwnerNoSee(false); HeadMesh->SetOwnerNoSee(false); }
+	for (UStaticMeshComponent* W : BodyWounds) { if (W) W->SetOwnerNoSee(false); }   // you see your wounds in the death cam
 	for (UPrimitiveComponent* FP : TInlineComponentArray<UPrimitiveComponent*>(this))
 	{
 		if (FP && FP->bOnlyOwnerSee) FP->SetVisibility(false);
@@ -3292,7 +3366,8 @@ void AGSCharacter::ApplyDeathImpulse()
 void AGSCharacter::SpawnDeathPool()
 {
 	if (!bDead || GetNetMode() == NM_DedicatedServer) return;
-	if (GetWorld()->GetTimeSeconds() - LastWoundTime > 8.f) return;   // not a violent death: no blood
+	// Not a violent death: no blood. Someone who bled out long after the shot still lies in a pool.
+	if (GetWorld()->GetTimeSeconds() - LastWoundTime > 8.f && BleedLevel == 0) return;
 	FVector From = GetActorLocation() - FVector(0.f, 0.f, 60.f);
 	if (bHumanBody) From = GetMesh()->GetSocketLocation(LastWoundKind == GSWound::Head ? TEXT("head") : TEXT("spine_02"));
 	FHitResult Floor;
@@ -3302,6 +3377,73 @@ void AGSCharacter::SpawnDeathPool()
 	{
 		AGSShortFX::SpawnBloodPool(GetWorld(), Floor.ImpactPoint, Floor.ImpactNormal, FMath::FRandRange(95.f, 135.f), this);
 	}
+}
+
+void AGSCharacter::AddBodyWound(const FVector& Point, const FVector& Dir, uint8 Kind)
+{
+	if (GetNetMode() == NM_DedicatedServer || !bHumanBody) return;
+	USkeletalMeshComponent* Skel = GetMesh();
+	if (!Skel || !Skel->GetSkeletalMeshAsset()) return;
+	const FVector D = Dir.GetSafeNormal();
+	// The hit lands on the hit box, a little off the skin. Find the skin: the closest point on the body's physics
+	// shapes (works from the animated pose, no physics state needed). Step back along the shot until the point is
+	// outside the body, so the closest point is where the bullet went in, not the point itself deep inside.
+	FVector P = Point;
+	FVector N = D.IsNearlyZero() ? -GetActorForwardVector() : -D;
+	FName Bone;
+	for (float Back = 2.f; Back <= 30.f; Back += 4.f)
+	{
+		FClosestPointOnPhysicsAsset CP;
+		if (!Skel->GetClosestPointOnPhysicsAsset(Point - D * Back, CP, false)) break;
+		if (CP.Distance <= 0.f) continue;   // still inside a body part
+		if (CP.Distance < 25.f && !CP.BoneName.IsNone())
+		{
+			P = CP.ClosestWorldPosition;
+			Bone = CP.BoneName;
+			if (!CP.Normal.IsNearlyZero()) N = CP.Normal.GetSafeNormal();
+		}
+		break;
+	}
+	if (Bone.IsNone()) Bone = Skel->FindClosestBone(Point, nullptr, 0.f, true);   // no physics asset: the nearest bone
+	if (Bone.IsNone()) return;
+
+	const float Size = Kind == GSWound::Head ? 6.f : Kind == GSWound::Through ? FMath::FRandRange(7.f, 10.f)
+		: Kind == GSWound::Blade ? 8.f : FMath::FRandRange(5.f, 7.f);
+	UStaticMeshComponent* W = AGSShortFX::MakeBodyWound(this, Size);
+	if (!W) return;
+	FVector Tangent = FVector::VectorPlaneProject(FMath::VRand(), N).GetSafeNormal();
+	if (Tangent.IsNearlyZero()) Tangent = FVector::VectorPlaneProject(GetActorRightVector(), N).GetSafeNormal();
+	W->SetWorldLocationAndRotation(P + N * 0.3f, FRotationMatrix::MakeFromZX(N, Tangent).Rotator());
+	W->AttachToComponent(Skel, FAttachmentTransformRules::KeepWorldTransform, Bone);
+	// Attached parts do not take the body's owner-no-see: hide them from your own first-person view while alive.
+	W->SetOwnerNoSee(!bDead);
+	BodyWounds.RemoveAll([](const TObjectPtr<UStaticMeshComponent>& C) { return !IsValid(C); });
+	while (BodyWounds.Num() >= 8)
+	{
+		if (UStaticMeshComponent* Old = BodyWounds[0]) Old->DestroyComponent();
+		BodyWounds.RemoveAt(0);
+	}
+	BodyWounds.Add(W);
+	BleedBone = Bone;
+}
+
+void AGSCharacter::TickBloodTrail(float Dt)
+{
+	const float Rate = GetBleedRate();
+	if (Rate <= 0.f) return;
+	// Drops come faster the more you bleed and the faster you move.
+	NextDripIn -= Dt * (1.f + GetVelocity().Size2D() / 300.f);
+	if (NextDripIn > 0.f) return;
+	NextDripIn = FMath::FRandRange(0.7f, 1.3f) * FMath::Clamp(1.6f / Rate, 0.3f, 4.f);
+	// Only near the local player (40 m), like the other blood.
+	if (const APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0))
+	{
+		if (FVector::DistSquared(Cam->GetCameraLocation(), GetActorLocation()) > FMath::Square(4000.f)) return;
+	}
+	FVector From = bHumanBody && !BleedBone.IsNone() ? GetMesh()->GetSocketLocation(BleedBone) : GetActorLocation();
+	const FVector2D Off = FMath::RandPointInCircle(10.f);
+	From += FVector(Off.X, Off.Y, 0.f);
+	AGSShortFX::SpawnBloodDrip(GetWorld(), From, FMath::FRandRange(2.5f, 5.f) * (0.8f + 0.25f * Rate), this);
 }
 
 void AGSCharacter::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
@@ -3441,9 +3583,84 @@ void AGSCharacter::TickSurvival(float DeltaSeconds)
 	if (Health <= 0.f)
 	{
 		if (Mods.bPhoenix) { Health = 50.f; OnRep_Health(); Effects.RemoveAll([](const FGSActiveEffect& E) { return E.Id == FxFoniks; }); return; }
-		const FString Cause = Hunger <= 0.f ? TEXT("Sult") : Thirst <= 0.f ? TEXT("T\u00F8rst") : TEXT("Overdose");
-		Die(nullptr, false, Cause);
+		auto Has = [this](FName Id)
+		{
+			return Effects.ContainsByPredicate([this, Id](const FGSActiveEffect& E) { return E.Id == Id && EffectTimeLeft(E) > 0.f; });
+		};
+		if (Hunger <= 0.f) { Die(nullptr, false, TEXT("Sult")); return; }
+		if (Thirst <= 0.f) { Die(nullptr, false, TEXT("T\u00F8rst")); return; }
+		if (Has(FName(TEXT("Brennende"))))
+		{
+			// Incendiary rounds: the fire is the shooter's kill.
+			AController* K = BurnInstigator.Get();
+			Die(K, false, K ? BurnWeapon + TEXT(" (brann)") : FString(TEXT("Brann")));
+			return;
+		}
+		Die(nullptr, false, Has(FxPoison) ? TEXT("Matforgiftning") : TEXT("Overdose"));
 	}
+}
+
+void AGSCharacter::SyncBleedLevel()
+{
+	const uint8 Level = static_cast<uint8>(FMath::Clamp(FMath::RoundToInt(Bleeding * 32.f), 0, 255));
+	if (Level != BleedLevel) BleedLevel = Level;   // only when it changes, so it is not sent every frame
+}
+
+void AGSCharacter::StopBleeding(float Amount)
+{
+	Bleeding = FMath::Max(0.f, Bleeding - Amount);
+	if (Bleeding < 0.05f) Bleeding = 0.f;
+	SyncBleedLevel();
+}
+
+void AGSCharacter::TickBleeding(float Dt)
+{
+	// Lobby, countdown, results: nobody bleeds.
+	if (const AGSGameMode* GM = GetWorld()->GetAuthGameMode<AGSGameMode>())
+	{
+		if (!GM->DamageEnabled())
+		{
+			Bleeding = 0.f;
+			BleedAccum = 0.f;
+			SyncBleedLevel();
+			return;
+		}
+	}
+	if (Bleeding <= 0.f) return;
+	BleedAccum += Bleeding * Dt;
+	Bleeding = FMath::Max(0.f, Bleeding - GSBleed::Clot * Dt);   // the wound slowly closes by itself
+	SyncBleedLevel();
+	if (BleedAccum < 1.f) return;   // whole points only, like hunger
+	const float Change = FMath::TruncToFloat(BleedAccum);
+	BleedAccum -= Change;
+	Health = FMath::Max(0.f, Health - Change);
+	OnRep_Health();
+	if (Health > 0.f) return;
+	if (GetMods().bPhoenix)
+	{
+		Health = 50.f;
+		Bleeding = 0.f;
+		SyncBleedLevel();
+		OnRep_Health();
+		Effects.RemoveAll([](const FGSActiveEffect& E) { return E.Id == FxFoniks; });
+		return;
+	}
+	AController* K = BleedInstigator.Get();
+	bDyingFromBleed = true;
+	Die(K, false, K ? FString::Printf(TEXT("%s (bl\u00F8dning)"), *BleedWeapon) : FString(TEXT("Bl\u00F8dning")));
+}
+
+void AGSCharacter::DieLeavingGame()
+{
+	if (!HasAuthority() || bDead) return;
+	const float Now = GetWorld()->GetTimeSeconds();
+	AController* Killer = nullptr;
+	FString Weapon;
+	if (Bleeding > 0.f && BleedInstigator.IsValid()) { Killer = BleedInstigator.Get(); Weapon = BleedWeapon; }
+	else if (LastDamageInstigator.IsValid() && Now - LastDamageTakenTime <= 10.f) { Killer = LastDamageInstigator.Get(); Weapon = LastDamageWeapon; }
+	if (Killer == GetController()) Killer = nullptr;
+	bLeftGame = true;
+	Die(Killer, false, Weapon);
 }
 
 void AGSCharacter::TickScopeSway(float Dt)
@@ -3514,11 +3731,14 @@ void AGSCharacter::UpdateLocalVisuals(float DeltaSeconds)
 	// Low health: greyer picture, darker edges and a heartbeat that speeds up the lower you get.
 	const float Low = GetLowHealthAlpha();
 	ApplyLowHealthPostProcess(Visual, Low);
-	if (Low > 0.f && T >= NextHeartbeat)
+	// The heart also races when you lose a lot of blood, before health is low (the picture and the edge follow health only).
+	const float BleedK = bDead ? 0.f : FMath::Clamp((GetBleedRate() - 0.8f) / 2.f, 0.f, 1.f);
+	const float Beat = FMath::Max(Low, BleedK * 0.7f);
+	if (Beat > 0.f && T >= NextHeartbeat)
 	{
-		GSAudio::Play2D(this, TEXT("Heartbeat"), 0.35f + 0.5f * Low, 1.f);
+		GSAudio::Play2D(this, TEXT("Heartbeat"), 0.35f + 0.5f * Beat, 1.f);
 		LastHeartbeatTime = T;
-		NextHeartbeat = T + FMath::Lerp(1.05f, 0.55f, Low);
+		NextHeartbeat = T + FMath::Lerp(1.05f, 0.55f, Beat);
 	}
 
 	// Shaky hands / swaying world (the camera follows the controller, so nudge that)
@@ -3614,6 +3834,7 @@ void AGSCharacter::Tick(float DeltaSeconds)
 	if (HasAuthority() && !bDead)
 	{
 		TickSurvival(DeltaSeconds);
+		if (!bDead) TickBleeding(DeltaSeconds);
 		TickEffects();
 		if (!UseItemId.IsNone() && GetServerTime() >= UseEndTime) CompleteUse();
 	}
@@ -3753,6 +3974,9 @@ void AGSCharacter::Tick(float DeltaSeconds)
 		TPWeaponMesh->SetRelativeLocation(Shoulder + Aim.RotateVector(FVector(30.f - 6.f * Kick + Reach, 0.f, -6.f)) + FVector(0.f, 0.f, Bob * 2.f));
 		TPWeaponMesh->SetRelativeRotation(Aim);
 	}
+
+	// Blood trail behind whoever bleeds (every machine that renders, your own drops too when you look down)
+	if (GetNetMode() != NM_DedicatedServer && !bDead && BleedLevel > 0) TickBloodTrail(DeltaSeconds);
 
 	if (IsLocallyControlled())
 	{

@@ -182,8 +182,28 @@ void AGSPlayerController::CloseMenu()
 
 int32 AGSPlayerController::GetGraphicsLevel() const
 {
+	// The shadow level, as the main menu reads it: the overall level is -1 ("custom") as soon as the render
+	// resolution is not the one the level comes with, which showed "Lav" whatever was chosen.
 	const UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr;
-	return S ? FMath::Clamp(S->GetOverallScalabilityLevel(), 0, 4) : 2;
+	return S ? FMath::Clamp(S->GetShadowQuality(), 0, 4) : 2;
+}
+
+void AGSPlayerController::ApplyGraphicsLevel(int32 Level)
+{
+	UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr;
+	if (!S) return;
+	// The level also sets the render resolution: put yours back afterwards.
+	const int32 Res = GetResolutionPercent();
+	S->SetOverallScalabilityLevel(FMath::Clamp(Level, 0, 4));
+	S->SetResolutionScaleValueEx(static_cast<float>(FMath::Clamp(Res, 50, 100)));
+	S->ApplySettings(false);
+	S->SaveSettings();
+}
+
+void AGSPlayerController::SetFrameLimit(int32 Fps)
+{
+	FrameLimit = FMath::Clamp(Fps, 30, 240);
+	ApplyFrameLimit(true, true);
 }
 
 int32 AGSPlayerController::GetResolutionPercent() const
@@ -205,9 +225,10 @@ void AGSPlayerController::MenuClick(FName Button)
 {
 	const FString B = Button.ToString();
 	if (B == TEXT("Resume")) { CloseMenu(); }
-	else if (B == TEXT("Host")) { CloseMenu(); Host(); }
-	else if (B == TEXT("Join")) { CloseMenu(); Join(LastJoinAddress); }
-	else if (B == TEXT("Graphics")) { Grafikk((GetGraphicsLevel() + 1) % 5); }
+	// "Hovedmeny" (the old Host/Join ids): hosting and joining live in the main menu. GSMenu may already have caught
+	// the click itself; opening it twice is harmless.
+	else if (B == TEXT("Host") || B == TEXT("Join")) { CloseMenu(); GSMenu::OpenMain(this); }
+	else if (B == TEXT("Graphics")) { ApplyGraphicsLevel((GetGraphicsLevel() + 1) % 5); }
 	else if (B == TEXT("Resolution"))
 	{
 		static const int32 Steps[] = { 50, 60, 72, 85, 100 };
@@ -223,7 +244,7 @@ void AGSPlayerController::MenuClick(FName Button)
 		GConfig->SetFloat(TEXT("Gloshaugen"), TEXT("MouseSensitivity"), MouseSensitivity, GGameUserSettingsIni);
 		GConfig->Flush(false, GGameUserSettingsIni);
 	}
-	else if (B == TEXT("Quit")) { ConsoleCommand(TEXT("quit")); }
+	else if (B == TEXT("Quit")) { CloseMenu(); GSMenu::AskQuit(this); }   // asks first ("Avslutte spillet?")
 }
 
 void AGSPlayerController::ToggleReady()
@@ -327,6 +348,23 @@ void AGSPlayerController::AcknowledgePossession(APawn* P)
 	}
 }
 
+void AGSPlayerController::PawnLeavingGame()
+{
+	// Called by APlayerController::Destroyed on the server when the connection is gone, before GameMode::Logout.
+	// In a match the body does not vanish: it dies where it stands, the gear and the flag fall, and whoever hurt
+	// him lately gets the kill (no quitting to deny the kill or to take the flag off the map).
+	AGSCharacter* C = Cast<AGSCharacter>(GetPawn());
+	UWorld* World = GetWorld();
+	const AGSGameMode* GM = World ? World->GetAuthGameMode<AGSGameMode>() : nullptr;
+	if (C && !C->bDead && GM && GM->DamageEnabled() && !World->bIsTearingDown)
+	{
+		UE_LOG(LogTemp, Log, TEXT("GSNet: %s forlot kampen, kroppen blir liggende"), *GetNameSafe(C));
+		C->DieLeavingGame();   // lets go of the pawn itself (DetachFromControllerPendingDestroy)
+		return;                // not Super: that would destroy the body
+	}
+	Super::PawnLeavingGame();
+}
+
 AActor* AGSPlayerController::GetHomeViewTarget() const
 {
 	if (APawn* P = GetPawn()) return P;
@@ -335,13 +373,8 @@ AActor* AGSPlayerController::GetHomeViewTarget() const
 
 void AGSPlayerController::Grafikk(int32 Level)
 {
-	if (UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr)
-	{
-		S->SetOverallScalabilityLevel(FMath::Clamp(Level, 0, 4));
-		S->ApplySettings(false);
-		S->SaveSettings();
-		ClientMessage(FString::Printf(TEXT("Grafikk satt til %d (0 = lav, 4 = film)"), FMath::Clamp(Level, 0, 4)));
-	}
+	ApplyGraphicsLevel(Level);
+	ClientMessage(FString::Printf(TEXT("Grafikk satt til %d (0 = lav, 4 = film)"), FMath::Clamp(Level, 0, 4)));
 }
 
 void AGSPlayerController::Opplosning(int32 Percent)
@@ -400,8 +433,7 @@ void AGSPlayerController::ApplyFrameLimit(bool bSave, bool bFromConsole)
 
 void AGSPlayerController::Bildefrekvens(int32 Fps)
 {
-	FrameLimit = FMath::Clamp(Fps, 30, 240);
-	ApplyFrameLimit(true, true);
+	SetFrameLimit(Fps);
 	ClientMessage(FString::Printf(TEXT("Bildefrekvens: h\u00F8yst %d bilder i sekundet"), FrameLimit));
 }
 
