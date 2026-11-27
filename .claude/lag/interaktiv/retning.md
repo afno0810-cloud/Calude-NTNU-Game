@@ -38,7 +38,7 @@ Fire regler for alt laget lager:
    testrom med dører, konsoll (`Testrom`, `Smell`, `Knus`).
    **Runde 1b** (`ko/plan-01b.md`): knusbart glass (herdet/laminert), biter og skår, varige kulehull (400 i alt),
    Blender-modeller.
-2. **Runde 2 – sprenge og bære** (`ko/plan-02.md`, byggeklar: 02a lettvegger/dørblad/faste møbler, 02b `AGSPhysicsProp` med bære/kaste/knuse, brannslukker, barrikader): lettvegger (`BreachWalls`) som sprenges, dører som blåses
+2. **Runde 2 – sprenge og bære** (`ko/plan-02a/b/c.md` etter forhåndssjekken: 02a lettvegger og dørblad, 02b faste møbler og løse ting med fysikk, 02c bære/kaste/barrikader etter Kamps K6/K7): lettvegger (`BreachWalls`) som sprenges, dører som blåses
    ut av karmen, møbler med hel/ødelagt modell, `AGSPhysicsProp` (plukke opp, bære, kaste, velte, ødelegge), barrikader
    foran dører, Bots-varsel når gangbare ruter endres.
 3. **Runde 3 – brukbare ting** (skisse i `ko/plan-03.md`): lysbrytere per rom, heis sør/øst, kiosk og kjøleskap i
@@ -54,6 +54,8 @@ Fire regler for alt laget lager:
 12. Måling: `stat unit` i atriet med 40 knuste felt og 150 biter i lufta; tak justeres etter målingen.
 
 ## Endringer i retningen
+- 2026-11-27: Forhåndssjekken av plan-02: delt i 02a/02b/02c; delskade bare på serveren; åpning per dør regnet fra data;
+  løse ting stopper ikke kuler (faktor i `BulletSegment`, ingen skjold); hardt tak 24/160 med tilbakelegging som instans.
 - 2026-11-27: Runde 2 skrevet ut og delt i 02a (alt fast: bare lista, ingen nye nettaktører) og 02b (løse ting). Løse ting
   sover som lokale instanser og blir replikerte aktører først når noen rører dem, så hundrevis av stoler koster null i nettet.
   Svart Grafikk på `Props()` (løse typer, format, `FindProp`, atriehjørner ja). Bæring virker før Kamps K6 (bestilt).
