@@ -43,13 +43,13 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
   holdemerker.
 
 ## I arbeid / planlagt
-- **Runde 14** (`ko/plan-08.md`): **ekte førsteperson** – én kropp for eier og andre. Ny `UGSBodyAnim` (C++ uten
-  Blueprint: samplede sekvenser fra Mannequin-pakken, rygg etter sikte, hånd-IK til våpenet, fot-IK i trapper, huk i
-  kode), `FPBody` uten hode i stedet for `FPLegs`, hendene følger de gamle `FPArm`-punktene så all lading/sikting
-  beholdes, førstepersonstegning mot klipping, hel egen skygge. Pluss rettingene fra runde 13-kontrollen. Bygges når
-  Helgasetr-kartet er spillbart.
+- **Runde 14a** (`ko/plan-08.md`, revidert etter forhåndssjekk): kroppen – `UGSBodyAnim` i C++ (sekvenser fra
+  Mannequin-pakken, rotlås, ryggbøy klemt ±15°, huk/glid med knebøy-IK, hånd-IK for andre spillere), `FPBody` uten
+  hode og armer (dagens førstepersonsarmer beholdes), hel egen skygge, tilbakefall. + rettingene fra runde 13.
+- **Runde 14b** (`ko/plan-08b.md`): hånd-IK på egen kropp (armene erstatter `SM_FPArm`), rekkevidde, fot-IK i trapper,
+  armer skjult i kikkert, ev. delt førstepersonsskalering.
 - **Runde 15** (`ko/plan-09.md`, skisse): animasjoner på kroppen – hopp/landing, glid, klatring med hender på kanten,
-  slag, rekyl og lading på kroppen, treffrykk. Bruker GASP/Lyra hvis Andreas har migrert dem, ellers kode.
+  slag, rekyl og lading på kroppen, treffrykk, hodebevegelse – uten GASP/Lyra (hovedagenten 27. nov.).
 - **Runde 16** (`ko/plan-10.md`, skisse): bruke ting med kroppen (andre ser det) og gradvise skjermeffekter per stoff
   (rød røyk, hvit amfetamin, tunnelsyn …). Venter på katalogsvar fra Spillbarhet (bestilt 27. nov.).
 - **Runde 17: V8, tilbakespoling av treffbokser** til skytterens tid, og «sist sett»-punktet for avslørt bærer.
@@ -114,10 +114,10 @@ rundeslutt med «høydepunkter». Statistikk kan vises nøkternt på resultattav
 - 2026-11-27 (runde 14–16): **Kroppen før V8.** Andreas' liste etter det nye Helgasetr-kartet har «bedre førsteperson:
   hele kroppen synlig, bedre animasjoner» øverst og «ting med animasjoner og skjermeffekter» som punkt 3. Alt det
   trenger en kropp med hender som kan styres fra kode, så runde 14 er grunnmuren (ekte førsteperson, `UGSBodyAnim`,
-  IK), 15 animasjonene og 16 bruk av ting/skjermeffekter. Funnet som avgjorde metoden: prosjektet har bare
+  IK; delt i 14a/14b etter forhåndssjekken), 15 animasjonene og 16 bruk av ting/skjermeffekter. Funnet som avgjorde metoden: prosjektet har bare
   `ABP_Unarmed`, men 100+ sekvenser for gevær/pistol/ubevæpnet ligger ubrukt i `Content/Characters` – de kan spilles
-  fra C++ uten Blueprint. Det som mangler (huk, glid, klatring) lages i kode; GASP og Lyra er foreslått for Andreas,
-  men ingenting venter på dem. V8 flyttes til runde 17, N1 til 18. Backlog 6 (kropp med animasjoner), 4 og 10 er
+  fra C++ uten Blueprint. Det som mangler (huk, glid, klatring) lages i kode; GASP/Lyra hentes ikke foreløpig
+  (hovedagenten), så plan-09 bygges uten dem. V8 flyttes til runde 17, N1 til 18. Backlog 6 (kropp med animasjoner), 4 og 10 er
   dermed tatt inn i rundene 14–16.
 - 2026-11-26 (runde 13): **Blødning før V8.** Hovedagenten foreslo blødning + de små åpne bestillingene; det er det
   Andreas merker mest («veldig groteskt», ønsket om skader som må bandasjeres) og trenger ingenting fra andre lag

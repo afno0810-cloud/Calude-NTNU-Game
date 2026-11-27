@@ -1,7 +1,8 @@
 # Plan 09 – runde 15 (lag Kamp) – SKISSE: animasjoner på kroppen
 
-**Status: skisse.** Skrives ferdig av planleggeren når runde 14 (`plan-08`, ekte førsteperson og `UGSBodyAnim`) er
-bygget og kontrollert, og etter at det er avklart om Andreas har lagt inn flere animasjoner (se «Ressurser»).
+**Status: skisse.** Skrives ferdig når runde 14a og 14b (`plan-08.md`, `plan-08b.md`: `UGSBodyAnim`, kroppen, hånd- og
+fot-IK) er bygget og kontrollert. **Hovedagenten har bestemt (27. nov.): GASP/Lyra hentes ikke foreløpig. Planen må
+virke med det som ligger i prosjektet + kode.** Hodebevegelse i kameraet (fra `FPBody`s hode, forhåndssjekk F11) tas her.
 
 ## Mål
 Hopp, landing, glid, klatring, slag, skudd og lading synes på kroppen – både for deg når du ser ned og for andre –
@@ -31,37 +32,27 @@ med vekt og riktig lengde per våpentype.
 - Fot-rotasjon etter gulvets helning; start/stopp-steg.
 - Replikering bare der det trengs: et lite «handlingsnummer» (uint8 + tid) for slag/lading/klatring som andre spiller av.
 
-## Ressurser – ærlig om hva som mangler
-I prosjektet i dag (`Content/Characters/Mannequins/Anims`): gange/jogg 8 retn. (ubevæpnet, gevær, pistol), hopp
-(start, topp, fall, landing), skudd, lading og bytte for gevær og pistol, 8 treffrykk, 6 dødsfall, 3 slag, dash.
-**Mangler:** huk-gange, sprint, glid, klatring/vault, lene, ligge, hagle-/bolt-lading, kolbeslag, bruk av ting.
-Det som mangler lages som stilling i kode (godt nok for glid, huk, kolbeslag; svakt for klatring og ligge).
-
-**Anbefalt (gratis) – Andreas må gjøre dette selv i Epic Games Launcher/Fab, ca. 30–60 min:**
-1. **Game Animation Sample Project (GASP)** fra Epic (gratis, Fab / «Samples» i launcheren): hundrevis av
-   bevegelser på samme UE5-skjelett – huk-gange, start/stopp, sving, og klatring over hindre (vault, mantle, hurdle).
-   Andreas: last ned og lag et eget GASP-prosjekt for 5.8, åpne det, høyreklikk animasjonsmappen(e) i Content
-   Browser → *Asset Actions → Migrate* → velg `Calude-NTNU-Game/Content`. Si fra til hovedagenten når det er gjort;
-   byggeren finner da stiene selv (søk i `Content/`). Uten dette: klatring blir kodet stilling.
-2. **Lyra Starter Game** (gratis, Fab): skudd, lading og bytte for gevær/pistol/hagle, huk, død, slag – samme
-   UE5-skjelett. Migrer på samme måte (bare animasjonsmappen).
-   Viktig for begge: migrerte animasjoner kommer med sitt eget skjelett-objekt. Enten bruker vi deres kropp
-   (`SKM_Manny`) også, eller Andreas høyreklikker deres `SK_Mannequin` → *Add Compatible Skeleton* → vårt. Planen
-   velger når filene finnes.
-3. (Senere, utseende) En ekte menneskemodell i stedet for grå mannekeng: MetaHuman (gratis, innebygd i 5.8) eller en
-   gratis soldat/sivil-modell fra Fab med UE5-skjelett. Tungt på RTX 3050 – må måles. Egen avgjørelse.
-4. Mixamo (gratis, Adobe-konto) bare som siste utvei: krever omdirigering av skjelett (IK Retargeter) i editoren.
-
-C++ kan *bruke* animasjonsfiler, men ikke lage dem. Alt over er valgfritt: plan-09 bygges uansett, med kode der filer
-mangler, og bytter til ekte animasjoner når de finnes (samme mønster som våpenmodellene fra Fab).
+## Ressurser – det som finnes, og hva som lages i kode
+I prosjektet (`Content/Characters/Mannequins/Anims`, nøyaktige stier i `plan-08.md`): gange/jogg 8 retn. (ubevæpnet,
+gevær, pistol), hopp (gevær: start, start-løkke, topp, fall, landing, landing-additiv; pistol: start, fall, landing-
+additiv; ubevæpnet: `MM_Jump`, `MM_Fall_Loop`, `MM_Land`), `Fire`, `Reload`, `Equip`, `DryFire` for gevær og pistol,
+8 treffrykk (`Rifle/HitReact`), 6 dødsfall, 3 slag (`Unarmed/Attack`), `MM_Dash`, `MM_WallJump`.
+**Lages i kode (ingen filer finnes):** glid (hofte ned og bakover, ett bein fram via fot-IK, rygg bakover), klatring
+(hånd-IK til kantpunktet fra sporingen i `TryMantle`, to faser opp/over, knær opp), kolbeslag (overkroppsrotasjon +
+hånd-IK mot våpenet), knivstikk, hagle skudd-for-skudd og bolt (hånd-IK følger de eksisterende `FPArmL`-nøkkelbanene),
+huk-gange (gange-sekvensene + hofte ned + knebøy fra 14a, saktere avspilling), sprint (jogg × fart + rygg fram + armer
+inn). Kvaliteten blir god nok for glid, slag og lading; klatring blir enklere enn med ekte animasjoner.
+**Hvis Andreas senere vil ha mer:** Game Animation Sample (traversal/vault/mantle, huk-gange) og Lyra (hagle-lading,
+huk, slag) er gratis og bruker samme UE5-skjelett; da migrerer han animasjonsmappene inn i `Content` og en senere
+runde bytter kode-stillingene ut. Ikke en del av denne planen.
 
 ## Filer (forventet)
 `GSBodyAnim.*`, `GSCharacter.*` (`StartSlide`, `TryMantle`, `DoMeleeHit`, `MulticastMeleeFX`, `FireOnce`/`MulticastShotFX`,
 `Reload`, `UpdateLocalVisuals`), `GSAudio` (glid- og landingslyd etter underlag). Ikke kart eller katalog.
 
 ## Mulig deling
-15a: hopp/landing, glid, slag, treffrykk (alt i kode + sekvenser som finnes). 15b: klatring med hender på kanten,
-lading/skudd på kroppen, våpenbytte som tar tid (+ GASP/Lyra hvis de finnes).
+15a: hopp/landing, glid, slag, treffrykk, hodebevegelse i kameraet (sekvenser som finnes + kode). 15b: klatring med
+hender på kanten, lading/skudd på kroppen andre ser, våpenbytte som tar tid.
 
 ## Risiko
 Slag og klatring endrer spillet (tid, sårbarhet) – samordne med Spillbarhet. Klatrebanen må valideres på serveren
