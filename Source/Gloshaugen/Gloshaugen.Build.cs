@@ -8,6 +8,6 @@ public class Gloshaugen : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] {
 			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "NetCore"
 		});
-		PrivateDependencyModuleNames.AddRange(new string[] { "Sockets", "ApplicationCore" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Sockets", "ApplicationCore", "AnimationCore" });
 	}
 }

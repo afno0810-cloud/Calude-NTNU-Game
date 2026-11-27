@@ -151,5 +151,5 @@ protected:
 
 	void ShowScoreboard() { bShowScoreboard = true; }
 	void HideScoreboard() { bShowScoreboard = false; }
-	void ToggleInventory() { bShowInventory = !bShowInventory; }
+	void ToggleInventory() { if (bMenuOpen) return; bShowInventory = !bShowInventory; }   // not under the Esc menu
 };

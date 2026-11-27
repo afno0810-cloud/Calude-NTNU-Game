@@ -227,7 +227,18 @@ void AGSPlayerController::MenuClick(FName Button)
 	if (B == TEXT("Resume")) { CloseMenu(); }
 	// "Hovedmeny" (the old Host/Join ids): hosting and joining live in the main menu. GSMenu may already have caught
 	// the click itself; opening it twice is harmless.
-	else if (B == TEXT("Host") || B == TEXT("Join")) { CloseMenu(); GSMenu::OpenMain(this); }
+	else if (B == TEXT("Host") || B == TEXT("Join"))
+	{
+		CloseMenu();
+		GSMenu::OpenMain(this);
+		// The main menu could not take the mouse and keys (its key hook is not the window's): keep this menu open
+		// instead of leaving the player with neither menu.
+		if (!GSMenu::IsModal(this))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GSInput: hovedmenyen kunne ikke vises, Kamp-menyen står åpen"));
+			ToggleMenu();
+		}
+	}
 	else if (B == TEXT("Graphics")) { ApplyGraphicsLevel((GetGraphicsLevel() + 1) % 5); }
 	else if (B == TEXT("Resolution"))
 	{
@@ -244,11 +255,18 @@ void AGSPlayerController::MenuClick(FName Button)
 		GConfig->SetFloat(TEXT("Gloshaugen"), TEXT("MouseSensitivity"), MouseSensitivity, GGameUserSettingsIni);
 		GConfig->Flush(false, GGameUserSettingsIni);
 	}
-	else if (B == TEXT("Quit")) { CloseMenu(); GSMenu::AskQuit(this); }   // asks first ("Avslutte spillet?")
+	else if (B == TEXT("Quit"))
+	{
+		CloseMenu();
+		GSMenu::AskQuit(this);   // asks first ("Avslutte spillet?")
+		// No dialog could be shown: the button still has to quit.
+		if (!GSMenu::IsModal(this)) ConsoleCommand(TEXT("quit"));
+	}
 }
 
 void AGSPlayerController::ToggleReady()
 {
+	if (bMenuOpen) return;   // not under the Esc menu
 	const AGSPlayerState* PS = GetPlayerState<AGSPlayerState>();
 	ServerSetReady(!(PS && PS->bReady));
 }

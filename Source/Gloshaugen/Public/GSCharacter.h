@@ -208,7 +208,9 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPAttGrip;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPItemMesh;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> FPItemHand;
-	UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> FPLegs;
+	/** Your own body when you look down (only you see it): the whole body without head and arms (true first person),
+	 *  or only the legs in the old body. */
+	UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> FPBody;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> BodyMesh;       // seen by others
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> HeadMesh;       // seen by others
 	/** Hit zones with the size of real body parts: head, chest, stomach, left/right arm, left/right leg. */
@@ -265,6 +267,23 @@ protected:
 	 *  for the body others see, if one is in the project. The cylinder and sphere are the stand-in when none is found; hits land on HitZones. */
 	void SetupHumanBody();
 	bool bHumanBody = false;
+	/** True first person (UGSBodyAnim on the body, FPBody without head and arms, full shadow). gs.TrueFP 0 = old body. */
+	bool bTrueFP = false;
+	/** How far FPBody sits behind the body others see, so its head is just behind the camera (from the reference skeleton). */
+	float CamForwardOffset = 0.f;
+	/** Where clavicle_r sits on the standing body in the reference pose (capsule space): the third-person gun follows
+	 *  the real clavicle relative to this, so it stays on the body when crouching. */
+	FVector ClavicleRefStand = FVector::ZeroVector;
+	bool bClavicleRef = false;
+	/** Owner only (can run many times: BeginPlay and PawnClientRestart): FPBody, full shadow, tick order. */
+	void SetupLocalBody();
+	/** Back to the animation blueprint and the old legs (clips or bones missing, or gs.TrueFP 0). */
+	void FallBackToOldBody();
+	/** Copies movement, aim, crouch and the hand targets on the third-person gun to a body animation. */
+	void FillBodyAnimInput(class UGSBodyAnim* Anim, bool bFirstPerson, float Dt);
+	virtual void PawnClientRestart() override;
+	float BodyCrouchAlpha = 0.f;   // smoothed for the body animation
+	float BodySprintAlpha = 0.f;
 	/** Team look that others see: the body's paint (jacket) and a cloth armband on each upper arm in the team's
 	 *  colour. The team lives in the player state, so it is the same after every respawn. */
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> ArmbandL;
