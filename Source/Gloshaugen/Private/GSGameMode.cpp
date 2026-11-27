@@ -72,8 +72,27 @@ void AGSGameMode::Tick(float DeltaSeconds)
 		if (Now >= GS->PhaseEndsAt) StartMatch();
 		break;
 	case EGSMatchPhase::Playing:
-		if (GS->RedScore >= AGSGameState::CaptureLimit || GS->BlueScore >= AGSGameState::CaptureLimit || Now >= GS->PhaseEndsAt)
+		if (GS->RedScore >= AGSGameState::CaptureLimit || GS->BlueScore >= AGSGameState::CaptureLimit)
 		{
+			EndMatch();
+		}
+		else if (!GS->bOvertime && Now >= GS->PhaseEndsAt)
+		{
+			if (AnyDecisiveFlagAway())
+			{
+				// A flag run that can change the result is on: play it out (at most OvertimeMaxSeconds).
+				GS->bOvertime = true;
+				GS->PhaseEndsAt = Now + AGSGameState::OvertimeMaxSeconds;
+				GS->AddKill(TEXT("Tiden er ute"), TEXT("til flagget er hjemme"), TEXT("overtid"), false);
+			}
+			else
+			{
+				EndMatch();
+			}
+		}
+		else if (GS->bOvertime && (Now >= GS->PhaseEndsAt || !AnyDecisiveFlagAway()))
+		{
+			// Captured, brought home, or out of time: the score as it stands decides.
 			EndMatch();
 		}
 		else if (bSoloMatch && GS->PlayerArray.Num() >= 2)
@@ -102,6 +121,7 @@ void AGSGameMode::StartMatch()
 	// 1. Clock and scores: everyone starts fresh.
 	GS->Phase = EGSMatchPhase::Playing;
 	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + AGSGameState::MatchMinutes * 60.f;
+	GS->bOvertime = false;
 	GS->Winner.Empty();
 	GS->KillFeed.Reset();
 	GS->RedScore = 0;
@@ -169,6 +189,7 @@ void AGSGameMode::EndMatch()
 	// Empty = draw.
 	GS->Winner = Red > Blue ? FString(GSTeam::Name(GSTeam::Red)) : (Blue > Red ? FString(GSTeam::Name(GSTeam::Blue)) : FString());
 	GS->Phase = EGSMatchPhase::Ended;
+	GS->bOvertime = false;
 	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + AGSGameState::ResultsSeconds;
 	for (TActorIterator<AGSFlag> It(GetWorld()); It; ++It) It->ResetHome();
 }
@@ -177,6 +198,7 @@ void AGSGameMode::BackToLobby()
 {
 	AGSGameState* GS = GetGameState<AGSGameState>();
 	GS->Phase = EGSMatchPhase::Lobby;
+	GS->bOvertime = false;
 	LobbyStartedAt = GS->GetServerWorldTimeSeconds();
 	LobbyPlayersLast = 0;   // the 90 s start again now
 	bSoloMatch = false;
@@ -186,6 +208,35 @@ void AGSGameMode::BackToLobby()
 		if (AGSPlayerState* PS = Cast<AGSPlayerState>(P)) PS->bReady = false;
 	}
 	for (TActorIterator<AGSFlag> It(GetWorld()); It; ++It) It->ResetHome();
+}
+
+bool AGSGameMode::AnyDecisiveFlagAway() const
+{
+	const AGSGameState* GS = GetGameState<AGSGameState>();
+	if (!GS) return false;
+	for (TActorIterator<AGSFlag> It(GetWorld()); It; ++It)
+	{
+		const AGSFlag* F = *It;
+		if (F->State == EGSFlagState::Home) continue;
+		// The attackers are the other team. D = flag owner's score minus the attackers' score: one capture
+		// turns a draw (0) into a win, or one behind (1) into a draw. Ahead already, or two behind: it changes nothing.
+		const int32 D = GS->TeamScore(F->Team) - GS->TeamScore(GSTeam::Other(F->Team));
+		if (D == 0 || D == 1) return true;
+	}
+	return false;
+}
+
+void AGSGameMode::Logout(AController* Exiting)
+{
+	// The engine has already removed the pawn (APlayerController::Destroyed -> PawnLeavingGame); the player state lives.
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	APlayerState* PS = Exiting ? Exiting->PlayerState.Get() : nullptr;
+	if (GS && PS)
+	{
+		for (TActorIterator<AGSFlag> It(GetWorld()); It; ++It) It->DropIfCarriedBy(PS);   // the flag stays in the match
+		if (GS->Phase == EGSMatchPhase::Playing) GS->AddKill(PS->GetPlayerName(), TEXT("kampen"), TEXT("forlot"), false);
+	}
+	Super::Logout(Exiting);
 }
 
 void AGSGameMode::OnFlagCaptured(uint8 ScoringTeam)

@@ -25,6 +25,7 @@ void AGSGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AGSGameState, RedScore);
 	DOREPLIFETIME(AGSGameState, BlueScore);
 	DOREPLIFETIME(AGSGameState, bFriendlyFire);
+	DOREPLIFETIME(AGSGameState, bOvertime);
 }
 
 void AGSGameState::MulticastFlagEvent_Implementation(uint8 Event, uint8 FlagTeam, FVector_NetQuantize Where, APlayerState* Who)

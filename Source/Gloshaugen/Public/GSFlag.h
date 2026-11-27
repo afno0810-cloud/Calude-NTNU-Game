@@ -43,6 +43,13 @@ public:
 	/** Server: back to the base, no event (match start / end). */
 	void ResetHome();
 
+	/** The carrier has had the flag for CarrierRevealSeconds: the flag's own team hears where he was last seen. */
+	UPROPERTY(Replicated) bool bRevealed = false;
+	/** Where the carrier stood (feet), refreshed every CarrierRevealInterval while bRevealed. */
+	UPROPERTY(Replicated) FVector_NetQuantize RevealLocation;
+	/** Server: the carrier is leaving the game; lay the flag down where he stood. Does nothing if PS does not carry it. */
+	void DropIfCarriedBy(const APlayerState* PS);
+
 	static constexpr float TouchRadius = 130.f;     // cm, 2D
 	static constexpr float CaptureRadius = 200.f;
 	static constexpr float SafetyReturnSeconds = 180.f;   // a dropped flag nobody can reach goes home
@@ -65,6 +72,8 @@ protected:
 	void Announce(uint8 Event, const FVector& Where, APlayerState* Who, const TCHAR* Verb);
 	float ServerAccum = 0.f;
 	float DroppedAt = 0.f;
+	float TakenAt = 0.f;        // server, GetWorld()->GetTimeSeconds()
+	float LastRevealAt = 0.f;
 	uint8 AppliedTeam = 255;
 	/** Last place the carrier was seen on this machine (his pawn may not be relevant here). */
 	mutable FVector LastCarrierLocation = FVector::ZeroVector;

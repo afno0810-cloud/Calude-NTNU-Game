@@ -1,4 +1,5 @@
 #include "GSHelp.h"
+#include "GSCampus.h"
 #include "GSCharacter.h"
 #include "GSFlag.h"
 #include "GSGameState.h"
@@ -120,6 +121,9 @@ namespace
 		TSet<FName> SeenFalse;             // hints whose condition has been false since they were last shown
 		float JoinedAt = -1.f; bool bFirstDrawDone = false; bool bJoinedMid = false;
 		uint8 PhaseGroup = 255; float PhaseGroupStart = 0.f;   // 0 lobby + countdown, 1 playing, 2 ended
+		bool bWasOvertime = false; float OvertimeStart = -100.f;
+		/** "Flagget sist sett": the place text is worked out only when the reported point moves. */
+		FVector RevealPoint = FVector(1.e9f); FString RevealText;
 	};
 
 	TMap<TWeakObjectPtr<const AHUD>, FHelpState>& HelpStates()
@@ -190,18 +194,63 @@ namespace
 		return Lines;
 	}
 
-	/** The CTF rules as they are in the game today (plan-04 adds overtime and the revealed carrier here). */
-	TArray<FString> RuleLines(const AGSGameState* /*GS: overtime in plan-04*/)
+	/** The CTF rules as they are in the game today. */
+	TArray<FString> RuleLines(const AGSGameState* /*GS*/)
 	{
 		TArray<FString> L;
 		L.Add(TEXT("Ta motstanderens flagg ved å gå helt bort til det, og bær det til din egen base."));
 		L.Add(TEXT("Du får bare poeng når ditt eget flagg står hjemme."));
 		L.Add(TEXT("Bæreren går saktere."));
+		L.Add(FString::Printf(TEXT("Etter %d sekunder med flagget får motstanderne melding om hvor bæreren sist ble sett."),
+			int32(AGSGameState::CarrierRevealSeconds)));
 		L.Add(TEXT("Faller bæreren, blir flagget liggende. Motstanderne kan ta det opp; eget lag sender det hjem ved å gå bort til det."));
 		L.Add(FString::Printf(TEXT("Første lag til %d erobringer vinner, ellers flest når %d minutter er gått."),
 			AGSGameState::CaptureLimit, int32(AGSGameState::MatchMinutes)));
+		L.Add(FString::Printf(TEXT("Kan et flagg som er ute avgjøre kampen når tiden går, spilles det overtid til det er erobret eller hjemme (høyst %d minutter)."),
+			int32(AGSGameState::OvertimeMaxSeconds / 60.f)));
 		L.Add(TEXT("Du kommer tilbake ved egen base. Det du bar, ligger igjen der du falt."));
 		return L;
+	}
+
+	/** Name shown for a building in "Flagget sist sett". */
+	FString HelpBuildingName(const GSCampus::FBuilding& B)
+	{
+		const FString Name(B.Name);
+		if (Name == TEXT("Hovedbygningen vest")) return TEXT("Hovedbygningens vestfløy");
+		if (Name == TEXT("Hovedbygningen oest")) return TEXT("Hovedbygningens østfløy");
+		return Name;
+	}
+
+	/** Where a world point (cm) is, in words: "inne i Gamle fysikk, 2. etasje", "ute, nord for Hovedbygningen".
+	 *  From the map data (GSCampus, meters, X east, Y south). No distance, no direction from the viewer. */
+	FString HelpPlaceName(const FVector& WorldCm)
+	{
+		const FVector P = WorldCm / 100.f;
+		const GSCampus::FBuilding* Nearest = nullptr;
+		float NearestDist = TNumericLimits<float>::Max();
+		for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+		{
+			if (B.bBackdrop) continue;
+			// Into the building's own axes.
+			const FVector2D Local = FVector2D(FVector(P.X - B.X, P.Y - B.Y, 0.f).RotateAngleAxis(-B.Yaw, FVector::UpVector));
+			const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
+			if (FMath::Abs(Local.X) <= HX && FMath::Abs(Local.Y) <= HY)
+			{
+				if (P.Z >= B.Height - 0.5f) return FString::Printf(TEXT("på taket av %s"), *HelpBuildingName(B));
+				const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
+				// 0.25 m slack: a floor surface a hair under its nominal height still counts as that floor.
+				const int32 Floor = FMath::Clamp(FMath::FloorToInt((P.Z + 0.25f) / FMath::Max(B.FloorHeight, 1.f)) + 1, 1, Floors);
+				return FString::Printf(TEXT("inne i %s, %d. etasje"), *HelpBuildingName(B), Floor);
+			}
+			const float DX = FMath::Max(0.f, FMath::Abs(Local.X) - HX), DY = FMath::Max(0.f, FMath::Abs(Local.Y) - HY);
+			const float Dist = FMath::Sqrt(DX * DX + DY * DY);
+			if (Dist < NearestDist) { NearestDist = Dist; Nearest = &B; }
+		}
+		if (!Nearest || NearestDist > 60.f) return TEXT("ute i det åpne");
+		// Compass direction from the building's middle: +X east, +Y south.
+		const float DX = P.X - Nearest->X, DY = P.Y - Nearest->Y;
+		const TCHAR* Dir = FMath::Abs(DX) > FMath::Abs(DY) ? (DX > 0.f ? TEXT("øst") : TEXT("vest")) : (DY > 0.f ? TEXT("sør") : TEXT("nord"));
+		return FString::Printf(TEXT("ute, %s for %s"), Dir, *HelpBuildingName(*Nearest));
 	}
 
 	/** The overview "Taster og regler". bDraw = false only measures. Returns the height. */
@@ -308,8 +357,10 @@ namespace
 	struct FHelpHint { FName Id; bool bCond; bool bLobbyToo; };
 
 	/** Every hint in priority order, with its condition right now. C is the live pawn. */
-	void HelpHints(UWorld* World, const AGSCharacter* C, const AGSPlayerState* PS, TArray<FHelpHint>& Out)
+	void HelpHints(UWorld* World, const AGSCharacter* C, const AGSPlayerState* PS, const AGSGameState* GS, TArray<FHelpHint>& Out)
 	{
+		// Time is out: a flag at home cannot be taken (AGSFlag::ServerStep), so do not send anyone to it.
+		const bool bTimeUp = GS->Phase == EGSMatchPhase::Playing && (GS->bOvertime || GS->PhaseSecondsLeft() <= 0.f);
 		const uint8 MyTeam = PS ? PS->Team : GSTeam::None;
 		const AGSFlag* Own = MyTeam != GSTeam::None ? FindFlag(World, MyTeam) : nullptr;
 		const AGSFlag* Enemy = MyTeam != GSTeam::None ? FindFlag(World, GSTeam::Other(MyTeam)) : nullptr;
@@ -332,6 +383,7 @@ namespace
 		Out.Add({ TEXT("OwnTaken"), Own && Own->State == EGSFlagState::Carried, false });
 		Out.Add({ TEXT("Carry"), bCarrying, false });
 		Out.Add({ TEXT("EnemyFlag"), !bCarrying && Enemy && Enemy->State != EGSFlagState::Carried
+			&& !(Enemy->State == EGSFlagState::Home && bTimeUp)
 			&& FVector::Dist(Enemy->GetFlagLocation(), C->GetActorLocation()) < 3000.f, false });
 		Out.Add({ TEXT("Weapon"), P && !P->bLocked && PD && PD->IsWeapon(), true });
 		Out.Add({ TEXT("Item"), P && !P->bLocked && PD && !PD->IsWeapon(), true });
@@ -348,7 +400,9 @@ namespace
 	{
 		auto K = [PC](const TCHAR* Action, const TCHAR* Default) { return HelpKey(PC, Action, Default); };
 		if (Id == FName(TEXT("OwnTaken"))) return TEXT("Flagget deres er tatt. Stopp bæreren, så blir det liggende.");
-		if (Id == FName(TEXT("Carry"))) return TEXT("Med flagget går du saktere. Hold deg til dekning og få følge av laget.");
+		if (Id == FName(TEXT("Carry")))
+			return FString::Printf(TEXT("Med flagget går du saktere. Etter %d sekunder får motstanderne vite hvor du er."),
+				int32(AGSGameState::CarrierRevealSeconds));
 		if (Id == FName(TEXT("EnemyFlag"))) return TEXT("Gå helt bort til flagget for å ta det.");
 		if (Id == FName(TEXT("Weapon")))
 			return FString::Printf(TEXT("%s tar våpenet. Du bærer fire. %s–%s eller musehjulet bytter."),
@@ -381,13 +435,32 @@ namespace
 		St.LastUpdate = Now;
 
 		TArray<FHelpHint> Hints;
-		if (C && !C->bDead) HelpHints(World, C, PS, Hints);
+		if (C && !C->bDead) HelpHints(World, C, PS, GS, Hints);
 		for (const FHelpHint& H : Hints)
 		{
 			if (!H.bCond) St.SeenFalse.Add(H.Id);
 		}
 
-		if (!St.HintId.IsNone())
+		// Overtime, standing at the enemy's flag at home: say why nothing happens, in the hint's place
+		// (no count, nothing saved, for as long as you stand there).
+		bool bLockedFlag = false;
+		if (bAllowed && bPlaying && GS->bOvertime && C && !C->bDead && PS && PS->Team != GSTeam::None && PS->CarriedFlagTeam == 0)
+		{
+			if (const AGSFlag* Enemy = FindFlag(World, GSTeam::Other(PS->Team)))
+			{
+				const FVector D = Enemy->GetActorLocation() - C->GetActorLocation();
+				bLockedFlag = Enemy->State == EGSFlagState::Home && D.Size2D() < 500.f && FMath::Abs(D.Z) < 250.f;
+			}
+		}
+
+		FString Shown;
+		float A = 1.f;
+		if (bLockedFlag)
+		{
+			HelpStopHint(St, Now);
+			Shown = TEXT("Overtid: et flagg som står hjemme kan ikke tas.");
+		}
+		else if (!St.HintId.IsNone())
 		{
 			const float Age = Now - St.HintStart;
 			if (!bAllowed) { HelpStopHint(St, Now); return; }
@@ -419,31 +492,36 @@ namespace
 			if (St.HintId.IsNone()) return;
 		}
 
+		if (!bLockedFlag)
+		{
+			const float Age = Now - St.HintStart;
+			A = FMath::Clamp(Age / HelpHintFade, 0.f, 1.f) * FMath::Clamp((HelpHintSeconds - Age) / HelpHintFade, 0.f, 1.f);
+			Shown = St.HintText;
+		}
+
 		// --- draw: one line (two when long), centred under the middle of the screen, a quiet tile behind ---
-		const float Age = Now - St.HintStart;
-		const float A = FMath::Clamp(Age / HelpHintFade, 0.f, 1.f) * FMath::Clamp((HelpHintSeconds - Age) / HelpHintFade, 0.f, 1.f);
-		if (A <= 0.f || St.HintText.IsEmpty()) return;
+		if (A <= 0.f || Shown.IsEmpty()) return;
 		TArray<FString> Lines;
-		if (St.HintText.Len() > 70)
+		if (Shown.Len() > 70)
 		{
 			// Split at the sentence end nearest the middle, else at the space nearest the middle.
-			const int32 Mid = St.HintText.Len() / 2;
+			const int32 Mid = Shown.Len() / 2;
 			int32 Best = INDEX_NONE;
 			for (int32 Pass = 0; Pass < 2 && Best == INDEX_NONE; ++Pass)
 			{
-				for (int32 I = 1; I < St.HintText.Len() - 1; ++I)
+				for (int32 I = 1; I < Shown.Len() - 1; ++I)
 				{
-					const bool bCut = St.HintText[I] == TEXT(' ') && (Pass == 1 || St.HintText[I - 1] == TEXT('.'));
+					const bool bCut = Shown[I] == TEXT(' ') && (Pass == 1 || Shown[I - 1] == TEXT('.'));
 					if (bCut && (Best == INDEX_NONE || FMath::Abs(I - Mid) < FMath::Abs(Best - Mid))) Best = I;
 				}
 			}
-			if (Best != INDEX_NONE && FMath::Abs(Best - Mid) < St.HintText.Len() / 3)
+			if (Best != INDEX_NONE && FMath::Abs(Best - Mid) < Shown.Len() / 3)
 			{
-				Lines.Add(St.HintText.Left(Best));
-				Lines.Add(St.HintText.RightChop(Best + 1));
+				Lines.Add(Shown.Left(Best));
+				Lines.Add(Shown.RightChop(Best + 1));
 			}
 		}
-		if (Lines.Num() == 0) Lines.Add(St.HintText);
+		if (Lines.Num() == 0) Lines.Add(Shown);
 		const float S = 0.85f, LH = LineHeight(S) + 2.f;
 		float W = 0.f;
 		for (const FString& L : Lines) W = FMath::Max(W, TextWidth(L, S));
@@ -530,6 +608,10 @@ namespace
 				Text(Canvas, FString::Printf(TEXT("%d – %d"), GS->RedScore, GS->BlueScore), CX, Row1, FLinearColor::White, S1 * 1.1f, 1);
 				Text(Canvas, FlagStatus(FindFlag(World, GSTeam::Red)), CX - SideOffset, Row2, DimColor, S2, 2);
 				Text(Canvas, FlagStatus(FindFlag(World, GSTeam::Blue)), CX + SideOffset, Row2, DimColor, S2, 0);
+				if (GS->Phase == EGSMatchPhase::Playing && GS->bOvertime)
+				{
+					Text(Canvas, TEXT("Overtid"), CX, Row2, FLinearColor(0.80f, 0.62f, 0.32f), 0.7f, 1);
+				}
 			}
 
 			// --- 2. Own line under the status line (below the match clock while playing) ---
@@ -542,7 +624,9 @@ namespace
 				int32 OwnLines = 0;   // own lines taken, so the "you came in" line goes under them
 				if (PS->CarriedFlagTeam != 0)
 				{
-					Line = TEXT("Du bærer flagget. Bær det til basen din.");
+					const AGSFlag* Carried = FindFlag(World, PS->CarriedFlagTeam);
+					Line = Carried && Carried->bRevealed ? TEXT("Motstanderne vet hvor du er. Bær flagget til basen din.")
+						: TEXT("Du bærer flagget. Bær det til basen din.");
 					Col = TeamText(PS->CarriedFlagTeam);
 					if (Own && Own->State != EGSFlagState::Home)
 					{
@@ -583,8 +667,33 @@ namespace
 					const FString Joined = FString::Printf(TEXT("Kampen er i gang. Du er på %s. Stillingen er %d–%d."),
 						*FString(GSTeam::Name(PS->Team)).ToLower(), GS->RedScore, GS->BlueScore);
 					Text(Canvas, Joined, CX, OwnY + OwnLines * (LineHeight(0.8f) + 2.f), TeamText(PS->Team), 0.8f, 1);
+					++OwnLines;
+				}
+
+				// Overtime just started: 8 s with what it means.
+				if (GS->bOvertime && !St.bWasOvertime) St.OvertimeStart = Now;
+				if (GS->bOvertime && Now - St.OvertimeStart < 8.f)
+				{
+					Text(Canvas, TEXT("Overtid. Kampen varer til flagget er erobret eller hentet hjem."),
+						CX, OwnY + OwnLines * (LineHeight(0.8f) + 2.f), FLinearColor(0.80f, 0.62f, 0.32f), 0.8f, 1);
+					++OwnLines;
+				}
+
+				// Our flag is carried and the carrier has had it long enough: where he was last seen. A place name only:
+				// no marker, no distance, nothing through walls. Worked out again only when the reported point moves.
+				if (Own && Own->State == EGSFlagState::Carried && Own->bRevealed && PS->Team == Own->Team)
+				{
+					const FVector At = Own->RevealLocation;
+					if (!At.Equals(St.RevealPoint, 1.f) || St.RevealText.IsEmpty())
+					{
+						St.RevealPoint = At;
+						St.RevealText = FString::Printf(TEXT("Flagget sist sett: %s"), *HelpPlaceName(At));
+					}
+					Text(Canvas, St.RevealText, CX, OwnY + OwnLines * (LineHeight(0.8f) + 2.f), TeamText(PS->Team), 0.8f, 1);
+					++OwnLines;
 				}
 			}
+			St.bWasOvertime = GS->Phase == EGSMatchPhase::Playing && GS->bOvertime;
 
 			// --- 4. Match over ---
 			if (GS->Phase == EGSMatchPhase::Ended)

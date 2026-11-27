@@ -49,6 +49,13 @@ public:
 	int32 TeamScore(uint8 Team) const { return Team == 1 ? RedScore : (Team == 2 ? BlueScore : 0); }
 	static constexpr int32 CaptureLimit = 3;
 	static constexpr float LobbyAutoStartSeconds = 90.f;
+	/** Time is out but a flag run that can still decide the match is on. */
+	UPROPERTY(Replicated) bool bOvertime = false;
+	static constexpr float OvertimeMaxSeconds = 120.f;
+	/** After this long with the flag, the flag's own team hears where the carrier was last seen ... */
+	static constexpr float CarrierRevealSeconds = 20.f;
+	/** ... and again this often while he keeps it. */
+	static constexpr float CarrierRevealInterval = 5.f;
 
 	/** Event: 1 taken, 2 dropped, 3 returned, 4 captured (GSFlagEvent in GSFlag.h). Runs on every machine. */
 	UFUNCTION(NetMulticast, Reliable)

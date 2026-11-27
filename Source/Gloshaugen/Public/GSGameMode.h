@@ -17,6 +17,8 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
+	/** A player leaves: a flag he carries is laid down where he stood, and the event list says so. */
+	virtual void Logout(AController* Exiting) override;
 	/** Cleans the name (letters, digits, space and - _ . only, at most 20) and makes it unique among the players. */
 	virtual void ChangeName(AController* Controller, const FString& NewName, bool bNameChange) override;
 
@@ -47,6 +49,8 @@ protected:
 	void StartMatch();
 	void EndMatch();
 	void BackToLobby();
+	/** A flag is away from home and one capture with it would change the result (win from a draw, draw from one behind). */
+	bool AnyDecisiveFlagAway() const;
 	float LobbyStartedAt = 0.f;
 	/** The countdown started because the lobby timer ran out: one player cannot stop it. */
 	bool bCountdownForced = false;

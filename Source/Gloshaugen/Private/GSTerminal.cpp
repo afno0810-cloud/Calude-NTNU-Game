@@ -9,6 +9,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
+#include "GameFramework/PlayerController.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 
@@ -53,6 +54,9 @@ AGSTerminal::AGSTerminal()
 	Glow->SetIntensity(400.f);
 	Glow->SetAttenuationRadius(220.f);
 	Glow->SetCastShadows(false);
+	// A 2 m screen glow is invisible from far away: do not draw it there (fades out over the last 8 m).
+	Glow->MaxDrawDistance = 4000.f;
+	Glow->MaxDistanceFadeRange = 800.f;
 }
 
 void AGSTerminal::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -207,6 +211,9 @@ AGSSecurityCamera::AGSSecurityCamera()
 	RecLight->SetIntensity(60.f);
 	RecLight->SetAttenuationRadius(40.f);
 	RecLight->SetCastShadows(false);
+	RecLight->MaxDrawDistance = 3000.f;
+	RecLight->MaxDistanceFadeRange = 600.f;
+	Mesh->SetCastShadow(false);   // small, high on a wall and always turning
 
 	if (UStaticMesh* Model = LoadModel(TEXT("SM_Prop_SecurityCamera")))
 	{
@@ -237,4 +244,20 @@ void AGSSecurityCamera::Tick(float DeltaSeconds)
 	Camera->SetRelativeRotation(R);
 	Camera->SetRelativeLocation(R.RotateVector(FVector(30.f, 0.f, -5.f)));
 	RecLight->SetVisibility(FMath::Fmod(GetWorld()->GetTimeSeconds(), 1.2f) < 0.6f);
+
+	// Full speed only when someone looks through it or stands within 40 m; else twice a second. The direction comes
+	// from the server clock, so a camera that slept points the right way the moment someone looks.
+	bool bAwake = false;
+	if (GetNetMode() != NM_DedicatedServer)
+	{
+		const APlayerController* LPC = GetWorld()->GetFirstPlayerController();
+		if (LPC && LPC->IsLocalController())
+		{
+			FVector Eye;
+			FRotator Rot;
+			LPC->GetPlayerViewPoint(Eye, Rot);
+			bAwake = LPC->GetViewTarget() == this || FVector::DistSquared(Eye, GetActorLocation()) < FMath::Square(4000.f);
+		}
+	}
+	SetActorTickInterval(bAwake ? 0.f : 0.5f);
 }

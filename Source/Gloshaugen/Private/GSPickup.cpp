@@ -2,7 +2,9 @@
 #include "GSCharacter.h"
 #include "GSUtils.h"
 #include "Components/StaticMeshComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
@@ -27,6 +29,7 @@ AGSPickup::AGSPickup()
 		return C;
 	};
 	Mesh = Visual(TEXT("Mesh"));
+	Mesh->SetCastShadow(false);   // it floats and turns: a moving shadow on hundreds of them costs more than it gives
 	Glow = Visual(TEXT("Glow"));
 	Beam = Visual(TEXT("Beam"));
 	Crate = Visual(TEXT("Crate"));
@@ -86,6 +89,8 @@ void AGSPickup::BeginPlay()
 {
 	Super::BeginPlay();
 	OnRep_State();
+	// Tick only turns the item for someone looking at it: nobody looks on a dedicated server.
+	if (GetNetMode() == NM_DedicatedServer) SetActorTickEnabled(false);
 }
 
 void AGSPickup::Roll()
@@ -103,12 +108,29 @@ void AGSPickup::Roll()
 void AGSPickup::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	if (GetNetMode() != NM_DedicatedServer && bAvailable && !bLocked)
+	// Only loot near what the local player sees turns and bobs (further through a scope); the rest checks twice a
+	// second whether someone came closer. The tick interval is the only state.
+	bool bNear = false;
+	if (bAvailable && !bLocked)
 	{
-		Mesh->AddLocalRotation(FRotator(0.f, 60.f * DeltaSeconds, 0.f));
-		Mesh->SetRelativeLocation(FVector(Mesh->GetRelativeLocation().X, Mesh->GetRelativeLocation().Y,
-			BaseMeshZ + FMath::Sin(GetWorld()->GetTimeSeconds() * 2.f) * 6.f));
+		const APlayerController* LPC = GetWorld()->GetFirstPlayerController();
+		if (LPC && LPC->IsLocalController())
+		{
+			FVector Eye;
+			FRotator Rot;
+			LPC->GetPlayerViewPoint(Eye, Rot);
+			const float FOV = LPC->PlayerCameraManager ? FMath::Max(LPC->PlayerCameraManager->GetFOVAngle(), 5.f) : 90.f;
+			const float Range = 3000.f * FMath::Max(1.f, 90.f / FOV);
+			bNear = FVector::DistSquared(Eye, GetActorLocation()) < FMath::Square(Range);
+		}
 	}
+	SetActorTickInterval(bNear ? 0.f : 0.5f);
+	if (!bNear) return;
+	// Angle from the clock (not added up), so an item that wakes up does not jump.
+	const float T = GetWorld()->GetTimeSeconds();
+	Mesh->SetRelativeRotation(FRotator(0.f, FMath::Fmod(T * 60.f + float(GetUniqueID() % 360), 360.f), 0.f));
+	Mesh->SetRelativeLocation(FVector(Mesh->GetRelativeLocation().X, Mesh->GetRelativeLocation().Y,
+		BaseMeshZ + FMath::Sin(T * 2.f) * 6.f));
 }
 
 void AGSPickup::OnRep_State()

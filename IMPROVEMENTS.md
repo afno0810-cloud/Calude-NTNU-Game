@@ -3,6 +3,42 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 13 (Kamp): blødning, blodspor og sår på kroppen; frakobling og Esc-menyen (27. nov.)
+
+Gammelt som er forbedret: bandasje og plaster (502), drap og dødsårsak ved blødning og brann (506–508), blodpølen (509), hjerteslaget og skadeblinket (510), Esc-menyen (513, 514), hinttekster og ammoesker (515).
+Nytt: blødning (500, 501, 511), blodspor (503, 504), sår på kroppen (505), død ved frakobling (512).
+
+500. Skudd- og knivsår blør: helsa renner sakte ut etter treffet, mest ved mageskudd, minst i armen
+501. Små sår slutter å blø av seg selv etter en stund; et mageskudd gjør det ikke, og dreper på under ett minutt uten bandasje
+502. Bandasje stopper blødningen, plaster stopper små sår, førstehjelpsskrin og feltkirurgsett stopper alt; piller hjelper ikke
+503. Den som blør drypper blod på bakken der han går, så andre kan følge sporet; jo kraftigere blødning, jo tettere dråper
+504. Blodsporet har sitt eget tak per maskin, så det aldri fjerner blodsprut på vegger eller pøler under lik
+505. Blodflekk på kroppen der kula traff (hode, bryst, mage, arm eller bein), som følger kroppen når den går og faller
+506. Den som blør i hjel gir drapet til den som skjøt ham, med våpenet og «(blødning)» i drapslisten
+507. Dødskortet etter å ha blødd i hjel viser hvor skuddet kom fra, aldri skytterens nye kropp eller helse
+508. Drap med brannammo går til skytteren med årsaken «brann», og matforgiftning heter matforgiftning, ikke «Overdose»
+509. Den som har blødd i hjel blir liggende i en blodpøl, også når skuddet kom lenge før
+510. Hjerteslaget begynner når du blør kraftig og slår fortere jo mer du blør; blødningen gir ikke dunk og rødt blink for hver dråpe
+511. «Du blør» eller «Du blør kraftig» står nøkternt over helsestolpen
+512. Den som kobler fra midt i en kamp dør der han står: utstyret og flagget blir liggende, og den som skadet ham de siste 10 sekundene får drapet
+513. Esc-menyen (F10 eller P i editoren) har én knapp «Hovedmeny» i stedet for «Start server» og «Bli med», Avslutt spør før du forlater kampen, og konsoll-linja er borte
+514. Grafikk i Esc-menyen viser riktig nivå og beholder oppløsningen din når du bytter; bildefrekvensen kan settes fra menyen uten chatlinje
+515. Hinttekstene ved loot, PC, printer og lading viser tastene du selv har valgt, og en påbegynt ammoeske regnes som brukt (ingen gratis ammo)
+
+## Runde 4 (Spillbarhet): overtid og avsløring (27. nov.)
+
+Gammelt som er forbedret: kampslutt på tid (468, 469), frakobling av flaggbæreren (472), loot, kameraer og lys (473–475).
+Nytt: overtid (468) og melding om hvor flaggbæreren sist ble sett (470, 471).
+
+468. Overtid: kan et flagg som er ute avgjøre kampen når tiden går, spilles kampen ferdig til det er erobret eller hentet hjem, høyst 2 minutter
+469. Når tiden er ute kan ingen ta et flagg som står hjemme, så overtiden kan ikke holdes i gang
+470. Etter 20 sekunder med flagget får motstanderne en melding om hvor bæreren sist ble sett, med bygg og etasje, oppdatert hvert femte sekund
+471. Bæreren får selv beskjed når motstanderne vet hvor han er
+472. Kobler flaggbæreren fra, blir flagget liggende der han sto, og hendelseslista sier at han forlot kampen
+473. Loot snurrer bare når du er nær det (lenger unna i kikkertsikte) og kaster ikke skygge mens det svever, så bildet flyter jevnere
+474. Overvåkningskameraene svinger bare fort når noen er nær eller ser gjennom dem, og kaster ikke skygge
+475. Lysene på PC-er, 3D-printere og kameraer tegnes ikke lenger på lang avstand
+
 ## Retting: meny og styring del 2 (26. nov.)
 
 Gammelt som er rettet: menyen i editorens Play (527), lagvalget (529), åpen meny (530, 531), Esc-menyen i små vinduer (532).

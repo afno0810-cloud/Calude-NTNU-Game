@@ -4,6 +4,7 @@
 #include "GSGameState.h"
 #include "GSPlayerState.h"
 #include "GSUtils.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -64,6 +65,8 @@ void AGSFlag::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 	DOREPLIFETIME(AGSFlag, State);
 	DOREPLIFETIME(AGSFlag, Carrier);
 	DOREPLIFETIME(AGSFlag, DropLocation);
+	DOREPLIFETIME(AGSFlag, bRevealed);
+	DOREPLIFETIME(AGSFlag, RevealLocation);
 }
 
 void AGSFlag::BeginPlay()
@@ -165,6 +168,18 @@ void AGSFlag::ServerStep()
 			Drop();
 			return;
 		}
+		// Carried long enough: the flag's own team hears where he was last seen (a place name, no marker).
+		const float Now = World->GetTimeSeconds();
+		if (Now - TakenAt >= AGSGameState::CarrierRevealSeconds
+			&& (!bRevealed || Now - LastRevealAt >= AGSGameState::CarrierRevealInterval))
+		{
+			// Feet, not the middle of the capsule, so the floor number is right.
+			const float HalfHeight = C->GetCapsuleComponent() ? C->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 90.f;
+			RevealLocation = C->GetActorLocation() - FVector(0.f, 0.f, HalfHeight);
+			bRevealed = true;
+			LastRevealAt = Now;
+			ForceNetUpdate();
+		}
 		// Capture: at the own base, and only while the own flag is at home.
 		for (TActorIterator<AGSFlag> It(World); It; ++It)
 		{
@@ -183,6 +198,9 @@ void AGSFlag::ServerStep()
 
 	// Home or dropped: someone walks up to it.
 	const FVector FlagLoc = GetFlagLocation();
+	// Time is out (overtime, or the game mode has not ticked yet): a flag at home cannot be taken, so nobody can
+	// start or stretch overtime. A flag lying out can still be picked up.
+	const bool bHomeLocked = State == EGSFlagState::Home && (GS->bOvertime || GS->GetServerWorldTimeSeconds() >= GS->PhaseEndsAt);
 	for (TActorIterator<AGSCharacter> It(World); It; ++It)
 	{
 		AGSCharacter* C = *It;
@@ -200,7 +218,7 @@ void AGSFlag::ServerStep()
 
 		if (PS->Team != Team)
 		{
-			if (PS->CarriedFlagTeam == 0)
+			if (PS->CarriedFlagTeam == 0 && !bHomeLocked)
 			{
 				Take(C);
 				return;
@@ -226,6 +244,8 @@ void AGSFlag::Take(AGSCharacter* By)
 	if (!PS) return;
 	State = EGSFlagState::Carried;
 	Carrier = PS;
+	TakenAt = GetWorld()->GetTimeSeconds();
+	bRevealed = false;
 	PS->CarriedFlagTeam = Team;
 	PS->ForceNetUpdate();
 	Announce(GSFlagEvent::Taken, By->GetActorLocation(), PS, TEXT("tok"));
@@ -249,6 +269,7 @@ void AGSFlag::Drop()
 	}
 	DropLocation = Floor;
 	State = EGSFlagState::Dropped;
+	bRevealed = false;
 	DroppedAt = GetWorld()->GetTimeSeconds();
 	if (Old)
 	{
@@ -264,6 +285,7 @@ void AGSFlag::ReturnHome(AGSPlayerState* By)
 {
 	State = EGSFlagState::Home;
 	Carrier = nullptr;
+	bRevealed = false;
 	if (By)
 	{
 		By->Returns++;
@@ -286,6 +308,7 @@ void AGSFlag::Capture(AGSPlayerState* By)
 	By->ForceNetUpdate();
 	State = EGSFlagState::Home;
 	Carrier = nullptr;
+	bRevealed = false;
 	Announce(GSFlagEvent::Captured, Where, By, TEXT("erobret"));
 	if (AGSGameMode* GM = GetWorld()->GetAuthGameMode<AGSGameMode>())
 	{
@@ -316,6 +339,14 @@ void AGSFlag::ResetHome()
 	State = EGSFlagState::Home;
 	Carrier = nullptr;
 	DroppedAt = 0.f;
+	bRevealed = false;
 	OnRep_Look();
 	ForceNetUpdate();
+}
+
+void AGSFlag::DropIfCarriedBy(const APlayerState* PS)
+{
+	// Drop() copes with the pawn being gone already (it uses the last place the server saw the carrier).
+	// Called again (or after the flag's own check found the carrier dead) it does nothing: the flag is no longer Carried.
+	if (HasAuthority() && PS && State == EGSFlagState::Carried && Carrier == PS) Drop();
 }
