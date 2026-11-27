@@ -32,6 +32,40 @@ def log(msg):
     unreal.log(f"Gloshaugen: {msg}")
 
 
+# ------------------------------------------------------------------ saving that survives a locked file (runde 5a)
+# Another Unreal process (another team's headless run, the editor) can hold a .uasset open. Then one save fails;
+# try again three times with 2 s between, and remember the asset as "locked" for the import report (init_unreal.run_all).
+LOCKED = []
+FAILED = []
+
+
+def save_asset(asset, tries=3, wait=2.0):
+    import time
+    name = asset.get_name() if asset else "?"
+    for k in range(tries):
+        try:
+            if eal.save_loaded_asset(asset, only_if_is_dirty=False):
+                return True
+        except Exception as e:
+            unreal.log_warning(f"Gloshaugen: lagring av {name} feilet ({k + 1}/{tries}): {e}")
+        if k + 1 < tries:
+            time.sleep(wait)
+    unreal.log_warning(f"Gloshaugen: {name} er låst eller kan ikke lagres etter {tries} forsøk")
+    if name not in LOCKED:
+        LOCKED.append(name)
+    return False
+
+
+def _guard(what, fn, *a):
+    """Runs one asset step; an error is logged and recorded, and the loop goes on with the next asset."""
+    try:
+        return fn(*a)
+    except Exception as e:
+        unreal.log_warning(f"Gloshaugen: {what} feilet: {e}")
+        FAILED.append(f"{what}: {e}")
+        return None
+
+
 # ------------------------------------------------------------------ textures
 def import_textures():
     if not os.path.isdir(TEX_DIR):
@@ -68,7 +102,7 @@ def import_textures():
                 tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_MASKS)
                 tex.set_editor_property("srgb", False)
             tex.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_WORLD)
-            eal.save_loaded_asset(tex)
+            save_asset(tex)
         with open(path + ".imported", "w") as f:
             f.write("ok")
 
@@ -106,7 +140,7 @@ def ensure_weather_mpc():
         p.set_editor_property("default_value", 0.0)
         params.append(p)
     mpc.set_editor_property("scalar_parameters", params)
-    eal.save_loaded_asset(mpc)
+    save_asset(mpc)
     return mpc
 
 
@@ -250,7 +284,7 @@ def _surface_master(name, world):
     m.set_editor_property("used_with_instanced_static_meshes", True)
     m.set_editor_property("used_with_nanite", True)
     mel.recompile_material(m)
-    eal.save_loaded_asset(m)
+    save_asset(m)
     return m
 
 
@@ -298,7 +332,7 @@ def _glass_master():
     mel.connect_material_property(sp, "", unreal.MaterialProperty.MP_SPECULAR)
     m.set_editor_property("used_with_instanced_static_meshes", True)
     mel.recompile_material(m)
-    eal.save_loaded_asset(m)
+    save_asset(m)
 
 
 def _foliage_master():
@@ -366,7 +400,7 @@ def _foliage_master():
     m.set_editor_property("used_with_instanced_static_meshes", True)
     m.set_editor_property("used_with_nanite", True)
     mel.recompile_material(m)
-    eal.save_loaded_asset(m)
+    save_asset(m)
 
 
 def _fx_master(name, additive):
@@ -428,7 +462,7 @@ def _fx_master(name, additive):
         except Exception:
             mel.connect_material_property(a, "", unreal.MaterialProperty.MP_OPACITY)
     mel.recompile_material(m)
-    eal.save_loaded_asset(m)
+    save_asset(m)
 
 
 def _blood_master():
@@ -476,7 +510,7 @@ def _blood_master():
     mel.connect_material_expressions(op, "", a, "B")
     mel.connect_material_property(a, "", unreal.MaterialProperty.MP_OPACITY_MASK)
     mel.recompile_material(m)
-    eal.save_loaded_asset(m)
+    save_asset(m)
 
 
 def build_masters():
@@ -641,7 +675,7 @@ def _ensure_indoor(name, spec, force):
         _fill_instance(mi, master, spec)
         log(f"MI_GS_{name}_In: fikk ikke instans som forelder, bruker hovedmaterialet")
     mel.set_material_instance_scalar_parameter_value(mi, "Weather", 0.0)
-    eal.save_loaded_asset(mi)
+    save_asset(mi)
     return 1
 
 
@@ -658,7 +692,7 @@ def build_instances(force):
             if not mi or not parent:
                 continue
             _fill_instance(mi, parent, spec)
-            eal.save_loaded_asset(mi)
+            save_asset(mi)
             made += 1
         if master == "Surface":
             try:
@@ -679,7 +713,7 @@ def build_instances(force):
         mel.set_material_instance_parent(mi, parent)
         if extra:
             mel.set_material_instance_vector_parameter_value(mi, "Tint", unreal.LinearColor(extra[0], extra[1], extra[2], 1))
-        eal.save_loaded_asset(mi)
+        save_asset(mi)
         made += 1
     if made:
         log(f"{made} materialer laget")
@@ -768,7 +802,7 @@ def adopt_scanned_textures(scanned):
             # photo textures carry their own colour: neutral tint, no extra roughness scaling
             mel.set_material_instance_vector_parameter_value(mi, "Tint", unreal.LinearColor(1, 1, 1, 1))
             mel.set_material_instance_scalar_parameter_value(mi, "RoughnessScale", 1.0)
-            eal.save_loaded_asset(mi)
+            save_asset(mi)
             n += 1
             log(f"{name}: bruker teksturene fra {src_path}")
     if n:
@@ -820,7 +854,7 @@ def ensure_color_instance(base):
     mel.set_material_instance_scalar_parameter_value(mi, "Tiling", 1.2)
     mel.set_material_instance_scalar_parameter_value(mi, "RoughnessScale", 0.8 if metallic else 1.0)
     mel.set_material_instance_scalar_parameter_value(mi, "MetallicScale", 1.0 if metallic else 0.0)
-    eal.save_loaded_asset(mi)
+    save_asset(mi)
     return f"{path}.{name}"
 
 
@@ -853,6 +887,28 @@ def pick_material(slot, scanned, indoor=False):
     return None
 
 
+def _apply_one(name, short, scanned):
+    mesh = eal.load_asset(name)
+    if not isinstance(mesh, unreal.StaticMesh):
+        return False
+    changed = False
+    for i, sm in enumerate(mesh.get_editor_property("static_materials")):
+        slot = str(sm.get_editor_property("material_slot_name"))
+        path = pick_material(slot, scanned, short in INDOOR_MODELS)
+        if not path:
+            continue
+        cur = sm.get_editor_property("material_interface")
+        if cur and cur.get_path_name() == path:
+            continue
+        mat = eal.load_asset(path)
+        if mat:
+            mesh.set_material(i, mat)
+            changed = True
+    if changed:
+        save_asset(mesh)
+    return changed
+
+
 def apply_to_models(only=None):
     scanned = _scanned_materials()
     n = 0
@@ -860,27 +916,100 @@ def apply_to_models(only=None):
         short = name.split("/")[-1].split(".")[0]
         if only is not None and short not in only:
             continue
-        mesh = eal.load_asset(name)
-        if not isinstance(mesh, unreal.StaticMesh):
-            continue
-        changed = False
-        for i, sm in enumerate(mesh.get_editor_property("static_materials")):
-            slot = str(sm.get_editor_property("material_slot_name"))
-            path = pick_material(slot, scanned, short in INDOOR_MODELS)
-            if not path:
-                continue
-            cur = sm.get_editor_property("material_interface")
-            if cur and cur.get_path_name() == path:
-                continue
-            mat = eal.load_asset(path)
-            if mat:
-                mesh.set_material(i, mat)
-                changed = True
-        if changed:
-            eal.save_loaded_asset(mesh)
+        if _guard(f"materialer på {short}", _apply_one, name, short, scanned):
             n += 1
     if n:
         log(f"materialer lagt på {n} modeller ({len(scanned)} skannede materialer funnet)")
+
+
+# ------------------------------------------------------------------ physical materials (runde 5a, kontroll 4b funn 2)
+# PM_GS_<Norwegian>[_<English>]: GSAudio::SurfaceAt reads the Norwegian word (Stein, Tre, Stal, Betong, Stoff, Glass,
+# Gips, Lino, Gress, Jord), Interaktiv's GSBreakable the English one (Wood, Metal, Concrete, Plaster, Glass).
+# Set on every MI_GS_<Name> and MI_GS_<Name>_In, so a hit on a merged Blender part (complex collision) gets the
+# physical material of the triangle it hit, and a cube ISM the one of its material: bullet holes, impact sound and
+# footsteps follow the material slot.
+PHYS = GS + "/Physics"
+PHYS_MATS = {  # name: (friction, density g/cm3)
+    "PM_GS_Stein": (0.7, 2.4), "PM_GS_Betong_Concrete": (0.8, 2.4), "PM_GS_Gips_Plaster": (0.6, 0.9),
+    "PM_GS_Tre_Wood": (0.6, 0.7), "PM_GS_Stal_Metal": (0.4, 7.8), "PM_GS_Stoff": (0.9, 0.3),
+    "PM_GS_Glass": (0.3, 2.5), "PM_GS_Lino": (0.8, 1.3), "PM_GS_Gress": (0.9, 1.0), "PM_GS_Jord": (0.9, 1.6),
+}
+PM_FOR = {}
+for _pm, _names in (
+        ("PM_GS_Stein", ("Brick", "BrickBrown", "BrickYellow", "Stone", "StoneDark", "Slate", "Marble", "Terrazzo",
+                         "Asphalt", "Paving", "W_Asphalt", "W_Paving")),
+        ("PM_GS_Betong_Concrete", ("Concrete", "ConcreteSmooth", "W_Concrete")),
+        ("PM_GS_Gips_Plaster", ("Plaster", "PlasterWhite", "Trim", "Plastic", "PlasticWhite", "Polymer", "LightPanel",
+                                "RobotWhite", "M_White", "M_Paper", "M_BlackPolymer", "M_Bakelite", "Plate", "ScreenOn", "Bulb")),
+        ("PM_GS_Tre_Wood", ("Wood", "WoodLight", "M_Wood", "M_LightWood", "Bark", "BirchBark")),
+        ("PM_GS_Stal_Metal", ("Copper", "Metal", "MetalDark", "Steel", "Gunmetal", "PaintRed", "PaintBlue", "PaintYellow",
+                              "PaintGreen", "PaintOrange", "NTNUBlue", "HelgYellow", "PaintWhite", "RobotBody",
+                              "CarPaint_Red", "CarPaint_Black", "CarPaint_White", "CarPaint_Silver", "CarPaint_Blue",
+                              "CarPaint_Grey", "CarPaint_Green", "CarPaint", "M_Steel", "M_DarkSteel", "M_Chrome",
+                              "M_Blade", "M_BladeDark", "M_Gold", "M_Brass", "M_OliveDrab", "M_Tan", "M_Red")),
+        ("PM_GS_Stoff", ("Fabric", "Tarp", "FabricRed", "Leather", "M_Leather", "M_KatanaWrap", "M_Fabric")),
+        ("PM_GS_Glass", ("Glass", "GlassDark")),
+        ("PM_GS_Lino", ("Floor", "HelgOrange", "Rubber", "M_Rubber")),
+        ("PM_GS_Gress", ("W_Grass", "Leaves", "LeavesAutumn", "Needles")),
+        ("PM_GS_Jord", ("Gravel", "Soil", "W_Gravel"))):
+    for _n in _names:
+        PM_FOR[_n] = _pm
+
+
+def _ensure_pm(name):
+    path = f"{PHYS}/{name}"
+    if eal.does_asset_exist(path):
+        return eal.load_asset(path)
+    pm = tools.create_asset(name, PHYS, unreal.PhysicalMaterial, unreal.PhysicalMaterialFactoryNew())
+    if not pm:
+        return None
+    fr, dens = PHYS_MATS[name]
+    pm.set_editor_property("friction", fr)
+    pm.set_editor_property("density", dens)
+    save_asset(pm)
+    log(f"{name} laget")
+    return pm
+
+
+def _set_pm(mi_name, pm):
+    path = f"{MAT}/{mi_name}"
+    if not eal.does_asset_exist(path):
+        return 0
+    mi = eal.load_asset(path)
+    if not mi:
+        return 0
+    cur = mi.get_editor_property("phys_material")
+    if cur and cur.get_name() == pm.get_name():
+        return 0
+    mi.set_editor_property("phys_material", pm)
+    save_asset(mi)
+    return 1
+
+
+def ensure_physical_materials():
+    pms = {}
+    for name in PHYS_MATS:
+        pm = _guard(f"fysisk materiale {name}", _ensure_pm, name)
+        if pm:
+            pms[name] = pm
+    n = 0
+    for mi, pm_name in PM_FOR.items():
+        pm = pms.get(pm_name)
+        if not pm:
+            continue
+        for suffix in ("", "_In"):
+            n += _guard(f"PM på MI_GS_{mi}{suffix}", _set_pm, f"MI_GS_{mi}{suffix}", pm) or 0
+    if n:
+        log(f"fysiske materialer (PM_GS_*) satt på {n} materialer")
+
+
+def phys_material_of(mat):
+    """Name of the physical material a material gives (for the import report), or '-'."""
+    try:
+        pm = mat.get_physical_material() if mat else None
+        return pm.get_name() if pm else "-"
+    except Exception:
+        return "-"
 
 
 # ------------------------------------------------------------------ the map
@@ -922,9 +1051,10 @@ def run():
             _blood_master()
     except Exception as e:  # never block the rest
         log(f"M_GS_Blood feilet: {e}")
-    build_instances(forced)
+    _guard("materialinstanser", build_instances, forced)
+    _guard("fysiske materialer", ensure_physical_materials)
     try:
         adopt_scanned_textures(_scanned_materials())
     except Exception as e:  # never block the rest
         unreal.log_warning(f"Gloshaugen: skannede teksturer feilet: {e}")
-    apply_to_models()
+    _guard("materialer på modellene", apply_to_models)

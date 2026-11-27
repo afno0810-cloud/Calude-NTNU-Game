@@ -50,3 +50,4 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Et budsjett som hopper over arbeid må ikke la gammel tilstand stå som sann. (Bots 01a)
 - AI som sikter selv slipper spillets siktestøy og må lage den selv; en feil som krymper trenger et gulv. (Bots 01a)
 - Tidsmåling av AI må skille hjernen fra handlingene den utløser. (Bots 01a)
+- Bare én Unreal-prosess som skriver til Content (import) om gangen, og ingen hodeløse tester mens import kjører: sjekk prosessene rett før start OG ta låsefila `Saved/gs_unreal.lock` (skriv eget navn, slett etterpå; vent hvis den finnes og er under 20 min gammel). (Grafikk 05a)

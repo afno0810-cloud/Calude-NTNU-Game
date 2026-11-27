@@ -62,8 +62,9 @@ namespace GSHelgasetr
 	struct FCameraM { float X, Y, Z, Yaw; const TCHAR* Name; };
 	/** Room acoustics: a box per area with its reverberation time (s). */
 	struct FSoundZoneM { const TCHAR* Name; float X0, Y0, Z0, X1, Y1, Z1, Rt60; };
-	/** Kind 0 = big hanging ring lamp, 1 = corridor light (attenuation RadiusM). */
-	struct FLightM { float X, Y, Z; uint8 Kind; float RadiusM; };
+	/** Kind 0 = big hanging ring lamp, 1 = corridor light (attenuation RadiusM), 2 = ceiling spot (base lobbies).
+	 *  bShadow: one of the at most 4 indoor lights that cast shadows (helgasetr.md kap. 9). */
+	struct FLightM { float X, Y, Z; uint8 Kind; float RadiusM; bool bShadow; };
 	struct FSignM { float X, Y, Z, Yaw; const TCHAR* Text; uint8 Team; };
 
 #include "GSHelgasetr.gen.inl"

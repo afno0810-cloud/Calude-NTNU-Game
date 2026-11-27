@@ -32,6 +32,11 @@ public:
 
 protected:
 	void FindOrCreateSky();
+	/** Round 5a, Helgasetr only: physical sun, histogram exposure with EV100 limits, volumetric haze, Lumen indoors. */
+	void SetupHelgasetrLight();
+	void UpdateVolumetricFogQuality();
+	bool bHelgasetrLight = false;
+	float QualityCheckTimer = 0.f;
 	void UpdatePostProcess(float Elevation, EGSWeather Weather, EGSWeather Prev, float Blend);
 	void UpdateParticles(float DeltaSeconds, UInstancedStaticMeshComponent* ISM, TArray<FVector>& Points, float Amount, bool bSnow, const FVector& CamLoc);
 

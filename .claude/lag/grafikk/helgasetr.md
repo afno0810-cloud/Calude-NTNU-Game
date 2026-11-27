@@ -329,6 +329,20 @@ bytter klossene mot ekte oppførsel.
   (ellers lyser det gjennom veggene inn i naborom og etasjen over), minst 3 m fra baseveggene.
 - **Grupperom og undervisningsrom:** lysrør/paneler i himlingen; fra runde 7 egne lysgrupper per rom (lysbrytere).
 - Kveld/natt: alt innelys står på (bygget er åpent til kl. 23); glasstaket blir mørkt.
+- **Runde 5a – tallene i koden (`GSEnvironment::SetupHelgasetrLight`, `GSHelgasetrBuilder::BuildLights`):**
+  - Sol i lux som ute: klart 75 000, overskyet 20 000, regn og tåke 10 000, snø 15 000 (× `DayFactor`); himmellyset fra
+    sanntidsfangsten av `SkyAtmosphere` følger sola selv (multiplikator som før, 0,35–1). Månen 0,3 lux.
+  - Eksponering: histogram, EV100 min 3 / maks 13, bias +0,5, histogram −4…16, 70–95 % (glasstaket styrer ikke
+    innendørs), fart opp 3 / ned 1,5.
+  - Dis: høydetåke i origo, `FogHeightFalloff` 0,5 (tynnes over taket), tetthet ≤ 0,01 (værets, med tak), volumetrisk
+    spredning 0,75 fremover, albedo lys grå; sola `VolumetricScatteringIntensity` 2 med volumetrisk skygge. Volumetrisk tåke
+    er på også på Middels (motoren slår den av der) med rutenett 16 px / 64 skiver; høyere nivåer som i `BaseScalability`.
+  - Lumen (etterbehandling): scenelys 1, final gather 1,5, scenedetalj 1,5, sporingsavstand 60 m, himmellekkasje 0,05,
+    strålelys = overflatecache. `Straaling` (Kamp) er urørt; anbefalingen står i `kontroll/r05-maaling.md`.
+  - Skygger fra innelys: bare de 4 i dataene (`bShadow`): ringlampene ved (1,5, −10) og (0, −4) (rektangellys, `BarnDoorAngle`
+    60, rekkevidde 1,5 × høyden) og en takspot i hver baselobby på P4 (2 500 lm, 3 500 K, ytre vinkel 55°, 7 m). Alle andre
+    innelys har `VolumetricScatteringIntensity` 0.
+  - `-GSGammeltLys` på kommandolinja gir lyset fra før runde 5a (for før/etter-bilder fra samme bygg).
 
 ## 8. Materialer og møbler, koblet til bildene
 
@@ -430,7 +444,9 @@ tilstanden sin på id-ene).
 | `GlassPanels()` | 343 knusbare glassfelt ≤ 1,5 m (rekkverk P1–P4 og boksvegger mot atriet, grupperommene i glass på mesaninen) | `Id`, senter `Cx, Cy, Cz`, `Len` (langs `Yaw`), `Height`, `Thick` (0,06), `Yaw` (0 = langs X, 90 = langs Y), `Type` (0 rekkverk, 1 vegg), `Level`. Glassdørene er **ikke** med (de er dører i `DoorSlots()`). |
 | `BreachWalls()` | 6 lettvegger 2,4 × 2,8 m, parvis punktsymmetriske: P4 vest Y 0,6…3,0 og −11,4…−9,0, P4 øst Y −3,0…−0,6 og 9,0…11,4, P3 vest Y −10…−7,6, P3 øst Y 7,6…10 | `Id`, boks `X0…Z1`, `Mat`, `Level`, `Name` |
 | `Cover()` | 24 dekningsklosser (plantekasser, salatbar, båser, disker, skap, sofagrupper, miljøstasjonen) | samme som over; `Name` sier hva det er |
-| `LootSpots()`, `Terminals()`, `Cameras()`, `SoundZones()`, `Lights()`, `Signs()` | data til Spillbarhet og Kamp | se `GSHelgasetr.h` |
+| `LootSpots()` | 69 lootplasser (runde 5a): 0–57 som før (35 flyttet fra (11,0, 3,0) inne i fyllet under løp 3 til (9,5, 3,0)), **58–68 inne i de låste grupperommene** som ikke hadde én (romsenteret 1 m innover fra døra, tier 0). Id = indeks, i manifestet under `"loot"` (en id kan flytte høyst 0,1 m, sjekk k); sjekk l: over gulv, fri av alle massive klosser og dekning, rom-plassene på romsiden av døra | `X, Y, Z`, `Tier` |
+| `Lights()` | ringlamper (0), korridorlys (1), takspot i baselobbyene på P4 (2, runde 5a); `bShadow` på de 4 som kaster skygge (de to ringlampene nærmest kantinas midte og de to spotene) | `X, Y, Z`, `Kind`, `RadiusM`, `bShadow` |
+| `Terminals()`, `Cameras()`, `SoundZones()`, `Signs()` | data til Spillbarhet og Kamp | se `GSHelgasetr.h` |
 | `Bases()`, `Spawns()`, `Zones()`, `FloorRects(nivå)`, `Corridors()`, `LevelAt(z)`, `LevelName(nivå)`, `ZoneAt(p)`, `NavBoundsM()` | kartet | meter |
 
 I spillet (`AGSHelgasetrBuilder`): glassfeltene ligger i én komponent per type, dekning i én per materiale, lettveggene i én;

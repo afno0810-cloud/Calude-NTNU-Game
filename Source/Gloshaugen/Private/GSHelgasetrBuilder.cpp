@@ -6,10 +6,14 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/RectLightComponent.h"
+#include "Components/SpotLightComponent.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Components/TextRenderComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/StaticMesh.h"
+#include "PhysicsEngine/BodySetup.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
@@ -40,6 +44,10 @@ namespace GSHelgBuild
 		}
 		return 0;
 	}
+
+	/** "-GSGammeltLys" on the command line: the lights as before round 5a (no shadow lights, no lobby spots), for
+	 *  before/after pictures from the same build (Tools/Unreal/run_foto.ps1 -GammeltLys). GSEnvironment reads it too. */
+	bool OldLight() { return FParse::Param(FCommandLine::Get(), TEXT("GSGammeltLys")); }
 
 	bool IsGlass(const TCHAR* Name) { return FCString::Strcmp(Name, TEXT("Glass")) == 0; }
 	bool IsEmissive(const TCHAR* Name) { return FCString::Strcmp(Name, TEXT("LightPanel_In")) == 0; }
@@ -212,6 +220,17 @@ void AGSHelgasetrBuilder::BuildModelParts()
 			Missing.Add(P.Name);
 			continue;
 		}
+		// Round 5a (kontroll 4b funn 1c): a part you walk on or that stops bullets must have per-triangle collision.
+		// Imported but without it (the fix in init_unreal.py failed), the boxes stand in, so nobody falls through.
+		if (P.Coll != GSHelgasetr::ModelColl_None)
+		{
+			const UBodySetup* Body = Mesh->GetBodySetup();
+			if (!Body || Body->CollisionTraceFlag != CTF_UseComplexAsSimple)
+			{
+				Missing.Add(FString(P.Name) + TEXT(" (feil kollisjon)"));
+				continue;
+			}
+		}
 		const bool bGlass = P.Coll == GSHelgasetr::ModelColl_GlassFull || P.Coll == GSHelgasetr::ModelColl_GlassAbove;
 		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
 		C->SetMobility(EComponentMobility::Static);
@@ -355,9 +374,41 @@ void AGSHelgasetrBuilder::BuildLights()
 	TArray<FVector2D> PanelSpots;
 	// Round 4b: the real ring lamp from Blender (Ø 2.4 m, glowing underside) where it is imported; boxes otherwise.
 	UStaticMesh* RingLamp = ModelMesh(TEXT("SM_Prop_Helg_Hengelampe"));
+	const bool bOld = OldLight();
+	int32 NumShadow = 0;
 	for (const GSHelgasetr::FLightM& L : GSHelgasetr::Lights())
 	{
 		const FVector P(L.X, L.Y, L.Z);
+		// Round 5a: only the 4 lights marked in the data cast shadows (budget kap. 9) and light the volumetric fog;
+		// every other indoor light skips the fog (each light in the fog costs GPU time, K: plan-05 5.3).
+		const bool bShadow = L.bShadow && !bOld;
+		if (L.Kind == 2)
+		{
+			if (bOld) continue;
+			// Ceiling spot in a base lobby on Plan 4: a hard, dramatic shadow of whoever comes round the corner.
+			QueueBoxM(Glow, FVector(L.X, L.Y, Ceiling(L.Z) - 0.02f), FVector(0.3f, 0.3f, 0.04f), FRotator::ZeroRotator, false);
+			PanelSpots.Add(FVector2D(L.X, L.Y));
+			USpotLightComponent* Spot = NewObject<USpotLightComponent>(this);
+			Spot->SetupAttachment(RootComponent);
+			Spot->SetMobility(EComponentMobility::Movable);
+			Spot->SetWorldLocationAndRotation(P * Cm, FRotator(-90.f, 0.f, 0.f));
+			Spot->SetIntensityUnits(ELightUnits::Lumens);
+			Spot->SetIntensity(2500.f);
+			Spot->SetOuterConeAngle(55.f);
+			Spot->SetInnerConeAngle(30.f);
+			Spot->SetAttenuationRadius(L.RadiusM * Cm);
+			Spot->SetSourceRadius(4.f);
+			Spot->SetUseTemperature(true);
+			Spot->SetTemperature(3500.f);
+			Spot->SetCastShadows(bShadow);
+			Spot->SetVolumetricScatteringIntensity(1.f);
+			Spot->MaxDrawDistance = 4000.f;
+			Spot->MaxDistanceFadeRange = 800.f;
+			Spot->RegisterComponent();
+			IndoorLights.Add(Spot);
+			NumShadow += bShadow ? 1 : 0;
+			continue;
+		}
 		if (L.Kind == 0)
 		{
 			// Big round LED ring (Ø 2.4 m) on three long wires from the roof truss, one soft rect light down.
@@ -397,10 +448,15 @@ void AGSHelgasetrBuilder::BuildLights()
 			Rect->SetSourceHeight(R * 180.f);
 			Rect->SetIntensityUnits(ELightUnits::Lumens);
 			Rect->SetIntensity(6000.f);
-			Rect->SetAttenuationRadius(1300.f);   // 13 m: down to the canteen floor, not through the decks into P1-P2 rooms (runde-04a funn 5)
+			// 13 m: down to the canteen floor, not through the decks into P1-P2 rooms (runde-04a funn 5). A shadow-casting
+			// lamp cannot shine through a deck, so it reaches the whole way down (1.5 x its height).
+			Rect->SetAttenuationRadius(bShadow ? FMath::Max(1300.f, L.Z * 1.5f * Cm) : 1300.f);
 			Rect->SetUseTemperature(true);
 			Rect->SetTemperature(4000.f);
-			Rect->SetCastShadows(false);
+			Rect->SetCastShadows(bShadow);
+			if (bShadow) Rect->SetBarnDoorAngle(60.f);   // soft but directed shadows of tables and people
+			if (!bOld) Rect->SetVolumetricScatteringIntensity(bShadow ? 1.f : 0.f);
+			NumShadow += bShadow ? 1 : 0;
 			Rect->MaxDrawDistance = 4000.f;
 			Rect->MaxDistanceFadeRange = 800.f;
 			Rect->RegisterComponent();
@@ -424,6 +480,7 @@ void AGSHelgasetrBuilder::BuildLights()
 			Point->SetUseTemperature(true);
 			Point->SetTemperature(3800.f);
 			Point->SetCastShadows(false);
+			if (!bOld) Point->SetVolumetricScatteringIntensity(0.f);
 			Point->MaxDrawDistance = 4000.f;
 			Point->MaxDistanceFadeRange = 800.f;
 			Point->RegisterComponent();
@@ -449,6 +506,8 @@ void AGSHelgasetrBuilder::BuildLights()
 			}
 		}
 	}
+	UE_LOG(LogTemp, Log, TEXT("Helgasetr: %d innelys, %d med skygge (maks 4)%s"), IndoorLights.Num(), NumShadow,
+		bOld ? TEXT(", gammelt lys (-GSGammeltLys)") : TEXT(""));
 }
 
 void AGSHelgasetrBuilder::BuildSigns()

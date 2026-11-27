@@ -24,6 +24,11 @@ Every check has a counter-test: a changed copy of the data that MUST fail, other
   i) under stairs: free height >= 2.0 m or solid; no 0.3-0.9 m gap between a stair and a slab edge  (counter: no fill under run 2)
   j) nothing that blocks Pawn above the Plan 4 floor inside the atrium, except the glass roof and the blockers
      (counter: a box roof on Plan 5 that blocks Pawn)
+  k) id manifest (helgasetr_ids.json): no existing id of a door, glass panel, breach wall, cover piece or loot spot moves
+     (loot: by at most 0.1 m)                                          (counter: a new door first on Plan 1)
+  l) every loot spot over a floor and clear of every Coll_Solid box (sphere r 0.15 m, 0.1-0.4 m over the floor); the
+     spots in the code-locked rooms on the room side of their door    (counters: the old spot (11.0, 3.0) in the stair
+     fill on Plan 3; a room spot moved out in front of its door)
 Prints one line per check, exits 1 when anything is wrong.
 """
 import copy
@@ -896,11 +901,18 @@ def id_keys(G):
     }
 
 
-def check_k(G, quiet=False, manifest=None):
+def loot_keys(P):
+    """Loot ids = index in LOOT (Spillbarhet's GameMode and Interaktiv key on them): [id, level, x, y]."""
+    return [[i, lv_of(z), round(x, 2), round(y, 2)] for i, (x, y, z, t) in enumerate(P["loot"])]
+
+
+def check_k(G, quiet=False, manifest=None, P=None):
     import json
     cur = id_keys(G)
+    if P is not None:
+        cur["loot"] = loot_keys(P)
     if manifest is None:
-        if not os.path.exists(IDS_FILE) or "--update-ids" in sys.argv:
+        if not os.path.exists(IDS_FILE) or ("--update-ids" in sys.argv and not quiet):   # never from a counter-test
             with open(IDS_FILE, "w", encoding="utf-8") as fh:
                 json.dump(cur, fh, ensure_ascii=False, indent=0)
         with open(IDS_FILE, encoding="utf-8") as fh:
@@ -909,11 +921,77 @@ def check_k(G, quiet=False, manifest=None):
     for kind, rows in manifest.items():
         now = {r[0]: r for r in cur.get(kind, [])}
         for r in rows:
-            if now.get(r[0]) != r:
-                bad.append("%s %d: %s -> %s" % (kind, r[0], r[1:], now.get(r[0], ["mangler"])[1:]))
+            n = now.get(r[0])
+            if kind == "loot" and n is not None and n[1] == r[1] and math.hypot(n[2] - r[2], n[3] - r[3]) <= 0.1 + 1e-6:
+                continue   # a loot spot may be nudged by at most 0.1 m
+            if n != r:
+                bad.append("%s %d: %s -> %s" % (kind, r[0], r[1:], (n or ["mangler"])[1:]))
     if not quiet:
-        report(not bad, "k) id-manifestet (%s): ingen eksisterende id for dører, glass, lettvegger eller dekning har flyttet seg %s" % (
+        report(not bad, "k) id-manifestet (%s): ingen eksisterende id for dører, glass, lettvegger, dekning eller loot har flyttet seg %s" % (
             os.path.basename(IDS_FILE), "; ".join(bad[:3])))
+    return not bad
+
+
+# ================================================================ l) loot spots free of walls, stairs and furniture
+def ue_axes(pitch, yaw, roll):
+    """The three local axes of a box rotated like FRotator(pitch, yaw, roll) (FRotationMatrix rows)."""
+    sp, cp = math.sin(math.radians(pitch)), math.cos(math.radians(pitch))
+    sy, cy = math.sin(math.radians(yaw)), math.cos(math.radians(yaw))
+    sr, cr = math.sin(math.radians(roll)), math.cos(math.radians(roll))
+    return ((cp * cy, cp * sy, sp),
+            (sr * sp * cy - cr * sy, sr * sp * sy + cr * cy, -sr * cp),
+            (-(cr * sp * cy + sr * sy), cy * sr - cr * sp * sy, cr * cp))
+
+
+def sphere_in_box(b, p, r):
+    ax = ue_axes(b["pitch"], b["yaw"], b["roll"])
+    d = [p[k] - b["c"][k] for k in range(3)]
+    dist2 = 0.0
+    for i in range(3):
+        u = sum(d[k] * ax[i][k] for k in range(3))
+        h = b["s"][i] / 2
+        e = max(0.0, abs(u) - h)
+        dist2 += e * e
+    return dist2 < r * r
+
+
+def check_l(P, G, quiet=False):
+    bad = []
+    solid = [b for b in G["boxes"] if b["coll"] == H.C_SOLID]
+    for i, (x, y, z, t) in enumerate(P["loot"]):
+        lv = lv_of(z)
+        if not on_floor(G, lv, x, y):
+            bad.append("loot %d (%.2f, %.2f, %.1f) uten gulv" % (i, x, y, z))
+            continue
+        # sphere r 0.15 m from 0.1 to 0.4 m over the floor (centre 0.25 m): where the pickup lies
+        hit = next((b for b in solid if sphere_in_box(b, (x, y, z + 0.25), 0.15)), None)
+        if hit:
+            bad.append("loot %d (%.2f, %.2f, %.1f) inne i en massiv kloss %s (%.2f, %.2f, %.2f)" % (
+                i, x, y, z, hit.get("tag") or "", hit["c"][0], hit["c"][1], hit["c"][2]))
+        for c in G["cover"]:
+            bx = c["box"]
+            if bx[0] - 0.15 < x < bx[3] + 0.15 and bx[1] - 0.15 < y < bx[4] + 0.15 and bx[2] < z + 0.4 and bx[5] > z + 0.1:
+                bad.append("loot %d inne i %s" % (i, c["name"]))
+    for (i, lv, name) in P.get("loot_rooms", []):
+        x, y, z, t = P["loot"][i]
+        doors = [d for d in G["doors"] if d["lv"] == lv and d["room"] == name and d["kind"] == "glass_kode"]
+        r = next((r for r in P["rooms"] if r.lv == lv and r.name == name), None)
+        if not doors or r is None:
+            bad.append("loot %d: fant ikke %s med kodelåsdør" % (i, name))
+            continue
+        d = doors[0]
+        a = math.radians(d["yaw"])   # the way the door front faces = out of its room
+        side = (x - d["x"]) * math.cos(a) + (y - d["y"]) * math.sin(a)
+        if side >= -0.3 or not r.contains(x, y):
+            bad.append("loot %d (%.2f, %.2f) ikke på romsiden av døra til %s (%.2f)" % (i, x, y, name, side))
+        if min(x - r.x0, r.x1 - x, y - r.y0, r.y1 - y) < 0.6:
+            bad.append("loot %d nærmere enn 0,6 m fra veggen i %s" % (i, name))
+        for b in P["bases"]:
+            if math.dist((x, y, z), b["flag"]) < 8.0:
+                bad.append("loot %d nærmere enn 8 m fra flagget %s" % (i, b["name"]))
+    if not quiet:
+        report(not bad, "l) %d loot over gulv og fri av alle massive klosser og dekning (kule r 0,15 m, 0,1-0,4 m over gulvet); %d i låste grupperom på romsiden av døra %s" % (
+            len(P["loot"]), len(P.get("loot_rooms", [])), "; ".join(bad[:4])))
     return not bad
 
 
@@ -1021,7 +1099,7 @@ def main():
     Gj2["boxes"] = [b for b in Gj2["boxes"] if not (b["bit"] == P4 and b["coll"] == H.C_HIGH and b["mat"] == "PlasterWhite_In")]
     counter(not check_j2(P, Gj2, True), "boksetakene på 4. etasje fjernet (veggtoppene blir et gulv)")
     # k
-    check_k(G)
+    check_k(G, P=P)
 
     def door_first(Px):
         for rr in Px["rooms"]:
@@ -1030,6 +1108,21 @@ def main():
                 break
     Pk, Gk = variant(door_first)
     counter(not check_k(Gk, True), "en ny dør først på 1. etasje (alle senere dør-id-er flytter seg)")
+    Pk2 = copy.deepcopy(P)
+    Pk2["loot"].insert(0, (0.0, -6.0, 0.0, 0))
+    counter(not check_k(G, True, P=Pk2), "en ny lootplass først i lista (alle loot-id-er flytter seg)")
+    # l
+    check_l(P, G)
+    Pl = copy.deepcopy(P)
+    Pl["loot"].append((11.0, 3.0, H.LEVELS[H.P3], 0))
+    counter(not check_l(Pl, G, True), "den gamle lootplassen (11,0, 3,0) i fyllet under løp 3 på 3. etasje")
+    Pl2 = copy.deepcopy(P)
+    if Pl2["loot_rooms"]:
+        i, lv, name = Pl2["loot_rooms"][0]
+        d = next(d for d in G["doors"] if d["lv"] == lv and d["room"] == name)
+        a = math.radians(d["yaw"])
+        Pl2["loot"][i] = (d["x"] + 1.2 * math.cos(a), d["y"] + 1.2 * math.sin(a), Pl2["loot"][i][2], 0)
+    counter(not check_l(Pl2, G, True), "en lootplass i et låst rom flyttet 1,2 m ut foran døra")
 
     print()
     print("Alt OK" if errors == 0 else "%d FEIL" % errors)

@@ -131,9 +131,10 @@ def generate():
     w("// Doors: floor point in the middle of the opening, Yaw = the way the front faces (out of its room).")
     w("inline constexpr FDoorM DoorsM[] = {")
     for d in G["doors"]:
-        w("\t{ %d, %s, %s, %s, %s, %s, %s, %s, %d, %s, %s, %d, %s }," % (
+        w("\t{ %d, %s, %s, %s, %s, %s, %s, %s, %d, %s, %s, %d, %s, %s }," % (
             d["id"], f(d["x"]), f(d["y"]), f(d["z"]), f(d["w"]), f(d["h"]), f(d["yaw"]), "true" if d["hinge_left"] else "false",
-            H.DOOR_KINDS.index(d["kind"]), "true" if d["locked"] else "false", "true" if d["open"] else "false", d["lv"], t(d["room"])))
+            H.DOOR_KINDS.index(d["kind"]), "true" if d["locked"] else "false", "true" if d["open"] else "false", d["lv"], t(d["room"]),
+            "true" if d.get("no_opening") else "false"))   # runde 5a: bNoOpening was never written (only dør 31 is sealed)
     w("};")
     w("")
     w("inline constexpr FLootM LootM[] = {")
@@ -153,8 +154,8 @@ def generate():
         w("\t{ %s, %s, %s, %s, %s, %s, %s, %s }," % (t(name), f(x0), f(y0), f(z0), f(x1), f(y1), f(z1), f(rt)))
     w("};")
     w("inline constexpr FLightM LightsM[] = {")
-    for (x, y, z, kind, r) in P["lights"]:
-        w("\t{ %s, %s, %s, %d, %s }," % (f(x), f(y), f(z), kind, f(r)))
+    for (x, y, z, kind, r, shadow) in P["lights"]:
+        w("\t{ %s, %s, %s, %d, %s, %s }," % (f(x), f(y), f(z), kind, f(r), "true" if shadow else "false"))
     w("};")
     w("inline constexpr FSignM SignsM[] = {")
     for (x, y, z, yaw, text, team) in P["signs"]:

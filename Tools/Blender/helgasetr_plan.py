@@ -341,10 +341,34 @@ def make_plan():
     loot(P2, [(-12.0, -12.0), (-14.4, -3.0), (12.0, -15.0), (11.0, -9.25, 1), (-6.55, 14.8, 1), (10.75, 14.8, 1), (-10.0, 10.0), (4.0, 12.0),
               (0.0, 25.0), (8.0, 26.0)])
     loot(P3, [(-14.4, -5.0), (-14.4, 13.5), (14.4, 5.0), (14.4, -13.0), (-8.0, -18.9), (8.0, -18.9), (-8.0, 18.9), (8.0, 18.9),
-              (-10.8, -4.5, 1), (3.35, -15.0, 1), (-3.3, 15.0, 1), (5.0, 15.0, 1), (11.0, -3.0, 2), (11.0, 3.0), (-3.3, -15.0), (-9.0, 15.0)])
+              (-10.8, -4.5, 1), (3.35, -15.0, 1), (-3.3, 15.0, 1), (5.0, 15.0, 1), (11.0, -3.0, 2), (9.5, 3.0), (-3.3, -15.0), (-9.0, 15.0)])
     loot(P4, [(-14.4, -10.0), (-14.4, 8.0), (14.4, 9.0), (14.9, -3.3), (-20.5, 9.0, 1), (-20.5, 0.5, 2), (-20.5, -8.0, 1),
               (20.5, 0.5, 2), (20.5, 8.0, 1), (20.5, 16.0, 1), (-10.8, -10.5, 1), (-10.8, 2.5), (11.1, 7.7, 1), (11.1, 10.8),
               (-3.3, -15.0), (3.35, -15.0), (-3.3, 15.0), (10.0, 15.0), (9.5, -15.0), (-12.0, 18.9)])
+    # (flyttet runde 5a: (11.0, 3.0) on Plan 3 lay inside the fill under run 3 (Spillbarhet runde-06 F2); now (9.5, 3.0), between
+    # the atrium rail and the stair, same tier.)
+    # Runde 5a: one spot inside every code-locked group room that had none (risk gives reward; Spillbarhet upgrades the tier).
+    # APPENDED LAST so no existing loot index moves (Spillbarhet / Interaktiv key on them). Place: the room centre moved
+    # 1.0 m away from the door along the door normal, >= 0.6 m from walls and cover; none within 8 m of a flag.
+    # The 13 rooms that already had a spot inside (Møterom, 2.1, 2.3, 3.N1, 3.V1, 3.S1, 3.S2, 4.N1, 4.N2, 4.V1, 4.V5,
+    # 4.O1, 4.O2) get no second one. LOOT_ROOMS: (loot index, level, room) so check l can test the room side of the door.
+    LOOT_ROOMS = []
+
+    def loot_room(lv, name, x, y, tier=0):
+        LOOT_ROOMS.append((len(LOOT), lv, name))
+        LOOT.append((x, y, LEVELS[lv], tier))
+
+    loot_room(P2, "Studentforeningen", 10.1, -3.75)
+    loot_room(P2, "Grupperom 2.2", -2.0, 15.75)
+    loot_room(P3, "Grupperom 3.N2", 10.0, -14.0)
+    loot_room(P3, "Grupperom 3.V2", -9.8, -1.55)
+    loot_room(P3, "Grupperom 3.V3", -9.8, 1.45)
+    loot_room(P3, "Grupperom 3.V4", -9.8, 4.4)
+    loot_room(P3, "Grupperom 3.S3", 10.0, 14.0)
+    loot_room(P4, "Grupperom 4.V2", -9.8, -7.55)
+    loot_room(P4, "Grupperom 4.V3", -9.8, -4.55)
+    loot_room(P4, "Grupperom 4.V4", -9.8, -1.6)
+    loot_room(P4, "Grupperom 4.V6", -9.8, 7.45)
     TERMINALS = [  # (x, y, z, yaw, kind 0 PC / 1 printer, name)
         (-24.8, 9.0, LEVELS[P4], 0.0, 0, "Audiologi 4.056, 4. etasje"),
         (24.8, 8.0, LEVELS[P4], 180.0, 0, "Ferdighetsrom vernepleier, 4. etasje"),
@@ -381,7 +405,7 @@ def make_plan():
         ("Klatrehallen", -15.55, BY0, 0.0, 6.77, -20.05, 9.9, 1.8),
     ]
     # ---------------------------------------------------------- lights (K20): 8 big hanging rings + corridor lights <= 6 m
-    LIGHTS = []  # (x, y, z, kind 0 ring lamp / 1 corridor point light, radius m)
+    LIGHTS = []  # (x, y, z, kind 0 ring lamp / 1 corridor point light / 2 ceiling spot, radius m, casts shadow)
     for p in [(-5.0, -9.0, 11.8), (1.5, -10.0, 9.2), (6.5, -8.0, 12.0), (-6.0, -3.0, 8.4), (0.0, -4.0, 10.6), (6.0, -1.5, 8.0),
               (-3.0, 2.5, 12.4), (4.0, 3.0, 10.8)]:
         LIGHTS.append((p[0], p[1], p[2], 0, 1.2))
@@ -408,6 +432,16 @@ def make_plan():
         LIGHTS.append((x, y, LEVELS[P2] + 3.6, 1, 6.0))
     for x, y in ((-12.0, -16.0), (12.0, -17.0), (-13.5, -2.0), (12.5, 0.0)):
         LIGHTS.append((x, y, 4.6, 1, 6.0))
+    # Runde 5a: the 4 lights that cast shadows (budget kap. 9: at most 4). The two ring lamps nearest the middle of the
+    # canteen (soft, directed shadows of tables and people), and one spot (kind 2) in the ceiling of each base lobby on
+    # Plan 4 (the shadow of whoever comes round the corner). Tuple element 5 = casts shadow.
+    canteen_mid = (0.0, -7.2)
+    rings = sorted((k for k, L in enumerate(LIGHTS) if L[3] == 0),
+                   key=lambda k: math.hypot(LIGHTS[k][0] - canteen_mid[0], LIGHTS[k][1] - canteen_mid[1]))
+    LIGHTS[:] = [L + (k in rings[:2],) for k, L in enumerate(LIGHTS)]
+    ceil4 = LEVELS[P5] - SLAB - 0.1
+    LIGHTS.append((11.87, -23.5, ceil4, 2, 7.0, True))    # Nord-lobby (blue base)
+    LIGHTS.append((-11.87, 23.5, ceil4, 2, 7.0, True))    # Sør-lobby (red base)
 
     # ---------------------------------------------------------- team colours: stripes over the base doors and lobby openings, signs
     STRIPES = []   # (x0, y0, x1, y1, z, team 0 red / 1 blue)
@@ -431,7 +465,7 @@ def make_plan():
     CORRIDORS = [((-14.4, -18.9), (-14.4, 18.9)), ((14.4, -18.9), (14.4, 18.9)), ((-14.4, -18.9), (14.4, -18.9)), ((-14.4, 18.9), (14.4, 18.9))]
 
     return dict(rooms=R, cuts=cuts, voids=voids, extras=extras, stairs=STAIRS, well_landings=WELL_LANDINGS,
-                well_dividers=WELL_DIVIDERS, bases=BASES, screens=SCREENS, breach=BREACH_WALLS, cover=COVER, loot=LOOT,
+                well_dividers=WELL_DIVIDERS, bases=BASES, screens=SCREENS, breach=BREACH_WALLS, cover=COVER, loot=LOOT, loot_rooms=LOOT_ROOMS,
                 terminals=TERMINALS, cameras=CAMERAS, sound_zones=SOUND_ZONES, lights=LIGHTS, stripes=STRIPES, signs=SIGNS,
                 zones=ZONES, corridors=CORRIDORS, play_area=(-26.5, -33.0, 26.5, 36.5), full=full)
 

@@ -19,7 +19,7 @@ I lagmappen ligger lagets egne filer: `lag.md` (fokus), `retning.md`, `logg.md`,
 | Filer | Eier |
 |---|---|
 | `GSCharacter.*`, `GSHUD.*`, `GSPlayerController.*`, `GSProjectile.*`, `GSEffects.*`, `GSAudio.*`, nye `GSBallistics.*`, `Tools/Audio/`, `SourceArt/Sounds/` | Kamp |
-| `GSCampusBuilder.*`, `GSCampus.h` (kartdata: bygg, veier, spillområde, baser, spawnpunkter), `GSEnvironment.*`, `GSWorldSubsystem.*`, `Tools/Blender/`, `Tools/Textures/`, `Content/Python/`, `SourceArt/Models/`, `SourceArt/Textures/` | Grafikk og kart |
+| `GSCampusBuilder.*`, `GSCampus.h` (kartdata: bygg, veier, spillområde, baser, spawnpunkter), `GSEnvironment.*`, `GSWorldSubsystem.*`, `GSFoto.cpp` (konsollkommandoen `Grafikk.Foto`), `Tools/Blender/`, `Tools/Textures/`, `Tools/Unreal/` (hodeløs import og fotorunde), `Content/Python/`, `SourceArt/Models/`, `SourceArt/Textures/` | Grafikk og kart |
 | `GSGameMode.*`, `GSGameState.*`, `GSPlayerState.*`, `GSItems.*`, `GSPickup.*`, `GSTerminal.*`, `Tools/ItemCatalog/` (og den genererte `GSItemCatalog.gen.inl`), nye `GSHelp.*`, `GSMenu.*` og `GSFlag.*` | Spillbarhet |
 | `GSMapState.*`, `GSDoor.*`, `GSBreakable.*`, `GSPhysicsProp.*`, `GSInteract.*`, `Tools/Blender/interactive*.py` | Interaktiv verden |
 | `GSBotController.*`, `GSBotTeam.*`, `GSBots.*`, `GSNavSetup.*` | Bots |

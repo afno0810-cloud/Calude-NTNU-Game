@@ -24,6 +24,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Materials/MaterialParameterCollection.h"
+#include "GSCampus.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
+#include "Scalability.h"
+#include "HAL/IConsoleManager.h"
 
 namespace
 {
@@ -45,6 +50,36 @@ namespace
 		case EGSWeather::Rain:   return { 1.8f, 0.6f, 0.06f,  FLinearColor(0.38f, 0.4f, 0.43f) };
 		case EGSWeather::Snow:   return { 3.0f, 0.9f, 0.10f,  FLinearColor(0.7f, 0.72f, 0.76f) };
 		default:                 return { 10.f, 1.0f, 0.01f,  FLinearColor(0.45f, 0.55f, 0.7f) };
+		}
+	}
+
+	/** Round 5a, Helgasetr: the sun in lux as outdoors (clear 75 000, overcast 20 000, rain / fog 10 000, snow 15 000),
+	 *  so the daylight through the glass roof fills the atrium and the 1 800 / 6 000 lm lamps light like real lamps.
+	 *  The fog is only a faint haze inside the building (the volumetric fog that shows the sun shafts). */
+	FWeatherLook LookForHelgasetr(EGSWeather W)
+	{
+		FWeatherLook L = LookFor(W);
+		switch (W)
+		{
+		case EGSWeather::Clear:  L.SunLux = 75000.f; break;
+		case EGSWeather::Cloudy: L.SunLux = 20000.f; break;
+		case EGSWeather::Fog:    L.SunLux = 10000.f; break;
+		case EGSWeather::Rain:   L.SunLux = 10000.f; break;
+		case EGSWeather::Snow:   L.SunLux = 15000.f; break;
+		default:                 L.SunLux = 75000.f; break;
+		}
+		L.FogDensity = FMath::Min(L.FogDensity, 0.01f);
+		return L;
+	}
+
+	/** "-GSGammeltLys": the light as before round 5a (see GSHelgasetrBuilder.cpp), for before/after pictures. */
+	bool NewLight() { return GSCampus::bHelgasetr && !FParse::Param(FCommandLine::Get(), TEXT("GSGammeltLys")); }
+
+	void SetCVarByCode(const TCHAR* Name, int32 Value)
+	{
+		if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(Name))
+		{
+			if (V->GetInt() != Value) V->Set(Value, ECVF_SetByCode);
 		}
 	}
 
@@ -145,6 +180,10 @@ void AGSEnvironment::BeginPlay()
 {
 	Super::BeginPlay();
 	FindOrCreateSky();
+	if (NewLight())
+	{
+		SetupHelgasetrLight();
+	}
 
 	// The engine's ready-made volumetric clouds (ships with every UE5 install)
 	if (UMaterialInterface* CloudMat = LoadObject<UMaterialInterface>(nullptr,
@@ -167,6 +206,58 @@ void AGSEnvironment::BeginPlay()
 		RainISM->AddInstance(FTransform(FRotator::ZeroRotator, P, FVector::ZeroVector), true);
 		SnowISM->AddInstance(FTransform(FRotator::ZeroRotator, P, FVector::ZeroVector), true);
 	}
+}
+
+void AGSEnvironment::SetupHelgasetrLight()
+{
+	bHelgasetrLight = true;
+	// Haze that only fills the building: base at the Plan 1 floor, thinning above the roof (26 m), so the sun through the
+	// saw-tooth glass becomes visible shafts with the truss shadows in them (forward scattering towards the sun).
+	Fog->SetWorldLocation(FVector::ZeroVector);
+	Fog->SetFogHeightFalloff(0.5f);
+	Fog->SetVolumetricFog(true);
+	Fog->SetVolumetricFogScatteringDistribution(0.75f);
+	Fog->SetVolumetricFogExtinctionScale(1.f);
+	Fog->SetVolumetricFogAlbedo(FColor(230, 230, 228));
+	Sun->SetVolumetricScatteringIntensity(2.f);
+	Sun->SetCastVolumetricShadow(true);
+	Moon->SetVolumetricScatteringIntensity(0.5f);
+
+	FPostProcessSettings& S = PostProcess->Settings;
+	// Exposure like an eye in a building: histogram, fixed EV100 limits (ExtendDefaultLuminanceRange is on), so night
+	// becomes night (min 3) and the glass roof does not drive the exposure indoors (the brightest 5 % ignored).
+	S.bOverride_AutoExposureMethod = true;        S.AutoExposureMethod = AEM_Histogram;
+	S.bOverride_AutoExposureMinBrightness = true; S.AutoExposureMinBrightness = 3.f;
+	S.bOverride_AutoExposureMaxBrightness = true; S.AutoExposureMaxBrightness = 13.f;
+	S.bOverride_AutoExposureBias = true;          S.AutoExposureBias = 0.5f;
+	S.bOverride_HistogramLogMin = true;           S.HistogramLogMin = -4.f;
+	S.bOverride_HistogramLogMax = true;           S.HistogramLogMax = 16.f;
+	S.bOverride_AutoExposureLowPercent = true;    S.AutoExposureLowPercent = 70.f;
+	S.bOverride_AutoExposureHighPercent = true;   S.AutoExposureHighPercent = 95.f;
+	S.AutoExposureSpeedUp = 3.f;                  // into a bright atrium fast,
+	S.AutoExposureSpeedDown = 1.5f;               // into a dark room slower (the eye)
+	// Lumen indoors: small things (column rings, rails) in the scene, traces across the 68 m building, almost no sky
+	// light leaking into closed rooms (no black corners either).
+	S.bOverride_LumenSceneLightingQuality = true; S.LumenSceneLightingQuality = 1.f;
+	S.bOverride_LumenFinalGatherQuality = true;   S.LumenFinalGatherQuality = 1.5f;
+	S.bOverride_LumenSceneDetail = true;          S.LumenSceneDetail = 1.5f;
+	S.bOverride_LumenMaxTraceDistance = true;     S.LumenMaxTraceDistance = 6000.f;
+	S.bOverride_LumenSkylightLeaking = true;      S.LumenSkylightLeaking = 0.05f;
+	S.bOverride_LumenRayLightingMode = true;      S.LumenRayLightingMode = ELumenRayLightingModeOverride::SurfaceCache;
+	UE_LOG(LogTemp, Log, TEXT("Helgasetr: lys runde 5a (sol 75 000 lux, histogram EV100 3-13, volumetrisk dis, Lumen innendørs)"));
+}
+
+void AGSEnvironment::UpdateVolumetricFogQuality()
+{
+	// Volumetric fog per graphics level (shadow quality group in BaseScalability.ini). The engine turns it OFF on
+	// Middels; Helgasetr needs it for the sun shafts, so Middels gets it with the coarse grid (16 px, 64 slices).
+	// Set for every level, so a later change of level still gives that level's values.
+	const int32 Q = Scalability::GetQualityLevels().ShadowQuality;
+	static const int32 On[] = { 0, 1, 1, 1, 1 }, Px[] = { 16, 16, 16, 8, 4 }, Z[] = { 64, 64, 64, 128, 128 };
+	const int32 I = FMath::Clamp(Q, 0, 4);
+	SetCVarByCode(TEXT("r.VolumetricFog"), On[I]);
+	SetCVarByCode(TEXT("r.VolumetricFog.GridPixelSize"), Px[I]);
+	SetCVarByCode(TEXT("r.VolumetricFog.GridSizeZ"), Z[I]);
 }
 
 void AGSEnvironment::FindOrCreateSky()
@@ -200,7 +291,17 @@ void AGSEnvironment::Tick(float DeltaSeconds)
 	const EGSWeather Weather = GS ? GS->Weather : EGSWeather::Clear;
 	const EGSWeather Prev = GS ? GS->PreviousWeather : EGSWeather::Clear;
 	const float Blend = GS ? GS->GetWeatherBlend() : 1.f;
-	const FWeatherLook Look = Lerp(LookFor(Prev), LookFor(Weather), Blend);
+	const FWeatherLook Look = bHelgasetrLight ? Lerp(LookForHelgasetr(Prev), LookForHelgasetr(Weather), Blend)
+		: Lerp(LookFor(Prev), LookFor(Weather), Blend);
+	if (bHelgasetrLight)
+	{
+		QualityCheckTimer -= DeltaSeconds;
+		if (QualityCheckTimer <= 0.f)
+		{
+			QualityCheckTimer = 2.f;
+			UpdateVolumetricFogQuality();
+		}
+	}
 
 	// Sun path: Trondheim, low sun. Noon at 12:00, highest ~48 degrees.
 	const float Elevation = 48.f * FMath::Sin((Hours - 6.f) / 24.f * 2.f * PI);
@@ -219,7 +320,8 @@ void AGSEnvironment::Tick(float DeltaSeconds)
 
 	const float DayFactor = FMath::SmoothStep(-4.f, 8.f, Elevation);
 	Sun->SetIntensity(Look.SunLux * DayFactor);
-	Moon->SetIntensity(0.35f * (1.f - DayFactor) * (Weather == EGSWeather::Clear ? 1.f : 0.4f));
+	// Moonlight: 0.3 lux in Helgasetr (real full moon), the old 0.35 elsewhere.
+	Moon->SetIntensity((bHelgasetrLight ? 0.3f : 0.35f) * (1.f - DayFactor) * (Weather == EGSWeather::Clear ? 1.f : 0.4f));
 	SkyLight->SetIntensity(Look.SkyIntensity * FMath::Lerp(0.35f, 1.f, DayFactor));
 
 	UpdatePostProcess(Elevation, Weather, Prev, Blend);

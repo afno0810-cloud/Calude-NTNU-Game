@@ -46,7 +46,7 @@ def load_parts(names):
             if name.startswith("SM_Glass_"):
                 o.visible_shadow = False
     if lamp is not None:
-        for (x, y, z, kind, r) in H.make_plan()["lights"]:
+        for (x, y, z, kind, r, _shadow) in H.make_plan()["lights"]:
             if kind == 0:
                 c = lamp.copy()
                 c.location = g2b((x, y, z))
