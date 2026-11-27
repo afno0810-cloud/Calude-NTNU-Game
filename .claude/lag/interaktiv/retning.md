@@ -33,9 +33,11 @@ Fire regler for alt laget lager:
   bruker dører (Bots), ytelse målt i Helgasetr.
 
 ## Neste ideer (backlog, viktigst øverst)
-1. **Runde 1 – grunnmuren** (`ko/plan-01.md`): AGSMapState, IGSInteract + AGSInteractor, AGSDoor (åpne/lukke, sparke,
-   kodelås: kort/dirk/bryte opp/skyte låsen, branndører som lukker seg), knusbart glass (herdet/laminert), varige kulehull,
-   testrom.
+1. **Runde 1a – grunnmuren** (`ko/plan-01a.md`): AGSMapState, IGSInteract + AGSInteractor (eierskap avgjort ved
+   trykket), AGSDoor (åpne/lukke, sparke, kodelås: kort/dirk/bryte opp/skyte låsen, rømning innenfra, branndører),
+   testrom med dører, konsoll (`Testrom`, `Smell`, `Knus`).
+   **Runde 1b** (`ko/plan-01b.md`): knusbart glass (herdet/laminert), biter og skår, varige kulehull (400 i alt),
+   Blender-modeller.
 2. **Runde 2 – sprenge og bære** (skisse i `ko/plan-02.md`): lettvegger (`BreachWalls`) som sprenges, dører som blåses
    ut av karmen, møbler med hel/ødelagt modell, `AGSPhysicsProp` (plukke opp, bære, kaste, velte, ødelegge), barrikader
    foran dører, Bots-varsel når gangbare ruter endres.
@@ -52,6 +54,9 @@ Fire regler for alt laget lager:
 12. Måling: `stat unit` i atriet med 40 knuste felt og 150 biter i lufta; tak justeres etter målingen.
 
 ## Endringer i retningen
+- 2026-11-27: Runde 1 delt i 1a (dører, tilstand, bruk-tasten – virker uten Kamp) og 1b (glass, kulehull, modeller) etter
+  forhåndssjekken og hovedagentens avgjørelse; alle 7 feilene (bl.a. eierskap ved trykket, rømning innenfra, objektspor
+  for fokus, ferskhet hos sen klient, K1/K3-presisering) er tatt inn.
 - 2026-11-27: Første retning skrevet. Valgt teknikk: lokale (ikke-replikerte) dør-aktører og instanser for glass,
   styrt av én replikert liste over endrede deler (`FFastArraySerializer`) – billig i nett og ytelse, og sen klient får
   riktig tilstand. Bruk-tasten fanges av lagets egen aktør (`AGSInteractor`, én per spiller, eid av spilleren), så
