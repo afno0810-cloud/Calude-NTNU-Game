@@ -836,8 +836,8 @@ def check_j(P, G, quiet=False):
         if b["bit"] == P4 and z0 + sz <= Z4 + H.BOX_H + 0.01 and not (b["pitch"] or b["roll"]):
             continue   # lintels in the Plan 4 box walls: the box roof sits right on them, nothing to stand on
         if cx - hx < ri[0] - 0.05 and cx + hx > -ri[0] + 0.05 and cy - hy < ri[1] - 0.05 and cy + hy > -ri[1] + 0.05:
-            if b["mat"] == "Glass" and b["bit"] == H.B_ROOF:
-                continue
+            if b["bit"] == H.B_ROOF and (b["mat"] == "Glass" or b["tag"] == "tak"):
+                continue   # the saw-tooth roof itself (glass and the opaque sheet faces) seals the atrium
             bad.append("%s %.1f/%.1f/%.1f" % (b["mat"], cx, cy, cz))
     for p in G["panels"]:
         if p["lv"] > P4:
@@ -848,6 +848,73 @@ def check_j(P, G, quiet=False):
         report(ok, "j) ingenting over 4. etasje inne i atriet blokkerer spillere (unntatt glasstaket); %d usynlige vegger på 5.-6. etasje %s" % (
             blockers, "; ".join(bad[:4])))
     return ok
+
+
+def check_j2(P, G, quiet=False):
+    """No top a body could stand on high in the atrium: every wall, post or glass top over Plan 4 + 2.2 m inside the
+    atrium has something that blocks bodies (Solid or High) right on top of it, within a body height (runde-04a funn 3)."""
+    ri = H.RING_IN
+    tops = []
+    for b in G["boxes"]:
+        if b["coll"] != H.C_SOLID or b["yaw"] or b["pitch"] or b["roll"] or b["bit"] in (H.B_ROOF, H.B_DETAIL):
+            continue
+        (cx, cy, cz), (sx, sy, sz) = b["c"], b["s"]
+        tops.append((cx, cy, cz + sz / 2, "%s %.1f/%.1f" % (b["mat"], cx, cy)))
+    for pn in G["panels"]:
+        tops.append((pn["c"][0], pn["c"][1], pn["c"][2] + pn["h"] / 2, "glassfelt %d" % pn["id"]))
+    covers = [b for b in G["boxes"] if b["coll"] in (H.C_SOLID, H.C_HIGH) and not (b["yaw"] or b["pitch"] or b["roll"])]
+    bad = []
+    for x, y, zt, name in tops:
+        if not (Z4 + 2.2 <= zt < H.ROOF_Z - 1.0 and abs(x) < ri[0] + 0.05 and abs(y) < ri[1] + 0.05):
+            continue
+        ok = False
+        for c in covers:
+            (cx, cy, cz), (sx, sy, sz) = c["c"], c["s"]
+            zb = cz - sz / 2
+            if zt - 0.01 <= zb <= zt + 1.84 and abs(x - cx) <= sx / 2 + 0.01 and abs(y - cy) <= sy / 2 + 0.01:
+                ok = True
+                break
+        if not ok:
+            bad.append("%s (topp %.2f)" % (name, zt))
+    if not quiet:
+        report(not bad, "j2) ingen vegg-, stolpe- eller glasstopp over 4. etasje + 2,2 m i atriet uten noe som stopper kroppen rett over %s" % "; ".join(bad[:4]))
+    return not bad
+
+
+# ================================================================ k) id manifest: an id that exists never moves
+IDS_FILE = os.path.join(HERE, "helgasetr_ids.json")
+
+
+def id_keys(G):
+    """What each id stands for (other teams key their state on the ids: Interaktiv, later Spillbarhet and Bots)."""
+    r2 = lambda v: round(v, 2)
+    return {
+        "doors": [[d["id"], d["lv"], d["room"], r2(d["x"]), r2(d["y"])] for d in G["doors"]],
+        "panels": [[p["id"], p["lv"], r2(p["c"][0]), r2(p["c"][1]), r2(p["c"][2])] for p in G["panels"]],
+        "breach": [[b["id"], b["lv"], r2(b["box"][0]), r2(b["box"][1])] for b in G["breach"]],
+        "cover": [[c["id"], c["lv"], c["name"]] for c in G["cover"]],
+    }
+
+
+def check_k(G, quiet=False, manifest=None):
+    import json
+    cur = id_keys(G)
+    if manifest is None:
+        if not os.path.exists(IDS_FILE) or "--update-ids" in sys.argv:
+            with open(IDS_FILE, "w", encoding="utf-8") as fh:
+                json.dump(cur, fh, ensure_ascii=False, indent=0)
+        with open(IDS_FILE, encoding="utf-8") as fh:
+            manifest = json.load(fh)
+    bad = []
+    for kind, rows in manifest.items():
+        now = {r[0]: r for r in cur.get(kind, [])}
+        for r in rows:
+            if now.get(r[0]) != r:
+                bad.append("%s %d: %s -> %s" % (kind, r[0], r[1:], now.get(r[0], ["mangler"])[1:]))
+    if not quiet:
+        report(not bad, "k) id-manifestet (%s): ingen eksisterende id for dører, glass, lettvegger eller dekning har flyttet seg %s" % (
+            os.path.basename(IDS_FILE), "; ".join(bad[:3])))
+    return not bad
 
 
 # ================================================================ counter-tests
@@ -948,6 +1015,21 @@ def main():
     Gj["boxes"].append(dict(c=(0.0, -15.0, H.LEVELS[H.P5] + 3.2), s=(6.0, 5.0, 0.45), yaw=0.0, pitch=0.0, roll=0.0,
                             mat="PlasterWhite_In", coll=H.C_SOLID, bit=H.P5, tag=""))
     counter(not check_j(P, Gj, True), "boksetak på 5. etasje som blokkerer spillere")
+    # j2
+    check_j2(P, G)
+    Gj2 = copy.deepcopy(G)
+    Gj2["boxes"] = [b for b in Gj2["boxes"] if not (b["bit"] == P4 and b["coll"] == H.C_HIGH and b["mat"] == "PlasterWhite_In")]
+    counter(not check_j2(P, Gj2, True), "boksetakene på 4. etasje fjernet (veggtoppene blir et gulv)")
+    # k
+    check_k(G)
+
+    def door_first(Px):
+        for rr in Px["rooms"]:
+            if rr.lv == H.P1 and rr.name == "Sør-lobby":
+                rr.doors.insert(0, (-13.0, 26.9, 0.9, "tre"))
+                break
+    Pk, Gk = variant(door_first)
+    counter(not check_k(Gk, True), "en ny dør først på 1. etasje (alle senere dør-id-er flytter seg)")
 
     print()
     print("Alt OK" if errors == 0 else "%d FEIL" % errors)

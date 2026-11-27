@@ -31,6 +31,17 @@ namespace GSHelgasetr
 		Coll_Blocker = 3,   // invisible: blocks Pawn and the WorldStatic channel (edge of the atrium on Plan 5-6)
 	};
 
+	/** Round 4b: how a Blender model part collides (Tools/Blender/helgasetr_plan.py MODEL_COLL_NAMES). */
+	enum EModelCollM : uint8
+	{
+		ModelColl_Full = 0,         // complex-as-simple, blocks everything
+		ModelColl_GlassFull = 1,    // fixed glass (facade, roof): blocks everything, no shadow / distance field / ray tracing
+		ModelColl_Above = 2,        // over Plan 4 in the atrium: Visibility/Camera only (K10)
+		ModelColl_GlassAbove = 3,   // glass over Plan 4 in the atrium: Visibility/Camera only, no shadow
+		ModelColl_None = 4,         // decoration (lamellas, rings, downlights): no collision, no distance field
+	};
+	struct FModelPartM { const TCHAR* Name; uint8 Coll; };
+
 	/** A box: centre and size (m), rotation (deg), material index into MatNames, ECollM, bit index into BitNames. */
 	struct FBoxM { float Cx, Cy, Cz, Sx, Sy, Sz, Yaw, Pitch, Roll; uint8 Mat; uint8 Coll; uint8 Bit; };
 	/** Flag (m) on the floor of its base room; spawns are SpawnsM[FirstSpawn .. FirstSpawn + NumSpawns). */
@@ -40,8 +51,10 @@ namespace GSHelgasetr
 	/** Breach wall (lettvegg) or cover piece: an axis-aligned box (m). */
 	struct FPieceM { int32 Id; float X0, Y0, Z0, X1, Y1, Z1; uint8 Mat; uint8 Level; const TCHAR* Name; };
 	/** Door opening: floor point in the middle of the opening (m), width/height (m), Yaw = the way the front faces.
-	 *  Kind indexes DoorKindNames (tre / glass_kode / dobbel / brann / laast). All open holes in round 4a. */
-	struct FDoorM { int32 Id; float X, Y, Z, Width, Height, Yaw; bool bHingeLeft; uint8 Kind; bool bLocked; bool bOpen; uint8 Level; const TCHAR* Room; };
+	 *  Kind indexes DoorKindNames (tre / glass_kode / dobbel / brann / laast). bLocked = locked at match start (all code
+	 *  locks and the alarm door). bNoOpening = a sealed slot: the wall is whole and no door belongs there (the alarm door
+	 *  to Trapp sør on Plan 4; the id is kept so no other id moves). */
+	struct FDoorM { int32 Id; float X, Y, Z, Width, Height, Yaw; bool bHingeLeft; uint8 Kind; bool bLocked; bool bOpen; uint8 Level; const TCHAR* Room; bool bNoOpening; };
 	/** Tier 0 common, 1 better, 2 crate. */
 	struct FLootM { float X, Y, Z; uint8 Tier; };
 	/** Kind 0 PC, 1 3D printer. */
@@ -59,6 +72,9 @@ namespace GSHelgasetr
 	inline TConstArrayView<FBaseM> Bases() { return MakeArrayView(BasesM); }
 	inline TConstArrayView<FPointM> Spawns() { return MakeArrayView(SpawnsM); }
 	inline TConstArrayView<FBoxM> Boxes() { return MakeArrayView(BoxesM); }
+	/** Model parts, and per box (same index as Boxes()) the part that replaces it (255 = always a box). */
+	inline TConstArrayView<FModelPartM> ModelParts() { return MakeArrayView(ModelPartsM); }
+	inline TConstArrayView<uint8> BoxParts() { return MakeArrayView(BoxPartM); }
 	inline TConstArrayView<FPanelM> GlassPanels() { return MakeArrayView(PanelsM); }
 	inline TConstArrayView<FPieceM> BreachWalls() { return MakeArrayView(BreachWallsM); }
 	inline TConstArrayView<FPieceM> Cover() { return MakeArrayView(CoverM); }

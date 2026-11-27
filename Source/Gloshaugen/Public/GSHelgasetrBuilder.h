@@ -11,6 +11,7 @@ class ULocalLightComponent;
  * Builds Helgasetr at runtime from GSHelgasetr.h (generated from Tools/Blender/helgasetr_plan.py), on every machine,
  * nothing replicated. Round 4a: the whole building as boxes (walls with door holes, slabs, one box per step, rails,
  * glass boxes, saw-tooth glass roof with truss), so the map is playable without importing anything.
+ * Round 4b: the Blender model (Tools/Blender/building_helgasetr.py) replaces the boxes part by part where it exists.
  *
  * Interactive pieces are NOT part of the structure: breakable glass panels, breach walls (lettvegger) and cover each
  * live in their own instanced components, instance N = id N, with an id -> (component, index) table
@@ -32,11 +33,13 @@ public:
 	bool FindCover(int32 Id, UInstancedStaticMeshComponent*& OutComp, int32& OutIndex) const;
 
 protected:
-	/** Round 4b: true when a Blender model replaces the blocks of this bit (GSHelgasetr::BitNames). Blocks are the
-	 *  fallback per bit (K13), so a half-finished import never leaves a hole. */
-	virtual bool UseModelFor(int32 Bit) const { return false; }
+	/** Round 4b: true when the Blender model part (GSHelgasetr::ModelParts()) is in /Game/Models and placed, so its
+	 *  boxes are skipped. Blocks are the fallback per part (K13): a part that is missing never leaves a hole. */
+	bool UseModelPart(int32 Part) const { return ModelPartUsed.IsValidIndex(Part) && ModelPartUsed[Part]; }
 
 	void BuildGroundAndSky();
+	/** Places every model part that has been imported (before BuildStructure, which then skips their boxes). */
+	void BuildModelParts();
 	void BuildStructure();
 	void BuildGlassPanels();
 	void BuildPieces();
@@ -63,4 +66,5 @@ protected:
 	TMap<UInstancedStaticMeshComponent*, int32> QueuedCount;
 
 	int32 NumBoxes = 0;
+	TArray<bool> ModelPartUsed;
 };

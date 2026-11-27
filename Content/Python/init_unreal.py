@@ -16,7 +16,8 @@ SOURCE_DIR = os.path.join(PROJECT_DIR, "SourceArt", "Models")
 DEST = "/Game/Models"
 
 # Meshes you walk inside: exact per-triangle collision instead of convex hulls.
-COMPLEX_COLLISION_PREFIXES = ("SM_Hovedbygningen", "SM_Bygg_", "SM_Prop_BusStop", "SM_Prop_BikeRack", "SM_Prop_PicnicTable", "SM_Prop_LectureSeats")
+# (SM_Glass_Helgasetr: the fixed facade and roof glass of Helgasetr. Not the SM_Mod_Helg_ modules: they keep a simple box, K15.)
+COMPLEX_COLLISION_PREFIXES = ("SM_Hovedbygningen", "SM_Bygg_", "SM_Glass_Helgasetr", "SM_Prop_BusStop", "SM_Prop_BikeRack", "SM_Prop_PicnicTable", "SM_Prop_LectureSeats")
 # Meshes that get Megascans materials (they have tiling UVs from Tools/Blender/meshkit.py).
 MEGASCANS_PREFIXES = ("SM_Hovedbygningen", "SM_Bygg_", "SM_Prop_")  # built as Nanite (not glass, cars or trees: they use translucent or masked materials)
 
@@ -92,6 +93,32 @@ def fix_building_collision(names):
             body.set_editor_property("collision_trace_flag", unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE)
             unreal.EditorAssetLibrary.save_loaded_asset(mesh)
             unreal.log(f"Gloshaugen: {name} bruker presis kollisjon")
+
+
+def fix_distance_fields(names):
+    """Helgasetr's building parts (<= ca. 26 m each) get twice the distance-field resolution, so Lumen does not leak
+    light through 15-40 cm walls and slabs (K17)."""
+    try:
+        sub = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+    except Exception as e:
+        unreal.log_warning(f"Gloshaugen: StaticMeshEditorSubsystem mangler, avstandsfelt ikke endret: {e}")
+        return
+    for name in names:
+        if not name.startswith("SM_Bygg_Helgasetr_"):
+            continue
+        mesh = unreal.EditorAssetLibrary.load_asset(f"{DEST}/{name}")
+        if not mesh:
+            continue
+        try:
+            settings = sub.get_lod_build_settings(mesh, 0)
+            if abs(settings.get_editor_property("distance_field_resolution_scale") - 2.0) < 1e-3:
+                continue
+            settings.set_editor_property("distance_field_resolution_scale", 2.0)
+            sub.set_lod_build_settings(mesh, 0, settings)
+            unreal.EditorAssetLibrary.save_loaded_asset(mesh)
+            unreal.log(f"Gloshaugen: {name} fikk dobbel oppløsning på avstandsfeltet")
+        except Exception as e:
+            unreal.log_warning(f"Gloshaugen: avstandsfelt for {name} feilet (set_lod_build_settings): {e}")
 
 
 # ------------------------------------------------------------------ Fab models replace Claude's models
@@ -227,6 +254,7 @@ else:
     try:
         imported = import_models()
         fix_building_collision(imported)
+        fix_distance_fields(imported)
     except Exception as e:  # never block the editor from opening
         unreal.log_warning(f"Gloshaugen: modell-import feilet: {e}")
     try:

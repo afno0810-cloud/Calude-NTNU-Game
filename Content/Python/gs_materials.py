@@ -21,7 +21,7 @@ GS = "/Game/GS"
 TEX = GS + "/Textures"
 MAT = GS + "/Materials"
 MODELS = "/Game/Models"
-VERSION = 9  # bump to rebuild the master materials
+VERSION = 10  # bump to rebuild the master materials (10: cheaper, prettier glass for Helgasetr, K19)
 
 mel = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -255,21 +255,46 @@ def _surface_master(name, world):
 
 
 def _glass_master():
+    """Window glass, cheap and still glassy (K19): translucency-volume lighting (no per-pixel forward shading), no
+    refraction, no screen-space or Lumen reflection on the translucent surface. Fresnel does the look: nearly clear
+    when you look straight through, a greenish, more reflective sheet at grazing angles, like the photos."""
     m = _new_material("M_GS_Glass")
     m.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
     try:
-        m.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
+        m.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
     except Exception:
         pass
+    for prop, val in (("screen_space_reflections", False), ("contact_shadows", False), ("output_translucent_velocity", False)):
+        try:
+            m.set_editor_property(prop, val)
+        except Exception:
+            pass
     m.set_editor_property("two_sided", True)
-    col = _expr(m, unreal.MaterialExpressionVectorParameter, -500, -100, parameter_name="Tint",
+    col = _expr(m, unreal.MaterialExpressionVectorParameter, -700, -150, parameter_name="Tint",
                 default_value=unreal.LinearColor(0.06, 0.09, 0.1, 1))
-    mel.connect_material_property(col, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    op = _expr(m, unreal.MaterialExpressionScalarParameter, -500, 50, parameter_name="Opacity", default_value=0.28)
+    edge = _expr(m, unreal.MaterialExpressionVectorParameter, -700, -300, parameter_name="EdgeTint",
+                 default_value=unreal.LinearColor(0.10, 0.16, 0.15, 1))
+    fr = _expr(m, unreal.MaterialExpressionFresnel, -700, 0)
+    try:
+        fr.set_editor_property("exponent", 4.0)
+        fr.set_editor_property("base_reflect_fraction", 0.04)
+    except Exception:
+        pass
+    bc = _expr(m, unreal.MaterialExpressionLinearInterpolate, -400, -200)
+    mel.connect_material_expressions(col, "", bc, "A")
+    mel.connect_material_expressions(edge, "", bc, "B")
+    mel.connect_material_expressions(fr, "", bc, "Alpha")
+    mel.connect_material_property(bc, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    op_lo = _expr(m, unreal.MaterialExpressionScalarParameter, -700, 120, parameter_name="Opacity", default_value=0.16)
+    op_hi = _expr(m, unreal.MaterialExpressionScalarParameter, -700, 200, parameter_name="OpacityEdge", default_value=0.6)
+    op = _expr(m, unreal.MaterialExpressionLinearInterpolate, -400, 100)
+    mel.connect_material_expressions(op_lo, "", op, "A")
+    mel.connect_material_expressions(op_hi, "", op, "B")
+    mel.connect_material_expressions(fr, "", op, "Alpha")
     mel.connect_material_property(op, "", unreal.MaterialProperty.MP_OPACITY)
-    ro = _expr(m, unreal.MaterialExpressionConstant, -500, 150, r=0.04)
+    ro = _expr(m, unreal.MaterialExpressionConstant, -500, 280, r=0.03)
     mel.connect_material_property(ro, "", unreal.MaterialProperty.MP_ROUGHNESS)
-    sp = _expr(m, unreal.MaterialExpressionConstant, -500, 230, r=1.0)
+    sp = _expr(m, unreal.MaterialExpressionConstant, -500, 340, r=1.0)
     mel.connect_material_property(sp, "", unreal.MaterialProperty.MP_SPECULAR)
     m.set_editor_property("used_with_instanced_static_meshes", True)
     mel.recompile_material(m)
@@ -517,6 +542,10 @@ INSTANCES = {
     "PaintGreen": ("PaintedMetal", (0.12, 0.42, 0.24), 2, 0.9, 0, "Surface"),
     "PaintOrange": ("PaintedMetal", (1.2, 0.5, 0.08), 2, 0.9, 0, "Surface"),
     "NTNUBlue": ("PaintedMetal", (0.0, 0.3, 0.68), 2, 0.9, 0, "Surface"),
+    # Helgasetr (round 4b, from the photos): yellow stairs and Ryddekroken, orange mezzanine floor, white painted steel truss
+    "HelgYellow": ("PaintedMetal", (1.15, 0.62, 0.06), 2, 0.8, 0, "Surface"),
+    "HelgOrange": ("Plastic", (1.1, 0.42, 0.08), 2, 1.0, 0, "Surface"),
+    "PaintWhite": ("PaintedMetal", (1.1, 1.1, 1.08), 2, 0.9, 0, "Surface"),
     "RobotWhite": ("Plastic", (1.15, 1.15, 1.18), 2, 0.8, 0, "Surface"),
     "RobotBody": ("PaintedMetal", (1.1, 0.9, 0.1), 2, 0.9, 0, "Surface"),
     "Asphalt": ("Asphalt", (1, 1, 1), 1, 1, 0, "Surface"),

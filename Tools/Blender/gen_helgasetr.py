@@ -100,6 +100,18 @@ def generate():
                                                                f(b["yaw"]), f(b["pitch"]), f(b["roll"]), mat[b["mat"]], b["coll"], b["bit"]))
     w("};")
     w("")
+    parts, per_box = H.model_parts(G)
+    w("// Round 4b: Blender model parts (/Game/Models/<Name>). A part that exists replaces its boxes (BoxPartM, 255 = always a box).")
+    w("inline constexpr FModelPartM ModelPartsM[] = {")
+    for name, kind in parts:
+        w("	{ %s, %d },   // %s" % (t(name), kind, H.MODEL_COLL_NAMES[kind]))
+    w("};")
+    w("inline constexpr uint8 BoxPartM[] = {")
+    for k in range(0, len(per_box), 40):
+        w("	" + ", ".join(str(v) for v in per_box[k:k + 40]) + ",")
+    w("};")
+    w("static_assert(UE_ARRAY_COUNT(BoxPartM) == UE_ARRAY_COUNT(BoxesM), \"BoxPartM has one entry per box\");")
+    w("")
     w("// Breakable glass: Id = index. Type 0 rekkverk, 1 vegg. (Glass doors are in DoorsM, K: Interaktiv verden.)")
     w("inline constexpr FPanelM PanelsM[] = {")
     for p in G["panels"]:

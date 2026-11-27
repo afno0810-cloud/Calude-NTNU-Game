@@ -164,12 +164,9 @@ namespace GSCampus
 		if constexpr (bHelgasetr)
 		{
 			// Index 0 = Sørbasen (red), 1 = Nordbasen (blue), both on Plan 4 (floor 13.9 m).
-			// Flag.Z = 13.7 (0.2 m UNDER the floor) is a bridge: AGSGameMode::PickSpawnTransform traces down from
-			// Base.Z + 4 m, and from 13.9 + 4 = 17.9 m it would start inside the Plan 5 slab (17.85-18.2 m), reject every
-			// spawn point and put the whole team on its flag. From 13.7 the traces start at 17.7 m (spawn) and 16.7 m
-			// (SpawnFlags, +3 m) and land on the floor; the fallback (Base + 1.2 m) is 14.9 m, so a body there stands
-			// 8 cm over the floor, not in it. Set it back to 13.9 when Spillbarhet starts the spawn trace at +2 m
-			// (order in .claude/lag/bestillinger.md, K1). AGSHelgasetrBuilder logs whether the traces hit.
+			// Flag.Z = 13.9 = the floor. AGSGameMode (SpawnFlags, TryPlace) traces with an object trace from +2 m (15.9 m,
+			// under the Plan 5 slab at 17.85 m) to -3 m. AGSHelgasetrBuilder::ProbeGameModeTraces runs the same traces
+			// and logs whether both flags and all spawn points land on the floor.
 			static const TArray<FBase> HBases = []()
 			{
 				TArray<FBase> Out;

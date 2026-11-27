@@ -28,20 +28,34 @@ DOOR_H, RAIL_H, GLASS_T = 2.1, 1.1, 0.06
 BREACH_H = 2.8
 BX0, BX1 = -25.75, 25.75     # outer walls
 BY0, BY1 = -32.11, 35.66
-FLAG_Z_BRIDGE = 13.7         # GSCampus::Bases() Flag.Z until Spillbarhet starts the spawn trace at +2 m (K1).
-                             # 13.7 (not 13.4): the trace starts at 17.7 < 17.85 (P5 slab) and the fallback Base + 1.2 m
-                             # puts the capsule (half height 0.92) 8 cm OVER the floor instead of 22 cm into it.
+FLAG_Z_BRIDGE = 13.9         # GSCampus::Bases() Flag.Z = the Plan 4 floor. (Was 13.7 while GameMode traced from +4 m;
+                             # since Spillbarhet's bfb38ef it traces with an object trace from +2 m: 15.9 < 17.85, K1 delivered.)
 
 # material names (MI_GS_<name>, made by Content/Python/gs_materials.py)
-MATS = ["PlasterWhite_In", "ConcreteSmooth_In", "WoodLight_In", "Floor_In", "Terrazzo_In", "PaintOrange_In",
-        "PaintYellow_In", "Wood_In", "MetalDark_In", "Glass", "W_Asphalt", "LightPanel_In", "PaintRed_In",
-        "PaintBlue_In", "PaintGreen_In", "Gunmetal_In", "Fabric_In", "Concrete_In"]
+MATS = ["PlasterWhite_In", "ConcreteSmooth_In", "WoodLight_In", "Floor_In", "Terrazzo_In", "HelgOrange_In",
+        "HelgYellow_In", "Wood_In", "MetalDark_In", "Glass", "W_Asphalt", "LightPanel_In", "PaintRed_In",
+        "PaintBlue_In", "PaintGreen_In", "Gunmetal_In", "Fabric_In", "Concrete_In", "PaintWhite_In"]
 # collision kinds (C++ GSHelgasetr::ECollM)
 C_SOLID, C_HIGH, C_NONE, C_BLOCKER = 0, 1, 2, 3
 # bits (K13: the 4b model replaces the blocks bit by bit)
 BITS = ["P1", "P2", "P3", "P4", "P5", "P6", "Trapper", "Tak", "Detaljer"]
 B_STAIRS, B_ROOF, B_DETAIL = 6, 7, 8
 DOOR_KINDS = ["tre", "glass_kode", "dobbel", "brann", "laast"]
+ROOF_AREA = (-15.4, -20.3, 15.4, 20.3)   # the saw-tooth glass roof over the atrium (helgasetr.md kap. 7)
+ROOF_TEETH, ROOF_STEEP = 8, 1.0          # teeth from north to south; horizontal run of the steep (glass) face
+
+
+def roof_teeth():
+    """(y_valley_north, y_ridge, y_valley_south) per tooth: opaque shallow face rising south to the ridge, steep glass
+    face facing south down to the next valley (the low sun comes in, the truss throws its shadows)."""
+    ar = ROOF_AREA
+    pitch = (ar[3] - ar[1]) / ROOF_TEETH
+    out = []
+    for t in range(ROOF_TEETH):
+        ya = ar[1] + t * pitch
+        yb = ya + pitch
+        out.append((ya, yb - ROOF_STEEP, yb))
+    return out
 PANEL_TYPES = ["rekkverk", "vegg", "dor"]
 
 
@@ -374,7 +388,9 @@ def make_plan():
     base_x = {P4: [(-13.54, 6.77, -1), (-6.77, 13.54, 1)]}   # base wall spans on the N (-1) / S (+1) ring side
 
     def near_base(lv, x, y):
-        if lv != P4:
+        # P3 too: a light 0.7 m under the Plan 4 floor and 1.2-1.7 m from the base wall lit the base from below
+        # (runde-04a funn 5: distance in 3D, the lights have no shadow)
+        if lv not in (P3, P4):
             return False
         for a, b, s in base_x[P4]:
             if s * y > 17.0 and a - 3.0 < x < b + 3.0:
@@ -621,9 +637,9 @@ def derive(plan):
             if lv == P1:
                 return "Terrazzo_In"
             if lv == P2 and abs(cx) < 13.25 and 5.6 < cy < 20.05:
-                return "PaintOrange_In"
+                return "HelgOrange_In"
             if lv == P2 and -5.8 < cx < -1.0 and 1.0 < cy < 5.6:
-                return "PaintYellow_In"
+                return "HelgYellow_In"
             if lv in (P3, P4) and abs(cx) < 13.25 and abs(cy) < 17.75:
                 return "Floor_In" if lv == P3 and cx > 7.4 and -6.1 < cy < 9.1 else "WoodLight_In"
             return "WoodLight_In"
@@ -687,7 +703,7 @@ def derive(plan):
                 if not sg:
                     G["errors"].append("dør uten vegg: %s %s (%.2f, %.2f)" % (LEVEL_NAMES[lv], r.name, x, y))
                     continue
-                if kind != "laast":
+                if kind != "laast":   # the alarm door (Trapp sør, P4) is a sealed slot: wall, no hole (bNoOpening)
                     sg["holes"].append((t - w / 2, t + w / 2, DOOR_H, "door"))
                 # the door faces out of the room it belongs to
                 if o == "V":
@@ -695,7 +711,8 @@ def derive(plan):
                 else:
                     yaw = 90.0 if abs(y - r.y1) < 0.02 else -90.0
                 G["doors"].append(dict(id=door_id, x=x, y=y, z=z0, w=w, h=DOOR_H, yaw=yaw, kind=kind, lv=lv, room=r.name,
-                                       hinge_left=True, locked=kind == "laast", open=False, o=o))
+                                       hinge_left=True, locked=kind in ("laast", "glass_kode"), open=False, o=o,
+                                       no_opening=kind == "laast"))
                 door_id += 1
             for (x0, y0, x1, y1) in r.openings:
                 o = "V" if abs(x0 - x1) < EPS else "H"
@@ -829,6 +846,33 @@ def derive(plan):
             add_box(r.x0, r.y0, z0 + BOX_H, r.x1, r.y1, z0 + BOX_H + BOX_ROOF, "PlasterWhite_In", coll, lv)
             for px, py in ((r.x0, r.y0), (r.x1, r.y0), (r.x0, r.y1), (r.x1, r.y1)):
                 add_box(px - 0.05, py - 0.05, z0, px + 0.05, py + 0.05, z0 + BOX_H, "MetalDark_In", C_SOLID, lv)
+        # P4: the box roofs stop bodies (Coll_High) but end on the middle of the wall under their edge. Where no other box
+        # roof continues, a white cap over the wall top (2 cm above it) closes the 6 cm strip a body could perch on
+        # (runde-04a funn 3; check_helgasetr_walk 5). Collinear caps are merged so no faces lie on top of each other.
+        if lv == P4:
+            boxes4 = [r for r in rooms if r.kind == "boks"]
+            caps = {}
+            for r in boxes4:
+                for o, c, a, b, nx, ny in (("H", r.y0, r.x0, r.x1, 0.0, -0.2), ("H", r.y1, r.x0, r.x1, 0.0, 0.2),
+                                           ("V", r.x0, r.y0, r.y1, -0.2, 0.0), ("V", r.x1, r.y0, r.y1, 0.2, 0.0)):
+                    mx, my = ((a + b) / 2, c) if o == "H" else (c, (a + b) / 2)
+                    if any(q is not r and q.contains(mx + nx, my + ny) for q in boxes4):
+                        continue
+                    caps.setdefault((o, r3(c)), []).append([a - 0.11, b + 0.11])
+            for (o, c), ivs in sorted(caps.items()):
+                ivs.sort()
+                merged = [ivs[0]]
+                for a, b in ivs[1:]:
+                    if a <= merged[-1][1]:
+                        merged[-1][1] = max(merged[-1][1], b)
+                    else:
+                        merged.append([a, b])
+                for a, b in merged:
+                    za, zb = z0 + BOX_H + 0.02, z0 + BOX_H + BOX_ROOF - 0.02
+                    if o == "H":
+                        add_box(a, c - 0.1, za, b, c + 0.1, zb, "PlasterWhite_In", C_HIGH, lv)
+                    else:
+                        add_box(c - 0.1, a, za, c + 0.1, b, zb, "PlasterWhite_In", C_HIGH, lv)
 
     # ---- columns (Ø 0.5 on axes 3 and 7 at the letter axes E-K, on P1-P4 where there is floor at the ring edge)
     for lv in (P1, P2, P3, P4):
@@ -841,7 +885,7 @@ def derive(plan):
 
     # ---- stairs: one box per step, filled down to the floor where the space under it is lower than 2.0 m (K11)
     for s, steps, rise, tread in stair_info:
-        mat = "PaintYellow_In" if s.get("atrium") else "ConcreteSmooth_In"
+        mat = "HelgYellow_In" if s.get("atrium") else "ConcreteSmooth_In"
         thick = rise + 0.22
         zfloor = s["z0"]
         for (x0, y0, x1, y1, zt, k) in steps:
@@ -897,7 +941,7 @@ def derive(plan):
                         yaw = 0.0 if s["dir"] > 0 else 180.0
                     length = math.hypot(L, dz)
                     add_rot_box((cxx, cyy, zc), (length, 0.04, hz + 0.25), "MetalDark_In", C_SOLID, B_STAIRS, yaw=yaw, pitch=ang)
-                    add_rot_box((cxx, cyy, zc - 0.75), (length, 0.06, 0.35 * math.cos(math.radians(ang))), "PaintYellow_In", C_SOLID, B_STAIRS, yaw=yaw, pitch=ang)
+                    add_rot_box((cxx, cyy, zc - 0.75), (length, 0.06, 0.35 * math.cos(math.radians(ang))), "HelgYellow_In", C_SOLID, B_STAIRS, yaw=yaw, pitch=ang)
     for (x0, y0, x1, y1, z) in plan["well_landings"]:
         add_box(x0, y0, z - 0.25, x1, y1, z, "ConcreteSmooth_In", C_SOLID, B_STAIRS)
         G["steps"].append(dict(stair="repos", rect=(x0, y0, x1, y1), ztop=z, zbot=z - 0.25, filled=False, kind="landing"))
@@ -905,10 +949,10 @@ def derive(plan):
         add_box(x0, y0, za, x1, y1, zb, "ConcreteSmooth_In", C_SOLID, B_STAIRS)
 
     # ---- Ryddekroken (yellow tower, P1 -> P2 gallery) and the orange sitting stair on the mezzanine
-    add_box(-5.8, 1.0, 0.0, -1.0, 5.6, LEVELS[P2] - SLAB, "PaintYellow_In", C_SOLID, P1)
+    add_box(-5.8, 1.0, 0.0, -1.0, 5.6, LEVELS[P2] - SLAB, "HelgYellow_In", C_SOLID, P1)
     G["opaque"][P1].append(("BOX", -5.8, 1.0, -1.0, 5.6, "tower"))
     for k in range(3):
-        add_box(8.0, 6.5 + k * 1.0, LEVELS[P2], 12.5, 9.5, LEVELS[P2] + 0.4 * (k + 1), "PaintOrange_In", C_SOLID, P2)
+        add_box(8.0, 6.5 + k * 1.0, LEVELS[P2], 12.5, 9.5, LEVELS[P2] + 0.4 * (k + 1), "HelgOrange_In", C_SOLID, P2)
 
     # ---- screens (opaque, 2.1 m)
     for (x, y, L, o) in plan["screens"]:
@@ -933,7 +977,7 @@ def derive(plan):
         add_box(x0, y0, z, x1, y1, z + 0.14, "PaintRed_In" if team == 0 else "PaintBlue_In", C_NONE, B_DETAIL)
 
     # ---- roof: flat slab outside the atrium roof, saw-tooth glass over it, white truss under it (helgasetr.md kap. 7)
-    ar = (-15.4, -20.3, 15.4, 20.3)
+    ar = ROOF_AREA
     xs, ys, cells, rooms = level_grid(plan, P6)
     xs2 = sorted(set(xs) | {ar[0], ar[2]})
     ys2 = sorted(set(ys) | {ar[1], ar[3]})
@@ -945,40 +989,36 @@ def derive(plan):
         return 1
     for x0, y0, x1, y1, _ in rects_from_cells(xs2, ys2, roof_key):
         add_box(x0, y0, ROOF_Z - SLAB, x1, y1, ROOF_Z, "ConcreteSmooth_In", C_SOLID, B_ROOF)
-    nt = 8
-    pitch_y = (ar[3] - ar[1]) / nt
-    steep = 1.0
+    # saw teeth (roof_teeth): shallow opaque sheet rising to the ridge, then the steep glass face down to the next valley.
+    # The glass faces SOUTH, so the low Trondheim sun shines in and the white truss throws its shadows into the atrium.
     h = RIDGE_Z - ROOF_Z
     wx = ar[2] - ar[0]
-    for t in range(nt):
-        ya = ar[1] + t * pitch_y
-        yr = ya + steep
-        yb = ya + pitch_y
-        for (p0, p1) in (((ya, ROOF_Z), (yr, RIDGE_Z)), ((yr, RIDGE_Z), (yb, ROOF_Z))):
+    for (ya, yr, yb) in roof_teeth():
+        for (p0, p1, m) in (((ya, ROOF_Z), (yr, RIDGE_Z), "PaintWhite_In"), ((yr, RIDGE_Z), (yb, ROOF_Z), "Glass")):
             dy, dz = p1[0] - p0[0], p1[1] - p0[1]
             L = math.hypot(dy, dz)
             roll = math.degrees(math.atan2(-dz, dy))
-            add_rot_box((0.0, (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2), (wx, L, 0.06), "Glass", C_SOLID, B_ROOF, roll=roll)
+            add_rot_box((0.0, (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2), (wx, L, 0.06), m, C_SOLID, B_ROOF, roll=roll,
+                        tag="tak" if m != "Glass" else "")
         # glass gable ends, stepped to follow the slope
         for xe in (ar[0], ar[2]):
-            add_box(xe - 0.03, ya, ROOF_Z, xe + 0.03, yr, RIDGE_Z, "Glass", C_SOLID, B_ROOF)
             for q in range(4):
-                y0q = yr + (yb - yr) * q / 4
-                y1q = yr + (yb - yr) * (q + 1) / 4
-                ztq = RIDGE_Z - h * q / 4
-                add_box(xe - 0.03, y0q, ROOF_Z, xe + 0.03, y1q, ztq, "Glass", C_SOLID, B_ROOF)
-        # truss: valley beam and ridge beam along X
-        add_box(ar[0], ya - 0.15, ROOF_Z - 0.45, ar[2], ya + 0.15, ROOF_Z - 0.05, "PlasterWhite_In", C_HIGH, B_ROOF)
-        add_box(ar[0], yr - 0.1, RIDGE_Z - 0.25, ar[2], yr + 0.1, RIDGE_Z - 0.05, "PlasterWhite_In", C_HIGH, B_ROOF)
+                y0q = ya + (yr - ya) * q / 4
+                y1q = ya + (yr - ya) * (q + 1) / 4
+                add_box(xe - 0.03, y0q, ROOF_Z, xe + 0.03, y1q, ROOF_Z + h * (q + 1) / 4, "Glass", C_SOLID, B_ROOF)
+            add_box(xe - 0.03, yr, ROOF_Z, xe + 0.03, yb, RIDGE_Z, "Glass", C_SOLID, B_ROOF)
+        # truss: valley beam and ridge beam along X, posts and rafters on the axes
+        add_box(ar[0], ya - 0.15, ROOF_Z - 0.45, ar[2], ya + 0.15, ROOF_Z - 0.05, "PaintWhite_In", C_HIGH, B_ROOF)
+        add_box(ar[0], yr - 0.1, RIDGE_Z - 0.25, ar[2], yr + 0.1, RIDGE_Z - 0.05, "PaintWhite_In", C_HIGH, B_ROOF)
         for xt in (-13.54, -6.77, 0.0, 6.77, 13.54):
-            add_box(xt - 0.06, yr - 0.06, ROOF_Z - 0.45, xt + 0.06, yr + 0.06, RIDGE_Z - 0.25, "PlasterWhite_In", C_HIGH, B_ROOF)
-            for (q0, q1) in (((ya, ROOF_Z - 0.4), (yr, RIDGE_Z - 0.25)), ((yr, ROOF_Z - 0.4), (yb, ROOF_Z - 0.1))):
+            add_box(xt - 0.06, yr - 0.06, ROOF_Z - 0.45, xt + 0.06, yr + 0.06, RIDGE_Z - 0.25, "PaintWhite_In", C_HIGH, B_ROOF)
+            for (q0, q1) in (((ya, ROOF_Z - 0.1), (yr, RIDGE_Z - 0.25)), ((yr, RIDGE_Z - 0.25), (yb, ROOF_Z - 0.4))):
                 dy, dz = q1[0] - q0[0], q1[1] - q0[1]
-                add_rot_box((xt, (q0[0] + q1[0]) / 2, (q0[1] + q1[1]) / 2), (0.1, math.hypot(dy, dz), 0.1), "PlasterWhite_In", C_HIGH, B_ROOF,
+                add_rot_box((xt, (q0[0] + q1[0]) / 2, (q0[1] + q1[1]) / 2), (0.1, math.hypot(dy, dz), 0.1), "PaintWhite_In", C_HIGH, B_ROOF,
                             roll=math.degrees(math.atan2(-dz, dy)))
-    add_box(ar[0], ar[3] - 0.15, ROOF_Z - 0.45, ar[2], ar[3] + 0.15, ROOF_Z - 0.05, "PlasterWhite_In", C_HIGH, B_ROOF)
+    add_box(ar[0], ar[3] - 0.15, ROOF_Z - 0.45, ar[2], ar[3] + 0.15, ROOF_Z - 0.05, "PaintWhite_In", C_HIGH, B_ROOF)
     for xt in (-13.54, -6.77, 0.0, 6.77, 13.54):
-        add_box(xt - 0.08, ar[1], ROOF_Z - 0.6, xt + 0.08, ar[3], ROOF_Z - 0.4, "PlasterWhite_In", C_HIGH, B_ROOF)
+        add_box(xt - 0.08, ar[1], ROOF_Z - 0.6, xt + 0.08, ar[3], ROOF_Z - 0.4, "PaintWhite_In", C_HIGH, B_ROOF)
 
     # ---- invisible walls along the atrium edge on P5 and P6 (K10): the grapple hook finds nothing up there
     zb0, zb1 = LEVELS[P4] + 3.7, ROOF_Z - 0.06
@@ -989,6 +1029,59 @@ def derive(plan):
 
     # ---- ids for lights' wires (no collision) are in C++; ground outside is in C++
     return G
+
+
+# ================================================================ round 4b: the Blender model, part by part (K13)
+# Every structure box belongs to at most one model part (model_part_of). AGSHelgasetrBuilder skips the boxes of a part
+# when /Game/Models/<part> exists and places the model instead, so a part that is missing (or not imported yet) is
+# still there as blocks. building_helgasetr.py builds each part from exactly the same boxes (same data, same place).
+# Collision kinds (C++ GSHelgasetr::EModelCollM):
+MC_FULL, MC_GLASS_FULL, MC_ABOVE, MC_GLASS_ABOVE, MC_NONE = range(5)
+MODEL_COLL_NAMES = ["Full", "GlassFull", "AboveAtrium", "GlassAbove", "None"]
+PART_PREFIX = "SM_Bygg_Helgasetr_"
+GLASS_PREFIX = "SM_Glass_Helgasetr_"
+# level parts: split at X = 0 and Y = -18 / 0 / +18, so no part is much over 26 m (Lumen distance fields, K17)
+PART_BANDS = [("N", -99.0, -18.0), ("MN", -18.0, 0.0), ("MS", 0.0, 18.0), ("S", 18.0, 99.0)]
+# parts without blocks of their own: decoration that never collides (lamellas, rings, downlights, stair undersides)
+EXTRA_PARTS = [(PART_PREFIX + "Pynt", MC_NONE)]
+
+
+def part_region(x, y):
+    side = "V" if x < 0.0 else "O"
+    band = next(n for n, a, b in PART_BANDS if a <= y < b)
+    return side + "_" + band
+
+
+def model_part_of(b):
+    """(part name, collision kind) of a structure box from derive(), or None when it stays a block."""
+    bit, coll = b["bit"], b["coll"]
+    glass = b["mat"] == "Glass"
+    if bit == B_DETAIL or coll in (C_NONE, C_BLOCKER):
+        return None
+    if bit == B_ROOF:
+        if glass:
+            return GLASS_PREFIX + "Tak", MC_GLASS_FULL
+        if coll == C_HIGH:
+            return PART_PREFIX + "Takfagverk", MC_ABOVE
+        return PART_PREFIX + "Tak", MC_FULL
+    cx, cy = b["c"][0], b["c"][1]
+    if bit == B_STAIRS:
+        if cx > 18.0 or cy > 26.0:
+            return PART_PREFIX + "Trapperom", MC_FULL
+        return PART_PREFIX + "Trapper", MC_FULL
+    if coll == C_HIGH:
+        return (GLASS_PREFIX + "Overatriet", MC_GLASS_ABOVE) if glass else (PART_PREFIX + "Overatriet", MC_ABOVE)
+    if glass:
+        return GLASS_PREFIX + "Fasade", MC_GLASS_FULL
+    return "%s%s_%s" % (PART_PREFIX, LEVEL_NAMES[bit], part_region(cx, cy)), MC_FULL
+
+
+def model_parts(G):
+    """Ordered [(name, kind)] of every part, and the part index of each box in G["boxes"] (255 = stays a block)."""
+    of_box = [model_part_of(b) for b in G["boxes"]]
+    names = sorted({p for p in of_box if p is not None} | set(EXTRA_PARTS))   # sorted: indices do not move with the box order
+    index = {p[0]: k for k, p in enumerate(names)}
+    return names, [255 if p is None else index[p[0]] for p in of_box]
 
 
 def panels_by_level(G, lv):

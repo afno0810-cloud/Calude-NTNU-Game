@@ -3,6 +3,29 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 1b (Interaktiv verden): glass som knuses og kulehull (27. nov.)
+
+Gammelt som er forbedret: glassfeltene i Helgasetr er nå ekte knusbart glass i stedet for klosser kulene gikk gjennom (718), glassdørene fra 1a kan knuses (724), og dørene har fått ekte modeller med håndtak og kodelås (732).
+Nytt: herdet og laminert glass (719, 720), lyd, biter og skår (721–723), kulehull etter underlag (728, 729), tak på alt (730), sen klient (731) og testrom med glass (733).
+Merk: kuler, granater og kolbeslag knuser glass og lager kulehull først når Kamp kobler på krokene K1–K3 (Kamps plan-13). Til da kan alt prøves med konsollen: Interaktiv.Knus, Interaktiv.Smell og Interaktiv.Merke.
+
+718. Glass i rekkverk, glassbokser, glassvegger og glassdører kan knuses (343 glassfelt i Helgasetr)
+719. Herdet glass smuldrer helt i ett treff, slik ekte herdet glass gjør
+720. Laminert glass i rekkverkene sprekker der det treffes og gir etter til slutt – da kan du hoppe ned en etasje
+721. Knust glass gir lyd: knus, sprekk og skår som faller
+722. Glassbiter flyr i retningen treffet kom fra og legger seg på gulvet
+723. Glasskår blir liggende på gulvet til neste kamp
+724. Glassdører kan knuses, og da kan du gå gjennom rammen eller gripe inn og åpne, uten å bry deg om låsen
+725. Klart for granater: de knuser glass i vid radius, også utenfor den dødelige radien (virker når Kamp kobler på K2; prøv nå med Interaktiv.Smell)
+726. Klart for kuler: de knuser glasset de går gjennom og bremses litt av hver rute (virker når Kamp kobler på K1; prøv nå med Interaktiv.Knus)
+727. Klart for slag med kolbe eller kniv: de knuser glass, men treffer ikke noen som står bak en hel rute (virker når Kamp kobler på K3)
+728. Kulehull blir sittende i vegger, dører, metall og glass til neste kamp (virker for kuler når Kamp kobler på K1; prøv nå med Interaktiv.Merke)
+729. Kulehull ser forskjellige ut i gips, betong, tre, metall og glass
+730. Tak på kulehull (400), biter i lufta (150) og skår (3000), så bildefrekvensen holder også etter lange kamper
+731. Den som kommer inn sent ser knust glass, sprekker og skår, men ingen gamle lyder eller biter i lufta
+732. Nye modeller for tredør, branndør med panikkstang og trådglass, glassdørramme, håndtak, kodelås og glassbiter
+733. Testrommet har glassvegg, galleri med glassrekkverk og plater av gips, tre og stål for kulehull (konsoll: Interaktiv.Knus, Interaktiv.Merke)
+
 ## Runde 4b (Grafikk og kart): Helgasetr som ekte modell (27. nov.)
 
 Gammelt som er forbedret: klossbygget fra 4a byttes bit for bit mot Blender-modeller (800), glasset (810, 811), hengelampene (812, 822), flaggets høyde og sporprøven (817), dørdataene (818, 819), boksetakene på 4. etasje (820) og lyset under basene (821).
@@ -122,14 +145,14 @@ Nytt: felles replikert tilstand for kartet (646–648), alle dørtypene i Helgas
 650. E gjør aldri to ting: den tingen du ser på når du trykker, er den som brukes
 651. Dører går opp vekk fra deg, med lyd når de åpnes og smekker igjen
 652. Dører kan sparkes opp med et høyt smell som andre hører
-653. Låste tredører kan sparkes inn (tre spark) eller skytes opp ved låsen
+653. Låste tredører kan sparkes inn (tre spark); klart for å skyte opp låsen (virker når Kamp kobler på K1; prøv nå med Interaktiv.Knus)
 654. Glassdørene til grupperommene har kodelås: NTNU-adgangskort åpner med et pip
-655. Kodelåsen kan dirkes opp med dirkesett (6 s) eller brytes opp med makt (4 s, høylytt), eller skytes i stykker
+655. Kodelåsen kan dirkes opp med dirkesett (6 s) eller brytes opp med makt (4 s, høylytt); klart for å skyte den i stykker (virker når Kamp kobler på K1; prøv nå med Interaktiv.Knus)
 656. Låste dører og alarmdører kan alltid åpnes innenfra, som ekte rømningsdører
 657. Branndører i trapperommene lukker seg selv, men aldri oppå noen som står i døråpningen
-658. Granater blåser opp dører i nærheten og ødelegger låsene
+658. Klart for granater: de blåser opp dører i nærheten og ødelegger låsene (virker når Kamp kobler på K2; prøv nå med Interaktiv.Smell)
 659. Kort hint midt på skjermen ved dører med framdriftslinje ved dirking og brekking
-660. Botene åpner ulåste dører de går mot
+660. Klart for botene: de åpner ulåste dører de går mot (virker når Bots-laget har botene i spillet)
 661. Testrom for dørene (konsoll: Interaktiv.Testrom, Interaktiv.Smell, Interaktiv.Knus)
 
 ## Runde 4a (Grafikk og kart): Helgasetr (27. nov.)

@@ -29,6 +29,7 @@ namespace GSHelgBuild
 		FLinearColor(0.60f, 0.75f, 0.80f), FLinearColor(0.10f, 0.10f, 0.11f), FLinearColor(1.00f, 1.00f, 0.95f),
 		FLinearColor(0.70f, 0.05f, 0.05f), FLinearColor(0.05f, 0.15f, 0.70f), FLinearColor(0.10f, 0.35f, 0.20f),
 		FLinearColor(0.20f, 0.21f, 0.23f), FLinearColor(0.15f, 0.45f, 0.42f), FLinearColor(0.50f, 0.50f, 0.48f),
+		FLinearColor(0.92f, 0.92f, 0.90f),
 	};
 
 	int32 MatIndex(const TCHAR* Name)
@@ -52,13 +53,16 @@ void AGSHelgasetrBuilder::SetupCollision(UPrimitiveComponent* C, uint8 Coll)
 		C->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 		break;
 	case GSHelgasetr::Coll_High:
-		// Over Plan 4 in the atrium: stops bullets, the camera and the rain check (Visibility), but nobody can stand
-		// on it and the grapple hook (ECC_WorldStatic channel) passes (K10).
-		C->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		// Over Plan 4 in the atrium: stops bullets, the camera and the rain check (Visibility), and bodies, but nobody
+		// can stand on it (unwalkable) and the grapple hook (ECC_WorldStatic channel) passes (K10). Blocking Pawn keeps a
+		// body out of the Plan 4 box roofs, so the wall tops under them (16.9 m) can never be stood on (runde-04a funn 3).
+		C->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		C->SetCollisionObjectType(ECC_WorldStatic);
 		C->SetCollisionResponseToAllChannels(ECR_Ignore);
 		C->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 		C->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
+		C->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+		C->SetWalkableSlopeOverride(FWalkableSlopeOverride(WalkableSlope_Unwalkable, 0.f));
 		break;
 	case GSHelgasetr::Coll_Blocker:
 		C->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -143,6 +147,7 @@ void AGSHelgasetrBuilder::Build()
 {
 	const double StartTime = FPlatformTime::Seconds();
 	BuildGroundAndSky();
+	BuildModelParts();
 	BuildStructure();
 	BuildGlassPanels();
 	BuildPieces();
@@ -193,11 +198,72 @@ void AGSHelgasetrBuilder::BuildGroundAndSky()
 	}
 }
 
+void AGSHelgasetrBuilder::BuildModelParts()
+{
+	const TConstArrayView<GSHelgasetr::FModelPartM> Parts = GSHelgasetr::ModelParts();
+	ModelPartUsed.Init(false, Parts.Num());
+	TArray<FString> Missing;
+	for (int32 I = 0; I < Parts.Num(); ++I)
+	{
+		const GSHelgasetr::FModelPartM& P = Parts[I];
+		UStaticMesh* Mesh = ModelMesh(P.Name);
+		if (!Mesh)
+		{
+			Missing.Add(P.Name);
+			continue;
+		}
+		const bool bGlass = P.Coll == GSHelgasetr::ModelColl_GlassFull || P.Coll == GSHelgasetr::ModelColl_GlassAbove;
+		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+		C->SetMobility(EComponentMobility::Static);
+		C->SetStaticMesh(Mesh);
+		C->SetupAttachment(RootComponent);
+		switch (P.Coll)
+		{
+		case GSHelgasetr::ModelColl_Full:
+		case GSHelgasetr::ModelColl_GlassFull:
+			SetupCollision(C, GSHelgasetr::Coll_Solid);
+			break;
+		case GSHelgasetr::ModelColl_Above:
+		case GSHelgasetr::ModelColl_GlassAbove:
+			SetupCollision(C, GSHelgasetr::Coll_High);
+			break;
+		default:
+			SetupCollision(C, GSHelgasetr::Coll_None);
+			C->bAffectDistanceFieldLighting = false;   // thin lamellas and rings: Lumen gets nothing from them
+			break;
+		}
+		if (bGlass)
+		{
+			// One cheap glass: no shadow (the sun comes through the roof), no distance field, not in ray tracing (K19).
+			C->SetCastShadow(false);
+			C->bAffectDistanceFieldLighting = false;
+			C->bVisibleInRayTracing = false;
+			C->ComponentTags.Add(TEXT("Mat_Glass"));
+		}
+		C->RegisterComponent();
+		AddInstanceComponent(C);
+		ModelPartUsed[I] = true;
+	}
+	const int32 Used = Parts.Num() - Missing.Num();
+	if (Missing.Num() == 0)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Helgasetr: alle %d modelldeler fra Blender er i bruk"), Used);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("Helgasetr: %d av %d modelldeler i bruk; reserve (klosser) for: %s"), Used, Parts.Num(),
+			*FString::Join(Missing, TEXT(", ")));
+	}
+}
+
 void AGSHelgasetrBuilder::BuildStructure()
 {
-	for (const GSHelgasetr::FBoxM& B : GSHelgasetr::Boxes())
+	const TConstArrayView<GSHelgasetr::FBoxM> AllBoxes = GSHelgasetr::Boxes();
+	const TConstArrayView<uint8> BoxParts = GSHelgasetr::BoxParts();
+	for (int32 Index = 0; Index < AllBoxes.Num(); ++Index)
 	{
-		if (UseModelFor(B.Bit)) continue;
+		const GSHelgasetr::FBoxM& B = AllBoxes[Index];
+		if (BoxParts.IsValidIndex(Index) && BoxParts[Index] != 255 && UseModelPart(BoxParts[Index])) continue;
 		const TCHAR* MatName = GSHelgasetr::MatNames[B.Mat];
 		const bool bGlass = GSHelgBuild::IsGlass(MatName);
 		const FRotator Rot(B.Pitch, B.Yaw, B.Roll);
@@ -287,6 +353,8 @@ void AGSHelgasetrBuilder::BuildLights()
 		return (L + 1 < GSHelgasetr::NumLevels ? GSHelgasetr::LevelZM[L + 1] : GSHelgasetr::RoofZM) - GSHelgasetr::SlabM;
 	};
 	TArray<FVector2D> PanelSpots;
+	// Round 4b: the real ring lamp from Blender (Ø 2.4 m, glowing underside) where it is imported; boxes otherwise.
+	UStaticMesh* RingLamp = ModelMesh(TEXT("SM_Prop_Helg_Hengelampe"));
 	for (const GSHelgasetr::FLightM& L : GSHelgasetr::Lights())
 	{
 		const FVector P(L.X, L.Y, L.Z);
@@ -294,7 +362,21 @@ void AGSHelgasetrBuilder::BuildLights()
 		{
 			// Big round LED ring (Ø 2.4 m) on three long wires from the roof truss, one soft rect light down.
 			const float R = L.RadiusM;
-			for (int32 K = 0; K < 12; ++K)
+			if (RingLamp)
+			{
+				UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+				C->SetMobility(EComponentMobility::Static);
+				C->SetStaticMesh(RingLamp);
+				C->SetupAttachment(RootComponent);
+				C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				C->SetCastShadow(false);
+				C->bAffectDistanceFieldLighting = false;
+				C->SetWorldLocation(P * Cm);
+				C->SetWorldScale3D(FVector(R / 1.2f));
+				C->RegisterComponent();
+				AddInstanceComponent(C);
+			}
+			for (int32 K = 0; K < (RingLamp ? 0 : 12); ++K)
 			{
 				const float A = 2.f * PI * K / 12.f;
 				QueueBoxM(Glow, P + FVector(FMath::Cos(A), FMath::Sin(A), 0.f) * R, FVector(2.f * PI * R / 12.f * 1.04f, 0.12f, 0.07f),
@@ -315,7 +397,7 @@ void AGSHelgasetrBuilder::BuildLights()
 			Rect->SetSourceHeight(R * 180.f);
 			Rect->SetIntensityUnits(ELightUnits::Lumens);
 			Rect->SetIntensity(6000.f);
-			Rect->SetAttenuationRadius(2600.f);
+			Rect->SetAttenuationRadius(1300.f);   // 13 m: down to the canteen floor, not through the decks into P1-P2 rooms (runde-04a funn 5)
 			Rect->SetUseTemperature(true);
 			Rect->SetTemperature(4000.f);
 			Rect->SetCastShadows(false);
@@ -392,15 +474,16 @@ void AGSHelgasetrBuilder::BuildSigns()
 
 void AGSHelgasetrBuilder::ProbeGameModeTraces() const
 {
-	// Exactly the traces of AGSGameMode::SpawnFlags (object type WorldStatic from Flag +-3 m) and PickSpawnTransform
-	// (channel WorldStatic from +4 m to -3 m, then a 42/92 capsule 1 m over the hit), on the real map data.
+	// A copy of what AGSGameMode does now (bfb38ef): SpawnFlags = object trace (WorldStatic) from Flag +2 m to -3 m;
+	// TryPlace = the same object trace from the spawn point, the body 1 m over the hit (Base + 1.2 m when nothing is hit),
+	// then a 42/92 capsule test on the Pawn channel. Run on the built map, logged, nothing in the game changes.
 	UWorld* World = GetWorld();
 	if (!World) return;
 	const TArray<GSCampus::FBase>& Bases = GSCampus::Bases();
 	int32 FlagsOK = 0, SpawnsOK = 0, SpawnsAll = 0;
-	// Bodies are not the map: ignore any pawn that is already there.
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSHelgasetrProbe), false);
 	for (TActorIterator<APawn> It(World); It; ++It) Params.AddIgnoredActor(*It);
+	const FCollisionObjectQueryParams WorldOnly(ECC_WorldStatic);
 	TArray<FString> Bad;
 	for (int32 I = 0; I < Bases.Num(); ++I)
 	{
@@ -408,7 +491,7 @@ void AGSHelgasetrBuilder::ProbeGameModeTraces() const
 		const float FloorCm = (GSHelgasetr::Bases().IsValidIndex(I) ? GSHelgasetr::Bases()[I].Z : B.Flag.Z) * 100.f;
 		const FVector Base = B.Flag * 100.f;
 		FHitResult Hit;
-		if (World->LineTraceSingleByObjectType(Hit, Base + FVector(0.f, 0.f, 300.f), Base - FVector(0.f, 0.f, 300.f), FCollisionObjectQueryParams(ECC_WorldStatic), Params)
+		if (World->LineTraceSingleByObjectType(Hit, Base + FVector(0.f, 0.f, 200.f), Base - FVector(0.f, 0.f, 300.f), WorldOnly, Params)
 			&& FMath::Abs(Hit.ImpactPoint.Z - FloorCm) < 10.f)
 		{
 			++FlagsOK;
@@ -422,16 +505,19 @@ void AGSHelgasetrBuilder::ProbeGameModeTraces() const
 			++SpawnsAll;
 			FVector Loc(S.X * 100.f, S.Y * 100.f, Base.Z);
 			FHitResult SHit;
-			if (!World->LineTraceSingleByChannel(SHit, Loc + FVector(0.f, 0.f, 400.f), Loc - FVector(0.f, 0.f, 300.f), ECC_WorldStatic, Params))
+			if (World->LineTraceSingleByObjectType(SHit, Loc + FVector(0.f, 0.f, 200.f), Loc - FVector(0.f, 0.f, 300.f), WorldOnly, Params))
 			{
-				Bad.Add(FString::Printf(TEXT("spawn %s (%.1f, %.1f): sporet traff ingenting"), B.Name, S.X, S.Y));
-				continue;
+				Loc.Z = SHit.ImpactPoint.Z + 100.f;
+				if (FMath::Abs(SHit.ImpactPoint.Z - FloorCm) > 10.f)
+				{
+					Bad.Add(FString::Printf(TEXT("spawn %s (%.1f, %.1f): traff %.0f cm (%s / %s), ikke gulvet"), B.Name, S.X, S.Y, SHit.ImpactPoint.Z,
+						*GetNameSafe(SHit.GetActor()), *GetNameSafe(SHit.GetComponent())));
+					continue;
+				}
 			}
-			Loc.Z = SHit.ImpactPoint.Z + 100.f;
-			if (FMath::Abs(SHit.ImpactPoint.Z - FloorCm) > 10.f)
+			else
 			{
-				Bad.Add(FString::Printf(TEXT("spawn %s (%.1f, %.1f): traff %.0f cm (%s / %s), ikke gulvet"), B.Name, S.X, S.Y, SHit.ImpactPoint.Z,
-					*GetNameSafe(SHit.GetActor()), *GetNameSafe(SHit.GetComponent())));
+				Bad.Add(FString::Printf(TEXT("spawn %s (%.1f, %.1f): sporet traff ingenting (reserve Base + 1,2 m)"), B.Name, S.X, S.Y));
 				continue;
 			}
 			if (World->OverlapBlockingTestByChannel(Loc, FQuat::Identity, ECC_Pawn, FCollisionShape::MakeCapsule(42.f, 92.f), Params))
@@ -447,7 +533,7 @@ void AGSHelgasetrBuilder::ProbeGameModeTraces() const
 	}
 	if (Bad.Num() == 0)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Helgasetr: flagg %d/%d og spawn %d/%d står riktig"), FlagsOK, Bases.Num(), SpawnsOK, SpawnsAll);
+		UE_LOG(LogTemp, Log, TEXT("Helgasetr: flagg %d/%d og spawn %d/%d står riktig (GameModes spor fra +2 m)"), FlagsOK, Bases.Num(), SpawnsOK, SpawnsAll);
 	}
 	else
 	{
