@@ -45,3 +45,5 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Tall planen krever i rapporten skal også logges med UE_LOG, så en hodeløs kjøring kan bevise dem. (runde 14a)
 - Alt som er «bare for spilleren bak skjermen» skal kreve IsLocallyControlled() && GetController()->IsPlayerController() (IsLocalHuman()). AI er lokalt styrt på serveren, og IsPlayerControlled() kan feile hos klient fordi spillertilstanden kan komme etter kontrolleren. (runde 14a/14b)
 - Komponenter skal ikke vippes synlig/usynlig hvert bilde: hver endring gjenskaper render-tilstanden. Bestem synlighet ett sted. (runde 14b)
+- Tak på kosmetiske ting (biter, skår, hull) håndheves når de lages, regnet mot verste tilfelle – ikke ved å avbryte de eldste. (Interaktiv 1b)
+- Et søk som bare ser etter én objekttype (f.eks. glass) ser ikke vegger; klipp det ved første vegg. (Interaktiv 1a/1b)
