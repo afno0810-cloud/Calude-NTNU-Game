@@ -15,3 +15,9 @@ Alle seks RETTET av bygger (Kamp) 26. nov., IMPROVEMENTS 376–385. G1 (punkt 6)
 7. **RETTET** – Styreflate/jevn rulling: `Scroll` må samle utslag til ±1 før ett trinn (Andreas tester på laptop).
 8. **RETTET** – I terminalen skal hjul opp bla oppover (i dag sender begge retninger «Q»).
 9. Blør man i hjel etter en mine, må `Die` få med prosjektilet så dødskortet ikke bruker kasterens nye kropp. (Ikke tatt i runde 4: den eneste `Die` utenom `TakeDamage` er sult/tørst/overdose med `Die(nullptr, …)`, uten drapsmann, så feilen kan ikke skje i dag. Tas når blødning legges inn.)
+
+## Fra kontroll av runde 14b (.claude/loop/kontroll/runde-14b.md) – tas først i neste Kamp-runde
+10. Gamle armer vippes synlig/usynlig hvert bilde (`UpdateArms` vs `Tick`). Send `UsesBodyHands()` inn i `UpdateArms`/`UpdateItemUse` så de bare settes ett sted.
+11. Én regel for grafikknivå: `ApplyGraphicsLevel` («Grafikk N» og Esc-menyen) skal beholde spillerens egen oppløsning slik hovedmenyen gjør. Skriv IMPROVEMENTS 597 om så den stemmer.
+12. Utvid `gs.FP.ReachTest` med sikte opp/ned (60–80°) og sørg for at høyre hånd ikke slipper grepet.
+13. Utvid den stående beinboksen (knærne 8 cm utenfor midt i et steg).

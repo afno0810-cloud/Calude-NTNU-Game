@@ -43,5 +43,5 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Andreas spiller med Play i editorvinduet (Selected Viewport). Der binder editoren sin egen tastekrok, og Esc stopper Play. Alt input-arbeid må virke i den modusen. (hastesak 26. nov.)
 - Komponenter skjult for eieren kaster ikke skygge for eieren; «hel skygge» må gjelde alt som henger på kroppen (bCastHiddenShadow/WorldSpaceRepresentation). (runde 14a)
 - Tall planen krever i rapporten skal også logges med UE_LOG, så en hodeløs kjøring kan bevise dem. (runde 14a)
-- Alt som er «bare for spilleren bak skjermen» skal kreve IsPlayerControlled() i tillegg til IsLocallyControlled() – AI er lokalt styrt på serveren. (runde 14a)
-
+- Alt som er «bare for spilleren bak skjermen» skal kreve IsLocallyControlled() && GetController()->IsPlayerController() (IsLocalHuman()). AI er lokalt styrt på serveren, og IsPlayerControlled() kan feile hos klient fordi spillertilstanden kan komme etter kontrolleren. (runde 14a/14b)
+- Komponenter skal ikke vippes synlig/usynlig hvert bilde: hver endring gjenskaper render-tilstanden. Bestem synlighet ett sted. (runde 14b)
