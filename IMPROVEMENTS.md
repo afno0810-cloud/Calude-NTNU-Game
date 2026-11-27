@@ -3,6 +3,40 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Retting: meny og styring del 2 (26. nov.)
+
+Gammelt som er rettet: menyen i editorens Play (527), lagvalget (529), åpen meny (530, 531), Esc-menyen i små vinduer (532).
+Nytt: P som menytast (528).
+
+527. I editorens Play (der Esc stopper hele Play) gjør F10 alt Esc gjør: åpner og lukker hovedmenyen, lukker lagvalget og dialoger, går tilbake og avbryter tastebytte, og alle tekster sier «F10» i stedet for «Esc» der
+528. P åpner og lukker menyen overalt (også i Kamps meny), så en laptop uten F-taster uten Fn også har en menytast; P kan ikke tas av andre handlinger, og skriver fortsatt bokstaven i navne- og adressefeltet
+529. Lagvalget som åpner seg selv i lobbyen lukkes når du begynner å gå (WASD), og går du, starter gangen med en gang; teksten nederst sier hvilke taster som lukker det
+530. En åpen meny, et åpent lagvalg eller en dialog stopper nå all spillinput: hopp, huk, løp, lading, våpenbytte, E, F, G, Q, V, T og hjulet, ikke bare gange, sikting og skyting (å slippe en tast virker fortsatt, så ingenting henger)
+531. Får du ny figur (gjenoppliving eller kampstart) mens Kamps meny er åpen, er gange og blikk fortsatt sperret bak menyen
+532. Kamps Esc-meny krymper med vinduet når det er lavere enn ca. 680 punkter, så tittelen og knappen «Avslutt spillet» ikke havner utenfor skjermen
+
+## Rettinger (Grafikk og kart): kanten og startplassene (26. nov.)
+
+Gammelt som er forbedret: kanten av banen (521–523), riggområdene (524), README (526).
+Nytt: en sjekk som regner ut siktlinjer og gripekrok-høyde (525).
+
+521. Den usynlige veggen langs kanten er nå 100 m høy og har tak, så heller ikke gripekroken (selv flere skudd etter hverandre) kan få deg ut av banen
+522. Gripekroken fester seg ikke lenger i bygg utenfor banen, som Elektrobygget: veggen stopper den først
+523. Kuler, kulehull og gnister treffer ikke lenger den usynlige veggen i lufta; et skudd over gjerdet flyr videre ut av banen
+524. Åpningen ut av riggområdet bak hver base er en sluse: et ekstra presenningsgjerde utenfor og et kort gjerde inntil veggen, så du går ut sidelengs og ingen på stiene kan se inn der du starter
+525. Sjekkskriptet regner siktlinjer fra nordstien, sørpromenaden, dørstiene og passasjene til hvert startpunkt, at slusene er brede nok å gå i, og at veggen er høyere enn gripekroken når, med motprøver som skal feile
+526. README nevner ikke lenger tårnet, scenen i Lysgården og robotene, som er borte, men forteller om byggegjerdene, gravefeltene og riggområdene
+
+## Retting (Spillbarhet): meny og styring (26. nov.)
+
+Gammelt som er rettet: menyen i editorens Play (516, 517), Esc (518), åpning av menyen (519), logg for neste test (520).
+
+516. Klikk og taster når fram til menyen også når du spiller i editorens eget vindu (Play i valgt visning): editorens egen tastekrok stengte menyen ute
+517. Menyen kan aldri holde på mus og tastatur uten at den faktisk vises, musepekeren er på og den selv tar imot Esc og klikk
+518. Esc lukker alltid hele menyen, også fra en underside eller en dialog, og gir styringen tilbake (bare «trykk ny tast» bruker Esc til å avbryte)
+519. I editorens Play starter du rett i spillet; Esc eller F10 åpner hovedmenyen, også mens du øver alene, uten at kameraet ditt dreies
+520. Menyen skriver i loggen når den åpnes og lukkes, hvert klikk med punkt og knapp, nye taster og når styringen går tilbake til spillet
+
 ## Runde 3 (Spillbarhet): knappehjelp og hint (26. nov.)
 
 Gammelt som er forbedret: lobby-panelet og påminnelsen om H (462), Kontroller-siden i menyen (466), sen innkobling (467).

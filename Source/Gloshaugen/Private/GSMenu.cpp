@@ -159,6 +159,33 @@ namespace GSMenuImpl
 			&& S.bHookLive && S.bCursorShown;
 	}
 
+	// ------------------------------------------------------------------ the way out
+	// In the editor's Play, Esc stops the whole Play session before the game sees the key (the editor's "Stop" command
+	// runs first). F10 reaches the game there, and P as well (no Fn key needed on a laptop). So F10 does everything
+	// Esc does, P does it when no text field has the caret, and every text names F10 instead of Esc in the editor.
+	bool IsEditorPlay(const UWorld* W)
+	{
+		return W && W->WorldType == EWorldType::PIE;
+	}
+
+	/** Esc or F10: back / close, everywhere (also in a text field and while waiting for a new key). */
+	bool IsBackKey(const FKey& K)
+	{
+		return K == EKeys::Escape || K == EKeys::F10;
+	}
+
+	/** "F10" in the editor's Play, "Esc" in the real game. */
+	const TCHAR* BackKeyText(const UWorld* W)
+	{
+		return IsEditorPlay(W) ? TEXT("F10") : TEXT("Esc");
+	}
+
+	/** Every key that opens and closes the menu, for the texts. */
+	const TCHAR* MenuKeysText(const UWorld* W)
+	{
+		return IsEditorPlay(W) ? TEXT("F10 / P") : TEXT("Esc / F10 / P");
+	}
+
 	// ------------------------------------------------------------------ config
 	FString CfgString(const TCHAR* Section, const TCHAR* Key, const FString& Default = FString())
 	{
@@ -303,6 +330,18 @@ namespace GSMenuImpl
 		return FKey();
 	}
 
+	/** The key is on this action now (any of its mappings, e.g. all four walking keys of IA_Move). */
+	bool IsActionKey(const AGSPlayerController* PC, FName Action, const FKey& Key)
+	{
+		const UInputMappingContext* C = PC ? PC->MappingContext.Get() : nullptr;
+		if (!C || !Key.IsValid()) return false;
+		for (const FEnhancedActionKeyMapping& M : C->GetMappings())
+		{
+			if (M.Action && M.Action->GetFName() == Action && M.Key == Key) return true;
+		}
+		return false;
+	}
+
 	/** Every key that can be changed, in the combat team's mapping order, the team panel last. Reserved = keys that are taken for good. */
 	void BuildRows(const AGSPlayerController* PC, TArray<FKeyRow>& Out, TArray<FKey>* Reserved = nullptr)
 	{
@@ -441,7 +480,7 @@ namespace GSMenuImpl
 		if (!NewKey.IsValid() || NewKey.IsGamepadKey() || NewKey.IsTouch() || NewKey.IsAxis1D() || NewKey.IsAxis2D() || NewKey.IsAxis3D()
 			|| NewKey == EKeys::MouseScrollUp || NewKey == EKeys::MouseScrollDown || Reserved.Contains(NewKey))
 		{
-			S.KeyNote = TEXT("Esc, F10, H, musa og hjulet er satt av og kan ikke brukes.");
+			S.KeyNote = TEXT("Esc, F10, P, H, musa og hjulet er satt av og kan ikke brukes.");
 			UE_LOG(LogTemp, Log, TEXT("GSMenu: tasten %s kan ikke brukes"), *NewKey.ToString());
 			return;
 		}
@@ -1044,7 +1083,9 @@ namespace GSMenuImpl
 		TArray<FKeyRow> Rows;
 		BuildRows(PC, Rows);
 		const float LX = X + 24.f, MaxW = W - 48.f;
-		const FString Help = TEXT("Klikk en linje og trykk den nye tasten (Esc avbryter). Faste: mus = se rundt · musehjul = bla i våpnene, eller i sekken når inventaret er åpent · Esc / F10 = meny · H = taster og regler.");
+		const UWorld* KeyWorld = PC ? PC->GetWorld() : nullptr;
+		const FString Help = FString::Printf(TEXT("Klikk en linje og trykk den nye tasten (%s avbryter). Faste: mus = se rundt · musehjul = bla i våpnene, eller i sekken når inventaret er åpent · %s = meny · H = taster og regler."),
+			BackKeyText(KeyWorld), MenuKeysText(KeyWorld));
 		const FString Rules = FString::Printf(TEXT("Ta motstanderens flagg og bær det til din egen base. Du får bare poeng når ditt eget flagg står hjemme. Første lag til %d erobringer vinner."),
 			AGSGameState::CaptureLimit);
 		auto ParaH = [](const FString& Str, float Scale, float Width) { return Wrap(Str, Scale, Width).Num() * (LineHeight(Scale) + 3.f); };
@@ -1156,7 +1197,8 @@ namespace GSMenuImpl
 			Button(U, N.Id, N.Label, LX, Y, BW, BH, bEnabled, N.bSelected);
 			Y += BH + 6.f;
 		}
-		Text(U.C, TEXT("Esc: lukk menyen"), LX, SY - 36.f, DimColor, 0.75f);
+		Text(U.C, IsEditorPlay(World) ? FString(TEXT("F10 eller P: lukk menyen (Esc stopper Play i editoren)")) : FString(TEXT("Esc, F10 eller P: lukk menyen")),
+			LX, SY - 36.f, DimColor, 0.75f);
 
 		if (S.Page == EPage::Root) return;
 
@@ -1309,8 +1351,10 @@ namespace GSMenuImpl
 			Text(U.C, FString::Printf(TEXT("Venner blir med på: %s"), *WithPort(LocalAddresses()[0], HostPort(World))), X + 24.f, Y, TextColor, 0.85f);
 			Y += 26.f;
 		}
-		Text(U.C, FString::Printf(TEXT("%s klar · Esc lukk · %s åpner igjen"), *GSMenu::KeyName(PC, TEXT("IA_Ready")), *GSMenu::KeyName(PC, TEXT("GS_Team"))),
-			X + 24.f, Y, DimColor, 0.75f);
+		// The panel opens by itself in the lobby: say plainly how to get out of it (walking closes it too, see OnKey).
+		Text(U.C, FString::Printf(TEXT("%s = klar · %s, P, %s eller gå (WASD) lukker · %s åpner igjen"), *GSMenu::KeyName(PC, TEXT("IA_Ready")),
+			BackKeyText(World), *GSMenu::KeyName(PC, TEXT("GS_Team")), *GSMenu::KeyName(PC, TEXT("GS_Team"))),
+			X + 24.f, Y, TextColor, 0.8f);
 	}
 
 	/** "Du er vert. Kampen avsluttes for alle 3 andre." / "Du forlater kampen du er i." / empty when alone. */
@@ -1471,13 +1515,13 @@ namespace GSMenuImpl
 
 	/** Esc: the way out that always works. Dialog, text field, page and the menu itself close in one press, and the
 	 *  controls go back to the game (only "waiting for a new key" takes Esc as "cancel", see OnKey). */
-	void Back(AGSPlayerController* PC, UWorld* World, FState& S)
+	void Back(AGSPlayerController* PC, UWorld* World, FState& S, const TCHAR* Why)
 	{
-		UE_LOG(LogTemp, Log, TEXT("GSMenu: Esc lukker alt (meny %d, lagpanel %d, dialog %d)"), S.bMainOpen ? 1 : 0, S.bTeamOpen ? 1 : 0, int32(S.Dialog));
+		UE_LOG(LogTemp, Log, TEXT("GSMenu: %s lukker alt (meny %d, lagpanel %d, dialog %d)"), Why, S.bMainOpen ? 1 : 0, S.bTeamOpen ? 1 : 0, int32(S.Dialog));
 		if (S.Dialog != EDialog::None) DialogNo(S);
 		S.Dialog = EDialog::None;
 		if (S.bMainOpen && S.Page == EPage::Connecting) CancelConnect(PC, World, S);
-		if (S.bMainOpen) CloseMain(PC, S, TEXT("Esc"));
+		if (S.bMainOpen) CloseMain(PC, S, Why);
 		SetFocus(PC, S, NAME_None);
 		if (S.bTeamOpen) CloseTeam(S);
 	}
@@ -1582,9 +1626,13 @@ namespace GSMenuImpl
 			}
 			// Esc / F10 open our menu (it has everything the combat team's Esc menu has). Their menu still closes with
 			// Esc if it is open, and Esc still leaves a PC terminal first.
-			if (Ev == IE_Pressed && (Key == EKeys::Escape || Key == EKeys::F10) && !PC->bMenuOpen && !PC->IsOnTerminal())
+			// In the editor's Play Esc never gets here (it stops Play), so F10 and P are the keys there.
+			if (Ev == IE_Pressed && (IsBackKey(Key) || Key == EKeys::P) && !PC->bMenuOpen && !PC->IsOnTerminal())
 			{
-				OpenMainImpl(PC, S, Key == EKeys::Escape ? TEXT("Esc") : TEXT("F10"));
+				const TCHAR* Why = TEXT("P");
+				if (Key == EKeys::Escape) Why = TEXT("Esc");
+				else if (Key == EKeys::F10) Why = TEXT("F10");
+				OpenMainImpl(PC, S, Why);
 				if (IsModalState(S)) return true;
 				// The cursor did not come on: give up at once, so the menu never holds the controls without it.
 				UE_LOG(LogTemp, Warning, TEXT("GSMenu: musepekeren kom ikke på, menyen lukkes igjen"));
@@ -1616,13 +1664,24 @@ namespace GSMenuImpl
 		if (!bPress && !bRepeatErase) return true;
 		if (Key.IsGamepadKey() || Key.IsTouch()) return true;
 
+		// The team panel opens by itself in the lobby. A new player who just starts walking should not be stuck
+		// behind it: a walking key closes it and goes on to the game, so the walk starts at once (L opens it again).
+		if (bPress && Key != EKeys::LeftMouseButton && S.bTeamOpen && !S.bMainOpen && S.Dialog == EDialog::None
+			&& S.Focus == NAME_None && S.ListenRow == INDEX_NONE && IsActionKey(PC, TEXT("IA_Move"), Key))
+		{
+			UE_LOG(LogTemp, Log, TEXT("GSMenu: gåtast %s lukker lagpanelet, tasten går videre til spillet"), *Key.ToString());
+			CloseTeam(S);
+			SyncModal(PC, S);
+			return false;
+		}
+
 		if (S.ListenRow != INDEX_NONE)
 		{
 			if (!bPress) return true;
-			if (Key == EKeys::Escape)
+			if (IsBackKey(Key))
 			{
 				S.ListenRow = INDEX_NONE;
-				UE_LOG(LogTemp, Log, TEXT("GSMenu: Esc avbryter ny tast"));
+				UE_LOG(LogTemp, Log, TEXT("GSMenu: %s avbryter ny tast"), *Key.ToString());
 			}
 			else AssignKey(PC, S, S.ListenRow, Key);
 			return true;
@@ -1653,9 +1712,10 @@ namespace GSMenuImpl
 				SetFocus(PC, S, NAME_None);
 			}
 		}
-		else if (Key == EKeys::Escape)
+		else if (IsBackKey(Key) || (Key == EKeys::P && S.Focus == NAME_None))
 		{
-			Back(PC, World, S);
+			// Esc, F10 (the one that works in the editor's Play) or P (not while typing a name or an address).
+			Back(PC, World, S, *Key.ToString());
 		}
 		else if (Key == EKeys::Enter)
 		{
@@ -1917,7 +1977,7 @@ namespace GSMenuImpl
 			else if (!S.bPIENoteLogged)
 			{
 				S.bPIENoteLogged = true;
-				UE_LOG(LogTemp, Log, TEXT("GSMenu: Play i editoren: hovedmenyen åpnes ikke av seg selv. Esc eller F10 åpner den."));
+				UE_LOG(LogTemp, Log, TEXT("GSMenu: Play i editoren: hovedmenyen åpnes ikke av seg selv. F10 eller P åpner den (Esc stopper Play)."));
 			}
 		}
 		if (S.bMsgPending && S.Dialog == EDialog::None)
@@ -2077,7 +2137,7 @@ namespace GSMenu
 		}
 		Out.Add(FGSControlRow{ TEXT("Se rundt"), TEXT("Mus"), false });
 		Out.Add(FGSControlRow{ TEXT("Bla i våpen (i sekken med inventaret åpent)"), TEXT("Musehjul"), false });
-		Out.Add(FGSControlRow{ TEXT("Meny"), TEXT("Esc / F10"), false });
+		Out.Add(FGSControlRow{ TEXT("Meny"), GSMenuImpl::MenuKeysText(PC ? PC->GetWorld() : nullptr), false });
 		Out.Add(FGSControlRow{ TEXT("Hjelp: taster og regler"), TEXT("H"), false });
 		return Out;
 	}

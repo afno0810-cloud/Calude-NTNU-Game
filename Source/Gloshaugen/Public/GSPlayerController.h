@@ -63,8 +63,12 @@ public:
 	UPROPERTY() TObjectPtr<UInputAction> ReadyAction;
 	UPROPERTY() TObjectPtr<UInputAction> MenuAction;
 
-	/** Game menu (Esc or F10): resume, host, join, graphics, resolution, ray tracing, mouse sensitivity, quit. */
+	/** Game menu (Esc, F10 or P; in the editor's Play only F10 and P): resume, host, join, graphics, resolution, ray tracing, mouse sensitivity, quit. */
 	bool bMenuOpen = false;
+	/** True while this menu or a GSMenu panel/dialog has the controls: every game action stops (releases still pass). */
+	bool IsGameInputBlocked() const;
+	/** Play in the editor: there Esc stops Play before the game sees it, so the texts say F10 instead. */
+	bool IsEditorPlay() const;
 	void ToggleMenu();
 	void CloseMenu();
 	/** A button on the menu was clicked (called by the HUD). */

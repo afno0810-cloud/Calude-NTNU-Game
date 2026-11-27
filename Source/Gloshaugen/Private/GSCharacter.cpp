@@ -365,6 +365,28 @@ float AGSCharacter::GetServerTime() const
 
 // ---------------------------------------------------------------- Input
 
+/** An open menu (ours or a GSMenu panel/dialog) stops every game action. Only actions that start something are
+ *  stopped; releases (StopFire, StopAim, StopSprint, StopJump) always pass, so nothing hangs when a menu opens. */
+static bool GSCharInputBlocked(const AGSCharacter* Ch, const TCHAR* What)
+{
+	static bool bWasBlocked = false;
+	const AGSPlayerController* PC = Ch ? Cast<AGSPlayerController>(Ch->GetController()) : nullptr;
+	const bool bBlocked = PC && PC->IsGameInputBlocked();
+	if (bBlocked != bWasBlocked)
+	{
+		bWasBlocked = bBlocked;
+		if (bBlocked)
+		{
+			UE_LOG(LogTemp, Log, TEXT("GSInput: handling sperret fordi en meny er åpen (%s, Kamp-meny %d)"), What, PC->bMenuOpen ? 1 : 0);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("GSInput: handlinger slipper gjennom igjen (%s)"), What);
+		}
+	}
+	return bBlocked;
+}
+
 void AGSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -405,6 +427,7 @@ void AGSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 void AGSCharacter::Move(const FInputActionValue& Value)
 {
+	if (GSCharInputBlocked(this, TEXT("gå"))) return;
 	if (TerminalPC()) return;
 	if (bDead) return;
 	const FVector2D V = Value.Get<FVector2D>();
@@ -418,6 +441,7 @@ void AGSCharacter::Move(const FInputActionValue& Value)
 
 void AGSCharacter::Look(const FInputActionValue& Value)
 {
+	if (GSCharInputBlocked(this, TEXT("se rundt"))) return;
 	if (TerminalPC()) return;
 	const FVector2D V = Value.Get<FVector2D>();
 	float Sens = bAiming ? 0.55f : 1.f;
@@ -434,6 +458,7 @@ void AGSCharacter::Look(const FInputActionValue& Value)
 
 void AGSCharacter::StartJump()
 {
+	if (GSCharInputBlocked(this, TEXT("hopp"))) return;
 	if (TerminalPC()) return;
 	if (bDead) return;
 	if (bSliding) EndSlide();
@@ -522,6 +547,7 @@ void AGSCharacter::StopJump() { StopJumping(); }
 
 void AGSCharacter::StartSprint()
 {
+	if (GSCharInputBlocked(this, TEXT("løp"))) return;
 	bWantsSprint = true;
 	if (!bAiming && !bIsCrouched && Stamina > 10.f && GetLegPain() < 0.5f) SetSprinting(true);
 }
@@ -552,6 +578,7 @@ void AGSCharacter::ServerSetSprinting_Implementation(bool bNew)
 
 void AGSCharacter::ToggleCrouch()
 {
+	if (GSCharInputBlocked(this, TEXT("huk"))) return;
 	if (TerminalPC()) return;
 	if (bDead) return;
 	// Crouch while sprinting = slide
@@ -567,6 +594,7 @@ void AGSCharacter::ToggleCrouch()
 
 void AGSCharacter::StartAim()
 {
+	if (GSCharInputBlocked(this, TEXT("sikt"))) return;
 	if (TerminalPC() || bDead) return;
 	bAiming = true;
 	SetSprinting(false);
@@ -588,6 +616,7 @@ void AGSCharacter::ServerSetAiming_Implementation(bool bNew)
 
 void AGSCharacter::SelectSlot(int32 Slot)
 {
+	if (GSCharInputBlocked(this, TEXT("våpenbytte"))) return;
 	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(*FString::FromInt(Slot + 1)); return; }
 	if (!Weapons.IsValidIndex(Slot) || bDead) return;
 	StopFire();
@@ -606,6 +635,7 @@ void AGSCharacter::NextWeapon()
 
 void AGSCharacter::Scroll(const FInputActionValue& Value)
 {
+	if (GSCharInputBlocked(this, TEXT("musehjul"))) return;
 	const float Wheel = Value.Get<float>();
 	if (FMath::IsNearlyZero(Wheel)) return;
 	// A touchpad or a smooth wheel sends fractions of a notch over many frames: add them up and take one step per
@@ -727,6 +757,7 @@ float AGSCharacter::GetCurrentSpread() const
 
 void AGSCharacter::StartFire()
 {
+	if (GSCharInputBlocked(this, TEXT("skyt"))) return;
 	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("Fire")); return; }
 	if (const AGSPlayerController* MPC = Cast<AGSPlayerController>(GetController())) { if (MPC->bMenuOpen) return; }
 	if (bBinoculars) { bBinoculars = false; return; }
@@ -1000,6 +1031,7 @@ void AGSCharacter::HandleFire(const FVector& Start, const FVector& AimDir, int32
 
 void AGSCharacter::QuickMelee()
 {
+	if (GSCharInputBlocked(this, TEXT("slag"))) return;
 	if (TerminalPC()) return;
 	if (bDead || bBinoculars) return;
 	const float Now = GetWorld()->GetTimeSeconds();
@@ -1130,6 +1162,7 @@ void AGSCharacter::NoteShotForRadio(const FVector& Where)
 
 void AGSCharacter::Reload()
 {
+	if (GSCharInputBlocked(this, TEXT("lad"))) return;
 	if (TerminalPC()) return;
 	const FGSWeaponSlot* W = GetCurrentWeapon();
 	if (!W || bReloading || bDead) return;
@@ -1230,6 +1263,7 @@ void AGSCharacter::AddWeaponKick(float Strength, EGSWeaponClass Class)
 
 void AGSCharacter::Inspect()
 {
+	if (GSCharInputBlocked(this, TEXT("se på våpenet"))) return;
 	if (bDead || bReloading || bAiming || !GetCurrentWeapon()) return;
 	InspectStart = GetWorld()->GetTimeSeconds();
 }
@@ -2259,6 +2293,7 @@ void AGSCharacter::UpdateFocusPickup()
 
 void AGSCharacter::Interact()
 {
+	if (GSCharInputBlocked(this, TEXT("bruk/plukk opp"))) return;
 	if (bDead) return;
 	AGSPlayerController* PC = Cast<AGSPlayerController>(GetController());
 	if (PC && PC->IsOnTerminal()) { PC->TerminalInput(TEXT("E")); return; }
@@ -2326,6 +2361,7 @@ void AGSCharacter::ServerInteract_Implementation(AGSPickup* Pickup)
 
 void AGSCharacter::NextItem()
 {
+	if (GSCharInputBlocked(this, TEXT("neste ting"))) return;
 	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("Q")); return; }
 	if (Backpack.Num() == 0) { SelectedItem = 0; return; }
 	SelectedItem = (SelectedItem + 1) % Backpack.Num();
@@ -2333,6 +2369,7 @@ void AGSCharacter::NextItem()
 
 void AGSCharacter::UseSelectedItem()
 {
+	if (GSCharInputBlocked(this, TEXT("bruk ting"))) return;
 	if (AGSPlayerController* TPC = TerminalPC()) { TPC->TerminalInput(TEXT("F")); return; }
 	if (bDead || !Backpack.IsValidIndex(SelectedItem)) return;
 	if (!UseItemId.IsNone()) { ServerCancelUse(); return; }
@@ -2576,6 +2613,7 @@ void AGSCharacter::ThrowItem(const FGSItemDef& Def)
 
 void AGSCharacter::DropSelectedItem()
 {
+	if (GSCharInputBlocked(this, TEXT("slipp ting"))) return;
 	if (TerminalPC()) return;
 	if (bDead || !Backpack.IsValidIndex(SelectedItem)) return;
 	ServerDropItem(SelectedItem);

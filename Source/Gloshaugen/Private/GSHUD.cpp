@@ -153,7 +153,8 @@ bool AGSHUD::MenuButton(FName Id, const FString& Label, float X, float Y, float 
 	const bool bHover = Mouse.X >= X && Mouse.X <= X + W && Mouse.Y >= Y && Mouse.Y <= Y + H;
 	Box(X, Y, W, H, bHover ? FLinearColor(0.95f, 0.75f, 0.2f, 0.9f) : (bAccent ? FLinearColor(0.2f, 0.35f, 0.6f, 0.85f) : FLinearColor(0.08f, 0.09f, 0.11f, 0.85f)));
 	Frame(X, Y, W, H, FLinearColor(1.f, 1.f, 1.f, bHover ? 0.9f : 0.25f), 1.5f);
-	Text(Label, X + W * 0.5f, Y + H * 0.5f - 11.f, bHover ? FLinearColor(0.05f, 0.05f, 0.05f) : FLinearColor::White, 1.1f, true);
+	const float TS = FMath::Min(1.f, H / 44.f);   // smaller buttons in a low window: the label shrinks with them
+	Text(Label, X + W * 0.5f, Y + H * 0.5f - 11.f * TS, bHover ? FLinearColor(0.05f, 0.05f, 0.05f) : FLinearColor::White, 1.1f * TS, true);
 	AddHitBox(FVector2D(X, Y), FVector2D(W, H), Id, true);
 	return bHover;
 }
@@ -165,12 +166,15 @@ void AGSHUD::DrawMenu(AGSPlayerController* PC)
 	float MX = 0.f, MY = 0.f;
 	PC->GetMousePosition(MX, MY);
 	const FVector2D Mouse(MX, MY);
-	const float W = 420.f, H = 44.f, Gap = 10.f;
+	// The whole menu is about 606 px high: in a lower window (Play in a small editor viewport on a laptop) everything
+	// shrinks with the window, so the title and the bottom rows stay on screen.
+	const float S = FMath::Min(1.f, SY / 680.f);
+	const float W = 420.f * FMath::Max(S, 0.8f), H = 44.f * S, Gap = 10.f * S;
 	const float X = SX * 0.5f - W * 0.5f;
-	float Y = SY * 0.5f - 290.f;
-	Text(TEXT("GL\u00D8SHAUGEN"), SX * 0.5f, Y, FLinearColor(0.95f, 0.75f, 0.2f), 2.6f, true);
-	Text(TEXT("NTNU-campus, Trondheim"), SX * 0.5f, Y + 62.f, FLinearColor(1.f, 1.f, 1.f, 0.7f), 1.0f, true);
-	Y += 110.f;
+	float Y = FMath::Max(8.f, SY * 0.5f - 303.f * S);
+	Text(TEXT("GL\u00D8SHAUGEN"), SX * 0.5f, Y, FLinearColor(0.95f, 0.75f, 0.2f), 2.6f * S, true);
+	Text(TEXT("NTNU-campus, Trondheim"), SX * 0.5f, Y + 62.f * S, FLinearColor(1.f, 1.f, 1.f, 0.7f), 1.0f * S, true);
+	Y += 110.f * S;
 	MenuButton(TEXT("Resume"), TEXT("Fortsett"), X, Y, W, H, Mouse, true); Y += H + Gap;
 	MenuButton(TEXT("Host"), TEXT("Start server (venner kan bli med)"), X, Y, W, H, Mouse); Y += H + Gap;
 	MenuButton(TEXT("Join"), FString::Printf(TEXT("Bli med: %s"), *PC->LastJoinAddress), X, Y, W, H, Mouse); Y += H + Gap;
@@ -181,11 +185,13 @@ void AGSHUD::DrawMenu(AGSPlayerController* PC)
 	// sensitivity row: [-] value [+]
 	MenuButton(TEXT("SensDown"), TEXT("-"), X, Y, H, H, Mouse);
 	Box(X + H + 6.f, Y, W - 2.f * H - 12.f, H, FLinearColor(0.08f, 0.09f, 0.11f, 0.85f));
-	Text(FString::Printf(TEXT("Musf\u00F8lsomhet: %.1f"), PC->MouseSensitivity), SX * 0.5f, Y + H * 0.5f - 11.f, FLinearColor::White, 1.1f, true);
+	Text(FString::Printf(TEXT("Musf\u00F8lsomhet: %.1f"), PC->MouseSensitivity), SX * 0.5f, Y + H * 0.5f - 11.f * S, FLinearColor::White, 1.1f * S, true);
 	MenuButton(TEXT("SensUp"), TEXT("+"), X + W - H, Y, H, H, Mouse); Y += H + Gap;
 	MenuButton(TEXT("Quit"), TEXT("Avslutt spillet"), X, Y, W, H, Mouse); Y += H + Gap * 2.f;
-	Text(TEXT("Annen adresse: trykk \u00A7 for konsollen og skriv  Join 192.168.1.20"), SX * 0.5f, Y, FLinearColor(1.f, 1.f, 1.f, 0.6f), 0.9f, true);
-	Text(TEXT("Esc lukker menyen"), SX * 0.5f, Y + 24.f, FLinearColor(1.f, 1.f, 1.f, 0.6f), 0.9f, true);
+	Text(TEXT("Annen adresse: trykk \u00A7 for konsollen og skriv  Join 192.168.1.20"), SX * 0.5f, Y, FLinearColor(1.f, 1.f, 1.f, 0.6f), 0.9f * S, true);
+	// In the editor's Play Esc stops Play before the game sees it: there the menu closes with F10 or P.
+	Text(PC->IsEditorPlay() ? FString(TEXT("F10 eller P lukker menyen (Esc stopper Play i editoren)")) : FString(TEXT("Esc, F10 eller P lukker menyen")),
+		SX * 0.5f, Y + 24.f * S, FLinearColor(1.f, 1.f, 1.f, 0.6f), 0.9f * S, true);
 }
 
 void AGSHUD::DrawCrosshair(AGSCharacter* C)

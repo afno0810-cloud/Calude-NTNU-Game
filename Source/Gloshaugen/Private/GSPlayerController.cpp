@@ -1,6 +1,7 @@
 #include "GSPlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "GSHUD.h"
+#include "GSMenu.h"
 #include "GSGameMode.h"
 #include "GSPlayerState.h"
 #include "GSCharacter.h"
@@ -111,6 +112,9 @@ void AGSPlayerController::EnsureInputCreated()
 	C->MapKey(ReadyAction, EKeys::Enter);
 	C->MapKey(MenuAction, EKeys::Escape);
 	C->MapKey(MenuAction, EKeys::F10);
+	// P as well: in the editor's Play Esc stops Play, and on many laptops F10 needs the Fn key. Kept last, so the
+	// mapping indexes the menu's key rebinding has saved do not move.
+	C->MapKey(MenuAction, EKeys::P);
 }
 
 void AGSPlayerController::SetupInputComponent()
@@ -150,10 +154,23 @@ void AGSPlayerController::ToggleMenu()
 	FInputModeGameAndUI Mode;
 	Mode.SetHideCursorDuringCapture(false);
 	SetInputMode(Mode);
+	UE_LOG(LogTemp, Log, TEXT("GSInput: Kamp-menyen åpnet, all spillinput sperret"));
+}
+
+bool AGSPlayerController::IsGameInputBlocked() const
+{
+	return bMenuOpen || GSMenu::IsModal(this);
+}
+
+bool AGSPlayerController::IsEditorPlay() const
+{
+	const UWorld* W = GetWorld();
+	return W && W->WorldType == EWorldType::PIE;
 }
 
 void AGSPlayerController::CloseMenu()
 {
+	if (bMenuOpen) UE_LOG(LogTemp, Log, TEXT("GSInput: Kamp-menyen lukket, spillinput sluppet"));
 	bMenuOpen = false;
 	bShowMouseCursor = false;
 	bEnableClickEvents = false;
@@ -299,6 +316,14 @@ void AGSPlayerController::AcknowledgePossession(APawn* P)
 	{
 		bHasDeathInfo = false;
 		DeathCamBody = nullptr;
+	}
+	// ClientRestart (respawn, match start) calls ResetIgnoreInputFlags just before this: with the menu still open the
+	// new body could otherwise walk and look around behind it.
+	if (bMenuOpen)
+	{
+		SetIgnoreLookInput(true);
+		SetIgnoreMoveInput(true);
+		UE_LOG(LogTemp, Log, TEXT("GSInput: ny figur mens menyen er åpen, gange og blikk sperret igjen"));
 	}
 }
 
