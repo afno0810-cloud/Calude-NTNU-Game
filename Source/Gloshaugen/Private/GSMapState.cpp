@@ -1,5 +1,6 @@
 ﻿#include "GSMapState.h"
 #include "GSDoor.h"
+#include "GSBreakable.h"
 #include "GSInteract.h"
 #include "GSCharacter.h"
 #include "GSPlayerController.h"
@@ -75,6 +76,12 @@ namespace GSMapStateImpl
 		{
 			for (const GSHelgasetr::FDoorM& D : GSHelgasetr::DoorSlots())
 			{
+				// "laast" doors have no hole in the wall (Grafikk keeps the wall whole): no door there (door 31, Trapp sør P4)
+				if (D.Kind == 4)
+				{
+					UE_LOG(LogTemp, Log, TEXT("Interaktiv: dør %d (låst alarmdør) har ingen åpning i veggen, hoppes over"), D.Id);
+					continue;
+				}
 				FGSDoorDef Def;
 				Def.Id = D.Id;
 				Def.BaseCm = FVector(D.X, D.Y, D.Z) * 100.f;
@@ -126,6 +133,69 @@ namespace GSMapStateImpl
 		// (front = escape side = the stairwell; from the main room it stays shut)
 		Add(FVector(-500.f, -450.f, 0.f), 100.f, 0.f, EGSDoorArt::Fire, false, TEXT("Trapperom (test)"));
 		Add(FVector(-650.f, -300.f, 0.f), 100.f, -90.f, EGSDoorArt::Fire, true, TEXT("Trapperom (test)"));
+	}
+
+	/** The map's breakable glass (Helgasetr data): Type 0 = railing (laminated), 1 = wall (tempered). Panels that stand
+	 *  in a door opening are skipped (the door has its own pane). */
+	void CollectMapGlass(TArray<FGSGlassDef>& Out, const TArray<FGSDoorDef>& Doors)
+	{
+#if GS_INT_HAS_HELGASETR
+		if constexpr (GSCampus::bHelgasetr)
+		{
+			int32 Skipped = 0;
+			for (const GSHelgasetr::FPanelM& P : GSHelgasetr::GlassPanels())
+			{
+				FGSGlassDef Def;
+				Def.Id = P.Id;
+				Def.CenterCm = FVector(P.Cx, P.Cy, P.Cz) * 100.f;
+				Def.LengthCm = P.Len * 100.f;
+				Def.HeightCm = P.Height * 100.f;
+				Def.YawDeg = P.Yaw;
+				Def.Type = P.Type == 0 ? EGSGlass::Railing : EGSGlass::Wall;
+				bool bInDoor = false;
+				for (const FGSDoorDef& D : Doors)
+				{
+					const FVector To = Def.CenterCm - D.BaseCm;
+					const FVector N = FRotator(0.f, D.YawDeg, 0.f).Vector();
+					const FVector Along = FVector::CrossProduct(FVector::UpVector, N);
+					if (FMath::Abs(FVector::DotProduct(To, N)) < 30.f && FMath::Abs(FVector::DotProduct(To, Along)) < D.WidthCm * 0.5f
+						&& To.Z > 0.f && To.Z < D.HeightCm)
+					{
+						bInDoor = true;
+						break;
+					}
+				}
+				if (bInDoor)
+				{
+					++Skipped;
+					continue;
+				}
+				Out.Add(Def);
+			}
+			if (Skipped > 0) UE_LOG(LogTemp, Log, TEXT("Interaktiv: %d glassfelt i døråpninger hoppet over"), Skipped);
+		}
+#endif
+	}
+
+	/** The test room's glass (local cm around TestOrigin): a glass wall to a group room and a gallery railing. */
+	void CollectTestGlass(TArray<FGSGlassDef>& Out)
+	{
+		auto Add = [&Out](const FVector& Local, float L, float H, float Yaw, EGSGlass Type)
+		{
+			FGSGlassDef G;
+			G.Id = GSPart::TestIdBase + Out.Num();
+			G.CenterCm = GSMapStateImpl::TestOrigin + Local;
+			G.LengthCm = L;
+			G.HeightCm = H;
+			G.YawDeg = Yaw;
+			G.Type = Type;
+			Out.Add(G);
+		};
+		// Glass wall (Y = 300, X 150..650): 4 x 1.25 x 2.6 m, the group room behind it (Y 300..600)
+		for (int32 I = 0; I < 4; ++I) Add(FVector(212.5f + I * 125.f, 300.f, 130.f), 124.f, 260.f, 0.f, EGSGlass::Wall);
+		// Gallery (X 200..800, Y -600..-300, floor at 1.4 m): 4 railings along the front, 1 on the left end
+		for (int32 I = 0; I < 4; ++I) Add(FVector(260.f + I * 120.f, -305.f, 195.f), 119.f, 110.f, 0.f, EGSGlass::Railing);
+		Add(FVector(205.f, -450.f, 195.f), 119.f, 110.f, 90.f, EGSGlass::Railing);
 	}
 
 	TArray<TWeakObjectPtr<AGSInteractor>>& Interactors()
@@ -194,6 +264,11 @@ void AGSMapState::BeginPlay()
 void AGSMapState::EndPlay(const EEndPlayReason::Type Reason)
 {
 	GetWorldTimerManager().ClearAllTimersForObject(this);
+	for (TWeakObjectPtr<AGSDebris>& D : Debris)
+	{
+		if (AGSDebris* A = D.Get()) A->Destroy();
+	}
+	Debris.Reset();
 	for (auto& Pair : Doors)
 	{
 		if (AGSDoor* D = Pair.Value.Get()) D->Destroy();
@@ -263,6 +338,12 @@ bool AGSMapState::GetPart(int32 Key, FGSPartState& Out) const
 		Out = D->MakeDefault();
 		return true;
 	}
+	if (Glass.Contains(Key))
+	{
+		Out = FGSPartState();
+		Out.Key = Key;
+		return true;
+	}
 	return false;
 }
 
@@ -311,6 +392,11 @@ void AGSMapState::ApplyLocal(const FGSPartState& Item, bool bFresh)
 		D->ApplyState(Item, bFresh);
 		return;
 	}
+	if (Glass.Contains(Item.Key))
+	{
+		ApplyGlassLocal(Item, bFresh);
+		return;
+	}
 	PendingKeys.Add(Item.Key);
 }
 
@@ -320,6 +406,7 @@ void AGSMapState::ApplyAllLocal()
 	for (const FGSPartState& It : Parts.Items)
 	{
 		if (AGSDoor* D = FindDoor(It.Key)) D->ApplyState(It, false);
+		else if (Glass.Contains(It.Key)) ApplyGlassLocal(It, false);
 	}
 	PendingKeys.Reset();
 }
@@ -330,11 +417,18 @@ void AGSMapState::ResetLocal()
 	{
 		if (AGSDoor* D = Pair.Value.Get()) D->ResetLocal();
 	}
+	ResetGlassAllLocal();
 }
 
 void AGSMapState::ResetPartLocal(int32 Key)
 {
-	if (AGSDoor* D = FindDoor(Key)) D->ResetLocal();
+	if (AGSDoor* D = FindDoor(Key))
+	{
+		D->ResetLocal();
+		LitteredKeys.Remove(Key);
+		if (Litter) Litter->RemoveKey(Key);
+	}
+	if (Glass.Contains(Key)) ResetGlassLocal(Key);
 }
 
 void AGSMapState::OnRep_ResetCount()
@@ -393,14 +487,20 @@ void AGSMapState::BuildRegistry()
 	{
 		SpawnDoor(Def, GSPart::MakeKey(GSPart::Door, Def.Id));
 	}
+	TArray<FGSGlassDef> GlassDefs;
+	GSMapStateImpl::CollectMapGlass(GlassDefs, Defs);
+	BuildGlass(GlassDefs);
+	const int32 Hidden = HideBuilderGlass();
+	UE_LOG(LogTemp, Log, TEXT("Interaktiv: %d glassfelt, %d glasskomponenter fra byggeren skjult%s"), GlassDefs.Num(), Hidden,
+		HasAuthority() ? TEXT(" [server]") : TEXT(" [klient]"));
 	bRegistryBuilt = true;
-	int32 Locked = 0, Glass = 0;
+	int32 Locked = 0, GlassDoors = 0;
 	for (const FGSDoorDef& Def : Defs)
 	{
 		Locked += (Def.bLocked || Def.Art == EGSDoorArt::GlassCode) ? 1 : 0;
-		Glass += Def.Art == EGSDoorArt::GlassCode ? 1 : 0;
+		GlassDoors += Def.Art == EGSDoorArt::GlassCode ? 1 : 0;
 	}
-	UE_LOG(LogTemp, Log, TEXT("Interaktiv: %d dører (%d låst, %d glassdører med kodelås)%s"), Defs.Num(), Locked, Glass,
+	UE_LOG(LogTemp, Log, TEXT("Interaktiv: %d dører (%d låst, %d glassdører med kodelås)%s"), Defs.Num(), Locked, GlassDoors,
 		HasAuthority() ? TEXT(" [server]") : TEXT(" [klient]"));
 	if (bTestRoom && !bTestRoomBuilt) BuildTestRoom();
 	ApplyAllLocal();
@@ -424,7 +524,7 @@ void AGSMapState::BuildTestRoom()
 	GeoRoot->SetWorldLocation(GSMapStateImpl::TestOrigin);
 
 	TMap<FString, UInstancedStaticMeshComponent*> ISMs;
-	auto Cube = [&](const FVector& Center, const FVector& Size, const TCHAR* MatName, const FLinearColor& Fallback)
+	auto CubeRot = [&](const FVector& Center, const FVector& Size, const FQuat& Rot, const TCHAR* MatName, const FLinearColor& Fallback)
 	{
 		UInstancedStaticMeshComponent*& ISM = ISMs.FindOrAdd(MatName);
 		if (!ISM)
@@ -436,10 +536,19 @@ void AGSMapState::BuildTestRoom()
 			ISM->SetupAttachment(GeoRoot);
 			if (UMaterialInterface* M = GSMapStateImpl::MapMat(MatName)) ISM->SetMaterial(0, M);
 			else GSUtils::SetColor(ISM, Fallback);
+			// The surface, for bullet holes (1b)
+			const FString N(MatName);
+			ISM->ComponentTags.Add(N.Contains(TEXT("Wood")) ? FName(TEXT("Mat_Wood"))
+				: (N.Contains(TEXT("Steel")) || N.Contains(TEXT("Metal"))) ? FName(TEXT("Mat_Metal"))
+				: (N.Contains(TEXT("Terrazzo")) || N.Contains(TEXT("Concrete"))) ? FName(TEXT("Mat_Concrete")) : FName(TEXT("Mat_Plaster")));
 			ISM->RegisterComponent();
 			Geo->AddInstanceComponent(ISM);
 		}
-		ISM->AddInstance(FTransform(FRotator::ZeroRotator, Center, Size / 100.f), false);
+		ISM->AddInstance(FTransform(Rot, Center, Size / 100.f), false);
+	};
+	auto Cube = [&](const FVector& Center, const FVector& Size, const TCHAR* MatName, const FLinearColor& Fallback)
+	{
+		CubeRot(Center, Size, FQuat::Identity, MatName, Fallback);
 	};
 	const TCHAR* Wall = TEXT("PlasterWhite_In");
 	const FLinearColor WallC(0.85f, 0.85f, 0.82f);
@@ -485,6 +594,32 @@ void AGSMapState::BuildTestRoom()
 	{
 		Cube(FVector(L.X, L.Y, 35.5f), FVector(5.f, 5.f, 71.f), Wood, WoodC);
 	}
+	// 1b: plaster round the glass wall (Y = 300, glass X 150..650 up to 2.6 m), the group room behind it
+	Cube(FVector((T * 0.5f + 150.f) * 0.5f, 300.f, H * 0.5f), FVector(150.f - T * 0.5f, 10.f, H), Wall, WallC);
+	Cube(FVector(725.f, 300.f, H * 0.5f), FVector(150.f, 10.f, H), Wall, WallC);
+	Cube(FVector(400.f, 300.f, 260.f + (H - 260.f) * 0.5f), FVector(500.f, 10.f, H - 260.f), Wall, WallC);
+	Cube(FVector(400.f, 300.f, 1.f), FVector(500.f, 10.f, 2.f), TEXT("MetalDark_In"), FLinearColor(0.1f, 0.1f, 0.1f));   // floor track
+	// Gallery 1.4 m up (X 200..800, Y -600..-300) on four posts, ramp down along X 700..800 to Y = 200
+	const TCHAR* Conc = TEXT("ConcreteSmooth_In");
+	const FLinearColor ConcC(0.62f, 0.62f, 0.6f);
+	Cube(FVector(500.f, -450.f, 130.f), FVector(600.f, 300.f, 20.f), Conc, ConcC);
+	for (const FVector2D Post : { FVector2D(215.f, -315.f), FVector2D(685.f, -315.f), FVector2D(215.f, -585.f), FVector2D(685.f, -585.f) })
+	{
+		Cube(FVector(Post.X, Post.Y, 60.f), FVector(20.f, 20.f, 120.f), Conc, ConcC);
+	}
+	{
+		const FVector Top(750.f, -300.f, 140.f), Bot(750.f, 200.f, 0.f);
+		const FVector Dir = (Top - Bot).GetSafeNormal();
+		const FVector Up = FVector::CrossProduct(FVector(1.f, 0.f, 0.f), Dir).GetSafeNormal() * (FVector::CrossProduct(FVector(1.f, 0.f, 0.f), Dir).Z < 0.f ? -1.f : 1.f);
+		const FQuat Q = FRotationMatrix::MakeFromXZ(FVector(1.f, 0.f, 0.f), Up).ToQuat();
+		CubeRot((Top + Bot) * 0.5f - Up * 6.f, FVector(100.f, FVector::Dist(Top, Bot), 12.f), Q, Conc, ConcC);
+	}
+	// Wooden handrail tops on the railing (the glass holds them up, like in Helgasetr)
+	Cube(FVector(440.f, -305.f, 252.f), FVector(480.f, 6.f, 4.f), Wood, WoodC);
+	// Targets for bullet holes on the west wall: plaster board, wooden board, steel plate
+	Cube(FVector(-795.f, 0.f, 120.f), FVector(4.f, 120.f, 200.f), TEXT("PlasterWhite"), FLinearColor(0.9f, 0.9f, 0.88f));
+	Cube(FVector(-795.f, 150.f, 120.f), FVector(4.f, 100.f, 200.f), TEXT("WoodLight"), WoodC);
+	Cube(FVector(-795.f, -150.f, 120.f), FVector(4.f, 100.f, 200.f), TEXT("Steel"), FLinearColor(0.5f, 0.5f, 0.52f));
 	// Two lights over the room and one in the stairwell, no shadows
 	if (W->GetNetMode() != NM_DedicatedServer)
 	{
@@ -507,7 +642,10 @@ void AGSMapState::BuildTestRoom()
 	{
 		SpawnDoor(Def, GSPart::MakeKey(GSPart::Door, Def.Id));
 	}
-	UE_LOG(LogTemp, Log, TEXT("Interaktiv: testrommet bygd (%d dører)%s"), Defs.Num(), HasAuthority() ? TEXT(" [server]") : TEXT(" [klient]"));
+	TArray<FGSGlassDef> GlassDefs;
+	GSMapStateImpl::CollectTestGlass(GlassDefs);
+	BuildGlass(GlassDefs);
+	UE_LOG(LogTemp, Log, TEXT("Interaktiv: testrommet bygd (%d dører, %d glassfelt)%s"), Defs.Num(), GlassDefs.Num(), HasAuthority() ? TEXT(" [server]") : TEXT(" [klient]"));
 }
 
 void AGSMapState::SpawnTestPickups()
@@ -676,6 +814,20 @@ void AGSMapState::PlayPartSound(const UObject* Ctx, const TCHAR* Name, const FVe
 		GSAudio::PlayAt(Ctx, Name, Loc, Volume, RangeM, Pitch);
 		return;
 	}
+	// Glass (1b): Kamp's names first (bestillinger.md line 6), else a high, bright impact
+	if (FCString::Strncmp(Name, TEXT("Glass_"), 6) == 0)
+	{
+		const TCHAR* Kamp = FCString::Strcmp(Name, TEXT("Glass_Shatter")) == 0 ? TEXT("Glass_Break_Large")
+			: FCString::Strcmp(Name, TEXT("Glass_Collapse")) == 0 ? TEXT("Glass_Break_Small")
+			: FCString::Strcmp(Name, TEXT("Glass_Tinkle")) == 0 ? TEXT("Glass_Shards") : nullptr;
+		if (Kamp && GSAudio::Get(Kamp))
+		{
+			GSAudio::PlayAt(Ctx, Kamp, Loc, Volume, RangeM, Pitch);
+			return;
+		}
+		GSAudio::PlayAt(Ctx, GSAudio::Variant(TEXT("Impact"), 3), Loc, Volume, RangeM, Pitch * FMath::FRandRange(1.7f, 2.f));
+		return;
+	}
 	// Fallbacks until the real sounds exist (Kamp's K5)
 	struct FFallback { const TCHAR* Name; const TCHAR* Use; float Pitch; float Vol; };
 	static const FFallback Table[] = {
@@ -748,8 +900,39 @@ namespace GSMapState
 			D->ServerOpenAway(OriginCm, GSCause::Blast, true, false);
 			++N;
 		}
+		// Glass: much further than the lethal radius, no line check (the pressure wave goes round corners). More than
+		// 3.5 m above or below only within the radius itself.
+		const float R2 = FMath::Max(2.f * RadiusCm, 600.f);
+		int32 NGlass = 0;
+		TArray<TPair<int32, float>> Hits;
+		TArray<FVector> Dirs;
+		for (const auto& Pair : MS->GetGlass())
+		{
+			if (Pair.Value.State >= 2) continue;
+			const FVector C = Pair.Value.Def.CenterCm;
+			const float D = FVector::Dist(C, OriginCm);
+			const float R = FMath::Abs(C.Z - OriginCm.Z) > 350.f ? RadiusCm : R2;
+			if (D > R) continue;
+			Hits.Add(TPair<int32, float>(Pair.Key, D));
+			Dirs.Add((C - OriginCm).GetSafeNormal());
+		}
+		for (int32 I = 0; I < Hits.Num(); ++I)
+		{
+			MS->ServerDamageGlass(Hits[I].Key, Strength * (1.f - Hits[I].Value / R2), GSCause::Blast, Dirs[I]);
+			++NGlass;
+		}
+		for (const auto& Pair : MS->GetDoors())
+		{
+			AGSDoor* D = Pair.Value.Get();
+			if (!D || !D->HasPane() || D->IsPaneBroken()) continue;
+			const FVector Mid = D->GetBase() + FVector(0.f, 0.f, 110.f);
+			const float R = FMath::Abs(Mid.Z - OriginCm.Z) > 350.f ? RadiusCm : R2;
+			if (FVector::Dist(Mid, OriginCm) > R) continue;
+			D->ServerPaneHit(Mid - OriginCm, GSCause::Blast);
+			++NGlass;
+		}
 		OnNoise().Broadcast(World, OriginCm, 80.f);
-		if (N > 0) UE_LOG(LogTemp, Log, TEXT("Interaktiv: smell (%.0f m) åpnet %d dører"), RadiusCm / 100.f, N);
+		if (N > 0 || NGlass > 0) UE_LOG(LogTemp, Log, TEXT("Interaktiv: smell (%.0f m) åpnet %d dører, traff %d glassruter"), RadiusCm / 100.f, N, NGlass);
 	}
 
 	void ApplyBulletHit(UWorld* World, const FHitResult& Hit, float Damage)
@@ -762,25 +945,65 @@ namespace GSMapState
 	{
 		UWorld* World = User ? User->GetWorld() : nullptr;
 		if (!ServerState(World)) return BIG_NUMBER;
+		FCollisionQueryParams QP(SCENE_QUERY_STAT(GSDoorMelee), false, User);
+		// Glass first: the first whole pane takes the blow and stops it (Kamp drops a figure hit further away)
+		{
+			FHitResult G;
+			if (World->SweepSingleByObjectType(G, Start, End, FQuat::Identity, FCollisionObjectQueryParams(ECC_Destructible), FCollisionShape::MakeSphere(22.f), QP)
+				&& GSBreakable::GlassKeyOfHit(G) != 0)
+			{
+				GSBreakable::DamageGlassHit(World, G, Damage, GSCause::Melee, (End - Start).GetSafeNormal());
+				return G.bStartPenetrating ? 0.f : FVector::Dist(Start, G.Location);
+			}
+		}
+		// Walls stop the blow too: only a door (leaf or code lock) that is the first thing hit takes it
 		FCollisionObjectQueryParams OP;
 		OP.AddObjectTypesToQuery(ECC_WorldDynamic);
-		FCollisionQueryParams QP(SCENE_QUERY_STAT(GSDoorMelee), false, User);
+		OP.AddObjectTypesToQuery(ECC_WorldStatic);
 		FHitResult H;
 		if (World->SweepSingleByObjectType(H, Start, End, FQuat::Identity, OP, FCollisionShape::MakeSphere(22.f), QP))
 		{
 			if (AGSDoor* D = Cast<AGSDoor>(H.GetActor())) D->ServerMeleeHit(H, User);
 		}
-		return BIG_NUMBER;   // no breakable glass before 1b
+		return BIG_NUMBER;
 	}
 
 	float BulletSegment(UWorld* World, const FVector& From, const FVector& To, const FVector& Vel, float Damage, bool bReal)
 	{
-		return 1.f;   // 1b: glass along the path
+		AGSMapState* MS = AGSMapState::Get(World);
+		if (!MS || !World) return 1.f;
+		TArray<FHitResult> Hits;
+		FCollisionQueryParams QP(SCENE_QUERY_STAT(GSGlassBullet), false);
+		World->LineTraceMultiByObjectType(Hits, From, To, FCollisionObjectQueryParams(ECC_Destructible), QP);
+		const bool bServer = World->GetNetMode() != NM_Client;
+		const FVector Dir = Vel.IsNearlyZero() ? (To - From).GetSafeNormal() : Vel.GetSafeNormal();
+		int32 Panes = 0;
+		TSet<int32> Seen;
+		for (const FHitResult& H : Hits)
+		{
+			const int32 Key = GSBreakable::GlassKeyOfHit(H);
+			if (Key == 0 || Seen.Contains(Key)) continue;
+			Seen.Add(Key);
+			++Panes;
+			if (bReal)
+			{
+				if (bServer) GSBreakable::DamageGlassHit(World, H, Damage, GSCause::Bullet, Dir);
+				continue;
+			}
+			// A shown bullet: laminated glass that holds gets a crack star and a white glint where it went through
+			const AGSMapState::FGlassPane* P = MS->GetGlass().Find(Key);
+			if (P && P->Def.Type == EGSGlass::Railing && P->State < 2 && World->GetNetMode() != NM_DedicatedServer)
+			{
+				MS->GlassCrackAt(Key, H.ImpactPoint, false);
+				AGSShortFX::SpawnSprite(World, H.ImpactPoint, 6.f, 6.f, FLinearColor(1.f, 1.f, 1.f), 1.f, 0.1f, FVector::ZeroVector, true, 2.f);
+			}
+		}
+		return FMath::Pow(0.92f, static_cast<float>(Panes));
 	}
 
 	void AddBulletMark(UWorld* World, const FHitResult& Hit)
 	{
-		// 1b: lasting bullet holes
+		GSBreakable::AddMark(World, Hit, false);
 	}
 
 	void ResetForMatch(UWorld* World)
@@ -800,7 +1023,7 @@ namespace GSMapState
 		for (const auto& Pair : MS->GetDoors())
 		{
 			const AGSDoor* D = Pair.Value.Get();
-			if (!D || !D->IsLocked() || D->IsOpen()) continue;
+			if (!D || !D->IsLocked() || D->IsOpen() || D->IsPaneBroken()) continue;
 			if (FVector::DistSquared(D->GetBase() + FVector(0.f, 0.f, 90.f), PosCm) < FMath::Square(100.f + D->GetDef().WidthCm * 0.5f)) return false;
 		}
 		return true;
@@ -919,15 +1142,63 @@ namespace GSMapStateImpl
 		if (!HostWorld(World, TEXT("Interaktiv.Knus"))) return;
 		const float Damage = Args.Num() > 0 ? FMath::Max(1.f, FCString::Atof(*Args[0])) : 40.f;
 		FHitResult Hit;
-		if (!LookHit(World, Hit))
+		const bool bAny = LookHit(World, Hit);
+		// Glass first: an object trace (glass lets the Visibility channel through)
+		if (APlayerController* PC = World->GetFirstPlayerController())
+		{
+			FVector Eye;
+			FRotator Rot;
+			PC->GetPlayerViewPoint(Eye, Rot);
+			const FVector End = bAny ? FVector(Hit.ImpactPoint) : Eye + Rot.Vector() * 3000.f;
+			FHitResult G;
+			FCollisionQueryParams QP(SCENE_QUERY_STAT(GSIntLookGlass), false, PC->GetPawn());
+			if (World->LineTraceSingleByObjectType(G, Eye, End, FCollisionObjectQueryParams(ECC_Destructible), QP) && GSBreakable::GlassKeyOfHit(G) != 0)
+			{
+				GSBreakable::DamageGlassHit(World, G, Damage, GSCause::Bullet, Rot.Vector());
+				UE_LOG(LogTemp, Log, TEXT("Interaktiv.Knus: traff glass (del %d)"), GSPart::IdOf(GSBreakable::GlassKeyOfHit(G)));
+				return;
+			}
+		}
+		if (!bAny)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Interaktiv.Knus: ser ikke noe innen 30 m"));
 			return;
 		}
 		AGSShortFX::SpawnImpact(World, Hit.ImpactPoint, Hit.ImpactNormal);
 		GSMapState::ApplyBulletHit(World, Hit, Damage);
+		GSMapState::AddBulletMark(World, Hit);
 		UE_LOG(LogTemp, Log, TEXT("Interaktiv.Knus: traff %s (%s)"), Hit.GetActor() ? *Hit.GetActor()->GetName() : TEXT("ingenting"),
 			Hit.GetComponent() ? *Hit.GetComponent()->GetName() : TEXT("-"));
+	}
+
+	/** Bullet holes where you look ("Interaktiv.Merke 600" spreads 600 over 1 m without the per-second limit). */
+	void CmdMerke(const TArray<FString>& Args, UWorld* World)
+	{
+		if (!World || !World->IsGameWorld())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Interaktiv.Merke: bare i spillet (trykk Play først)"));
+			return;
+		}
+		const int32 N = Args.Num() > 0 ? FMath::Clamp(FCString::Atoi(*Args[0]), 1, 5000) : 1;
+		FHitResult Hit;
+		if (!LookHit(World, Hit))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Interaktiv.Merke: ser ikke noe innen 30 m"));
+			return;
+		}
+		const FVector N0 = Hit.ImpactNormal;
+		const FVector A = FVector::CrossProduct(N0, FMath::Abs(N0.Z) > 0.9f ? FVector::ForwardVector : FVector::UpVector).GetSafeNormal();
+		const FVector B = FVector::CrossProduct(N0, A);
+		int32 Made = 0;
+		for (int32 I = 0; I < N; ++I)
+		{
+			FHitResult H = Hit;
+			if (N > 1) H.ImpactPoint = Hit.ImpactPoint + A * FMath::FRandRange(-50.f, 50.f) + B * FMath::FRandRange(-50.f, 50.f);
+			Made += GSBreakable::AddMark(World, H, N > 1) ? 1 : 0;
+		}
+		AGSMapState* MS = AGSMapState::Get(World);
+		UGSInstancePool* Pool = MS ? MS->GetMarks() : nullptr;
+		UE_LOG(LogTemp, Log, TEXT("Interaktiv.Merke: %d nye, %d kulehull i alt (tak %d)"), Made, Pool ? Pool->NumLive() : 0, Pool ? Pool->GetCap() : 0);
 	}
 
 	/** A short check of every door type, run on the host with its own body (for headless runs: read the log). */
@@ -950,6 +1221,19 @@ namespace GSMapStateImpl
 				UE_LOG(LogTemp, Warning, TEXT("Interaktiv.Selvtest: ingen figur eller ingen dører etter 40 s"));
 				return;
 			}
+			FTimerHandle H;
+			TWeakObjectPtr<UWorld> WW(World);
+			const TArray<FString> ArgsCopy = Args;
+			World->GetTimerManager().SetTimer(H, FTimerDelegate::CreateLambda([WW, ArgsCopy]()
+			{
+				if (UWorld* W2 = WW.Get()) CmdSelvtest(ArgsCopy, W2);
+			}), 1.f, false);
+			return;
+		}
+		if (!MS->IsTestRoomBuilt())
+		{
+			// A static room built this frame is not in the scene queries yet: build it, run a second later
+			MS->DoEnterTestRoom(PC, false);
 			FTimerHandle H;
 			TWeakObjectPtr<UWorld> WW(World);
 			const TArray<FString> ArgsCopy = Args;
@@ -1040,6 +1324,116 @@ namespace GSMapStateImpl
 		GSMapState::ApplyBlast(World, D2->GetBase() + D2->GetNormal() * 150.f + FVector(0.f, 0.f, 100.f), 300.f, 100.f);
 		Check(D2->IsOpen() && D2->GetLock() == GSLock::Broken, TEXT("smell foran glassdøra: slår opp, låsen ødelagt"));
 		MS->DoResetForMatch();
+
+		// --- 1b: glass, shards, bullet holes ---
+		TArray<FGSGlassDef> GDefs;
+		GSMapStateImpl::CollectTestGlass(GDefs);
+		auto GKey = [&](int32 I) { return GSPart::MakeKey(GSPart::Glass, GDefs[I].Id); };
+		auto GState = [&](int32 I) { FGSPartState S; MS->GetPart(GKey(I), S); return S; };
+		auto Across = [&](int32 I) { return FRotator(0.f, GDefs[I].YawDeg + 90.f, 0.f).Vector(); };
+		auto BlocksAt = [&](int32 I)
+		{
+			const FVector N = Across(I);
+			FHitResult H;
+			return World->LineTraceSingleByObjectType(H, GDefs[I].CenterCm + N * 50.f, GDefs[I].CenterCm - N * 50.f, FCollisionObjectQueryParams(ECC_Destructible));
+		};
+		const bool bVisuals = World->GetNetMode() != NM_DedicatedServer;
+		Check(BlocksAt(0) && BlocksAt(4), TEXT("glass: hele ruter stopper ting (objekttype Destructible)"));
+		{
+			const FVector N = Across(0);
+			const FVector P0 = GDefs[0].CenterCm + N * 50.f, P1 = GDefs[0].CenterCm - N * 50.f;
+			FHitResult V;
+			const bool bVis = World->LineTraceSingleByChannel(V, P0, P1, ECC_Visibility);
+			Check(!bVis || !Cast<UGSGlassSet>(V.GetComponent()), TEXT("glass: sikt og kuler (Visibility) går gjennom ruta"));
+			const float F = GSMapState::BulletSegment(World, P0, P1, -N * 80000.f, 30.f, false);
+			Check(FMath::IsNearlyEqual(F, 0.92f, 0.001f) && GState(0).State == 0, TEXT("glass: vist kule gjennom ruta bremses 0,92 og skader ikke"));
+		}
+		GSBreakable::DamageGlass(World, GKey(0), 1.f, GSCause::Bullet, FVector(0.f, 1.f, 0.f));
+		Check(GState(0).State == 2 && !BlocksAt(0), TEXT("herdet glassvegg: ett treff, smuldrer helt, ingen kollisjon"));
+		GSBreakable::DamageGlass(World, GKey(4), 30.f, GSCause::Bullet, FVector(0.f, 1.f, 0.f));
+		Check(GState(4).State == 1 && BlocksAt(4), TEXT("laminert rekkverk: første treff sprekker, står fortsatt"));
+		Check(!bVisuals || (MS->GetMarks() && MS->GetMarks()->CountKey(GKey(4)) >= 1), TEXT("laminert rekkverk: sprekkestjerne i ruta"));
+		for (int32 I = 0; I < 6; ++I) GSBreakable::DamageGlass(World, GKey(4), 30.f, GSCause::Bullet, FVector(0.f, 1.f, 0.f));
+		Check(GState(4).State == 2 && !BlocksAt(4), TEXT("laminert rekkverk: gir etter ved 100 skade"));
+		Check(!bVisuals || (MS->GetMarks() && MS->GetMarks()->CountKey(GKey(4)) == 0), TEXT("laminert rekkverk: sprekkene forsvinner med ruta"));
+		GSBreakable::DamageGlass(World, GKey(5), 0.f, GSCause::Melee, FVector(0.f, 1.f, 0.f));
+		Check(GState(5).State == 1, TEXT("laminert rekkverk: kolbeslag sprekker det"));
+		{
+			// A real bullet through one whole pane of the glass wall
+			const FVector N = Across(1);
+			const float F = GSMapState::BulletSegment(World, GDefs[1].CenterCm + N * 60.f, GDefs[1].CenterCm - N * 60.f, -N * 80000.f, 30.f, true);
+			Check(GState(1).State == 2 && FMath::IsNearlyEqual(F, 0.92f, 0.001f), TEXT("ekte kule: knuser glassveggen og bremses"));
+		}
+		{
+			const FVector N = Across(2);
+			const float Dist = GSMapState::ApplyMelee(C, GDefs[2].CenterCm + N * 80.f, GDefs[2].CenterCm - N * 80.f, 40.f);
+			Check(Dist < 80.f && GState(2).State == 2, *FString::Printf(TEXT("slag: stopper ved hel rute (%.0f cm) og knuser den"), Dist));
+		}
+		// Glass door
+		{
+			D2->ServerPaneHit(-D2->GetNormal(), GSCause::Bullet);
+			Check(D2->IsPaneBroken() && GSMapState::IsDoorPassable(World, D2->GetBase() + FVector(0.f, 0.f, 90.f)), TEXT("glassdør: ruta knuses, den låste døra er likevel passerbar"));
+			StandAt(D2, 1);
+			Use(D2, EGSUseVerb::Tap, R);
+			Check(D2->IsOpen(), TEXT("glassdør uten rute: E griper inn og åpner"));
+		}
+		// Blast in the middle of the room: the rest within 6 m goes
+		GSMapState::ApplyBlast(World, GSMapStateImpl::TestOrigin + FVector(450.f, -50.f, 120.f), 300.f, 100.f);
+		int32 Whole = 0, Walls = 0;
+		for (int32 I = 0; I < GDefs.Num(); ++I)
+		{
+			Whole += GState(I).State == 0 ? 1 : 0;
+			Walls += (GDefs[I].Type == EGSGlass::Wall && GState(I).State != 2) ? 1 : 0;
+		}
+		Check(Whole == 0 && Walls == 0, TEXT("smell (3 m): glassveggen borte, rekkverkene sprukket eller borte (radius 6 m)"));
+		UGSInstancePool* Lit = MS->GetLitter();
+		Check(!bVisuals || (Lit && Lit->NumLive() > 100), *FString::Printf(TEXT("skår på gulvet: %d"), Lit ? Lit->NumLive() : 0));
+		Check(!bVisuals || MS->NumFlyingBits() <= 150, *FString::Printf(TEXT("biter i lufta: %d (tak 150)"), MS->NumFlyingBits()));
+		UE_LOG(LogTemp, Log, TEXT("Interaktiv.Selvtest: %d ruter knust, %d skår, %d biter i lufta"), MS->NumGlassBroken(), Lit ? Lit->NumLive() : 0, MS->NumFlyingBits());
+		// Bullet holes: 600 on the plaster board -> never more than 400
+		{
+			// The plaster board on the west wall (made by hand: headless runs do not trace static geometry)
+			FHitResult Wall;
+			UPrimitiveComponent* Board = nullptr;
+			if (AActor* Geo = MS->GetTestRoomGeo())
+			{
+				TInlineComponentArray<UInstancedStaticMeshComponent*> ISMs(Geo);
+				for (UInstancedStaticMeshComponent* I : ISMs)
+				{
+					const UMaterialInterface* M = I->GetMaterial(0);
+					if (I->ComponentHasTag(TEXT("Mat_Plaster")) && M && M->GetName() == TEXT("MI_GS_PlasterWhite")) Board = I;
+				}
+			}
+			if (Board)
+			{
+				Wall = FHitResult(Board->GetOwner(), Board, GSMapStateImpl::TestOrigin + FVector(-793.f, 0.f, 120.f), FVector(1.f, 0.f, 0.f));
+				Wall.ImpactNormal = FVector(1.f, 0.f, 0.f);
+				int32 Max = 0;
+				for (int32 I = 0; I < 600; ++I)
+				{
+					FHitResult H = Wall;
+					H.ImpactPoint = Wall.ImpactPoint + FVector(0.f, FMath::FRandRange(-50.f, 50.f), FMath::FRandRange(-80.f, 80.f));
+					GSBreakable::AddMark(World, H, true);
+					Max = FMath::Max(Max, MS->GetMarks() ? MS->GetMarks()->NumLive() : 0);
+				}
+				const bool bTag = Wall.GetComponent() && Wall.GetComponent()->ComponentHasTag(TEXT("Mat_Plaster"));
+				Check(!bVisuals || (Max == 400 && bTag), *FString::Printf(TEXT("kulehull: 600 lagt, høyst %d samtidig (tak 400), gips-tagg %s"), Max, bTag ? TEXT("ja") : TEXT("nei")));
+				int32 Made = 0;
+				for (int32 I = 0; I < 60; ++I) Made += GSBreakable::AddMark(World, Wall, false) ? 1 : 0;
+				Check(!bVisuals || Made <= 30, *FString::Printf(TEXT("kulehull: %d av 60 i samme øyeblikk (høyst 30 per sekund)"), Made));
+			}
+			else
+			{
+				Check(false, TEXT("kulehull: fant ikke gipsplata"));
+			}
+		}
+		MS->DoResetForMatch();
+		Whole = 0;
+		for (int32 I = 0; I < GDefs.Num(); ++I) Whole += (GState(I).State == 0 && BlocksAt(I)) ? 1 : 0;
+		Check(Whole == GDefs.Num() && !D2->IsPaneBroken() && (!MS->GetLitter() || MS->GetLitter()->NumLive() == 0) && (!MS->GetMarks() || MS->GetMarks()->NumLive() == 0),
+			TEXT("tilbakestilling: alt glass helt, skår og kulehull borte"));
+
+		MS->DoResetForMatch();
 		C->ConsumeItem(TEXT("Keycard"), C->CountItem(TEXT("Keycard")));
 		C->ConsumeItem(TEXT("Lockpick"), C->CountItem(TEXT("Lockpick")));
 		MS->DoEnterTestRoom(PC, false);
@@ -1059,8 +1453,11 @@ namespace GSMapStateImpl
 		TEXT("Et smell der du ser (radius i meter, standard 3): dører slår opp og låsene går i stykker."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&CmdSmell));
 	FAutoConsoleCommandWithWorldAndArgs GCmdKnus(TEXT("Interaktiv.Knus"),
-		TEXT("Et kuletreff på det du ser på (skade, standard 40): kodelåser og låsen på tredører."),
+		TEXT("Et kuletreff på det du ser på (skade, standard 40): glass, kodelåser og låsen på tredører, og et kulehull."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&CmdKnus));
+	FAutoConsoleCommandWithWorldAndArgs GCmdMerke(TEXT("Interaktiv.Merke"),
+		TEXT("Et kulehull der du ser (Interaktiv.Merke 600 sprer 600 over en meter, for å prøve taket på 400)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&CmdMerke));
 	FAutoConsoleCommandWithWorldAndArgs GCmdSelvtest(TEXT("Interaktiv.Selvtest"),
 		TEXT("Prøver alle dørtypene i testrommet med figuren din og skriver resultatet i loggen."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&CmdSelvtest));

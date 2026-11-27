@@ -12,6 +12,9 @@ class AGSPickup;
 class AGSCharacter;
 class APlayerController;
 class AGSMapState;
+class UGSGlassSet;
+class UGSInstancePool;
+class AGSDebris;
 
 /**
  * Interaktiv verden: one replicated state for everything in the map that can be opened, broken or moved
@@ -91,6 +94,17 @@ struct FGSDoorDef
 	bool bLocked = false;                   // locked at the start of a match
 	bool bOpen = false;                     // standing open at the start of a match
 	FString Room;                           // the room behind the door ("Grupperom 2.1"), for the hint
+};
+
+/** One breakable glass pane from the map data (or the test room). Centimetres. */
+struct FGSGlassDef
+{
+	int32 Id = 0;
+	FVector CenterCm = FVector::ZeroVector;
+	float LengthCm = 120.f;
+	float HeightCm = 110.f;
+	float YawDeg = 0.f;                     // the length runs along this yaw
+	EGSGlass Type = EGSGlass::Wall;
 };
 
 /** What the bots (and anyone else) may read about a door. */
@@ -194,9 +208,39 @@ public:
 	/** Server world time, also on clients (0 until the game state has arrived). */
 	float GetServerTime() const;
 	bool IsRegistryBuilt() const { return bRegistryBuilt; }
+	bool IsTestRoomBuilt() const { return bTestRoomBuilt; }
+	AActor* GetTestRoomGeo() const { return TestRoomGeo; }
 
 	/** Called by the list callbacks on clients. */
 	void OnPartReplicated(const FGSPartState& Item, bool bRemoved);
+
+	// --- Glass, shards and bullet holes (1b, the code is in GSBreakable.cpp) ---
+	struct FGlassPane
+	{
+		FGSGlassDef Def;
+		TWeakObjectPtr<UGSGlassSet> Set;
+		uint8 State = 0;    // local copy: 0 whole, 1 cracked, 2 gone
+		uint8 Health = 0;
+	};
+	const TMap<int32, FGlassPane>& GetGlass() const { return Glass; }
+	bool IsGlassKey(int32 Key) const { return Glass.Contains(Key); }
+	/** Server: damage a pane (see GSBreakable::DamageGlass). */
+	void ServerDamageGlass(int32 Key, float Amount, uint8 Cause, const FVector& Dir);
+	/** Local: a pane broke. Shards on the floor once per key; bFresh adds the sound and the bits in the air. */
+	void GlassBreakFX(int32 Key, const FTransform& Pane, const FVector& SizeCm, EGSGlass Type, const FVector& HitDir, bool bFresh);
+	/** Local: a crack star in laminated glass at a point (and the crack sound). */
+	void GlassCrackAt(int32 Key, const FVector& At, bool bSound);
+	/** Local: at least Want crack stars on a cracked pane (seeded spots, the same on every machine). */
+	void EnsureCrackMarks(int32 Key, int32 Want);
+	UGSInstancePool* GetMarks();
+	UGSInstancePool* GetLitter();
+	/** Local: the machine-wide cap on flying bits (150): the oldest settle first. */
+	void MakeRoomForBits(int32 NewBits);
+	void TrackDebris(AGSDebris* D);
+	int32 NumFlyingBits() const;
+	/** Local: 30 new bullet holes per second at most. */
+	bool TakeMarkToken();
+	int32 NumGlassBroken() const;
 
 	/** Door sounds with fallbacks while the real ones are missing. Plays locally (never on a dedicated server). */
 	static void PlayPartSound(const UObject* Ctx, const TCHAR* Name, const FVector& Loc, float Volume = 1.f, float RangeM = 25.f, float Pitch = 1.f);
@@ -221,6 +265,12 @@ protected:
 	void ServerInteractors();  // 1 s: one AGSInteractor per human player
 	void ServerBots();         // 5 Hz: bots open unlocked doors
 	void SpawnTestPickups();
+	void BuildGlass(const TArray<FGSGlassDef>& Defs);
+	void ApplyGlassLocal(const FGSPartState& Item, bool bFresh);
+	void ResetGlassLocal(int32 Key);
+	void ResetGlassAllLocal();
+	int32 HideBuilderGlass();
+	USceneComponent* EnsureRoot();
 
 	TMap<int32, TWeakObjectPtr<AGSDoor>> Doors;
 	TArray<TWeakObjectPtr<AActor>> Usables;
@@ -233,6 +283,16 @@ protected:
 	UPROPERTY() TObjectPtr<AActor> TestRoomGeo;
 	TArray<TWeakObjectPtr<AGSPickup>> TestPickups;
 	FTimerHandle RegistryTimer, SlowTimer, InteractorTimer, BotTimer;
+
+	// Glass (1b)
+	TMap<int32, FGlassPane> Glass;
+	UPROPERTY() TArray<TObjectPtr<UGSGlassSet>> GlassSets;
+	UPROPERTY() TObjectPtr<UGSInstancePool> Marks;
+	UPROPERTY() TObjectPtr<UGSInstancePool> Litter;
+	TArray<TWeakObjectPtr<AGSDebris>> Debris;
+	TSet<int32> LitteredKeys;
+	float MarkTokens = 30.f;
+	float MarkTokenTime = -1.f;
 };
 
 /** Spawns AGSMapState on the server in every game world. */
@@ -260,9 +320,10 @@ namespace GSMapState
 	/** Server: a melee swing from Start to End. A door leaf takes it as one kick, a code lock as one blow (two break it).
 	 *  Returns the distance (cm from Start) to the first whole glass pane along the swing, BIG_NUMBER when none (1a: always). */
 	GLOSHAUGEN_API float ApplyMelee(AActor* User, const FVector& Start, const FVector& End, float Damage);
-	/** Bullet path From -> To (every machine, real and shown bullets): glass along it (1b). Returns the speed factor (1 = none). */
+	/** Bullet path From -> To (every machine, real and shown bullets): glass along it. Real bullets on the server damage
+	 *  it, shown bullets crack laminated glass locally. Returns the speed factor (0.92 per pane). Kamp: To = bHit ? Hit.ImpactPoint : End. */
 	GLOSHAUGEN_API float BulletSegment(UWorld* World, const FVector& From, const FVector& To, const FVector& Vel, float Damage, bool bReal);
-	/** A lasting bullet hole where a shown bullet hit (1b). */
+	/** A lasting bullet hole where a shown bullet hit (local, max 400 per machine, look by surface). */
 	GLOSHAUGEN_API void AddBulletMark(UWorld* World, const FHitResult& Hit);
 	/** Server: everything back to the start of a match. */
 	GLOSHAUGEN_API void ResetForMatch(UWorld* World);

@@ -442,7 +442,9 @@ namespace GSInteract
 		IGSInteract* I = GSInteractImpl::FindUsable(Bot, Key, &A);
 		if (!I || !CanUse(Bot, A, GSInteractImpl::ServerRange)) return false;
 		FGSUseResult R;
-		I->ServerUse(Bot, Verb, R);   // jobs (picking, kicking in) are not run for bots yet
+		I->ServerUse(Bot, Verb, R);
+		// Jobs (picking, kicking in) are not run for bots yet, and "Locked." did nothing: say so
+		if (R.Job.Key != 0 || !R.Feedback.IsEmpty()) return false;
 		return true;
 	}
 

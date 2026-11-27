@@ -159,7 +159,8 @@ namespace GSInteract
 {
 	/** Kamp (K4): true when the use key belongs to us right now for this character's player (Kamp then does nothing). */
 	GLOSHAUGEN_API bool HasFocus(const AGSCharacter* C);
-	/** Bots: use a part like a player would (same checks, no RPC). Jobs (picking, kicking in) are not run for bots yet. */
+	/** Bots: use a part like a player would (same checks, no RPC). True only when something happened: a locked door
+	 *  that needs a job (picking, kicking in) or answers "Locked." returns false (jobs are not run for bots yet). */
 	GLOSHAUGEN_API bool BotUse(AGSCharacter* Bot, int32 Key, EGSUseVerb Verb);
 	/** Server: may this character use that part now (alive, not using an item, close, free line)? */
 	GLOSHAUGEN_API bool CanUse(const AGSCharacter* C, AActor* Part, float MaxDistCm = 250.f);

@@ -24,7 +24,7 @@ Fire regler for alt laget lager:
    krokene hos Kamp/Spillbarhet er levert. Krokene bestilles som én linje hver.
 
 ## Spor
-- **A. Grunnmur (runde 1):** `AGSMapState`, `IGSInteract`, dører, knusbart glass, varige kulehull, testrom.
+- **A. Grunnmur (runde 1):** `AGSMapState`, `IGSInteract`, dører, knusbart glass, varige kulehull, testrom. *Status 27. nov.: 1a (dører) godkjent; 1b (glass, skår, kulehull, dørmodeller) bygget. Kuler, granater og slag mot glass venter på Kamps K1–K3 (Kamps plan-13); til da prøves alt med Interaktiv.Knus/Smell/Merke.*
 - **B. Ødeleggelse og løse ting (runde 2):** sprengbare lettvegger og dører, møbler som knuses, løse ting som plukkes
   opp/bæres/kastes, barrikader.
 - **C. Bygget som virker (runde 3):** lysbrytere, heiser, kiosk/kjøleskap/salatbar, skap med loot, piano, bordtennis,

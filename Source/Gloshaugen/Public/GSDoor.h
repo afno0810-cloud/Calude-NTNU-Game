@@ -10,6 +10,7 @@ class USceneComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
 class UMaterialInstanceDynamic;
+class UStaticMesh;
 
 /**
  * A door in the map (or the test room). A local actor: every machine builds the same doors from the map data with the
@@ -71,6 +72,13 @@ public:
 	void ServerBulletHit(const FHitResult& Hit, float Damage);
 	void ServerMeleeHit(const FHitResult& Hit, AActor* User);
 	bool IsKeypad(const UPrimitiveComponent* C) const;
+	/** Glass doors (1b): the pane. A hit on it breaks it (tempered glass); then you step through the frame. */
+	bool IsPane(const UPrimitiveComponent* C) const;
+	bool HasPane() const { return Panes.Num() > 0; }
+	bool IsPaneBroken() const { return (StateBits & GSLock::PaneBroken) != 0; }
+	void ServerPaneHit(const FVector& Dir, uint8 Cause);
+	/** The first pane's world transform (scale = size / 100) and size (cm). */
+	bool GetPaneWorld(FTransform& OutPane, FVector& OutSizeCm) const;
 
 protected:
 	struct FLeaf
@@ -91,6 +99,12 @@ protected:
 	FVector LeafCenter(int32 Index) const;
 	void SparksAt(const FVector& Loc);
 	FVector HandleWorld() const;
+	void SetPaneBroken(bool bBroken);
+	/** Plays Kamp's sound for this kind of door (Door_Wood_Open ...) when it exists, else the general one. */
+	void Sound(const TCHAR* Name, const FVector& At, float Volume, float RangeM, float Pitch = 1.f) const;
+	/** A Blender model for this part when it has been imported (SM_Int_*), else null (the boxes stay). */
+	static UStaticMesh* IntModel(const TCHAR* Name);
+	UStaticMeshComponent* AddModel(USceneComponent* Parent, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale);
 
 	FGSDoorDef Def;
 	int32 Key = 0;
@@ -100,6 +114,8 @@ protected:
 	UPROPERTY() TObjectPtr<UBoxComponent> KeypadBox;
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> KeypadLed;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> LedMID;
+	UPROPERTY() TArray<TObjectPtr<UStaticMeshComponent>> Panes;          // glass door: one per leaf
+	UPROPERTY() TArray<TObjectPtr<UPrimitiveComponent>> FrameColliders;  // glass door: let pawns step through a broken pane
 
 	// Local copy of the replicated state
 	uint8 Lock = 0;

@@ -2,6 +2,7 @@
 #include "GSCharacter.h"
 #include "GSEffects.h"
 #include "GSUtils.h"
+#include "GSAudio.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/BoxComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -56,6 +57,80 @@ namespace GSDoorImpl
 	}
 
 	bool IsServer(const UWorld* W) { return W && W->GetNetMode() != NM_Client; }
+
+	/** Sizes the Blender models are made at (cm): leaf width, height, thickness. */
+	constexpr float ModelLeafW = 100.f;
+	constexpr float ModelLeafH = 209.f;
+}
+
+UStaticMesh* AGSDoor::IntModel(const TCHAR* Name)
+{
+	static TMap<FString, TWeakObjectPtr<UStaticMesh>> Cache;
+	static TSet<FString> Missing;
+	const FString Key(Name);
+	if (TWeakObjectPtr<UStaticMesh>* Found = Cache.Find(Key))
+	{
+		if (Found->IsValid()) return Found->Get();
+	}
+	if (Missing.Contains(Key)) return nullptr;
+	const FString Path = FString::Printf(TEXT("/Game/Models/%s.%s"), Name, Name);
+	UStaticMesh* M = LoadObject<UStaticMesh>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (!M)
+	{
+		Missing.Add(Key);
+		return nullptr;
+	}
+	Cache.Add(Key, M);
+	return M;
+}
+
+void AGSDoor::Sound(const TCHAR* Name, const FVector& At, float Volume, float RangeM, float Pitch) const
+{
+	// Kamp's names per kind of door (bestillinger.md line 6), tried first
+	const TCHAR* Specific = nullptr;
+	const bool bOpen = FCString::Strcmp(Name, TEXT("Door_Open")) == 0;
+	const bool bSlam = FCString::Strcmp(Name, TEXT("Door_Slam")) == 0;
+	const bool bClose = FCString::Strcmp(Name, TEXT("Door_Close")) == 0 || (bSlam && Def.Art != EGSDoorArt::Wood && Def.Art != EGSDoorArt::Double);
+	switch (Def.Art)
+	{
+	case EGSDoorArt::Wood:
+	case EGSDoorArt::Double:
+		if (bOpen) Specific = TEXT("Door_Wood_Open");
+		else if (bClose) Specific = TEXT("Door_Wood_Close");
+		else if (bSlam || FCString::Strcmp(Name, TEXT("Door_Kick")) == 0) Specific = Lock == GSLock::Broken ? TEXT("Door_Wood_Break") : TEXT("Door_Wood_Kick");
+		break;
+	case EGSDoorArt::GlassCode:
+		if (bOpen) Specific = TEXT("Door_Glass_Open");
+		else if (bClose) Specific = TEXT("Door_Glass_Close");
+		break;
+	case EGSDoorArt::Fire:
+		if (bOpen) Specific = TEXT("Door_Pushbar");
+		else if (bClose) Specific = TEXT("Door_Metal_Stair");
+		break;
+	}
+	if (FCString::Strcmp(Name, TEXT("Keypad_Beep")) == 0) Specific = TEXT("Codelock_Beep");
+	if (Specific && GSAudio::Get(Specific))
+	{
+		GSAudio::PlayAt(this, Specific, At, Volume, RangeM, Pitch);
+		return;
+	}
+	AGSMapState::PlayPartSound(this, Name, At, Volume, RangeM, Pitch);
+}
+
+UStaticMeshComponent* AGSDoor::AddModel(USceneComponent* Parent, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale)
+{
+	UStaticMeshComponent* M = NewObject<UStaticMeshComponent>(this);
+	M->SetStaticMesh(Mesh);
+	M->SetMobility(EComponentMobility::Movable);
+	M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	M->SetCanEverAffectNavigation(false);
+	M->SetGenerateOverlapEvents(false);
+	M->SetupAttachment(Parent);
+	M->SetRelativeLocationAndRotation(Loc, Rot);
+	M->SetRelativeScale3D(Scale);
+	M->RegisterComponent();
+	AddInstanceComponent(M);
+	return M;
 }
 
 
@@ -144,6 +219,21 @@ void AGSDoor::BuildLeaf(FLeaf& L, float LeafH)
 	auto Y = [&L](float A) { return -L.HingeSide * (A + 0.5f); };
 	const float Mid = L.Width * 0.5f;
 	const float Z0 = 1.f;
+	// The Blender models (SM_Int_*) replace the boxes when they have been imported; the boxes are the fallback.
+	UStaticMesh* HandleModel = IntModel(TEXT("SM_Int_Handle"));
+	auto Handle = [&](float Side, float FaceX, float A)
+	{
+		// Model: origin on the door face at the rose, sticks out along +X, the lever points along +Y (made for the
+		// front). The lever points towards the hinge (+HingeSide in local Y) on both faces.
+		const FVector At(Side * FaceX, Y(A), Z0 + GSDoorImpl::HandleZ);
+		if (HandleModel)
+		{
+			AddModel(L.Pivot, HandleModel, At, FRotator(0.f, Side > 0.f ? 0.f : 180.f, 0.f), FVector(1.f, Side > 0.f ? L.HingeSide : -L.HingeSide, 1.f));
+			return;
+		}
+		AddBox(L.Pivot, At + FVector(Side * 3.f, 0.f, 0.f), FVector(2.f, 14.f, 2.f), TEXT("M_Chrome_In"), false);
+		AddBox(L.Pivot, At + FVector(Side * 0.4f, 0.f, 0.f), FVector(0.8f, 6.f, 14.f), TEXT("M_Chrome_In"), false);
+	};
 	switch (Def.Art)
 	{
 	case EGSDoorArt::GlassCode:
@@ -154,15 +244,24 @@ void AGSDoor::BuildLeaf(FLeaf& L, float LeafH)
 		const FVector RailB(T, L.Width - 2.f * Stile, Bottom), RailT(T, L.Width - 2.f * Stile, Top);
 		const FVector S1(0.f, Y(Stile * 0.5f), Z0 + LeafH * 0.5f), S2(0.f, Y(L.Width - Stile * 0.5f), Z0 + LeafH * 0.5f);
 		const FVector B(0.f, Y(Mid), Z0 + Bottom * 0.5f), Tp(0.f, Y(Mid), Z0 + LeafH - Top * 0.5f);
-		AddBox(L.Pivot, S1, StileSize, Frame, false);
-		AddBox(L.Pivot, S2, StileSize, Frame, false);
-		AddBox(L.Pivot, B, RailB, Frame, false);
-		AddBox(L.Pivot, Tp, RailT, Frame, false);
-		AddCollider(L.Pivot, S1, StileSize);
-		AddCollider(L.Pivot, S2, StileSize);
-		AddCollider(L.Pivot, B, RailB);
-		AddCollider(L.Pivot, Tp, RailT);
-		// The pane: real glass collision (Destructible: blocks bodies, lets the Visibility channel through; breaks in 1b)
+		if (UStaticMesh* FrameModel = IntModel(TEXT("SM_Int_Door_GlassFrame")))
+		{
+			AddModel(L.Pivot, FrameModel, FVector(0.f, Y(Mid), Z0), FRotator::ZeroRotator,
+				FVector(1.f, L.Width / GSDoorImpl::ModelLeafW, LeafH / GSDoorImpl::ModelLeafH));
+		}
+		else
+		{
+			AddBox(L.Pivot, S1, StileSize, Frame, false);
+			AddBox(L.Pivot, S2, StileSize, Frame, false);
+			AddBox(L.Pivot, B, RailB, Frame, false);
+			AddBox(L.Pivot, Tp, RailT, Frame, false);
+		}
+		FrameColliders.Add(AddCollider(L.Pivot, S1, StileSize));
+		FrameColliders.Add(AddCollider(L.Pivot, S2, StileSize));
+		FrameColliders.Add(AddCollider(L.Pivot, B, RailB));
+		FrameColliders.Add(AddCollider(L.Pivot, Tp, RailT));
+		// The pane: real glass collision (Destructible: blocks bodies, lets the Visibility channel through). Tempered:
+		// any hit breaks it (1b), and then the frame lets you step through.
 		const float PaneH = LeafH - Bottom - Top;
 		UStaticMeshComponent* Pane = AddBox(L.Pivot, FVector(0.f, Y(Mid), Z0 + Bottom + PaneH * 0.5f), FVector(1.2f, L.Width - 2.f * Stile, PaneH), TEXT("Glass"), true);
 		Pane->SetCollisionObjectType(ECC_Destructible);
@@ -170,13 +269,16 @@ void AGSDoor::BuildLeaf(FLeaf& L, float LeafH)
 		Pane->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
 		Pane->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Block);
 		Pane->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+		Pane->SetCollisionResponseToChannel(ECC_Destructible, ECR_Block);
 		Pane->SetCastShadow(false);
 		Pane->ComponentTags.Add(TEXT("Mat_Glass"));
+		Pane->ComponentTags.Add(TEXT("GS_Int_Glass"));
 		Blockers.Add(Pane);
+		Panes.Add(Pane);
 		// Lever handles on both sides
 		for (const float S : { 1.f, -1.f })
 		{
-			AddBox(L.Pivot, FVector(S * (T * 0.5f + 3.f), Y(L.Width - Stile * 0.5f - 6.f), Z0 + GSDoorImpl::HandleZ), FVector(2.f, 14.f, 2.f), TEXT("M_Chrome_In"), false);
+			Handle(S, T * 0.5f, L.Width - Stile * 0.5f - 6.f);
 		}
 		break;
 	}
@@ -184,25 +286,43 @@ void AGSDoor::BuildLeaf(FLeaf& L, float LeafH)
 	{
 		const float T = 5.f;
 		const FVector C(0.f, Y(Mid), Z0 + LeafH * 0.5f), S(T, L.Width, LeafH);
-		AddBox(L.Pivot, C, S, TEXT("MetalDark_In"), false);
+		if (UStaticMesh* FireModel = IntModel(TEXT("SM_Int_Door_Fire")))
+		{
+			// Leaf, push bar (front = +X) and the wired-glass window in one model
+			AddModel(L.Pivot, FireModel, FVector(0.f, Y(Mid), Z0), FRotator::ZeroRotator,
+				FVector(1.f, L.Width / GSDoorImpl::ModelLeafW, LeafH / GSDoorImpl::ModelLeafH));
+		}
+		else
+		{
+			AddBox(L.Pivot, C, S, TEXT("MetalDark_In"), false);
+			// Push bar on the escape side (front)
+			AddBox(L.Pivot, FVector(T * 0.5f + 5.f, Y(Mid), Z0 + 100.f), FVector(4.f, L.Width - 24.f, 5.f), TEXT("M_Chrome_In"), false);
+			// A small window (wired glass), real fire doors have one
+			AddBox(L.Pivot, FVector(0.f, Y(Mid), Z0 + 150.f), FVector(T + 0.4f, 22.f, 50.f), TEXT("GlassDark"), false);
+		}
 		AddCollider(L.Pivot, C, S);
-		// Push bar on the escape side (front), a lever on the other
-		AddBox(L.Pivot, FVector(T * 0.5f + 5.f, Y(Mid), Z0 + 100.f), FVector(4.f, L.Width - 24.f, 5.f), TEXT("M_Chrome_In"), false);
-		AddBox(L.Pivot, FVector(-(T * 0.5f + 3.f), Y(L.Width - 9.f), Z0 + GSDoorImpl::HandleZ), FVector(2.f, 14.f, 2.f), TEXT("M_Chrome_In"), false);
-		// A small window (wired glass), real fire doors have one
-		AddBox(L.Pivot, FVector(0.f, Y(Mid), Z0 + 150.f), FVector(T + 0.4f, 22.f, 50.f), TEXT("GlassDark"), false);
+		// A lever on the other side
+		Handle(-1.f, T * 0.5f, L.Width - 9.f);
 		break;
 	}
 	default:
 	{
 		const float T = 4.5f;
 		const FVector C(0.f, Y(Mid), Z0 + LeafH * 0.5f), S(T, L.Width, LeafH);
-		AddBox(L.Pivot, C, S, Def.Art == EGSDoorArt::Double ? TEXT("PlasticWhite_In") : TEXT("WoodLight_In"), false);
+		UStaticMesh* WoodModel = Def.Art == EGSDoorArt::Wood ? IntModel(TEXT("SM_Int_Door_Wood")) : nullptr;
+		if (WoodModel)
+		{
+			AddModel(L.Pivot, WoodModel, FVector(0.f, Y(Mid), Z0), FRotator::ZeroRotator,
+				FVector(T / 4.f, L.Width / GSDoorImpl::ModelLeafW, LeafH / GSDoorImpl::ModelLeafH));
+		}
+		else
+		{
+			AddBox(L.Pivot, C, S, Def.Art == EGSDoorArt::Double ? TEXT("PlasticWhite_In") : TEXT("WoodLight_In"), false);
+		}
 		AddCollider(L.Pivot, C, S);
 		for (const float Sd : { 1.f, -1.f })
 		{
-			AddBox(L.Pivot, FVector(Sd * (T * 0.5f + 3.f), Y(L.Width - 9.f), Z0 + GSDoorImpl::HandleZ), FVector(2.f, 14.f, 2.f), TEXT("M_Chrome_In"), false);
-			AddBox(L.Pivot, FVector(Sd * (T * 0.5f + 0.4f), Y(L.Width - 9.f), Z0 + GSDoorImpl::HandleZ), FVector(0.8f, 6.f, 14.f), TEXT("M_Chrome_In"), false);
+			Handle(Sd, T * 0.5f, L.Width - 9.f);
 		}
 		break;
 	}
@@ -238,8 +358,16 @@ void AGSDoor::PlaceKeypad()
 	KeypadBox->SetRelativeLocation(Local);
 	KeypadBox->RegisterComponent();
 	AddInstanceComponent(KeypadBox);
-	AddBox(Root, Local, FVector(3.f, 8.f, 14.f), TEXT("MetalDark_In"), false);
-	AddBox(Root, Local + FVector(1.55f, 0.f, -1.f), FVector(0.2f, 6.f, 7.f), TEXT("Plastic_In"), false);   // the key field
+	if (UStaticMesh* KeypadModel = IntModel(TEXT("SM_Int_Keypad")))
+	{
+		// Model: origin at the back (on the wall), front +X, 8 x 14 x 3 cm, the LED spot at the top
+		AddModel(Root, KeypadModel, Local - FVector(1.5f, 0.f, 0.f), FRotator::ZeroRotator, FVector(1.f));
+	}
+	else
+	{
+		AddBox(Root, Local, FVector(3.f, 8.f, 14.f), TEXT("MetalDark_In"), false);
+		AddBox(Root, Local + FVector(1.55f, 0.f, -1.f), FVector(0.2f, 6.f, 7.f), TEXT("Plastic_In"), false);   // the key field
+	}
 	KeypadLed = AddBox(Root, Local + FVector(1.6f, 0.f, 5.f), FVector(0.4f, 1.2f, 1.2f), nullptr, false);
 	KeypadLed->SetCastShadow(false);
 	if (UMaterialInterface* G = GSDoorImpl::GlowMat())
@@ -283,6 +411,53 @@ FVector AGSDoor::HandleWorld() const
 bool AGSDoor::IsKeypad(const UPrimitiveComponent* C) const
 {
 	return C && KeypadBox && C == static_cast<const UPrimitiveComponent*>(KeypadBox.Get());
+}
+
+bool AGSDoor::IsPane(const UPrimitiveComponent* C) const
+{
+	if (!C) return false;
+	for (const TObjectPtr<UStaticMeshComponent>& P : Panes)
+	{
+		if (C == static_cast<const UPrimitiveComponent*>(P.Get())) return true;
+	}
+	return false;
+}
+
+bool AGSDoor::GetPaneWorld(FTransform& OutPane, FVector& OutSizeCm) const
+{
+	if (Panes.Num() == 0 || !Panes[0]) return false;
+	OutPane = Panes[0]->GetComponentTransform();
+	// The pane is a unit cube scaled to (thickness, width, height): turn it so X runs along the width, like a glass set pane
+	const FVector S = OutPane.GetScale3D() * 100.f;
+	OutSizeCm = FVector(S.Y, S.X, S.Z);
+	OutPane = FTransform(FRotator(0.f, 90.f, 0.f)) * FTransform(OutPane.GetRotation(), OutPane.GetLocation());
+	OutPane.SetScale3D(OutSizeCm / 100.f);
+	return true;
+}
+
+void AGSDoor::SetPaneBroken(bool bBroken)
+{
+	for (UStaticMeshComponent* P : Panes)
+	{
+		if (!P) continue;
+		P->SetVisibility(!bBroken);
+		P->SetCollisionEnabled(bBroken ? ECollisionEnabled::NoCollision : ECollisionEnabled::QueryAndPhysics);
+	}
+	// Forces the pawn responses to be set again (the frame lets pawns through while the pane is gone)
+	bMovingCollision = !bMovingCollision;
+	SetMovingCollision(!bMovingCollision);
+}
+
+void AGSDoor::ServerPaneHit(const FVector& Dir, uint8 Cause)
+{
+	if (Panes.Num() == 0 || IsPaneBroken()) return;
+	AGSMapState* MS = AGSMapState::Get(this);
+	if (!MS) return;
+	const FVector D = Dir.GetSafeNormal();
+	MS->SetPart(Key, [D, Cause](FGSPartState& P) { P.State |= GSLock::PaneBroken; P.Cause = Cause; P.HitDir = D; });
+	GSMapState::OnWalkableChanged().Broadcast(GetWorld(), GetOpeningBox());
+	GSMapState::OnNoise().Broadcast(GetWorld(), GetActorLocation() + FVector(0.f, 0.f, 100.f), 40.f);
+	UE_LOG(LogTemp, Log, TEXT("Interaktiv: glassruta i dør %d knust"), GSPart::IdOf(Key));
 }
 
 int32 AGSDoor::SideOf(const FVector& P) const
@@ -345,8 +520,22 @@ void AGSDoor::ApplyState(const FGSPartState& S, bool bFresh)
 	const int8 OldOpen = ServerOpen;
 	const uint8 OldHealth = Health;
 	const bool bPredicted = PredictUntil > 0.f && TargetOpen == S.Open;
+	const uint8 OldBits = StateBits;
 	Lock = S.State & GSLock::Mask;
 	StateBits = S.State;
+	// The glass door's pane (1b): gone or back. Old news (late client, catching up) only leaves the shards on the floor.
+	auto PaneChange = [this, OldBits, &S, bFresh]()
+	{
+		const bool bWas = (OldBits & GSLock::PaneBroken) != 0;
+		const bool bNow = (S.State & GSLock::PaneBroken) != 0;
+		if (bWas == bNow || Panes.Num() == 0) return;
+		FTransform PaneT;
+		FVector Size;
+		const bool bHave = GetPaneWorld(PaneT, Size);
+		SetPaneBroken(bNow);
+		AGSMapState* MS = AGSMapState::Get(this);
+		if (bNow && bHave && MS) MS->GlassBreakFX(Key, PaneT, Size, EGSGlass::DoorPane, S.HitDir, bFresh);
+	};
 	Health = S.Health;
 	Flags = S.Flags;
 	ServerOpen = S.Open;
@@ -362,10 +551,12 @@ void AGSDoor::ApplyState(const FGSPartState& S, bool bFresh)
 		bSoundOnClose = false;
 		UpdatePose();
 		SetMovingCollision(false);
+		PaneChange();
 		UpdateLed();
 		UpdateTick();
 		return;
 	}
+	PaneChange();
 
 	// Server: a fire door that was opened closes by itself after a while
 	if (GSDoorImpl::IsServer(W) && Def.Art == EGSDoorArt::Fire)
@@ -379,8 +570,8 @@ void AGSDoor::ApplyState(const FGSPartState& S, bool bFresh)
 	const FVector At = HandleWorld();
 	if (OldOpen == 0 && S.Open != 0 && !bPredicted)
 	{
-		if (bFast) AGSMapState::PlayPartSound(this, TEXT("Door_Slam"), At, 1.f, 40.f);
-		else AGSMapState::PlayPartSound(this, TEXT("Door_Open"), At, 0.8f, 18.f);
+		if (bFast) Sound(TEXT("Door_Slam"), At, 1.f, 40.f);
+		else Sound(TEXT("Door_Open"), At, 0.8f, 18.f);
 	}
 	if (S.Open == 0 && OldOpen != 0 && !bPredicted)
 	{
@@ -391,27 +582,27 @@ void AGSDoor::ApplyState(const FGSPartState& S, bool bFresh)
 	{
 		if (S.Cause == GSCause::Melee && Def.Art == EGSDoorArt::GlassCode && KeypadBox)
 		{
-			AGSMapState::PlayPartSound(this, TEXT("Keypad_Break"), KeypadBox->GetComponentLocation(), 0.6f, 25.f);
+			Sound(TEXT("Keypad_Break"), KeypadBox->GetComponentLocation(), 0.6f, 25.f);
 		}
 		else
 		{
-			AGSMapState::PlayPartSound(this, TEXT("Door_Kick"), At, 1.f, 40.f);
+			Sound(TEXT("Door_Kick"), At, 1.f, 40.f);
 		}
 	}
 	if (OldLock == GSLock::Locked && Lock == GSLock::Open)
 	{
-		AGSMapState::PlayPartSound(this, TEXT("Keypad_Beep"), KeypadBox ? KeypadBox->GetComponentLocation() : At, 0.7f, 12.f);
+		Sound(TEXT("Keypad_Beep"), KeypadBox ? KeypadBox->GetComponentLocation() : At, 0.7f, 12.f);
 	}
 	if (OldLock != GSLock::Broken && Lock == GSLock::Broken)
 	{
 		if (KeypadBox)
 		{
-			AGSMapState::PlayPartSound(this, TEXT("Keypad_Break"), KeypadBox->GetComponentLocation(), 1.f, 30.f);
+			Sound(TEXT("Keypad_Break"), KeypadBox->GetComponentLocation(), 1.f, 30.f);
 			SparksAt(KeypadBox->GetComponentLocation());
 		}
 		else if (S.Open == 0)
 		{
-			AGSMapState::PlayPartSound(this, TEXT("Door_Kick"), At, 1.f, 40.f, 0.85f);
+			Sound(TEXT("Door_Kick"), At, 1.f, 40.f, 0.85f);
 		}
 	}
 	UpdateLed();
@@ -430,9 +621,13 @@ void AGSDoor::SetMovingCollision(bool bMoving)
 {
 	if (bMoving == bMovingCollision) return;
 	bMovingCollision = bMoving;
+	const bool bPaneGone = IsPaneBroken();
 	for (UPrimitiveComponent* P : Blockers)
 	{
-		if (P) P->SetCollisionResponseToChannel(ECC_Pawn, bMoving ? ECR_Ignore : ECR_Block);
+		if (!P) continue;
+		// A glass door without its pane: you step through the frame (the bottom rail is a step, the stiles are thin)
+		const bool bThrough = bPaneGone && FrameColliders.Contains(P);
+		P->SetCollisionResponseToChannel(ECC_Pawn, (bMoving || bThrough) ? ECR_Ignore : ECR_Block);
 	}
 }
 
@@ -460,7 +655,7 @@ void AGSDoor::Tick(float DeltaSeconds)
 			SetMovingCollision(false);
 			if (Target == 0.f && bSoundOnClose)
 			{
-				AGSMapState::PlayPartSound(this, bSlamOnClose ? TEXT("Door_Slam") : TEXT("Door_Close"), HandleWorld(), bSlamOnClose ? 0.8f : 0.7f, bSlamOnClose ? 30.f : 18.f);
+				Sound(bSlamOnClose ? TEXT("Door_Slam") : TEXT("Door_Close"), HandleWorld(), bSlamOnClose ? 0.8f : 0.7f, bSlamOnClose ? 30.f : 18.f);
 			}
 			bSoundOnClose = false;
 			bSlamOnClose = false;
@@ -499,13 +694,13 @@ void AGSDoor::Tick(float DeltaSeconds)
 	if ((Flags & GSDoorFlag::Picking) && Now >= NextPickSound)
 	{
 		NextPickSound = Now + FMath::FRandRange(0.8f, 1.4f);
-		AGSMapState::PlayPartSound(this, TEXT("Lock_Pick"), KeypadBox ? KeypadBox->GetComponentLocation() : HandleWorld(), 0.8f, 12.f);
+		Sound(TEXT("Lock_Pick"), KeypadBox ? KeypadBox->GetComponentLocation() : HandleWorld(), 0.8f, 12.f);
 	}
 	if ((Flags & GSDoorFlag::Forcing) && Now >= NextForceSound)
 	{
 		NextForceSound = Now + 1.f;
 		const FVector At = KeypadBox ? KeypadBox->GetComponentLocation() : HandleWorld();
-		AGSMapState::PlayPartSound(this, TEXT("Keypad_Break"), At, 0.9f, 30.f, FMath::FRandRange(0.9f, 1.1f));
+		Sound(TEXT("Keypad_Break"), At, 0.9f, 30.f, FMath::FRandRange(0.9f, 1.1f));
 		SparksAt(At);
 	}
 	UpdateTick();
@@ -566,6 +761,12 @@ bool AGSDoor::GetUsePrompt(const AGSCharacter* User, FGSUsePrompt& Out) const
 	{
 		Out.Main = TEXT("[%K%]  Åpne døra");
 		Out.Sub = Def.Art == EGSDoorArt::Fire ? TEXT("Panikkstang (låst fra den andre siden)") : TEXT("Dørvrider innenfra");
+		return true;
+	}
+	if (IsPaneBroken())
+	{
+		Out.Main = TEXT("[%K%]  Åpne døra");
+		Out.Sub = TEXT("Ruta er knust: grip inn til dørvrideren, eller gå gjennom");
 		return true;
 	}
 	Out.Color = Yellow;
@@ -631,9 +832,9 @@ void AGSDoor::ServerUse(AGSCharacter* User, EGSUseVerb Verb, FGSUseResult& Out)
 			MS->SetPart(Key, [Away](FGSPartState& P) { P.Open = Away; P.Cause = GSCause::Use; });
 			return;
 		}
-		if (Side == EscapeSide())
+		if (Side == EscapeSide() || (S.State & GSLock::PaneBroken))
 		{
-			// Handle or push bar from the inside: it opens, the lock stays locked (it latches again when it closes)
+			// Handle or push bar from the inside (or reaching in through the broken pane): it opens, the lock stays locked
 			MS->SetPart(Key, [Away](FGSPartState& P) { P.Open = Away; P.Cause = GSCause::Escape; });
 			return;
 		}
@@ -783,14 +984,14 @@ void AGSDoor::PredictUse(AGSCharacter* User)
 	const int32 Side = SideOf(User->GetPawnViewLocation());
 	int8 Pred;
 	if (ServerOpen != 0) Pred = 0;
-	else if (Lock != GSLock::Locked || Side == EscapeSide()) Pred = static_cast<int8>(-Side * 100);
+	else if (Lock != GSLock::Locked || Side == EscapeSide() || IsPaneBroken()) Pred = static_cast<int8>(-Side * 100);
 	else return;   // locked: only the server knows (card, feedback)
 	TargetOpen = Pred;
 	SpeedDegS = GSDoorImpl::NormalSpeed;
 	PredictUntil = GetWorld()->GetTimeSeconds() + 1.f;
 	if (Pred != 0)
 	{
-		AGSMapState::PlayPartSound(this, TEXT("Door_Open"), HandleWorld(), 0.8f, 18.f);
+		Sound(TEXT("Door_Open"), HandleWorld(), 0.8f, 18.f);
 	}
 	else
 	{
