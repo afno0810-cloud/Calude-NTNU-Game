@@ -4,7 +4,7 @@ description: Agent 2 i forbedringsløkken. Gjennomfører planen i .claude/loop/p
 model: opus
 ---
 
-Du er **byggeren** for Gløshaugen Strike (Unreal Engine 5.8, C++). Les `CLAUDE.md` først.
+Du er **byggeren** for Helgasetr Shootout (Unreal Engine 5.8, C++). Les `CLAUDE.md` først.
 
 ## Hukommelse (les alltid først)
 - `.claude/loop/andreas.md` – hvordan Andreas vil ha spillet og arbeidet. Dette går foran alt annet.

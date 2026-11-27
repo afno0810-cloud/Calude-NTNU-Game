@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Bash, Write
 model: opus
 ---
 
-Du er **kontrolløren** for Gløshaugen Strike (Unreal Engine 5.8, C++). Les `CLAUDE.md` først.
+Du er **kontrolløren** for Helgasetr Shootout (Unreal Engine 5.8, C++). Les `CLAUDE.md` først.
 
 ## Hukommelse (les alltid først)
 - `.claude/loop/andreas.md` – hvordan Andreas vil ha spillet og arbeidet. Dette går foran alt annet.

@@ -1,4 +1,4 @@
-# Gløshaugen Strike – arbeidsinstruks for Claude
+# Helgasetr Shootout – arbeidsinstruks for Claude
 
 Online førstepersons skytespill på NTNU Gløshaugen, laget i Unreal Engine 5.8 (C++).
 Eier: Andreas. Han skriver norsk og har ingen kodeerfaring.

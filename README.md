@@ -1,6 +1,6 @@
-# Gløshaugen Strike
+# Helgasetr Shootout
 
-Online førstepersons skytespill på NTNU Gløshaugen, laget i Unreal Engine 5.8 (C++).
+Online førstepersons skytespill (Capture the Flag) inne i Helgasetr på NTNU, laget i Unreal Engine 5.8 (C++).
 
 ## Første gang: slik åpner du spillet
 

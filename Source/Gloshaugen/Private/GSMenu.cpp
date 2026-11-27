@@ -1158,9 +1158,9 @@ namespace GSMenuImpl
 		Box(U.C, 0.f, 0.f, PW, SY, PanelColor);
 		const float LX = 48.f, BW = PW - 96.f;
 		float Y = SY * 0.12f;
-		Text(U.C, TEXT("GLØSHAUGEN STRIKE"), LX, Y, FLinearColor::White, FMath::Min(1.9f, BW / FMath::Max(1.f, TextWidth(TEXT("GLØSHAUGEN STRIKE"), 1.f))));
+		Text(U.C, TEXT("HELGASETR SHOOTOUT"), LX, Y, FLinearColor::White, FMath::Min(1.9f, BW / FMath::Max(1.f, TextWidth(TEXT("HELGASETR SHOOTOUT"), 1.f))));
 		Y += LineHeight(1.9f) + 4.f;
-		Text(U.C, TEXT("Capture the Flag · NTNU Gløshaugen"), LX, Y, DimColor, 0.8f);
+		Text(U.C, TEXT("Capture the Flag · Helgasetr, NTNU"), LX, Y, DimColor, 0.8f);
 		Y += LineHeight(0.8f) + 18.f;
 		Text(U.C, TEXT("Navn"), LX, Y, DimColor, 0.8f);
 		Y += LineHeight(0.8f) + 4.f;

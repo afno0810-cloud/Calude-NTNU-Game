@@ -180,7 +180,7 @@ void AGSHUD::DrawMenu(AGSPlayerController* PC)
 	const float W = 420.f * FMath::Max(S, 0.8f), H = 44.f * S, Gap = 10.f * S;
 	const float X = SX * 0.5f - W * 0.5f;
 	float Y = FMath::Max(8.f, SY * 0.5f - 265.f * S);
-	Text(TEXT("GL\u00D8SHAUGEN"), SX * 0.5f, Y, FLinearColor(0.95f, 0.75f, 0.2f), 2.6f * S, true);
+	Text(TEXT("HELGASETR"), SX * 0.5f, Y, FLinearColor(0.95f, 0.75f, 0.2f), 2.6f * S, true);
 	Text(TEXT("NTNU-campus, Trondheim"), SX * 0.5f, Y + 62.f * S, FLinearColor(1.f, 1.f, 1.f, 0.7f), 1.0f * S, true);
 	Y += 110.f * S;
 	MenuButton(TEXT("Resume"), TEXT("Fortsett"), X, Y, W, H, Mouse, true); Y += H + Gap;
@@ -941,7 +941,7 @@ void AGSHUD::DrawTopRight()
 	const int32 Min = FMath::FloorToInt((Hours - H) * 60.f);
 	const FString Line = FString::Printf(TEXT("%02d:%02d   %s   Spillere: %d"), H, Min, GSNames::Weather(GS->Weather), GS->PlayerArray.Num());
 	Text(Line, Canvas->SizeX - 30.f, 24.f, FLinearColor::White, 1.f, false, true);
-	Text(TEXT("NTNU Gl\u00F8shaugen"), Canvas->SizeX - 30.f, 46.f, FLinearColor(0.8f, 0.85f, 1.f, 0.8f), 0.85f, false, true);
+	Text(TEXT("Helgasetr, NTNU"), Canvas->SizeX - 30.f, 46.f, FLinearColor(0.8f, 0.85f, 1.f, 0.8f), 0.85f, false, true);
 }
 
 void AGSHUD::DrawKillFeed()

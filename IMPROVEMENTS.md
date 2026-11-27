@@ -1,7 +1,11 @@
-# Forbedringer i Gløshaugen Strike
+# Forbedringer i Helgasetr Shootout
 
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
+
+## Navn: Helgasetr Shootout (27. nov.)
+
+565. Spillet heter nå «Helgasetr Shootout»: i hovedmenyens tittel, i vindustittelen og i README
 
 ## Runde 13 (Kamp): blødning, blodspor og sår på kroppen; frakobling og Esc-menyen (27. nov.)
 
