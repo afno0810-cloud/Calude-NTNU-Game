@@ -33,6 +33,9 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-27: «bedre grafikk», «bedre animasjoner», «flere animasjoner», «mye bedre lydeffekter» (og lyseffekter).
+- 2026-11-27: «Fortsett og forbedre spillet, ønsker ikke å teste det ennå.» Ikke spør Andreas om testing; bruk
+  hodeløse tester og kontrollører, og fortsett å bygge. Meld bare store milepæler.
 - 2026-11-27: «Legg til 2 sett til med agenter» – to nye lag med samme oppsett under hovedagenten: Interaktiv
   verden og Bots (15 agenter i alt).
 - 2026-11-27: Valgte **Epic Online Services** for å spille med venner over internett (vennelister, invitasjoner).
