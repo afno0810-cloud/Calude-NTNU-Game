@@ -100,7 +100,7 @@ namespace
 	 *  standing and crouched. Standing capsule: feet at -92, crouched: feet at -58. */
 	struct FGSZoneBox { uint8 Zone; FVector Stand; FVector StandExt; FVector Crouch; FVector CrouchExt; };
 	const FGSZoneBox GSZoneBoxes[7] = {
-		{ GSZone::Head,    FVector(3.f, 0.f, 77.f),     FVector(9.5f, 8.f, 12.f),    FVector(6.f, 0.f, 62.f),     FVector(9.5f, 8.f, 12.f) },
+		{ GSZone::Head,    FVector(0.f, 0.f, 77.f),     FVector(9.5f, 8.f, 12.f),    FVector(6.f, 0.f, 62.f),     FVector(9.5f, 8.f, 12.f) },
 		{ GSZone::Chest,   FVector(0.f, 0.f, 49.f),     FVector(12.f, 18.f, 16.f),   FVector(3.f, 0.f, 35.f),     FVector(12.f, 18.f, 15.f) },
 		{ GSZone::Stomach, FVector(0.f, 0.f, 15.5f),    FVector(11.f, 16.5f, 17.5f), FVector(0.f, 0.f, 6.f),      FVector(12.f, 16.5f, 14.f) },
 		{ GSZone::Arm,     FVector(0.f, -24.5f, 28.f),  FVector(6.f, 5.5f, 32.f),    FVector(4.f, -24.5f, 22.f),  FVector(7.f, 5.5f, 26.f) },
@@ -113,6 +113,14 @@ namespace
 	TAutoConsoleVariable<int32> CVarTrueFP(TEXT("gs.TrueFP"), 1,
 		TEXT("1 = true first person: the C++ body animation, your own body without head and arms, a full shadow. 0 = the old body (takes effect on the next spawn)"));
 	TAutoConsoleVariable<int32> CVarFPDebug(TEXT("gs.FP.Debug"), 0, TEXT("1 = draw the hand targets and hand bones, and print each body's arm reach in percent"));
+	TAutoConsoleVariable<int32> CVarFPHands(TEXT("gs.FP.Hands"), 1,
+		TEXT("1 = your own body's hands hold the first-person gun (round 14b). 0 = the old floating arms"));
+	TAutoConsoleVariable<int32> CVarFPFeet(TEXT("gs.FP.Feet"), 1,
+		TEXT("1 = feet stand on stairs and uneven floors (two traces per near, slow body). 0 = off"));
+	TAutoConsoleVariable<int32> CVarFPReachTest(TEXT("gs.FP.ReachTest"), 0,
+		TEXT("Test only (offline): 1 = goes through pistol, smg, rifle, sniper, shotgun and lmg at the hip, aiming and reloading, and logs the reach of your own hands"));
+	TAutoConsoleVariable<FString> CVarFPTestPose(TEXT("gs.FP.TestPose"), TEXT(""),
+		TEXT("Test only: \"aim crouch\" (degrees, 0..1) holds every body others see in that pose, to measure the hit boxes. Empty = off"));
 	TAutoConsoleVariable<FString> CVarGripR(TEXT("gs.FP.GripR"), TEXT("-8 3 -4 0 0 0"),
 		TEXT("Right hand on the third-person gun, gun space: \"x y z pitch yaw roll\" (cm, degrees)"));
 	TAutoConsoleVariable<FString> CVarGripL(TEXT("gs.FP.GripL"), TEXT("-6 0 -5 0 0 0"),
@@ -872,6 +880,10 @@ void AGSCharacter::FireOnce()
 	if (!W || bReloading) return;
 	const FGSWeaponStats S = GetStats(*W);
 	const FGSEffectMods Mods = GetMods();
+	// A bot fires through here too (on the server): the 2D sounds, the own copy of the bullet, the flash at the
+	// first-person gun, brass and kick are only for a human at this screen. Everyone (the host too) gets the bot's
+	// shot from the multicast, in 3D.
+	const bool bHuman = IsLocalHuman();
 
 	const float Now = GetWorld()->GetTimeSeconds();
 	if (Now - LastFireTime < S.FireInterval * 0.95f) return;
@@ -882,7 +894,7 @@ void AGSCharacter::FireOnce()
 		LastFireTime = Now;
 		LastMeleeTime = Now;
 		MeleeVariant = (MeleeVariant + 1) % 3; // alternate slash, backhand and overhead
-		GSAudio::PlayAt(this, TEXT("Melee_Swing"), GetActorLocation(), 0.8f, 15.f, FMath::FRandRange(0.9f, 1.1f));
+		if (bHuman) GSAudio::PlayAt(this, TEXT("Melee_Swing"), GetActorLocation(), 0.8f, 15.f, FMath::FRandRange(0.9f, 1.1f));
 		ServerMelee(false);
 		return;
 	}
@@ -892,7 +904,7 @@ void AGSCharacter::FireOnce()
 		if (Now - DryFireStart > 0.35f)
 		{
 			DryFireStart = Now;
-			GSAudio::Play2D(this, TEXT("Dry_Fire"), 0.8f, FMath::FRandRange(0.95f, 1.05f));
+			if (bHuman) GSAudio::Play2D(this, TEXT("Dry_Fire"), 0.8f, FMath::FRandRange(0.95f, 1.05f));
 		}
 		StopFire();
 		Reload();
@@ -901,7 +913,9 @@ void AGSCharacter::FireOnce()
 	LastFireTime = Now;
 
 	const FVector Start = Camera->GetComponentLocation();
-	const FVector Aim = Camera->GetForwardVector();
+	// A bot's camera is never turned by the engine (that happens in the player's view update): aim with the control
+	// rotation, which has the bot's pitch too.
+	const FVector Aim = bHuman ? Camera->GetForwardVector() : GetControlRotation().Vector();
 	const int32 ShotIndex = ++LocalShotIndex;
 	const int32 Seed = GSBallistics::ShotSeed(SpreadKey, ShotIndex);
 	const FGSBallistic Ball = GSBallistics::ForWeapon(S);
@@ -912,19 +926,22 @@ void AGSCharacter::FireOnce()
 	const FVector MuzzleStart = FPWeaponMesh->GetComponentLocation() + Aim * MuzzleDist;
 
 	// Local, instant feedback: our own copy of the bullet flies and shows where it lands (the server's decides the hit).
-	if (S.Mode == EGSFireMode::Hitscan)
+	if (bHuman && S.Mode == EGSFireMode::Hitscan)
 	{
 		const FVector D = GSBallistics::ShotDirection(Aim, Spread, Seed, Ball);
 		if (UGSBallistics* Ballistics = GetWorld()->GetSubsystem<UGSBallistics>()) Ballistics->FireShown(this, Start, D, Ball, GSIsTracer(S, W->AmmoType, ShotIndex));
 	}
-	else if (S.Mode == EGSFireMode::Pellets)
+	else if (bHuman && S.Mode == EGSFireMode::Pellets)
 	{
 		DrawPellets(Start, Aim, Seed, S.Pellets, Spread, Ball);
 	}
-	AGSShortFX::SpawnMuzzleFlash(GetWorld(), MuzzleStart, Aim, S.bSilent);
+	if (bHuman) AGSShortFX::SpawnMuzzleFlash(GetWorld(), MuzzleStart, Aim, S.bSilent);
 	BarrelHeat = FMath::Min(BarrelHeat + (S.Class == EGSWeaponClass::Shotgun || S.Class == EGSWeaponClass::Sniper ? 3.f : 1.f), 30.f);
-	GSAudio::Play2D(this, GSAudio::ShotName(S.Class, S.bSilent), S.bSilent ? 0.6f : 1.f, FMath::FRandRange(0.96f, 1.04f));
-	if (W->Ammo <= 1) GSAudio::Play2D(this, TEXT("Dry_Fire"), 0.5f);
+	if (bHuman)
+	{
+		GSAudio::Play2D(this, GSAudio::ShotName(S.Class, S.bSilent), S.bSilent ? 0.6f : 1.f, FMath::FRandRange(0.96f, 1.04f));
+		if (W->Ammo <= 1) GSAudio::Play2D(this, TEXT("Dry_Fire"), 0.5f);
+	}
 
 	if (!HasAuthority()) W->Ammo--; // prediction, corrected by replication
 
@@ -934,7 +951,7 @@ void AGSCharacter::FireOnce()
 	CurrentRecoil += Recoil;
 	BurstShots = (Now - LastShotTime < S.FireInterval * 1.8f + 0.05f) ? BurstShots + 1 : 0;
 	LastShotTime = Now;
-	AddWeaponKick(Recoil, S.Class);
+	if (bHuman) AddWeaponKick(Recoil, S.Class);
 	const float AimFactor = bAiming ? 0.6f : 1.f;
 	const float Climb = 1.f + 0.05f * FMath::Min(BurstShots, 12);
 	const float Hash = float(GetTypeHash(W->Id) % 97) * 0.13f;
@@ -944,7 +961,11 @@ void AGSCharacter::FireOnce()
 	FireAnimStart = Now;
 	const bool bPump = S.Class == EGSWeaponClass::Shotgun && !S.bAutomatic && S.FireInterval >= 0.5f;
 	const bool bBolt = S.Class == EGSWeaponClass::Sniper && !S.bAutomatic && S.FireInterval >= 0.9f;
-	if (bPump || bBolt)
+	if (!bHuman)
+	{
+		// A bot: no 2D pump/bolt sound and no brass of its own (the multicast plays its shot for everyone)
+	}
+	else if (bPump || bBolt)
 	{
 		CycleStart = Now;
 		bCycleBolt = bBolt;
@@ -1164,7 +1185,7 @@ void AGSCharacter::DoMeleeHit(bool bQuick)
 
 void AGSCharacter::MulticastMeleeFX_Implementation()
 {
-	if (IsLocallyControlled()) return;
+	if (IsLocalHuman()) return;   // the swinger heard his own (a bot's swing is heard by the host too)
 	LastMeleeTime = GetWorld()->GetTimeSeconds();
 	GSAudio::PlayAt(this, TEXT("Melee_Swing"), GetActorLocation(), 0.8f, 15.f, FMath::FRandRange(0.9f, 1.1f));
 }
@@ -1178,7 +1199,7 @@ void AGSCharacter::MulticastWoundFX_Implementation(FVector_NetQuantize Point, FV
 	LastWoundKind = Kind;
 	LastWoundStrength = Strength / 255.f;
 	LastWoundTime = Now;
-	const bool bOwnView = IsLocallyControlled() && !bDead;
+	const bool bOwnView = IsLocalHuman() && !bDead;
 	AGSShortFX::SpawnBloodHit(GetWorld(), LastWoundPoint, LastWoundDir, Kind, LastWoundStrength, this, bOwnView);
 	// A dark patch stays on the body where it went in (follows the body as it moves and falls).
 	if (bHumanBody && Kind != GSWound::Armor && Kind != GSWound::Blast) AddBodyWound(LastWoundPoint, LastWoundDir, Kind);
@@ -1199,7 +1220,7 @@ void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVe
 	const bool bSilent = (Flags & 1) != 0;     // suppressed, or a bow
 	const bool bNoTracer = (Flags & 2) != 0;   // no bullet: a launched projectile draws its own flight and impact
 	if (!bSilent) NoteShotForRadio(Start);
-	if (IsLocallyControlled()) return; // shooter already drew it
+	if (IsLocalHuman()) return; // shooter already drew it (a bot draws nothing itself: the host sees it here)
 	LastRemoteShotTime = GetWorld()->GetTimeSeconds();
 	{
 		const FGSWeaponSlot* W = GetCurrentWeapon();
@@ -1216,7 +1237,7 @@ void AGSCharacter::MulticastShotFX_Implementation(FVector_NetQuantize Start, FVe
 
 void AGSCharacter::MulticastPelletFX_Implementation(FVector_NetQuantize Start, FVector_NetQuantizeNormal Dir, int32 Seed, int32 Pellets, float ConeDeg)
 {
-	if (IsLocallyControlled()) return;
+	if (IsLocalHuman()) return;
 	GSAudio::PlayShotFor(this, EGSWeaponClass::Shotgun, false, Start);
 	const FGSWeaponSlot* W = GetCurrentWeapon();
 	const FGSWeaponStats S = W ? GetStats(*W) : GSItems::Weapon(NAME_None);
@@ -1283,6 +1304,7 @@ void AGSCharacter::FinishReload()
 
 void AGSCharacter::ClientHitMarker_Implementation(bool bKill, bool bHeadshot, bool bArmor)
 {
+	if (!IsLocalHuman()) return;   // a bot on the server: no screen to mark
 	const float Now = GetWorld()->GetTimeSeconds();
 	const uint8 Kind = bKill ? GSHitKind::Kill : bHeadshot ? GSHitKind::Head : bArmor ? GSHitKind::Armor : GSHitKind::Body;
 	// Shotgun pellets arrive as many markers: a later pellet must not turn a fresh kill marker back into a body hit.
@@ -1393,10 +1415,13 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 
 	if (W)
 	{
-		Pos = S.FPHip;
+		// Your own body's arms hold a long gun at the hip (round 14b): 7 cm closer to the body and 2 cm in, or the left
+		// hand could not reach the handguard (measured 102-107 % of the arm with gs.FP.ReachTest, 100 % at 5 cm).
+		FVector Hip = S.FPHip;
+		if (UsesBodyHands() && S.Class != EGSWeaponClass::Pistol && !bMeleeWeapon) Hip += FVector(-7.f, -2.f, 0.f);
 		const float AimAlpha = FMath::FInterpTo(AimBlend, (bAiming && !bMeleeWeapon) ? 1.f : 0.f, Dt, 14.f);
 		AimBlend = AimAlpha;
-		Pos = FMath::Lerp(S.FPHip, S.FPAim, AimAlpha);
+		Pos = FMath::Lerp(Hip, S.FPAim, AimAlpha);
 		TargetFOV = FMath::Lerp(DefaultFOV, S.AimFOV, AimAlpha);
 
 		// Idle breathing
@@ -1727,7 +1752,9 @@ void AGSCharacter::UpdateArms(float Dt, const FGSWeaponStats* S, float ReloadT, 
 	if (ReloadT >= 0.f && bLeft)
 	{
 		const FVector Well = S->Class == EGSWeaponClass::Pistol ? FVector(-4.f, 0.f, -12.f) : FVector(8.f, 0.f, -9.f);
-		const FVector Pouch(-18.f, 14.f, -40.f);
+		// The pouch: with your own body's arm it is on the left of the belt where that arm can reach (round 14b; the
+		// old spot on the right was 107-115 % of the arm); the old floating arm keeps its spot.
+		const FVector Pouch = UsesBodyHands() ? FVector(-17.f, -24.f, -40.f) : FVector(-18.f, 14.f, -40.f);
 		if (bShellReload)
 		{
 			// one shell at a time from the belt into the loading port
@@ -1895,6 +1922,7 @@ namespace
 
 void AGSCharacter::ClientTookHit_Implementation(FVector_NetQuantize From, bool bHasFrom, float HealthLost, uint8 Kind)
 {
+	if (!IsLocalHuman()) return;   // a bot on the server: the host must not hear its pain as his own
 	const uint8 Zone = Kind >> 4;   // GSZone in the high bits
 	Kind &= 0x0F;
 	const float Now = GetWorld()->GetTimeSeconds();
@@ -2874,6 +2902,7 @@ void AGSCharacter::ApplyFlash(const FVector& Location, float Radius, const ACont
 
 void AGSCharacter::ClientToast_Implementation(const FString& Message)
 {
+	if (!IsLocalHuman()) return;
 	ToastText = Message;
 	ToastTime = GetWorld()->GetTimeSeconds();
 }
@@ -3093,7 +3122,7 @@ float AGSCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEve
 
 void AGSCharacter::OnRep_Health()
 {
-	if (IsLocallyControlled())
+	if (IsLocalHuman())
 	{
 		const float Now = GetWorld()->GetTimeSeconds();
 		// A drop of at most 3 HP while you bleed is the bleeding itself: no thud, no red edge, no flinch, or it would
@@ -3350,7 +3379,8 @@ void AGSCharacter::SetupHumanBody()
 
 void AGSCharacter::SetupLocalBody()
 {
-	if (!bHumanBody || bDead || !FPBody || !IsLocallyControlled()) return;
+	// Only a human at this screen: a bot is locally controlled on the server too, and must keep the body everyone sees.
+	if (!bHumanBody || bDead || !FPBody || !IsLocalHuman()) return;
 	USkeletalMeshComponent* Skel = GetMesh();
 	USkeletalMesh* Body = Skel ? Skel->GetSkeletalMeshAsset() : nullptr;
 	if (!Body) return;
@@ -3369,6 +3399,10 @@ void AGSCharacter::SetupLocalBody()
 		// from your own eyes. It must update its bones although you never see it.
 		Skel->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::WorldSpaceRepresentation);
 		Skel->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+		// Everything that hangs on that body goes into the shadow the same way: the gun in its hands with its
+		// attachments, the armbands, vest, helmet and backpack (hidden from your eyes, an owner-no-see part alone
+		// casts no shadow for you).
+		SetGearShadowType(EFirstPersonPrimitiveType::WorldSpaceRepresentation);
 		// Your own body: the whole body without head, neck and arms (the first-person arms hold the gun).
 		if (FPBody->GetAnimClass() != UGSBodyAnim::StaticClass()) FPBody->SetAnimInstanceClass(UGSBodyAnim::StaticClass());
 		if (UGSBodyAnim* Own = Cast<UGSBodyAnim>(FPBody->GetAnimInstance())) Own->Input.bFirstPerson = true;
@@ -3376,6 +3410,7 @@ void AGSCharacter::SetupLocalBody()
 		FPBody->HideBoneByName(Neck, EPhysBodyOp::PBO_None);
 		FPBody->HideBoneByName(ClavL, EPhysBodyOp::PBO_None);
 		FPBody->HideBoneByName(ClavR, EPhysBodyOp::PBO_None);
+		bOwnArmsHidden = true;   // Tick shows the arms again when they hold the gun (gs.FP.Hands, round 14b)
 		FPBody->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 		// Head bone just behind the camera, from the reference skeleton (the same every time).
 		FTransform Head;
@@ -3389,11 +3424,13 @@ void AGSCharacter::SetupLocalBody()
 	{
 		// The old legs: same body, everything from spine_03 up hidden, the animation blueprint.
 		Skel->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::None);
+		SetGearShadowType(EFirstPersonPrimitiveType::None);
 		UClass* Old = GSOldBodyAnimClass();
 		if (Old && FPBody->GetAnimClass() != Old) FPBody->SetAnimInstanceClass(Old);
 		FPBody->UnHideBoneByName(Neck);
 		FPBody->UnHideBoneByName(ClavL);
 		FPBody->UnHideBoneByName(ClavR);
+		bOwnArmsHidden = false;
 		FPBody->HideBoneByName(Spine3, EPhysBodyOp::PBO_None);
 		FPBody->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPose;
 	}
@@ -3410,8 +3447,21 @@ void AGSCharacter::FallBackToOldBody()
 	USkeletalMeshComponent* Skel = GetMesh();
 	Skel->SetAnimInstanceClass(GSOldBodyAnimClass());
 	Skel->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::None);
+	SetGearShadowType(EFirstPersonPrimitiveType::None);
 	Skel->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
 	SetupLocalBody();
+}
+
+void AGSCharacter::SetGearShadowType(EFirstPersonPrimitiveType Type)
+{
+	UPrimitiveComponent* Gear[] = { TPWeaponMesh, TPAttSight, TPAttMuzzle, TPAttLaser, TPAttGrip, ArmbandL, ArmbandR,
+		VestMesh, HelmetMesh, BackpackMesh };
+	for (UPrimitiveComponent* C : Gear)
+	{
+		// A world space representation is always hidden from its owner whatever bOwnerNoSee says; back to None the
+		// part's own bOwnerNoSee rules again (the death cam turns it off to show you your body).
+		if (C) C->SetFirstPersonPrimitiveType(Type);
+	}
 }
 
 void AGSCharacter::PawnClientRestart()
@@ -3419,6 +3469,226 @@ void AGSCharacter::PawnClientRestart()
 	Super::PawnClientRestart();
 	// BeginPlay can come before the controller is known on a client: set up your own body again now.
 	SetupLocalBody();
+}
+
+/** A hand target for the body animation: the location in the mesh's component space, and the rotation as how far
+ *  the hand is turned from straight ahead (on top of the clip's grip, so the fingers keep holding). */
+static FTransform GSHandToCS(const FTransform& HandW, const FQuat& ActorQ, const FTransform& CompTM)
+{
+	const FQuat CompQ = CompTM.GetRotation();
+	const FQuat DeltaW = HandW.GetRotation() * ActorQ.Inverse();
+	return FTransform((CompQ.Inverse() * DeltaW * CompQ).GetNormalized(), CompTM.InverseTransformPosition(HandW.GetLocation()));
+}
+
+void AGSCharacter::FillFootIK(USkeletalMeshComponent* Comp, FGSBodyAnimInput& In, bool bFirstPerson)
+{
+	In.bFootIK = false;
+	if (CVarFPFeet.GetValueOnGameThread() == 0 || In.bDead || In.bFalling || GetVelocity().Size2D() > 200.f) return;
+	// Others: only near the local camera (25 m) and seen lately. Your own body: always.
+	if (!bFirstPerson)
+	{
+		const APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+		if (!Cam || FVector::DistSquared(Cam->GetCameraLocation(), GetActorLocation()) > FMath::Square(2500.f)) return;
+		if (!IsLocalHuman() && !Comp->WasRecentlyRendered(0.2f)) return;
+	}
+	// The floor the body stands on: the mesh's origin (network smoothing included) less the small gap the movement
+	// keeps between the capsule and the floor (about 2 cm), so a flat floor gives 0 and the body does not sink.
+	const FFindFloorResult& CapsuleFloor = GetCharacterMovement()->CurrentFloor;
+	const float Gap = CapsuleFloor.bBlockingHit ? FMath::Clamp(CapsuleFloor.FloorDist, 0.f, 5.f) : 2.15f;
+	const float Floor = Comp->GetComponentLocation().Z - Gap;
+	FCollisionObjectQueryParams Objects;
+	Objects.AddObjectTypesToQuery(ECC_WorldStatic);
+	Objects.AddObjectTypesToQuery(ECC_WorldDynamic);
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSFootIK), false, this);
+	float* const Out[2] = { &In.FootOffsetL, &In.FootOffsetR };
+	static const FName Feet[2] = { FName(TEXT("foot_l")), FName(TEXT("foot_r")) };
+	for (int32 S = 0; S < 2; ++S)
+	{
+		const FVector Foot = Comp->GetSocketLocation(Feet[S]);
+		// From above the highest step we follow (45 cm) down to well under the lowest.
+		const FVector Start(Foot.X, Foot.Y, Floor + 50.f);
+		const FVector End(Foot.X, Foot.Y, Floor - 60.f);
+		FHitResult Hit;
+		float Off = GetWorld()->LineTraceSingleByObjectType(Hit, Start, End, Objects, Params) && Hit.ImpactNormal.Z > 0.6f
+			? FMath::Clamp(static_cast<float>(Hit.ImpactPoint.Z - Floor), -45.f, 45.f) : 0.f;
+		if (FMath::Abs(Off) < 1.5f) Off = 0.f;   // a flat floor with a seam or a rug: leave the clip alone
+		*Out[S] = Off;
+	}
+	In.bFootIK = true;
+#if !UE_BUILD_SHIPPING
+	if (CVarFPDebug.GetValueOnGameThread() != 0)
+	{
+		static double LastLog = 0.0;
+		if (FPlatformTime::Seconds() - LastLog > 2.0)
+		{
+			LastLog = FPlatformTime::Seconds();
+			UE_LOG(LogTemp, Log, TEXT("GSBody feet: %s %s floor under left %.1f cm, right %.1f cm (gap %.1f)"), *GetName(),
+				bFirstPerson ? TEXT("own") : TEXT("seen"), In.FootOffsetL, In.FootOffsetR, Gap);
+		}
+	}
+#endif
+}
+
+void AGSCharacter::FillOwnHands(USkeletalMeshComponent* Comp, FGSBodyAnimInput& In, const FGSWeaponStats& S, const FTransform& GripR, const FTransform& GripL)
+{
+	// Your own body's hands on the first-person gun (round 14b). The old arms stay as invisible points: everything
+	// that moves them (aim, reload with the magazine, pump, bolt, melee, wall stance, eating) moves the hands.
+	In.bHandIK_R = In.bHandIK_L = false;
+	if (!UsesBodyHands()) return;
+	const FTransform CompTM = Comp->GetComponentTransform();
+	const FQuat ActorQ = GetActorQuat();
+	const bool bGun = FPWeaponMesh->GetStaticMesh() && FPWeaponMesh->IsVisible() && UseItemId.IsNone() && GetCurrentWeapon();
+	const bool bItem = !UseItemId.IsNone() && FPItemMesh->IsVisible() && FPItemMesh->GetStaticMesh();
+	if (!bGun && !bItem) return;
+
+	// Arm lengths from the reference skeleton (the same every time).
+	if (OwnArmLen[0] <= 0.f)
+	{
+		auto ArmLength = [Comp](const TCHAR* Up, const TCHAR* Low, const TCHAR* Hand)
+		{
+			FTransform A, B, C;
+			if (!GSRefBoneCS(Comp, Up, A) || !GSRefBoneCS(Comp, Low, B) || !GSRefBoneCS(Comp, Hand, C)) return 0.f;
+			return static_cast<float>(FVector::Dist(A.GetLocation(), B.GetLocation()) + FVector::Dist(B.GetLocation(), C.GetLocation()));
+		};
+		OwnArmLen[0] = ArmLength(TEXT("upperarm_r"), TEXT("lowerarm_r"), TEXT("hand_r"));
+		OwnArmLen[1] = ArmLength(TEXT("upperarm_l"), TEXT("lowerarm_l"), TEXT("hand_l"));
+		if (OwnArmLen[0] <= 1.f || OwnArmLen[1] <= 1.f) { OwnArmLen[0] = OwnArmLen[1] = 0.f; return; }
+	}
+	static const FName ShoulderR(TEXT("upperarm_r")), ShoulderL(TEXT("upperarm_l"));
+	// Reach in percent of the arm, and the target pulled in to 97 % of it (never a straight, locked arm).
+	auto Reach = [](FVector& P, const FVector& Shoulder, float Len)
+	{
+		const FVector D = P - Shoulder;
+		const float Pct = 100.f * static_cast<float>(D.Size()) / Len;
+		if (Pct > 97.f) P = Shoulder + D.GetSafeNormal() * (0.97f * Len);
+		return Pct;
+	};
+
+	FTransform HandRW, HandLW;
+	bool bLeft = false;
+	if (bGun)
+	{
+		HandRW = GripR * FPWeaponMesh->GetComponentTransform();
+		FVector Home;
+		FRotator HomeRot;
+		bLeft = GSLeftHandRest(S, Home, HomeRot);
+		// The left arm point moves through the whole reload (well, pouch, charging handle) with the magazine on it.
+		HandLW = GripL * FPArmL->GetComponentTransform();
+	}
+	else
+	{
+		// Eating, drinking, pills, bandages: the right hand holds the item where the old hand was.
+		HandRW = FPItemHand->GetComponentTransform();
+		HandRW.SetScale3D(FVector::OneVector);
+	}
+
+	FVector PR = HandRW.GetLocation();
+	OwnReach[0] = Reach(PR, Comp->GetSocketLocation(ShoulderR), OwnArmLen[0]);
+	HandRW.SetLocation(PR);
+	OwnReach[1] = 0.f;
+	if (bLeft)
+	{
+		FVector PL = HandLW.GetLocation();
+		OwnReach[1] = Reach(PL, Comp->GetSocketLocation(ShoulderL), OwnArmLen[1]);
+		const FVector Pull = PL - HandLW.GetLocation();
+		if (!Pull.IsNearlyZero())
+		{
+			// Too far for the arm: move the left arm point itself, so the magazine stays in the hand.
+			FPArmL->SetWorldLocation(FPArmL->GetComponentLocation() + Pull);
+			HandLW.SetLocation(PL);
+		}
+	}
+
+	In.HandR = GSHandToCS(HandRW, ActorQ, CompTM);
+	In.HandL = GSHandToCS(HandLW, ActorQ, CompTM);
+	// Elbows down, out and a little back, as when holding a real gun.
+	In.ElbowHintR = In.CompUp * -30.f + In.CompRight * 25.f - In.CompFwd * 10.f;
+	In.ElbowHintL = In.CompUp * -30.f - In.CompRight * 25.f - In.CompFwd * 10.f;
+	In.bHandIK_R = true;
+	In.bHandIK_L = bLeft;
+
+#if !UE_BUILD_SHIPPING
+	if (CVarFPDebug.GetValueOnGameThread() != 0)
+	{
+		static const TCHAR* ClassNames[] = { TEXT("pistol"), TEXT("smg"), TEXT("rifle"), TEXT("sniper"), TEXT("shotgun"), TEXT("lmg"), TEXT("launcher"), TEXT("bow"), TEXT("melee") };
+		const TCHAR* Cls = bGun ? ClassNames[FMath::Clamp(static_cast<int32>(S.Class), 0, 8)] : TEXT("ting");
+		const TCHAR* Pose = bReloading ? TEXT("lading") : AimBlend > 0.5f ? TEXT("sikte") : TEXT("hofte");
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(static_cast<uint64>(GetUniqueID()) * 4 + 3, 0.f, (OwnReach[0] > 100.f || OwnReach[1] > 100.f) ? FColor::Red : FColor::Green,
+				FString::Printf(TEXT("Egen kropp %s %s: rekkevidde høyre %.0f %%, venstre %.0f %%"), Cls, Pose, OwnReach[0], OwnReach[1]));
+		}
+		static double LastLog = 0.0;
+		if (FPlatformTime::Seconds() - LastLog > 2.0)
+		{
+			LastLog = FPlatformTime::Seconds();
+			UE_LOG(LogTemp, Log, TEXT("GSBody own hands: %s %s reach right %.0f %% left %.0f %% (arm %.1f/%.1f cm)"), Cls, Pose, OwnReach[0], OwnReach[1], OwnArmLen[0], OwnArmLen[1]);
+		}
+	}
+#endif
+}
+
+bool AGSCharacter::UsesBodyHands() const
+{
+	return bTrueFP && bHumanBody && !bDead && FPBody && FPBody->IsVisible() && CVarFPHands.GetValueOnGameThread() != 0;
+}
+
+void AGSCharacter::TickReachTest(float Dt)
+{
+#if !UE_BUILD_SHIPPING
+	if (CVarFPReachTest.GetValueOnGameThread() == 0 || !HasAuthority() || !IsLocalHuman() || bDead) { ReachTestStep = -1; return; }
+	// Six weapon classes x three poses (hip, aim, reload), 1.6 s each; the highest reach in the last second counts.
+	static const EGSWeaponClass Classes[] = { EGSWeaponClass::Pistol, EGSWeaponClass::SMG, EGSWeaponClass::Rifle,
+		EGSWeaponClass::Sniper, EGSWeaponClass::Shotgun, EGSWeaponClass::LMG };
+	static const TCHAR* Names[] = { TEXT("pistol"), TEXT("smg"), TEXT("rifle"), TEXT("sniper"), TEXT("shotgun"), TEXT("lmg") };
+	static const TCHAR* Poses[] = { TEXT("hofte"), TEXT("sikte"), TEXT("lading") };
+	constexpr int32 NumSteps = UE_ARRAY_COUNT(Classes) * 3;
+	if (ReachTestStep >= NumSteps) return;
+	ReachTestTime += Dt;
+	if (ReachTestStep >= 0 && ReachTestTime > 0.6f)
+	{
+		ReachTestMax[0] = FMath::Max(ReachTestMax[0], OwnReach[0]);
+		ReachTestMax[1] = FMath::Max(ReachTestMax[1], OwnReach[1]);
+	}
+	if (ReachTestStep >= 0 && ReachTestTime < 1.6f) return;
+	if (ReachTestStep >= 0)
+	{
+		const FGSWeaponSlot* Cur = GetCurrentWeapon();
+		UE_LOG(LogTemp, Log, TEXT("GSBody reach test: %s (%s) %s: right %.0f %%, left %.0f %%%s"), Names[ReachTestStep / 3],
+			Cur ? *Cur->Id.ToString() : TEXT("-"), Poses[ReachTestStep % 3], ReachTestMax[0], ReachTestMax[1],
+			ReachTestMax[0] > 100.f || ReachTestMax[1] > 100.f ? TEXT("  OVER 100") : TEXT(""));
+	}
+	++ReachTestStep;
+	ReachTestTime = 0.f;
+	ReachTestMax[0] = ReachTestMax[1] = 0.f;
+	if (ReachTestStep >= NumSteps) { UE_LOG(LogTemp, Log, TEXT("GSBody reach test: done")); bAiming = false; return; }
+	const EGSWeaponClass Cls = Classes[ReachTestStep / 3];
+	const int32 Pose = ReachTestStep % 3;
+	if (Pose == 0)
+	{
+		// The first weapon of this class with a model (the gun the hands hold).
+		FName Id;
+		for (const FGSItemDef& D : GSItems::All())
+		{
+			if (D.IsWeapon() && D.W.Class == Cls && GSItems::GetMesh(D.Id)) { Id = D.Id; break; }
+		}
+		if (Id.IsNone()) { UE_LOG(LogTemp, Log, TEXT("GSBody reach test: no %s with a model"), Names[ReachTestStep / 3]); ReachTestStep += 2; return; }
+		Weapons.Reset();
+		GetWorldTimerManager().ClearTimer(ReloadTimer);
+		bReloading = false;
+		CancelUse();
+		GiveWeapon(Id, -1, 200);
+		CurrentSlot = 0;
+		ApplyWeaponVisuals();
+	}
+	bAiming = Pose == 1;
+	if (Pose == 2 && Weapons.IsValidIndex(CurrentSlot))
+	{
+		Weapons[CurrentSlot].Ammo = 0;
+		Weapons[CurrentSlot].Reserve = 200;
+		ServerReload_Implementation();
+	}
+#endif
 }
 
 void AGSCharacter::FillBodyAnimInput(UGSBodyAnim* Anim, bool bFirstPerson, float Dt)
@@ -3447,38 +3717,81 @@ void AGSCharacter::FillBodyAnimInput(UGSBodyAnim* Anim, bool bFirstPerson, float
 	In.Set = !bHolding || S.Class == EGSWeaponClass::Melee ? 0 : S.Class == EGSWeaponClass::Pistol ? 2 : 1;
 
 #if !UE_BUILD_SHIPPING
+	if (!bFirstPerson)
+	{
+		// gs.FP.TestPose "aim crouch" holds every body others see in that pose, so the hit boxes can be measured
+		// without a second player (also in a headless run).
+		static FString LastPoseText;
+		static float TestAim = 0.f, TestCrouch = 0.f;
+		static bool bTestPose = false;
+		const FString PoseText = CVarFPTestPose.GetValueOnGameThread();
+		if (PoseText != LastPoseText)
+		{
+			LastPoseText = PoseText;
+			TArray<FString> Parts;
+			PoseText.ParseIntoArrayWS(Parts);
+			bTestPose = Parts.Num() >= 2;
+			if (bTestPose) { TestAim = FCString::Atof(*Parts[0]); TestCrouch = FMath::Clamp(FCString::Atof(*Parts[1]), 0.f, 1.f); }
+		}
+		if (bTestPose) { In.AimPitch = TestAim; In.CrouchAlpha = TestCrouch; }
+	}
 	if (!bFirstPerson && CVarFPDebug.GetValueOnGameThread() != 0 && HitZones[0])
 	{
-		// The head against the head hit box (capsule space, cm): the box is +-9.5 forward/back and +-12 up/down.
-		const FVector HeadC = GetActorTransform().InverseTransformPosition(Comp->GetSocketLocation(TEXT("head")));
-		const FVector BoxC = HitZones[0]->GetRelativeLocation();
-		const FVector D = HeadC - BoxC;
-		const bool bInside = FMath::Abs(D.X) <= 9.5f && FMath::Abs(D.Y) <= 8.f && FMath::Abs(D.Z) <= 12.f;
+		// The head against the head hit box and the knees against the leg boxes (capsule space, cm), for the layout
+		// that goes with the pose (crouched from half way). Head box +-9.5 forward/back, +-8 sideways, +-12 up/down.
+		const bool bCrouchBoxes = In.CrouchAlpha > 0.5f;
+		auto BoxOf = [bCrouchBoxes](int32 I) { return bCrouchBoxes ? GSZoneBoxes[I].Crouch : GSZoneBoxes[I].Stand; };
+		auto ExtOf = [bCrouchBoxes](int32 I) { return bCrouchBoxes ? GSZoneBoxes[I].CrouchExt : GSZoneBoxes[I].StandExt; };
+		// The crouched boxes sit in the crouched capsule: its centre is lower by the difference in half heights.
+		const float StandHalf = GetDefault<AGSCharacter>()->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
+		const float CapsuleDrop = bCrouchBoxes != bIsCrouched ? (bCrouchBoxes ? 1.f : -1.f) * (StandHalf - GetCharacterMovement()->GetCrouchedHalfHeight()) : 0.f;
+		auto InCapsule = [&](const TCHAR* Bone) { return GetActorTransform().InverseTransformPosition(Comp->GetSocketLocation(Bone)) + FVector(0.f, 0.f, CapsuleDrop); };
+		const FVector D = InCapsule(TEXT("head")) - BoxOf(0);
+		const FVector HeadExt = ExtOf(0);
+		const bool bInside = FMath::Abs(D.X) <= HeadExt.X && FMath::Abs(D.Y) <= HeadExt.Y && FMath::Abs(D.Z) <= HeadExt.Z;
+		// Knee = calf bone (the joint); its X against the leg box's front and back.
+		const FVector KneeL = InCapsule(TEXT("calf_l")), KneeR = InCapsule(TEXT("calf_r"));
+		const FVector LegC = BoxOf(5), LegE = ExtOf(5);
+		const float KneeFront = FMath::Max(KneeL.X, KneeR.X) - (LegC.X + LegE.X);   // > 0: sticks out in front
+		const float KneeBack = (LegC.X - LegE.X) - FMath::Min(KneeL.X, KneeR.X);    // > 0: sticks out behind
 		if (GEngine)
 		{
-			GEngine->AddOnScreenDebugMessage(static_cast<uint64>(GetUniqueID()) * 4 + 2, 0.f, bInside ? FColor::Green : FColor::Red,
-				FString::Printf(TEXT("%s hode mot hodeboks: fram %.1f, side %.1f, opp %.1f cm (sikte %.0f grader, huk %.2f)"),
-					*GetName(), D.X, D.Y, D.Z, In.AimPitch, In.CrouchAlpha));
+			GEngine->AddOnScreenDebugMessage(static_cast<uint64>(GetUniqueID()) * 4 + 2, 0.f, bInside && KneeFront <= 0.f ? FColor::Green : FColor::Red,
+				FString::Printf(TEXT("%s hode mot hodeboks: fram %.1f, side %.1f, opp %.1f cm; kne foran beinboks %.1f cm (sikte %.0f grader, huk %.2f)"),
+					*GetName(), D.X, D.Y, D.Z, KneeFront, In.AimPitch, In.CrouchAlpha));
 		}
 		static double LastLog = 0.0;
 		if (FPlatformTime::Seconds() - LastLog > 2.0)
 		{
 			LastLog = FPlatformTime::Seconds();
-			UE_LOG(LogTemp, Log, TEXT("GSBody debug: %s head vs head box fwd %.1f side %.1f up %.1f (aim %.0f, crouch %.2f)"),
-				*GetName(), D.X, D.Y, D.Z, In.AimPitch, In.CrouchAlpha);
+			UE_LOG(LogTemp, Log, TEXT("GSBody debug: %s head vs head box fwd %.1f side %.1f up %.1f (%s); knees x %.1f/%.1f z %.1f/%.1f, leg box x %.1f..%.1f z %.1f..%.1f, out front %.1f back %.1f (aim %.0f, crouch %.2f)"),
+				*GetName(), D.X, D.Y, D.Z, bInside ? TEXT("inside") : TEXT("OUTSIDE"), KneeL.X, KneeR.X, KneeL.Z, KneeR.Z,
+				LegC.X - LegE.X, LegC.X + LegE.X, LegC.Z - LegE.Z, LegC.Z + LegE.Z, KneeFront, KneeBack, In.AimPitch, In.CrouchAlpha);
 		}
 	}
 #endif
 
-	// Hands on the third-person gun (not on your own first-person body this round).
-	In.bHandIK_R = bHolding && !bFirstPerson;
-	In.bHandIK_L = false;
-	if (!In.bHandIK_R) return;
+	// --- Feet on stairs and uneven floors (round 14b) ---
+	FillFootIK(Comp, In, bFirstPerson);
+
 	static FString LastR, LastL;
 	static FTransform GripR = GSParseGrip(TEXT("-8 3 -4 0 0 0")), GripL = GSParseGrip(TEXT("-6 0 -5 0 0 0"));
 	const FString TextR = CVarGripR.GetValueOnGameThread(), TextL = CVarGripL.GetValueOnGameThread();
 	if (TextR != LastR) { LastR = TextR; GripR = GSParseGrip(TextR); }
 	if (TextL != LastL) { LastL = TextL; GripL = GSParseGrip(TextL); }
+	const FQuat ActorQ = GetActorQuat();
+	auto ToCS = [&](const FTransform& HandW) { return GSHandToCS(HandW, ActorQ, CompTM); };
+
+	if (bFirstPerson)
+	{
+		FillOwnHands(Comp, In, S, GripR, GripL);
+		return;
+	}
+
+	// Hands on the third-person gun.
+	In.bHandIK_R = bHolding;
+	In.bHandIK_L = false;
+	if (!In.bHandIK_R) return;
 
 	FVector Home;
 	FRotator HomeRot;
@@ -3486,14 +3799,6 @@ void AGSCharacter::FillBodyAnimInput(UGSBodyAnim* Anim, bool bFirstPerson, float
 	const FTransform GunTM = TPWeaponMesh->GetComponentTransform();
 	const FTransform HandRW = GripR * GunTM;
 	const FTransform HandLW = GripL * FTransform(Home) * GunTM;
-	// The hand keeps the grip of the rifle/pistol clip, turned as far as the gun is turned from straight ahead.
-	const FQuat ActorQ = GetActorQuat();
-	const FQuat CompQ = CompTM.GetRotation();
-	auto ToCS = [&](const FTransform& HandW)
-	{
-		const FQuat DeltaW = HandW.GetRotation() * ActorQ.Inverse();
-		return FTransform((CompQ.Inverse() * DeltaW * CompQ).GetNormalized(), CompTM.InverseTransformPosition(HandW.GetLocation()));
-	};
 	In.HandR = ToCS(HandRW);
 	In.HandL = ToCS(HandLW);
 	// Elbows down and out.
@@ -3546,6 +3851,7 @@ void AGSCharacter::OnRep_Dead()
 		// As a shadow-only "world space representation" the engine would keep hiding it from you whatever
 		// bOwnerNoSee says: make it an ordinary body again.
 		GetMesh()->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::None);
+		SetGearShadowType(EFirstPersonPrimitiveType::None);   // the gun and gear on the body, too
 		// The body animation lets go of the pose: the ragdoll has the body.
 		for (USkeletalMeshComponent* Skel : { GetMesh(), FPBody.Get() })
 		{
@@ -4087,6 +4393,10 @@ void AGSCharacter::ApplyLowHealthPostProcess(int32 Visual, float Low)
 void AGSCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	// A bot (locally controlled, not a human): the engine turns the camera only in a player's view update, so turn
+	// it to the control rotation here. Everything that looks along the camera (shots, grapple, flashlight) then
+	// follows the bot's aim up and down too.
+	if (IsLocallyControlled() && !IsLocalHuman() && !bDead) Camera->SetWorldRotation(GetControlRotation());
 	const FGSEffectMods Mods = GetMods();
 	const FGSItemDef* Vest = GSItems::Find(BodyArmor);
 	const FGSItemDef* Hat = GSItems::Find(Helmet);
@@ -4181,7 +4491,7 @@ void AGSCharacter::Tick(float DeltaSeconds)
 	}
 
 	// Ghost boost: others only see you flicker.
-	if (!IsLocallyControlled() && !bDead)
+	if (!IsLocalHuman() && !bDead)
 	{
 		const bool bVisible = !Mods.bGhost || FMath::Frac(GetWorld()->GetTimeSeconds() * 2.5f) < 0.12f;
 		BodyMesh->SetVisibility(bVisible && !bHumanBody);
@@ -4200,7 +4510,7 @@ void AGSCharacter::Tick(float DeltaSeconds)
 	// sprinting, kicking back when they shoot, bobbing with their steps.
 	// True first person: also your own (unseen) gun, so your shadow holds it, and the shoulder follows the body's
 	// clavicle (down when crouching, with the steps) instead of fixed heights.
-	if ((!IsLocallyControlled() || bTrueFP) && !bDead && GetNetMode() != NM_DedicatedServer)
+	if ((!IsLocalHuman() || bTrueFP) && !bDead && GetNetMode() != NM_DedicatedServer)
 	{
 		const float AimPitch = FRotator::NormalizeAxis(GetBaseAimRotation().Pitch);
 		const float Spd = GetVelocity().Size2D();
@@ -4248,26 +4558,31 @@ void AGSCharacter::Tick(float DeltaSeconds)
 	// The body animation (true first person): movement, aim, crouch and the hand targets, every machine that draws.
 	BodyCrouchAlpha = FMath::FInterpConstantTo(BodyCrouchAlpha, bIsCrouched || bSliding ? 1.f : 0.f, DeltaSeconds, 8.f);
 	BodySprintAlpha = FMath::FInterpConstantTo(BodySprintAlpha, bSprinting ? 1.f : 0.f, DeltaSeconds, 8.f);
+	UGSBodyAnim* OwnAnim = nullptr;   // filled after the first-person gun has moved this frame (below)
 	if (bTrueFP && bHumanBody && !bDead && GetNetMode() != NM_DedicatedServer)
 	{
 		UGSBodyAnim* BodyAnim = Cast<UGSBodyAnim>(GetMesh()->GetAnimInstance());
-		UGSBodyAnim* OwnAnim = IsLocallyControlled() && FPBody && FPBody->IsVisible() ? Cast<UGSBodyAnim>(FPBody->GetAnimInstance()) : nullptr;
+		OwnAnim = IsLocalHuman() && FPBody && FPBody->IsVisible() ? Cast<UGSBodyAnim>(FPBody->GetAnimInstance()) : nullptr;
 		// Clips or bones missing (found now or while playing): this figure goes back to the old body.
 		if (!BodyAnim || BodyAnim->bMissingBones || (OwnAnim && OwnAnim->bMissingBones))
 		{
 			FallBackToOldBody();
+			OwnAnim = nullptr;
 		}
 		else
 		{
 			FillBodyAnimInput(BodyAnim, false, DeltaSeconds);
-			if (OwnAnim) FillBodyAnimInput(OwnAnim, true, DeltaSeconds);
 		}
 	}
 
 	// Blood trail behind whoever bleeds (every machine that renders, your own drops too when you look down)
 	if (GetNetMode() != NM_DedicatedServer && !bDead && BleedLevel > 0) TickBloodTrail(DeltaSeconds);
 
-	if (IsLocallyControlled())
+#if !UE_BUILD_SHIPPING
+	TickReachTest(DeltaSeconds);
+#endif
+
+	if (IsLocalHuman())
 	{
 		UpdateFocusPickup();
 		UpdateLocalVisuals(DeltaSeconds);
@@ -4277,8 +4592,35 @@ void AGSCharacter::Tick(float DeltaSeconds)
 
 		TickRecoil(DeltaSeconds);
 		TickScopeSway(DeltaSeconds);
+		// The engine turns the camera to the view only after every tick (GetCameraView): turn it now, so the
+		// first-person gun and the hands that hold it are where you look this frame, not the last (no hands
+		// lagging behind a fast turn).
+		Camera->SetWorldRotation(GetControlRotation());
 		// Dead: the first-person arms, gun and item stay hidden (the client can still control the body for a few frames)
 		if (!bDead) UpdateWeaponAnimation(DeltaSeconds);
+
+		if (bTrueFP && FPBody && !bDead)
+		{
+			// Your own body's arms: shown when they hold the gun, hidden when you look through a scope (they would
+			// fill the picture) or when the old arms are used (gs.FP.Hands 0).
+			const bool bBodyHands = UsesBodyHands();
+			const bool bHideArms = !bBodyHands || (IsScopedIn() && AimBlend > 0.85f);
+			if (bHideArms != bOwnArmsHidden)
+			{
+				bOwnArmsHidden = bHideArms;
+				static const FName ClavL(TEXT("clavicle_l")), ClavR(TEXT("clavicle_r"));
+				if (bHideArms) { FPBody->HideBoneByName(ClavL, EPhysBodyOp::PBO_None); FPBody->HideBoneByName(ClavR, EPhysBodyOp::PBO_None); }
+				else { FPBody->UnHideBoneByName(ClavL); FPBody->UnHideBoneByName(ClavR); }
+			}
+			if (bBodyHands)
+			{
+				// The old arms stay as invisible points (not hidden in game: the magazine hangs on the left one).
+				FPArmR->SetVisibility(false);
+				FPArmL->SetVisibility(false);
+				FPItemHand->SetVisibility(false);
+			}
+		}
+		if (OwnAnim) FillBodyAnimInput(OwnAnim, true, DeltaSeconds);
 	}
 
 #if !UE_BUILD_SHIPPING

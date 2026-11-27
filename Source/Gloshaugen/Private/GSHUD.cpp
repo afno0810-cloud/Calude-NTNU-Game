@@ -1079,7 +1079,7 @@ void AGSHUD::DrawScoreboard(float Y)
 	const FLinearColor Dim(0.66f, 0.68f, 0.7f);
 	Box(X, Y, W, H, FLinearColor(0.02f, 0.025f, 0.03f, 0.8f));
 	Text(TEXT("POENGTAVLE"), X + 20.f, Y + 9.f, FLinearColor(0.9f, 0.9f, 0.9f), 1.05f);
-	Text(FString::Printf(TEXT("Capture the Flag  \u00B7  f\u00F8rst til %d"), AGSGameState::CaptureLimit), X + W - 16.f, Y + 12.f, Dim, 0.8f, false, true);
+	Text(FString::Printf(TEXT("Capture the Flag  \u00B7  f\u00F8rst til %d"), static_cast<int32>(GS->CaptureGoal)), X + W - 16.f, Y + 12.f, Dim, 0.8f, false, true);
 	float RY = Y + 40.f;
 	Text(TEXT("Spiller"), X + 24.f, RY, Dim, 0.8f);
 	Text(TEXT("Erobringer"), CCap, RY, Dim, 0.8f, false, true);

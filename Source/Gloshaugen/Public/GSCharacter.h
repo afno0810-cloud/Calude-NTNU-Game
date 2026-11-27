@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/Controller.h"
+#include "Components/PrimitiveComponent.h"
 #include "GSTypes.h"
 #include "GSItems.h"
 #include "GSPickup.h"
@@ -57,9 +59,18 @@ UCLASS()
 class GLOSHAUGEN_API AGSCharacter : public ACharacter
 {
 	GENERATED_BODY()
+	/** The bot brain drives the body through the same actions a player's keys do (lag Bots, plan-06). */
+	friend class AGSBotController;
 
 public:
 	AGSCharacter();
+
+	/** The player behind this screen: a human controls this body on this machine. A bot is "locally controlled" on the
+	 *  server too, so everything that is only for the person at the keyboard (2D sound, HUD, screen effects, the
+	 *  first-person body) asks this, not IsLocallyControlled(). Asks the controller's kind rather than
+	 *  IsPlayerControlled(): that reads the player state, which can reach a client a moment after the controller
+	 *  (PawnClientRestart would then skip your own body). A bot's controller is never a player controller. */
+	bool IsLocalHuman() const { return IsLocallyControlled() && GetController()->IsPlayerController(); }
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
@@ -279,8 +290,26 @@ protected:
 	void SetupLocalBody();
 	/** Back to the animation blueprint and the old legs (clips or bones missing, or gs.TrueFP 0). */
 	void FallBackToOldBody();
+	/** The gun (with attachments), armbands, vest, helmet and backpack: WorldSpaceRepresentation puts them in your own
+	 *  shadow like the body (owner only, true first person); None everywhere else and when dead. */
+	void SetGearShadowType(EFirstPersonPrimitiveType Type);
 	/** Copies movement, aim, crouch and the hand targets on the third-person gun to a body animation. */
 	void FillBodyAnimInput(class UGSBodyAnim* Anim, bool bFirstPerson, float Dt);
+	/** Round 14b: the floor under each foot (two traces, only slow, near and seen bodies). */
+	void FillFootIK(USkeletalMeshComponent* Comp, struct FGSBodyAnimInput& In, bool bFirstPerson);
+	/** Round 14b: your own body's hands on the first-person gun or the item in use, with the reach clamped. */
+	void FillOwnHands(USkeletalMeshComponent* Comp, struct FGSBodyAnimInput& In, const FGSWeaponStats& S, const FTransform& GripR, const FTransform& GripL);
+	/** Your own body holds the gun (true first person, gs.FP.Hands 1); the old floating arms are hidden points then. */
+	bool UsesBodyHands() const;
+	float OwnArmLen[2] = { 0.f, 0.f };   // right, left (cm, reference skeleton)
+	float OwnReach[2] = { 0.f, 0.f };    // last reach in percent (debug)
+	bool bOwnArmsHidden = true;          // clavicles of FPBody hidden (scope, or the old arms in use)
+	/** gs.FP.ReachTest 1 (offline test): steps through the weapon classes at the hip, aiming and reloading and logs
+	 *  the highest reach of your own hands in each. */
+	void TickReachTest(float Dt);
+	int32 ReachTestStep = -1;
+	float ReachTestTime = 0.f;
+	float ReachTestMax[2] = { 0.f, 0.f };
 	virtual void PawnClientRestart() override;
 	float BodyCrouchAlpha = 0.f;   // smoothed for the body animation
 	float BodySprintAlpha = 0.f;

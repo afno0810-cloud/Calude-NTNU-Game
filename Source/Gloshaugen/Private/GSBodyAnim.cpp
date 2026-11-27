@@ -99,8 +99,15 @@ protected:
 		// Smooth the velocity a little, so a stop or a turn does not snap the legs to another clip.
 		SmoothVel = FMath::VInterpTo(SmoothVel, In.LocalVel, Dt, 10.f);
 		FallAlpha = FMath::FInterpConstantTo(FallAlpha, In.bFalling ? 1.f : 0.f, Dt, 1.f / 0.15f);
-		HandWR = FMath::FInterpConstantTo(HandWR, In.bHandIK_R && !In.bFirstPerson ? 1.f : 0.f, Dt, 10.f);
-		HandWL = FMath::FInterpConstantTo(HandWL, In.bHandIK_L && !In.bFirstPerson ? 1.f : 0.f, Dt, 10.f);
+		// Your own body's hands go to the first-person gun at once (it moves with the view; a fade would show them
+		// lagging); others' hands fade in and out over 0.1 s.
+		const float HandRate = In.bFirstPerson ? 30.f : 10.f;
+		HandWR = FMath::FInterpConstantTo(HandWR, In.bHandIK_R ? 1.f : 0.f, Dt, HandRate);
+		HandWL = FMath::FInterpConstantTo(HandWL, In.bHandIK_L ? 1.f : 0.f, Dt, HandRate);
+		// Feet: fade in and out over 0.1 s, the floor heights a little smoothed so a step does not snap.
+		FootW = FMath::FInterpConstantTo(FootW, In.bFootIK ? 1.f : 0.f, Dt, 10.f);
+		FootOff[0] = FMath::FInterpTo(FootOff[0], In.bFootIK ? In.FootOffsetL : 0.f, Dt, 15.f);
+		FootOff[1] = FMath::FInterpTo(FootOff[1], In.bFootIK ? In.FootOffsetR : 0.f, Dt, 15.f);
 
 		const FBand B = GetBand();
 		const UAnimSequence* WalkFwd = Seq(GSBodySlots::Walk);
@@ -206,12 +213,16 @@ protected:
 		FCompactPose& Pose = Output.Pose;
 		const float Crouch = FMath::Clamp(In.CrouchAlpha, 0.f, 1.f);
 		const bool bCrouchIK = Crouch > 0.001f;
-		const bool bHands = !In.bFirstPerson && (HandWR > 0.001f || HandWL > 0.001f);
+		const bool bFeetIK = FootW > 0.001f;
+		const bool bLegIK = bCrouchIK || bFeetIK;
+		const bool bHands = HandWR > 0.001f || HandWL > 0.001f;
+		// Feet on the floor: the hips go down as far as the lower foot needs (never up), each foot to its own floor.
+		const float PelvisDown = bFeetIK ? FMath::Min(0.f, FMath::Min(FootOff[0], FootOff[1])) * FootW : 0.f;
 
 		// Where the feet are in the animation before the hips go down (component space).
 		FCSPose<FCompactPose> CS;
 		FTransform FootCS[2];
-		if (bCrouchIK)
+		if (bLegIK)
 		{
 			CS.InitPose(Pose);
 			FootCS[0] = CS.GetComponentSpaceTransform(Foot[0]);
@@ -226,9 +237,17 @@ protected:
 			// head bone sits about 10 cm under the middle of the head, as it does standing.
 			const FCompactPoseBoneIndex PelvisParent = Pose.GetParentBoneIndex(Pelvis);
 			const FQuat ParentCS = PelvisParent != INDEX_NONE ? CSRotation(Pose, PelvisParent) : FQuat::Identity;
-			Pose[Pelvis].AddToTranslation(ParentCS.Inverse().RotateVector(In.CompUp * (-CrouchDrop * Crouch)));
-			RotateBone(Pose, Pelvis, In.CompRight, 12.f * Crouch);
-			for (int32 I = 0; I < 3; ++I) RotateBone(Pose, Spine[I], In.CompRight, -4.f / 3.f * Crouch);
+			// The hips also go back over the heels, as in a real crouch, so the knees stay over the toes instead of
+			// sticking out far in front of the body (and of the crouched leg hit boxes).
+			Pose[Pelvis].AddToTranslation(ParentCS.Inverse().RotateVector((In.CompUp * -CrouchDrop - In.CompFwd * CrouchBack) * Crouch));
+			RotateBone(Pose, Pelvis, In.CompRight, CrouchTip * Crouch);
+			for (int32 I = 0; I < 3; ++I) RotateBone(Pose, Spine[I], In.CompRight, -4.f / 3.f * Crouch);   // chest leans CrouchTip - 4
+		}
+		if (PelvisDown < -0.01f)
+		{
+			const FCompactPoseBoneIndex PelvisParent = Pose.GetParentBoneIndex(Pelvis);
+			const FQuat ParentCS = PelvisParent != INDEX_NONE ? CSRotation(Pose, PelvisParent) : FQuat::Identity;
+			Pose[Pelvis].AddToTranslation(ParentCS.Inverse().RotateVector(In.CompUp * PelvisDown));
 		}
 		if (!In.bFirstPerson)
 		{
@@ -246,10 +265,10 @@ protected:
 		}
 
 		// --- 3. Component space: knees and hands ---
-		if (bCrouchIK || bHands)
+		if (bLegIK || bHands)
 		{
 			CS.InitPose(Pose);
-			if (bCrouchIK)
+			if (bLegIK)
 			{
 				for (int32 S = 0; S < 2; ++S)
 				{
@@ -258,7 +277,9 @@ protected:
 					FTransform C = CS.GetComponentSpaceTransform(Foot[S]);
 					C.SetRotation(FootCS[S].GetRotation());
 					const FVector Hint = B.GetLocation() + In.CompFwd * 30.f;
-					AnimationCore::SolveTwoBoneIK(A, B, C, Hint, FootCS[S].GetLocation(), false, 1.0, 1.0);
+					// The foot where the animation has it, raised or lowered to the floor under it (Foot[0] is left).
+					const FVector Target = FootCS[S].GetLocation() + In.CompUp * (bFeetIK ? FootOff[S] * FootW : 0.f);
+					AnimationCore::SolveTwoBoneIK(A, B, C, Hint, Target, false, 1.0, 1.0);
 					if (HasNaN(A, B, C)) continue;
 					const FBoneTransform Chain[3] = { FBoneTransform(Thigh[S], A), FBoneTransform(Calf[S], B), FBoneTransform(Foot[S], C) };
 					CS.SafeSetCSBoneTransforms(Chain);
@@ -370,6 +391,8 @@ private:
 	}
 
 	static constexpr float CrouchDrop = 45.f;   // cm the hips go down when crouched (the plan's 38 left the head ~7 cm high)
+	static constexpr float CrouchBack = 12.f;   // cm the hips go back when crouched (round 14b: knees inside the leg boxes)
+	static constexpr float CrouchTip = 20.f;    // degrees the hips tip forward when crouched (14a: 12; more now that they sit back)
 
 	FGSBodyAnimInput In;
 	const UAnimSequence* Seqs[GSBodySlots::Num] = {};
@@ -379,6 +402,8 @@ private:
 	FVector SmoothVel = FVector::ZeroVector;
 	float Phase = 0.f, IdleTime = 0.f, FallTime = 0.f, FallAlpha = 0.f;
 	float HandWR = 0.f, HandWL = 0.f;
+	float FootW = 0.f;
+	float FootOff[2] = { 0.f, 0.f };   // [0] left, [1] right, like Foot[]
 
 	uint16 CachedSerial = 0;
 	bool bBonesCached = false, bBonesMissing = false;

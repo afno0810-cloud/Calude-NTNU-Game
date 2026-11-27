@@ -24,7 +24,11 @@ struct FGSBodyAnimInput
 	FTransform HandR = FTransform::Identity, HandL = FTransform::Identity;
 	/** Elbow hints, component space, as offsets from each upper arm. */
 	FVector ElbowHintR = FVector::ZeroVector, ElbowHintL = FVector::ZeroVector;
-	bool bFirstPerson = false;                  // the owner's own body: no aim bend and no hand IK (round 14a)
+	bool bFirstPerson = false;                  // the owner's own body: no aim bend (the hands go to the first-person gun, 14b)
+	/** Feet on stairs and uneven floors (round 14b): how far the floor under each foot is above (+) or below (-) the
+	 *  floor the body stands on (cm, clamped +-45). Off when moving fast, falling, far away or not seen. */
+	bool bFootIK = false;
+	float FootOffsetL = 0.f, FootOffsetR = 0.f;
 	/** The actor's axes in component space (the mesh is turned -90 yaw, so forward is +Y there). */
 	FVector CompFwd = FVector(0.f, 1.f, 0.f), CompRight = FVector(-1.f, 0.f, 0.f), CompUp = FVector(0.f, 0.f, 1.f);
 };

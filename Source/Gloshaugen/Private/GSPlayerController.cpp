@@ -17,6 +17,7 @@
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Misc/ConfigCacheIni.h"
 #include "Engine/Engine.h"
@@ -192,10 +193,9 @@ void AGSPlayerController::ApplyGraphicsLevel(int32 Level)
 {
 	UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr;
 	if (!S) return;
-	// The level also sets the render resolution: put yours back afterwards.
-	const int32 Res = GetResolutionPercent();
+	// The level also sets the render resolution (Config/DefaultScalability.ini: 85 % on Lav/Middels, 100 % from Hoy),
+	// the same as when the main menu picks it. "Opplosning N" sets it by hand afterwards.
 	S->SetOverallScalabilityLevel(FMath::Clamp(Level, 0, 4));
-	S->SetResolutionScaleValueEx(static_cast<float>(FMath::Clamp(Res, 50, 100)));
 	S->ApplySettings(false);
 	S->SaveSettings();
 }
@@ -259,8 +259,9 @@ void AGSPlayerController::MenuClick(FName Button)
 	{
 		CloseMenu();
 		GSMenu::AskQuit(this);   // asks first ("Avslutte spillet?")
-		// No dialog could be shown: the button still has to quit.
-		if (!GSMenu::IsModal(this)) ConsoleCommand(TEXT("quit"));
+		// No dialog could be shown: the button still has to quit. QuitGame also ends Play in the editor (the "quit"
+		// console command is only handled by the packaged game's engine, so it did nothing in Play).
+		if (!GSMenu::IsModal(this)) UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);
 	}
 }
 
@@ -309,15 +310,26 @@ void AGSPlayerController::BeginPlay()
 	// First time the game runs: settings that look good and stay smooth on a laptop RTX 3050 (6 GB).
 	UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr;
 	if (!S) return;
-	bool bDone = false;
+	bool bDone = false, bSharp = false;
 	GConfig->GetBool(TEXT("Gloshaugen"), TEXT("GraphicsDefaultsApplied"), bDone, GGameUserSettingsIni);
-	if (bDone) return;
-	S->SetOverallScalabilityLevel(2);          // High
-	S->SetResolutionScaleValueEx(72.f);       // percent; TSR upscales to full resolution
-	S->SetFrameRateLimit(static_cast<float>(FrameLimit));
+	GConfig->GetBool(TEXT("Gloshaugen"), TEXT("SharpDefaultsApplied"), bSharp, GGameUserSettingsIni);
+	if (bDone && bSharp) return;
+	if (!bDone)
+	{
+		S->SetOverallScalabilityLevel(2);      // High: renders at 100 % (DefaultScalability.ini), TSR keeps it sharp
+		S->SetFrameRateLimit(static_cast<float>(FrameLimit));
+	}
+	else if (GetResolutionPercent() == 72)
+	{
+		// The old default (72 %) made the picture soft: once, give the level's own resolution instead. A value
+		// the player chose himself is left alone.
+		const int32 Level = GetGraphicsLevel();
+		S->SetResolutionScaleValueEx(Level >= 2 ? 100.f : 85.f);
+	}
 	S->ApplySettings(false);
 	S->SaveSettings();
 	GConfig->SetBool(TEXT("Gloshaugen"), TEXT("GraphicsDefaultsApplied"), true, GGameUserSettingsIni);
+	GConfig->SetBool(TEXT("Gloshaugen"), TEXT("SharpDefaultsApplied"), true, GGameUserSettingsIni);
 	GConfig->Flush(false, GGameUserSettingsIni);
 }
 
