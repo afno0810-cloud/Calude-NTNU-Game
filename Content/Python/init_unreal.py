@@ -209,44 +209,58 @@ def link_fab_models():
         f.write("\n".join(lines) + "\n")
 
 
-try:
-    imported = import_models()
-    fix_building_collision(imported)
-except Exception as e:  # never block the editor from opening
-    unreal.log_warning(f"Gloshaugen: modell-import feilet: {e}")
-try:
-    import gs_materials
-    gs_materials.run()  # our PBR textures and materials; scanned Poly Haven / Megascans materials win by name
-except Exception as e:
-    unreal.log_warning(f"Gloshaugen: materialer feilet: {e}")
-try:
-    import gs_sounds
-    gs_sounds.run()  # procedural sound effects; recorded sounds with the same names win
-except Exception as e:
-    unreal.log_warning(f"Gloshaugen: lyd-import feilet: {e}")
-try:
-    link_fab_models()
-except Exception as e:
-    unreal.log_warning(f"Gloshaugen: Fab-kobling feilet: {e}")
+def _running_as_game():
+    """True when the project runs as a game (-game, Standalone, packaged), not as the editor.
+    The asset import below uses editor-only libraries and crashes the engine in game mode."""
+    try:
+        cmd = unreal.SystemLibrary.get_command_line().lower()
+    except Exception:
+        return False
+    return " -game" in (" " + cmd) or "-server" in cmd
 
 
-# The map is made one tick after startup, when the editor is ready to open levels.
 _map_handle = None
 
-
-def _make_map(_dt):
-    global _map_handle
-    if _map_handle is not None:
-        unreal.unregister_slate_post_tick_callback(_map_handle)
-        _map_handle = None
+if _running_as_game():
+    unreal.log("Gloshaugen: kjoerer som spill (-game), hopper over import i editoren")
+else:
+    try:
+        imported = import_models()
+        fix_building_collision(imported)
+    except Exception as e:  # never block the editor from opening
+        unreal.log_warning(f"Gloshaugen: modell-import feilet: {e}")
     try:
         import gs_materials
-        gs_materials.ensure_map()
+        gs_materials.run()  # our PBR textures and materials; scanned Poly Haven / Megascans materials win by name
     except Exception as e:
-        unreal.log_warning(f"Gloshaugen: kunne ikke lage kartet: {e}")
+        unreal.log_warning(f"Gloshaugen: materialer feilet: {e}")
+    try:
+        import gs_sounds
+        gs_sounds.run()  # procedural sound effects; recorded sounds with the same names win
+    except Exception as e:
+        unreal.log_warning(f"Gloshaugen: lyd-import feilet: {e}")
+    try:
+        link_fab_models()
+    except Exception as e:
+        unreal.log_warning(f"Gloshaugen: Fab-kobling feilet: {e}")
 
 
-try:
-    _map_handle = unreal.register_slate_post_tick_callback(_make_map)
-except Exception as e:
-    unreal.log_warning(f"Gloshaugen: {e}")
+    # The map is made one tick after startup, when the editor is ready to open levels.
+
+
+    def _make_map(_dt):
+        global _map_handle
+        if _map_handle is not None:
+            unreal.unregister_slate_post_tick_callback(_map_handle)
+            _map_handle = None
+        try:
+            import gs_materials
+            gs_materials.ensure_map()
+        except Exception as e:
+            unreal.log_warning(f"Gloshaugen: kunne ikke lage kartet: {e}")
+
+
+    try:
+        _map_handle = unreal.register_slate_post_tick_callback(_make_map)
+    except Exception as e:
+        unreal.log_warning(f"Gloshaugen: {e}")
