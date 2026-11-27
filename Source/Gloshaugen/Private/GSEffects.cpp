@@ -177,19 +177,8 @@ void AGSShortFX::SpawnImpact(UWorld* World, const FVector& Location, const FVect
 	else if (Mat == TEXT("Carpet") || Mat == TEXT("Grass")) Mat = TEXT("Dirt");
 	const FString Snd = FString::Printf(TEXT("Impact_%s"), *Mat);
 	GSAudio::PlayAt(World, GSAudio::Has(Snd) ? Snd : GSAudio::Variant(TEXT("Impact"), 3), Location + Normal * 5.f, 0.7f, 25.f, FMath::FRandRange(0.92f, 1.08f));
-	FActorSpawnParameters P;
-	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	// Bullet hole: a thin dark chip flush with the surface, turned randomly, stays for a while.
-	FRotator HoleRot = Normal.Rotation();
-	HoleRot.Roll = FMath::FRandRange(0.f, 360.f);
-	AGSShortFX* FX = World->SpawnActor<AGSShortFX>(Location + Normal * 0.15f, HoleRot, P);
-	if (!FX) return;
-	FX->Mesh->SetStaticMesh(GSUtils::Cube());
-	const float Size = FMath::FRandRange(0.03f, 0.045f);
-	FX->Mesh->SetWorldScale3D(FVector(0.002f, Size, Size * FMath::FRandRange(0.8f, 1.2f)));
-	FX->Mesh->SetCastShadow(false);
-	GSUtils::SetColor(FX->Mesh, FLinearColor(0.015f, 0.014f, 0.013f));
-	FX->SetLifeSpan(40.f);
+	// The lasting bullet hole is Interaktiv's (GSMapState::AddBulletMark, called by the bullet before this); melee hits
+	// leave none.
 	// Spark flash, a few sparks flying off, and a dust puff that blooms out of the hole and settles
 	SpawnSprite(World, Location + Normal * 2.f, 10.f, 4.f, FLinearColor(1.f, 0.6f, 0.25f), 1.f, 0.06f, FVector::ZeroVector, true, 30.f);
 	for (int32 I = 0; I < 4; ++I)

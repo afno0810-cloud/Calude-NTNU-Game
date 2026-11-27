@@ -17,12 +17,14 @@ Alle seks RETTET av bygger (Kamp) 26. nov., IMPROVEMENTS 376–385. G1 (punkt 6)
 9. Blør man i hjel etter en mine, må `Die` få med prosjektilet så dødskortet ikke bruker kasterens nye kropp. (Ikke tatt i runde 4: den eneste `Die` utenom `TakeDamage` er sult/tørst/overdose med `Die(nullptr, …)`, uten drapsmann, så feilen kan ikke skje i dag. Tas når blødning legges inn.)
 
 ## Fra kontroll av runde 14b (.claude/loop/kontroll/runde-14b.md) – tas først i neste Kamp-runde
-10. Gamle armer vippes synlig/usynlig hvert bilde (`UpdateArms` vs `Tick`). Send `UsesBodyHands()` inn i `UpdateArms`/`UpdateItemUse` så de bare settes ett sted.
-11. Én regel for grafikknivå: `ApplyGraphicsLevel` («Grafikk N» og Esc-menyen) skal beholde spillerens egen oppløsning slik hovedmenyen gjør. Skriv IMPROVEMENTS 597 om så den stemmer.
-12. Utvid `gs.FP.ReachTest` med sikte opp/ned (60–80°) og sørg for at høyre hånd ikke slipper grepet.
-13. Utvid den stående beinboksen (knærne 8 cm utenfor midt i et steg).
+10. **RETTET** – Gamle armer vippes synlig/usynlig hvert bilde (`UpdateArms` vs `Tick`). Send `UsesBodyHands()` inn i `UpdateArms`/`UpdateItemUse` så de bare settes ett sted.
+11. **RETTET** – Én regel for grafikknivå: `ApplyGraphicsLevel` («Grafikk N» og Esc-menyen) skal beholde spillerens egen oppløsning slik hovedmenyen gjør. Skriv IMPROVEMENTS 597 om så den stemmer.
+12. **RETTET** – Utvid `gs.FP.ReachTest` med sikte opp/ned (60–80°) og sørg for at høyre hånd ikke slipper grepet.
+13. **RETTET** – Utvid den stående beinboksen (knærne 8 cm utenfor midt i et steg).
 
 ## Fra kontroll av lydrunde 1 (.claude/loop/kontroll/lyd-01.md)
-14. F1: `GSAudio.cpp:72` – én felles samtidighetsgruppe (24, StopOldest) for alle våpenlyder kutter egne skudd og romhaler. Bruk StopFarthestThenOldest, og egne grupper for halene og egne skudd.
-15. F2: flaggradioen deler gruppe med Hit_Marker/Ear_Ring/Heartbeat/UI_ – gi radio egen gruppe.
-16. F3: selvtesten skal bruke motorens tall (`GetNumActiveSounds`) og prøve 4 samtidige skyttere.
+14. **RETTET** – F1: `GSAudio.cpp:72` – én felles samtidighetsgruppe (24, StopOldest) for alle våpenlyder kutter egne skudd og romhaler. Bruk StopFarthestThenOldest, og egne grupper for halene og egne skudd.
+15. **RETTET** – F2: flaggradioen deler gruppe med Hit_Marker/Ear_Ring/Heartbeat/UI_ – gi radio egen gruppe.
+16. **RETTET** – F3: selvtesten skal bruke motorens tall (`GetNumActiveSounds`) og prøve 4 samtidige skyttere.
+
+10–16 RETTET av bygger (Kamp) 27. nov. i runde 13 (plan-13 Del A), IMPROVEMENTS 760–763 og 771–774. 597 er skrevet om. 14: Weapon StopFarthestThenOldest, egne grupper for Tail_ (6), egne 2D-skudd (4) og Flag_/Radio_ (4). 16: selvtesten leser FAudioDevice::GetNumActiveSources() (motorens tall; GetActiveSounds() krever lydtråden) med 4 skyttere, og kategori/sluttid lagres i en struct.

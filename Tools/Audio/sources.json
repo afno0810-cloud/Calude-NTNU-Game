@@ -3422,6 +3422,96 @@
    "src": "Kenney_InterfaceSounds/Audio/error_002.ogg",
    "category": "UI",
    "peak_db": -8
+  },
+  {
+   "name": "Door_Open_1",
+   "src": "Kenney_InterfaceSounds/Audio/switch_002.ogg",
+   "category": "World",
+   "speed": 0.6,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactWood_light_001.ogg",
+     "speed": 0.85,
+     "gain_db": -8,
+     "delay": 0.12
+    }
+   ],
+   "peak_db": -14
+  },
+  {
+   "name": "Door_Open_2",
+   "src": "Kenney_InterfaceSounds/Audio/switch_004.ogg",
+   "category": "World",
+   "speed": 0.56,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactWood_light_002.ogg",
+     "speed": 0.85,
+     "gain_db": -8,
+     "delay": 0.12
+    }
+   ],
+   "peak_db": -14
+  },
+  {
+   "name": "Door_Open_3",
+   "src": "Kenney_InterfaceSounds/Audio/switch_006.ogg",
+   "category": "World",
+   "speed": 0.64,
+   "layers": [
+    {
+     "src": "Kenney_ImpactSounds/Audio/impactWood_light_004.ogg",
+     "speed": 0.85,
+     "gain_db": -8,
+     "delay": 0.12
+    }
+   ],
+   "peak_db": -14
+  },
+  {
+   "name": "Door_Close_1",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_medium_000.ogg",
+   "category": "World",
+   "speed": 0.8,
+   "layers": [
+    {
+     "src": "Kenney_InterfaceSounds/Audio/switch_001.ogg",
+     "speed": 0.5,
+     "gain_db": -4,
+     "delay": 0.04
+    }
+   ],
+   "peak_db": -8
+  },
+  {
+   "name": "Door_Close_2",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_medium_002.ogg",
+   "category": "World",
+   "speed": 0.76,
+   "layers": [
+    {
+     "src": "Kenney_InterfaceSounds/Audio/switch_003.ogg",
+     "speed": 0.5,
+     "gain_db": -4,
+     "delay": 0.04
+    }
+   ],
+   "peak_db": -8
+  },
+  {
+   "name": "Door_Close_3",
+   "src": "Kenney_ImpactSounds/Audio/impactWood_medium_003.ogg",
+   "category": "World",
+   "speed": 0.84,
+   "layers": [
+    {
+     "src": "Kenney_InterfaceSounds/Audio/switch_005.ogg",
+     "speed": 0.5,
+     "gain_db": -4,
+     "delay": 0.04
+    }
+   ],
+   "peak_db": -8
   }
  ]
 }

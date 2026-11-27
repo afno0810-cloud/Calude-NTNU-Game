@@ -12,6 +12,8 @@
 #include "GSBallistics.h"
 #include "GSUtils.h"
 #include "GSBodyAnim.h"
+#include "GSMapState.h"
+#include "GSInteract.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/BoxComponent.h"
@@ -97,7 +99,8 @@ namespace
 	const FName FxPainkillers(TEXT("Smertestillende"));
 
 	/** One hit box: where it sits on the capsule (cm from the capsule centre, X forward, Y right) and half its size,
-	 *  standing and crouched. Standing capsule: feet at -92, crouched: feet at -58. */
+	 *  standing and crouched. Standing capsule: feet at -92, crouched: feet at -58. The standing legs are 13 cm deep each
+	 *  way: in the middle of a step the knees are 8 cm in front of / 6 cm behind the hips (round 14b measurement). */
 	struct FGSZoneBox { uint8 Zone; FVector Stand; FVector StandExt; FVector Crouch; FVector CrouchExt; };
 	const FGSZoneBox GSZoneBoxes[7] = {
 		{ GSZone::Head,    FVector(0.f, 0.f, 77.f),     FVector(9.5f, 8.f, 12.f),    FVector(6.f, 0.f, 62.f),     FVector(9.5f, 8.f, 12.f) },
@@ -105,8 +108,8 @@ namespace
 		{ GSZone::Stomach, FVector(0.f, 0.f, 15.5f),    FVector(11.f, 16.5f, 17.5f), FVector(0.f, 0.f, 6.f),      FVector(12.f, 16.5f, 14.f) },
 		{ GSZone::Arm,     FVector(0.f, -24.5f, 28.f),  FVector(6.f, 5.5f, 32.f),    FVector(4.f, -24.5f, 22.f),  FVector(7.f, 5.5f, 26.f) },
 		{ GSZone::Arm,     FVector(0.f, 24.5f, 28.f),   FVector(6.f, 5.5f, 32.f),    FVector(4.f, 24.5f, 22.f),   FVector(7.f, 5.5f, 26.f) },
-		{ GSZone::Leg,     FVector(0.f, -9.5f, -47.f),  FVector(9.f, 8.5f, 45.f),    FVector(8.f, -9.5f, -33.f),  FVector(17.f, 8.5f, 25.f) },
-		{ GSZone::Leg,     FVector(0.f, 9.5f, -47.f),   FVector(9.f, 8.5f, 45.f),    FVector(8.f, 9.5f, -33.f),   FVector(17.f, 8.5f, 25.f) },
+		{ GSZone::Leg,     FVector(0.f, -9.5f, -47.f),  FVector(13.f, 8.5f, 45.f),    FVector(8.f, -9.5f, -33.f),  FVector(17.f, 8.5f, 25.f) },
+		{ GSZone::Leg,     FVector(0.f, 9.5f, -47.f),   FVector(13.f, 8.5f, 45.f),    FVector(8.f, 9.5f, -33.f),   FVector(17.f, 8.5f, 25.f) },
 	};
 
 	TAutoConsoleVariable<int32> CVarShowHitZones(TEXT("gs.ShowHitZones"), 0, TEXT("1 = draw the hit zone boxes of every player"));
@@ -1167,12 +1170,21 @@ void AGSCharacter::DoMeleeHit(bool bQuick)
 	const FVector Aim = GetBaseAimRotation().Vector();
 	const FVector Start = Camera->GetComponentLocation();
 	const FVector End = Start + Aim * Reach;
+	// Interaktiv first: the first whole glass pane along the swing takes the blow (it cracks or breaks, with its own
+	// sound), a door leaf takes it as a kick, a code lock as a blow. Returns how far the swing got before a pane.
+	const float GlassDist = GSMapState::ApplyMelee(this, Start, End, Damage * GetMods().Damage);
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(GSMelee), false, this);
 	Params.bReturnPhysicalMaterial = true;   // the impact sound follows the material
 	FHitResult Hit;
 	if (GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(22.f), Params))
 	{
-		if (AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor()))
+		// The glass stopped the blow before it reached what the sweep found (the sweep goes through glass)
+		const bool bBehindGlass = FVector::Dist(Start, Hit.ImpactPoint) > GlassDist;
+		if (bBehindGlass)
+		{
+			// No damage and no dust: the pane took the blow (Interaktiv made the crack or the shatter and its sound)
+		}
+		else if (AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor()))
 		{
 			FPointDamageEvent Event(Damage, Hit, Aim, nullptr);
 			Victim->bIncomingMelee = true;
@@ -1428,6 +1440,14 @@ void AGSCharacter::UpdateWeaponAnimation(float Dt)
 		const float AimAlpha = FMath::FInterpTo(AimBlend, (bAiming && !bMeleeWeapon) ? 1.f : 0.f, Dt, 14.f);
 		AimBlend = AimAlpha;
 		Pos = FMath::Lerp(Hip, S.FPAim, AimAlpha);
+		// Looking steeply up or down the gun swings round the eye but your own body does not bend: pull it in towards
+		// the body by up to 6 cm beyond 45 degrees, so the left hand keeps the handguard (gs.FP.ReachTest: AG3 aimed
+		// 70 degrees up was 105 %).
+		if (UsesBodyHands())
+		{
+			const float Steep = FMath::Clamp((FMath::Abs(FRotator::NormalizeAxis(GetControlRotation().Pitch)) - 45.f) / 35.f, 0.f, 1.f);
+			Pos.X -= 6.f * Steep;
+		}
 		TargetFOV = FMath::Lerp(DefaultFOV, S.AimFOV, AimAlpha);
 
 		// Idle breathing
@@ -1737,7 +1757,10 @@ void AGSCharacter::UpdateArms(float Dt, const FGSWeaponStats* S, float ReloadT, 
 	UStaticMesh* ArmL = FPModel(TEXT("SM_FPArm_L"));
 	const bool bModel = W && GSItems::GetMesh(W->Id) != nullptr;
 	const bool bShow = S && ArmR && ArmL && bModel && FPWeaponMesh->IsVisible() && UseItemId.IsNone();
-	FPArmR->SetVisibility(bShow);
+	// Your own body's arms hold the gun (gs.FP.Hands 1): the old arms stay as invisible points (the magazine hangs on
+	// the left one). Decided only here; SetVisibility does nothing when the value is the same, so nothing is rebuilt.
+	const bool bBodyHands = UsesBodyHands();
+	FPArmR->SetVisibility(bShow && !bBodyHands);
 	if (!bShow)
 	{
 		FPArmL->SetVisibility(false);
@@ -1760,7 +1783,7 @@ void AGSCharacter::UpdateArms(float Dt, const FGSWeaponStats* S, float ReloadT, 
 		const FVector Well = S->Class == EGSWeaponClass::Pistol ? FVector(-4.f, 0.f, -12.f) : FVector(8.f, 0.f, -9.f);
 		// The pouch: with your own body's arm it is on the left of the belt where that arm can reach (round 14b; the
 		// old spot on the right was 107-115 % of the arm); the old floating arm keeps its spot.
-		const FVector Pouch = UsesBodyHands() ? FVector(-17.f, -24.f, -40.f) : FVector(-18.f, 14.f, -40.f);
+		const FVector Pouch = bBodyHands ? FVector(-17.f, -24.f, -40.f) : FVector(-18.f, 14.f, -40.f);
 		if (bShellReload)
 		{
 			// one shell at a time from the belt into the loading port
@@ -1783,7 +1806,7 @@ void AGSCharacter::UpdateArms(float Dt, const FGSWeaponStats* S, float ReloadT, 
 			bMag = (ReloadT > 0.14f && ReloadT < 0.27f) || (ReloadT > 0.42f && ReloadT < 0.64f);
 		}
 	}
-	FPArmL->SetVisibility(bLeft);
+	FPArmL->SetVisibility(bLeft && !bBodyHands);
 	FPArmL->SetRelativeLocation(FMath::VInterpTo(FPArmL->GetRelativeLocation(), L, Dt, 25.f));
 	FPArmL->SetRelativeRotation(FMath::RInterpTo(FPArmL->GetRelativeRotation(), LR, Dt, 25.f));
 	FPMag->SetVisibility(bMag);
@@ -1834,7 +1857,8 @@ void AGSCharacter::UpdateItemUse(float Dt)
 		if (UStaticMesh* Hand = FPModel(TEXT("SM_FPArm_R"))) FPItemHand->SetStaticMesh(Hand);
 	}
 	FPItemMesh->SetVisibility(true);
-	FPItemHand->SetVisibility(FPItemHand->GetStaticMesh() != nullptr);
+	// The old floating hand only when your own body's hands are not used (they hold the item then)
+	FPItemHand->SetVisibility(!UsesBodyHands() && FPItemHand->GetStaticMesh() != nullptr);
 	// the hand keeps its real size even when the item is scaled up or down
 	const float Inv = 1.f / FMath::Max(FPItemMesh->GetRelativeScale3D().X, 0.01f);
 	FPItemHand->SetRelativeScale3D(FVector(Inv));
@@ -2377,21 +2401,30 @@ void AGSCharacter::UpdateFocusPickup()
 			FocusTerminal = T;
 		}
 	}
-	if (FocusTerminal.IsValid()) return;
-	for (TActorIterator<AGSPickup> It(GetWorld()); It; ++It)
+	if (!FocusTerminal.IsValid())
 	{
-		AGSPickup* P = *It;
-		if (!P->bAvailable) continue;
-		const FVector To = P->GetActorLocation() - Eye;
-		const float Dist = To.Size();
-		if (Dist > 280.f) continue;
-		const float Dot = FVector::DotProduct(To / FMath::Max(Dist, 1.f), Fwd);
-		const float Score = Dot - Dist / 1000.f;
-		if ((Dot > 0.75f || Dist < 110.f) && Score > Best)
+		for (TActorIterator<AGSPickup> It(GetWorld()); It; ++It)
 		{
-			Best = Score;
-			FocusPickup = P;
+			AGSPickup* P = *It;
+			if (!P->bAvailable) continue;
+			const FVector To = P->GetActorLocation() - Eye;
+			const float Dist = To.Size();
+			if (Dist > 280.f) continue;
+			const float Dot = FVector::DotProduct(To / FMath::Max(Dist, 1.f), Fwd);
+			const float Score = Dot - Dist / 1000.f;
+			if ((Dot > 0.75f || Dist < 110.f) && Score > Best)
+			{
+				Best = Score;
+				FocusPickup = P;
+			}
 		}
+	}
+	// Interaktiv's door (or switch) is nearer the middle of the view: the use key and the hint are theirs. Asking also
+	// tells their interactor that we step aside (bCharacterHooked).
+	if (GSInteract::HasFocus(this))
+	{
+		FocusPickup = nullptr;
+		FocusTerminal = nullptr;
 	}
 }
 
@@ -2401,6 +2434,7 @@ void AGSCharacter::Interact()
 	if (bDead) return;
 	AGSPlayerController* PC = Cast<AGSPlayerController>(GetController());
 	if (PC && PC->IsOnTerminal()) { PC->TerminalInput(TEXT("E")); return; }
+	if (GSInteract::HasFocus(this)) return;   // Interaktiv's interactor takes this press (one thing per press)
 	if (AGSTerminal* T = FocusTerminal.Get())
 	{
 		if (PC) PC->OpenTerminal(T);
@@ -3643,14 +3677,24 @@ void AGSCharacter::TickReachTest(float Dt)
 {
 #if !UE_BUILD_SHIPPING
 	if (CVarFPReachTest.GetValueOnGameThread() == 0 || !HasAuthority() || !IsLocalHuman() || bDead) { ReachTestStep = -1; return; }
-	// Six weapon classes x three poses (hip, aim, reload), 1.6 s each; the highest reach in the last second counts.
+	// Six weapon classes x five poses (hip, aim, reload, aim 70 degrees up, aim 70 degrees down), 1.6 s each; the highest
+	// reach in the last second counts.
 	static const EGSWeaponClass Classes[] = { EGSWeaponClass::Pistol, EGSWeaponClass::SMG, EGSWeaponClass::Rifle,
 		EGSWeaponClass::Sniper, EGSWeaponClass::Shotgun, EGSWeaponClass::LMG };
 	static const TCHAR* Names[] = { TEXT("pistol"), TEXT("smg"), TEXT("rifle"), TEXT("sniper"), TEXT("shotgun"), TEXT("lmg") };
-	static const TCHAR* Poses[] = { TEXT("hofte"), TEXT("sikte"), TEXT("lading") };
-	constexpr int32 NumSteps = UE_ARRAY_COUNT(Classes) * 3;
+	static const TCHAR* Poses[] = { TEXT("hofte"), TEXT("sikte"), TEXT("lading"), TEXT("sikte +70"), TEXT("sikte -70") };
+	static const float PosePitch[] = { 0.f, 0.f, 0.f, 70.f, -70.f };
+	constexpr int32 NumPoses = UE_ARRAY_COUNT(Poses);
+	constexpr int32 NumSteps = UE_ARRAY_COUNT(Classes) * NumPoses;
 	if (ReachTestStep >= NumSteps) return;
 	ReachTestTime += Dt;
+	// Hold the pitch of the pose (the mouse may not move it)
+	if (ReachTestStep >= 0 && Controller)
+	{
+		FRotator CR = Controller->GetControlRotation();
+		CR.Pitch = PosePitch[ReachTestStep % NumPoses];
+		Controller->SetControlRotation(CR);
+	}
 	if (ReachTestStep >= 0 && ReachTestTime > 0.6f)
 	{
 		ReachTestMax[0] = FMath::Max(ReachTestMax[0], OwnReach[0]);
@@ -3660,16 +3704,22 @@ void AGSCharacter::TickReachTest(float Dt)
 	if (ReachTestStep >= 0)
 	{
 		const FGSWeaponSlot* Cur = GetCurrentWeapon();
-		UE_LOG(LogTemp, Log, TEXT("GSBody reach test: %s (%s) %s: right %.0f %%, left %.0f %%%s"), Names[ReachTestStep / 3],
-			Cur ? *Cur->Id.ToString() : TEXT("-"), Poses[ReachTestStep % 3], ReachTestMax[0], ReachTestMax[1],
+		UE_LOG(LogTemp, Log, TEXT("GSBody reach test: %s (%s) %s: right %.0f %%, left %.0f %%%s"), Names[ReachTestStep / NumPoses],
+			Cur ? *Cur->Id.ToString() : TEXT("-"), Poses[ReachTestStep % NumPoses], ReachTestMax[0], ReachTestMax[1],
 			ReachTestMax[0] > 100.f || ReachTestMax[1] > 100.f ? TEXT("  OVER 100") : TEXT(""));
 	}
 	++ReachTestStep;
 	ReachTestTime = 0.f;
 	ReachTestMax[0] = ReachTestMax[1] = 0.f;
-	if (ReachTestStep >= NumSteps) { UE_LOG(LogTemp, Log, TEXT("GSBody reach test: done")); bAiming = false; return; }
-	const EGSWeaponClass Cls = Classes[ReachTestStep / 3];
-	const int32 Pose = ReachTestStep % 3;
+	if (ReachTestStep >= NumSteps)
+	{
+		UE_LOG(LogTemp, Log, TEXT("GSBody reach test: done"));
+		bAiming = false;
+		if (Controller) { FRotator CR = Controller->GetControlRotation(); CR.Pitch = 0.f; Controller->SetControlRotation(CR); }
+		return;
+	}
+	const EGSWeaponClass Cls = Classes[ReachTestStep / NumPoses];
+	const int32 Pose = ReachTestStep % NumPoses;
 	if (Pose == 0)
 	{
 		// The first weapon of this class with a model (the gun the hands hold).
@@ -3678,7 +3728,7 @@ void AGSCharacter::TickReachTest(float Dt)
 		{
 			if (D.IsWeapon() && D.W.Class == Cls && GSItems::GetMesh(D.Id)) { Id = D.Id; break; }
 		}
-		if (Id.IsNone()) { UE_LOG(LogTemp, Log, TEXT("GSBody reach test: no %s with a model"), Names[ReachTestStep / 3]); ReachTestStep += 2; return; }
+		if (Id.IsNone()) { UE_LOG(LogTemp, Log, TEXT("GSBody reach test: no %s with a model"), Names[ReachTestStep / NumPoses]); ReachTestStep += NumPoses - 1; return; }
 		Weapons.Reset();
 		GetWorldTimerManager().ClearTimer(ReloadTimer);
 		bReloading = false;
@@ -3687,7 +3737,7 @@ void AGSCharacter::TickReachTest(float Dt)
 		CurrentSlot = 0;
 		ApplyWeaponVisuals();
 	}
-	bAiming = Pose == 1;
+	bAiming = Pose == 1 || Pose >= 3;
 	if (Pose == 2 && Weapons.IsValidIndex(CurrentSlot))
 	{
 		Weapons[CurrentSlot].Ammo = 0;
@@ -4623,13 +4673,7 @@ void AGSCharacter::Tick(float DeltaSeconds)
 				if (bHideArms) { FPBody->HideBoneByName(ClavL, EPhysBodyOp::PBO_None); FPBody->HideBoneByName(ClavR, EPhysBodyOp::PBO_None); }
 				else { FPBody->UnHideBoneByName(ClavL); FPBody->UnHideBoneByName(ClavR); }
 			}
-			if (bBodyHands)
-			{
-				// The old arms stay as invisible points (not hidden in game: the magazine hangs on the left one).
-				FPArmR->SetVisibility(false);
-				FPArmL->SetVisibility(false);
-				FPItemHand->SetVisibility(false);
-			}
+			// The old arms and item hand: their visibility is decided in UpdateArms/UpdateItemUse (round 14b fix 10).
 		}
 		if (OwnAnim) FillBodyAnimInput(OwnAnim, true, DeltaSeconds);
 	}

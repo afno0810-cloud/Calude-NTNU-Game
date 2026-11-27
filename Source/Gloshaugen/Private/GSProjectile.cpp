@@ -4,6 +4,7 @@
 #include "GSAudio.h"
 #include "GSItems.h"
 #include "GSUtils.h"
+#include "GSMapState.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -296,6 +297,9 @@ void AGSProjectile::Explode()
 	}
 	else
 	{
+		// Grenade, mine, C4, rocket: doors fly open, locks break and glass shatters (Interaktiv). Flash, smoke and fire
+		// do not get here.
+		if (Radius > 0.f) GSMapState::ApplyBlast(GetWorld(), Loc, Radius, Damage);
 		if (Damage > 0.f && Radius > 0.f) DamageAround(Loc, Damage, Radius, true);
 		SetLifeSpan(0.5f);
 	}

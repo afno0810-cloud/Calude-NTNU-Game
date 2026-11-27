@@ -18,6 +18,7 @@
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "HAL/IConsoleManager.h"
 #include "UObject/Package.h"
+#include "AudioDevice.h"
 
 // Named namespace (not anonymous): unity builds put several .cpp files together (see laerdom.md).
 namespace GSAudioImpl
@@ -69,7 +70,8 @@ namespace GSAudioImpl
 		EMaxConcurrentResolutionRule::Type Rule = EMaxConcurrentResolutionRule::StopQuietest;
 		switch (C)
 		{
-		case ESnd::Weapon: Max = 24; Rule = EMaxConcurrentResolutionRule::StopOldest; break;
+		// Far shots and far tails go first, so near shots and your own (2D, no distance) survive a big fight.
+		case ESnd::Weapon: Max = 24; Rule = EMaxConcurrentResolutionRule::StopFarthestThenOldest; break;
 		case ESnd::Step:   Max = 16; break;
 		case ESnd::Impact: Max = 12; break;
 		case ESnd::Body:   Max = 8; break;
@@ -87,6 +89,47 @@ namespace GSAudioImpl
 	}
 
 	int32 CapFor(ESnd C) { return ConcurrencyFor(C)->Concurrency.MaxCount; }
+
+	/** Groups of their own inside a class: the room tails, your own shots and the flag radio. */
+	enum class EGrp : uint8 { Tail, OwnShot, FlagRadio, Num };
+
+	USoundConcurrency* GroupConcurrency(EGrp G)
+	{
+		static USoundConcurrency* Items[uint8(EGrp::Num)] = {};
+		USoundConcurrency*& K = Items[uint8(G)];
+		if (K) return K;
+		K = NewObject<USoundConcurrency>(GetTransientPackage(), NAME_None, RF_Transient);
+		K->AddToRoot();
+		// Tails: 6 (1-3 s each, the newest room matters). Own shots: 4 (shot, mechanics; never cut by others' shots).
+		// Flag and radio messages: 4, apart from hit markers, ear ringing and the heartbeat, so they are never stopped
+		// by them.
+		K->Concurrency.MaxCount = G == EGrp::Tail ? 6 : 4;
+		K->Concurrency.ResolutionRule = EMaxConcurrentResolutionRule::StopOldest;
+		K->Concurrency.bLimitToOwner = false;
+		return K;
+	}
+
+	/** The concurrency group for a sound by its (variant-less) name; b2D = played without a place (your own). */
+	USoundConcurrency* ConcurrencyForName(const FString& N, ESnd C, bool b2D)
+	{
+		if (C == ESnd::Weapon)
+		{
+			if (N.StartsWith(TEXT("Tail_"), ESearchCase::CaseSensitive)) return GroupConcurrency(EGrp::Tail);
+			if (b2D) return GroupConcurrency(EGrp::OwnShot);   // a 2D weapon sound is always your own shot (_FP, _Mech)
+		}
+		if (C == ESnd::Radio && (N.StartsWith(TEXT("Flag_"), ESearchCase::CaseSensitive) || N.StartsWith(TEXT("Radio_"), ESearchCase::CaseSensitive)))
+		{
+			return GroupConcurrency(EGrp::FlagRadio);
+		}
+		return ConcurrencyFor(C);
+	}
+
+	/** The engine's own count of sounds playing on this world's audio device (-1 without one). */
+	int32 EngineActive(const UWorld* World)
+	{
+		FAudioDevice* D = World ? World->GetAudioDeviceRaw() : nullptr;
+		return D ? D->GetNumActiveSources() : -1;
+	}
 
 	float PriorityFor(ESnd C)
 	{
@@ -248,7 +291,7 @@ namespace GSAudioImpl
 
 	void Note(const UObject* Context, ESnd C, USoundBase* S)
 	{
-		if (UGSAudioWorld* A = Sub(WorldOf(Context))) A->NoteStarted(FMath::Min(S->GetDuration(), 6.f) + float(uint8(C)) * 100.f);
+		if (UGSAudioWorld* A = Sub(WorldOf(Context))) A->NoteStarted(uint8(C), FMath::Min(S->GetDuration(), 6.f));
 	}
 
 	USoundBase* Play3D(const UObject* Context, const FString& Name, const FVector& Loc, float Volume, float RangeM, float Pitch, bool bOcclude)
@@ -264,7 +307,7 @@ namespace GSAudioImpl
 			Pitch *= FMath::FRandRange(0.98f, 1.02f);
 		}
 		UGameplayStatics::PlaySoundAtLocation(Context, S, Loc, FRotator::ZeroRotator, Volume, Pitch, 0.f,
-			Attenuation(RangeM, bOcclude && C != ESnd::Radio), ConcurrencyFor(C), nullptr, nullptr);
+			Attenuation(RangeM, bOcclude && C != ESnd::Radio), ConcurrencyForName(Name, C, false), nullptr, nullptr);
 		Note(Context, C, S);
 		return S;
 	}
@@ -281,7 +324,7 @@ namespace GSAudioImpl
 			Volume *= FMath::FRandRange(0.95f, 1.f);
 			Pitch *= FMath::FRandRange(0.985f, 1.015f);
 		}
-		UGameplayStatics::PlaySound2D(Context, S, Volume, Pitch, 0.f, ConcurrencyFor(C));
+		UGameplayStatics::PlaySound2D(Context, S, Volume, Pitch, 0.f, ConcurrencyForName(Name, C, true));
 		Note(Context, C, S);
 		return S;
 	}
@@ -808,15 +851,21 @@ void UGSAudioWorld::Enqueue(const FDelayed& D)
 	MaxQueue = FMath::Max(MaxQueue, Queue.Num());
 }
 
-void UGSAudioWorld::NoteStarted(float Encoded)
+void UGSAudioWorld::NoteStarted(uint8 Category, float LengthS)
 {
 	using namespace GSAudioImpl;
-	// Encoded = category * 100 + length (kept as one float so the header needs no enum)
 	const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
-	const int32 Cat = FMath::FloorToInt(Encoded / 100.f);
-	Ends.Add(Now + (Encoded - Cat * 100.f) + Cat * 1000000.f);
+	FStarted E;
+	E.Category = Category;
+	E.End = Now + LengthS;
+	Ends.Add(E);
 	if (Ends.Num() > 512) Ends.RemoveAt(0, 128);
 	MaxActive = FMath::Max(MaxActive, ActiveEstimate());
+}
+
+int32 UGSAudioWorld::EngineActive() const
+{
+	return GSAudioImpl::EngineActive(GetWorld());
 }
 
 int32 UGSAudioWorld::ActiveEstimate() const
@@ -825,10 +874,9 @@ int32 UGSAudioWorld::ActiveEstimate() const
 	// sounds still playing, each category capped by its concurrency limit (as the engine does)
 	const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
 	int32 Per[uint8(ESnd::Num)] = {};
-	for (float E : Ends)
+	for (const FStarted& E : Ends)
 	{
-		const int32 Cat = FMath::Clamp(FMath::FloorToInt(E / 1000000.f), 0, int32(ESnd::Num) - 1);
-		if (E - Cat * 1000000.f > Now) ++Per[Cat];
+		if (E.End > Now) ++Per[FMath::Min(int32(E.Category), int32(ESnd::Num) - 1)];
 	}
 	int32 Total = 0;
 	for (int32 C = 0; C < int32(ESnd::Num); ++C) Total += FMath::Min(Per[C], CapFor(ESnd(C)));
@@ -894,14 +942,16 @@ void UGSAudioWorld::Tick(float DeltaTime)
 		}
 	}
 
+	MaxEngineActive = FMath::Max(MaxEngineActive, EngineActive());
 	if (Now >= NextLog)
 	{
 		NextLog = Now + 10.f;
 		if (MaxActive > 0 || MaxQueue > 0)
 		{
-			UE_LOG(LogTemp, Log, TEXT("GSAudio: maks aktive lyder siste 10 s: %d, maks i kø: %d"), MaxActive, MaxQueue);
+			UE_LOG(LogTemp, Log, TEXT("GSAudio: maks aktive lyder siste 10 s: %d i motoren (%d etter vårt anslag), maks i kø: %d"), MaxEngineActive, MaxActive, MaxQueue);
 			MaxActive = 0;
 			MaxQueue = 0;
+			MaxEngineActive = 0;
 		}
 	}
 }
@@ -919,7 +969,7 @@ void UGSAudioWorld::Deinitialize()
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Self test (headless):  GSAudio.Selvtest  -> 100 shots from a point 6 m ahead of the listener over 10 s, logs results
+// Self test (headless):  GSAudio.Selvtest  -> 4 shooters round the listener, 100 shots each over 10 s, logs results
 
 namespace GSAudioImpl
 {
@@ -956,24 +1006,31 @@ namespace GSAudioImpl
 		// queue limit: 100 far-away sounds at once must leave at most 64 waiting
 		for (int32 I = 0; I < 100; ++I) GSAudio::PlayAtDelayed(World, TEXT("Shot_Rifle_Far"), Ear + FVector(30000.f, 0.f, 0.f), 0.f, 400.f, 1.f, 1.f);
 		UE_LOG(LogTemp, Log, TEXT("GSAudio Selvtest: kø etter 100 forsinkede lyder: %d (maks 64)"), A->QueueNum());
-		// 100 rifle shots, 10 a second, from 6 m in front of the listener
-		const FVector From = Ear + FVector(600.f, 0.f, 0.f);
+		// Four shooters firing at once, 10 shots a second each for 10 s: 6 m ahead, 12 m left, 25 m right, 40 m behind.
+		// The peak is the engine's own count of playing sounds (GetNumActiveSources), plus our estimate.
+		const TArray<FVector> From = { Ear + FVector(600.f, 0.f, 0.f), Ear + FVector(0.f, -1200.f, 0.f), Ear + FVector(0.f, 2500.f, 0.f), Ear + FVector(-4000.f, 0.f, 0.f) };
 		TSharedRef<int32> Count = MakeShared<int32>(0);
 		TSharedRef<int32> Peak = MakeShared<int32>(0);
+		TSharedRef<int32> PeakEst = MakeShared<int32>(0);
 		TSharedRef<FTimerHandle> H = MakeShared<FTimerHandle>();
 		TWeakObjectPtr<UWorld> WW(World);
-		World->GetTimerManager().SetTimer(*H, FTimerDelegate::CreateLambda([WW, Count, Peak, H, From]()
+		World->GetTimerManager().SetTimer(*H, FTimerDelegate::CreateLambda([WW, Count, Peak, PeakEst, H, From]()
 		{
 			UWorld* W = WW.Get();
 			if (!W) return;
-			GSAudio::PlayShotFor(W, EGSWeaponClass::Rifle, false, From);
-			if (UGSAudioWorld* S = Sub(W)) *Peak = FMath::Max(*Peak, S->ActiveEstimate());
+			for (const FVector& F : From) GSAudio::PlayShotFor(W, EGSWeaponClass::Rifle, false, F);
+			if (UGSAudioWorld* S = Sub(W))
+			{
+				*Peak = FMath::Max(*Peak, S->EngineActive());
+				*PeakEst = FMath::Max(*PeakEst, S->ActiveEstimate());
+			}
 			if (++*Count >= 100)
 			{
 				W->GetTimerManager().ClearTimer(*H);
 				if (UGSAudioWorld* S = Sub(W))
 				{
-					UE_LOG(LogTemp, Log, TEXT("GSAudio Selvtest: 100 skudd ferdig. Maks aktive lyder: %d (maks 48), i kø nå: %d (maks 64)"), *Peak, S->QueueNum());
+					UE_LOG(LogTemp, Log, TEXT("GSAudio Selvtest: 4 skyttere x 100 skudd ferdig. Maks aktive lyder i motoren: %d (maks 48; -1 = ingen lydenhet), vårt anslag %d, i kø nå: %d (maks 64)"),
+						*Peak, *PeakEst, S->QueueNum());
 				}
 			}
 		}), 0.1f, true);

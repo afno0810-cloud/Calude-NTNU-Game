@@ -94,8 +94,10 @@ public:
 	void Enqueue(const FDelayed& D);
 	/** Sounds started by GSAudio that are still playing (estimate from their lengths). */
 	int32 ActiveEstimate() const;
-	/** A sound started: category * 100 + its length in seconds. */
-	void NoteStarted(float Encoded);
+	/** A sound started: its class (GSAudioImpl::ESnd) and length in seconds. */
+	void NoteStarted(uint8 Category, float LengthS);
+	/** The engine's own count of sounds playing on this world's audio device (-1 without one). */
+	int32 EngineActive() const;
 	/** Everything but steps and radio ducked and muffled for Seconds (a blast close by). */
 	void PushBlastMix(float Seconds);
 	int32 QueueNum() const { return Queue.Num(); }
@@ -104,6 +106,7 @@ public:
 	FGSRoom ListenerRoom;
 	int32 MaxQueue = 0;
 	int32 MaxActive = 0;
+	int32 MaxEngineActive = 0;
 
 	virtual void Tick(float DeltaTime) override;
 	virtual TStatId GetStatId() const override { RETURN_QUICK_DECLARE_CYCLE_STAT(UGSAudioWorld, STATGROUP_Tickables); }
@@ -115,7 +118,8 @@ protected:
 	}
 private:
 	TArray<FDelayed> Queue;
-	TArray<float> Ends;          // end times of sounds we started
+	struct FStarted { uint8 Category = 0; float End = 0.f; };
+	TArray<FStarted> Ends;       // sounds we started: class and end time
 	int32 MixPushes = 0;
 	float NextRoom = 0.f;
 	float NextLog = 10.f;

@@ -193,9 +193,11 @@ void AGSPlayerController::ApplyGraphicsLevel(int32 Level)
 {
 	UGameUserSettings* S = GEngine ? GEngine->GetGameUserSettings() : nullptr;
 	if (!S) return;
-	// The level also sets the render resolution (Config/DefaultScalability.ini: 85 % on Lav/Middels, 100 % from Hoy),
-	// the same as when the main menu picks it. "Opplosning N" sets it by hand afterwards.
+	// The overall level also resets the resolution scale: keep the player's own resolution, like the main menu
+	// (Set.Graphics in GSMenu.cpp). "Opplosning N" changes it.
+	const int32 Res = GetResolutionPercent();
 	S->SetOverallScalabilityLevel(FMath::Clamp(Level, 0, 4));
+	S->SetResolutionScaleValueEx(float(FMath::Clamp(Res, 50, 100)));
 	S->ApplySettings(false);
 	S->SaveSettings();
 }

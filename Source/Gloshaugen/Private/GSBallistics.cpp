@@ -6,6 +6,7 @@
 #include "GSAudio.h"
 #include "GSGameState.h"
 #include "GSPlayerState.h"
+#include "GSMapState.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
@@ -13,6 +14,7 @@
 #include "GameFramework/Controller.h"
 #include "DrawDebugHelpers.h"
 #include "HAL/IConsoleManager.h"
+#include "TimerManager.h"
 
 namespace
 {
@@ -314,12 +316,26 @@ bool UGSBallistics::Step(FGSBullet& B, float Dt, const FCollisionQueryParams& Pa
 	const float Speed = B.Vel.Size();
 	const float DragCm = B.Ball.Drag / 100.f;
 	// Air drag (with the square of the speed) and gravity.
-	const FVector NewVel = B.Vel + (FVector(0.f, 0.f, -GravityCm) - B.Vel * (DragCm * Speed)) * Dt;
+	FVector NewVel = B.Vel + (FVector(0.f, 0.f, -GravityCm) - B.Vel * (DragCm * Speed)) * Dt;
 	const FVector NewPos = B.Pos + (B.Vel + NewVel) * 0.5f * Dt;
 	// A line trace on the visibility channel: that is where the hit zone boxes of the bodies are.
 	FHitResult Hit;
 	const bool bHit = World->LineTraceSingleByChannel(Hit, B.Pos, NewPos, ECC_Visibility, Params);
 	const FVector End = bHit ? FVector(Hit.ImpactPoint) : NewPos;
+	// Glass is not on the visibility channel (the trace above goes through it): Interaktiv finds the panes on this
+	// stretch, breaks them (real bullets on the server) and slows the bullet. Real and shown bullets call it alike, so
+	// the path is the same on every machine. Only up to End: glass behind the wall that stopped the bullet stays whole.
+	const float GlassF = GSMapState::BulletSegment(World, B.Pos, End, B.Vel, B.Damage, B.bReal);
+	if (GlassF < 1.f)
+	{
+		if (B.bReal)
+		{
+			UE_LOG(LogTemp, Log, TEXT("GS kule gjennom glass: GlassF %.3f, fart %.0f -> %.0f m/s, skade %.1f -> %.1f"),
+				GlassF, NewVel.Size() / 100.f, NewVel.Size() * GlassF / 100.f, B.Damage, B.Damage * GlassF);
+		}
+		NewVel *= GlassF;
+		B.Damage *= GlassF;
+	}
 #if ENABLE_DRAW_DEBUG
 	if (B.bReal && CVarShowBullets.GetValueOnGameThread() != 0)
 	{
@@ -329,6 +345,7 @@ bool UGSBallistics::Step(FGSBullet& B, float Dt, const FCollisionQueryParams& Pa
 	if (bHit)
 	{
 		AGSCharacter* Victim = Cast<AGSCharacter>(Hit.GetActor());
+		const float DistM = (B.Travelled + FVector::Dist(B.Pos, End)) / 100.f;
 		if (B.bReal)
 		{
 			// The shooter has left the game while it flew: TakeDamage cannot tell his team any more, so the team
@@ -341,7 +358,6 @@ bool UGSBallistics::Step(FGSBullet& B, float Dt, const FCollisionQueryParams& Pa
 			}
 			if (Victim && !bSpared)
 			{
-				const float DistM = (B.Travelled + FVector::Dist(B.Pos, End)) / 100.f;
 				const float Dmg = B.Damage * GSBallistics::DamageScale(B.Ball, DistM);
 				FPointDamageEvent Event(Dmg, Hit, B.Vel.GetSafeNormal(), nullptr);
 				Victim->IncomingAmmoType = B.AmmoType;
@@ -351,10 +367,17 @@ bool UGSBallistics::Step(FGSBullet& B, float Dt, const FCollisionQueryParams& Pa
 				Victim->IncomingAmmoType = GSAmmoType::Normal;
 				Victim->IncomingWeaponId = NAME_None;
 			}
+			else if (!Victim)
+			{
+				// Doors and code locks (Interaktiv): a lock that is hit breaks.
+				GSMapState::ApplyBulletHit(World, Hit, B.Damage * GSBallistics::DamageScale(B.Ball, DistM));
+			}
 		}
 		else if (!Victim)
 		{
-			// Dust and a hole where the bullet lands. Blood on a body comes from the server (MulticastWoundFX).
+			// A lasting hole by surface (Interaktiv's pool), then dust and sound where the bullet lands. Blood on a body
+			// comes from the server (MulticastWoundFX).
+			GSMapState::AddBulletMark(World, Hit);
 			AGSShortFX::SpawnImpact(World, Hit.ImpactPoint, Hit.ImpactNormal, GSAudio::SurfaceAt(Hit));
 		}
 		B.Pos = End;   // the last stretch is known to Tick (a crack from a bullet that hit the wall beside you)
@@ -368,4 +391,84 @@ bool UGSBallistics::Step(FGSBullet& B, float Dt, const FCollisionQueryParams& Pa
 	if (NewPos.Z > MaxHeightCm || NewPos.Z < -2000.f) return false;
 	static const FBox2D Area = GSCampus::PlayArea().ExpandBy(AreaMarginM);   // metres
 	return Area.IsInside(FVector2D(NewPos.X, NewPos.Y) / 100.f);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Headless check (plan 13, K1):  gs.Test.Glasskudd  -> a real 5.56 bullet through a whole glass wall in Helgasetr (not
+// the test room), fired 80 cm in front of it; after 0.5 s the log says whether the pane broke. Server only.
+
+namespace GSBallisticsTest
+{
+	void CmdGlassShot(const TArray<FString>& Args, UWorld* World)
+	{
+		if (!World || !World->IsGameWorld() || World->GetNetMode() == NM_Client)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("gs.Test.Glasskudd: bare på verten i spillet"));
+			return;
+		}
+		AGSMapState* MS = AGSMapState::Get(World);
+		if (!MS || !MS->IsRegistryBuilt() || MS->GetGlass().Num() == 0)
+		{
+			// Started from the command line (-ExecCmds): wait for the map and its glass
+			static int32 Tries = 0;
+			if (++Tries > 60)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("gs.Test.Glasskudd: FEIL  ingen glassruter etter 60 s"));
+				return;
+			}
+			FTimerHandle H;
+			TWeakObjectPtr<UWorld> WW(World);
+			const TArray<FString> ArgsCopy = Args;
+			World->GetTimerManager().SetTimer(H, FTimerDelegate::CreateLambda([WW, ArgsCopy]()
+			{
+				if (UWorld* W2 = WW.Get()) CmdGlassShot(ArgsCopy, W2);
+			}), 1.f, false);
+			return;
+		}
+		// A whole tempered glass wall from the map (one hit breaks it); a railing if there is none
+		int32 Key = 0;
+		const AGSMapState::FGlassPane* Pane = nullptr;
+		for (int32 Pass = 0; Pass < 2 && !Pane; ++Pass)
+		{
+			for (const auto& Pair : MS->GetGlass())
+			{
+				const AGSMapState::FGlassPane& P = Pair.Value;
+				if (P.State != 0 || P.Def.Id >= GSPart::TestIdBase) continue;
+				if (Pass == 0 && P.Def.Type != EGSGlass::Wall) continue;
+				Key = Pair.Key;
+				Pane = &P;
+				break;
+			}
+		}
+		UGSBallistics* Bal = World->GetSubsystem<UGSBallistics>();
+		if (!Pane || !Bal)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("gs.Test.Glasskudd: FEIL  fant ingen hel glassrute i kartet (%d ruter i alt)"), MS->GetGlass().Num());
+			return;
+		}
+		const FVector Center = Pane->Def.CenterCm;
+		const FVector N = FRotator(0.f, Pane->Def.YawDeg + 90.f, 0.f).Vector();
+		const FVector Start = Center + N * 80.f;
+		const int32 Type = int32(Pane->Def.Type);
+		UE_LOG(LogTemp, Log, TEXT("gs.Test.Glasskudd: skyter 5,56 mot rute %d (type %d, %.0f x %.0f cm) ved %s fra 80 cm"),
+			GSPart::IdOf(Key), Type, Pane->Def.LengthCm, Pane->Def.HeightCm, *Center.ToCompactString());
+		Bal->FireReal(nullptr, Start, -N, GSBallistics::ForCaliber(TEXT("556")), 30.f, NAME_None, 0, 0.f);
+		FTimerHandle H;
+		TWeakObjectPtr<UWorld> WW(World);
+		World->GetTimerManager().SetTimer(H, FTimerDelegate::CreateLambda([WW, Key, Type]()
+		{
+			UWorld* W = WW.Get();
+			AGSMapState* M = W ? AGSMapState::Get(W) : nullptr;
+			if (!M) return;
+			FGSPartState S;
+			M->GetPart(Key, S);
+			const bool bOk = Type == int32(EGSGlass::Wall) ? S.State == 2 : S.State >= 1;
+			UE_LOG(LogTemp, Log, TEXT("gs.Test.Glasskudd: %s  ruta etter skuddet: tilstand %d (0 hel, 1 sprukket, 2 knust), %d ruter knust i kartet"),
+				bOk ? TEXT("OK  ") : TEXT("FEIL"), S.State, M->NumGlassBroken());
+		}), 0.5f, false);
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs GCmdGlassShot(TEXT("gs.Test.Glasskudd"),
+		TEXT("Skyter en ekte kule gjennom en hel glassvegg i Helgasetr og logger om den knuses (hodeløs test)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&CmdGlassShot));
 }

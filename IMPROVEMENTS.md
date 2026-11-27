@@ -3,6 +3,22 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 7b (Spillbarhet): rus, overdose og motgift (27. nov.)
+
+Gammelt som er forbedret: stoffene slås ikke lenger av og på brått (933), en ny dose starter ikke rusen på nytt (934), og taket på boosts regnes én gang til slutt (939). Lattergass regnes nå som et dempende stoff, så den teller med i farlige blandinger.
+Nytt: overdose med myke trinn (935, 937), farlige blandinger (936), Nalokson nesespray (938), skjermlag for hvert stoff (940) og flere selvtester (941).
+Merk: det meste synes i spillet først når Kamp kobler på krokene K-FX (1) og (2). Til da kan Nalokson tas uten virkning, og alt kan prøves med `gs.fx.test`.
+
+933. Stoffer slår inn gradvis, når en topp og har en nedtur, i stedet for å slås av og på brått
+934. En ny dose av samme stoff forlenger rusen uten å starte innslaget på nytt
+935. Overdose: tar du for mye av ett stoff blir du uvel, så forgiftet, og til slutt dør du hvis ingen hjelper
+936. Blandinger er farlige som i virkeligheten: morfin med alkohol eller sovetablett gir pustestans, og koffein forsterker amfetamin
+937. Overgangene mellom uvel, forgiftet og overdose er myke, så farten ikke rykker (også online)
+938. Ny: Nalokson nesespray opphever en opioid-overdose en stund, men morfinen kommer tilbake når den går ut
+939. Taket på boosts regnes én gang til slutt, så rekkefølgen du tar stoffene i ikke betyr noe
+940. Skjermeffekter klare for hvert stoff: rødt ved røyk, hvitt ved amfetamin, tunnelsyn ved adrenalin og overdose, dobbeltsyn ved alkohol (tegnes av Kamp)
+941. Selvtest `gs.fx.test` sjekker innslag, doser, blandinger, overdose, motgift og myke overganger
+
 ## Runde 1b-retting (Interaktiv verden): glass etter kontrollen (27. nov.)
 
 Gammelt som er forbedret: glassbitene fra en granat (734, 735), slag mot glass (736), sprekkelyden ved hagl (737) og kulehullene på dører (738).
