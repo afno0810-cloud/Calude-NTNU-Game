@@ -5,6 +5,8 @@ Når Andreas gir tilbakemelding («jeg liker ...», «ikke gjør ...», «mer av
 med dato, med hans egne ord så langt det går.
 
 ## Spillet
+- **NYTT KART (27. nov. 2026): kartet skal bare være inne i Helgasetr.** «Skrap det gamle kartet.» Det nye
+  kartet er mye mindre: CTF inne i bygget Helgasetr på NTNU. Campuskartet utendørs skal ikke brukes.
 - **Én spillmodus foreløpig: Capture the Flag** (26. nov. 2026). To lag, to baser, ta motstanderens flagg
   og bær det hjem. Alt annet (fri roaming, battle royale-preg) kommer i andre rekke til CTF er ferdig og godt.
 - **Stort, overordnet mål: spillet skal være superrealistisk** (26. nov. 2026). Gjelder alt: hvordan
@@ -31,6 +33,19 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-27: Spillet skal hete **«Helgasetr Shootout»**.
+- 2026-11-27: «Bruk god tid og lag det nye mappet veldig bra.» Deretter, i rekkefølge:
+  1. Bedre førsteperson: hele kroppen synlig (ikke bare beina), bedre animasjoner for hopp, slag, sliding,
+     klatring, skyting osv.
+  2. Gjøre kartet komplett for spillet: plassere våpen, healing og utstyr så man finner dem rundt i bygget.
+  3. Spillmekanikk så alle ting virker, også medisin og boosts, med animasjoner når man tar dem og
+     skjermeffekter (f.eks. rødt ved røyking, hvitt ved amfetamin).
+  Også: bedre grafikk, klatremuligheter i kartet, og «gjør alt som allerede er lagt til i spillet bedre».
+- 2026-11-27: Referanser til Helgasetr: 27 bilder i `SourceArt/Reference/Helgasetr/`, NTNUs dokumentside
+  https://www.ntnu.no/campusutvikling/elgesetergate-10/dokumenter (og engelsk utgave), bildesiden
+  https://www.ntnu.no/campusutvikling/bilder, og en TikTok-video. Agentene kan også søke på nettet.
+- 2026-11-27: Basene skal være i hver sin ende av bygget, på samme etasje, med ganger og rom imellom.
+- 2026-11-27: «mappet skal bare være inni Helgasetr, altså nytt map, skrap det gamle mappet. Dette mappet er mye mindre.»
 - 2026-11-26 (fra testing): «du må fikse kontroller osv, det greiene der fungerer ikke» – klikk i menyen, styre figuren, endre taster og komme ut av menyen virket ikke. Hastesak.
 - 2026-11-26: Svarte «ja» på om klokketårnet bak Hovedbygningen (finnes ikke i virkeligheten) og robotene
   som pynt skal bort. Tolket som: fjern begge, for realismen.

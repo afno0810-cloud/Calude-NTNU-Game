@@ -25,15 +25,17 @@ Koordinater i meter, X = øst, Y = sør, origo midt i Hovedbygningen (som i `GSC
   3. *Sørruta (ute, trang):* passasjene, bakgården mellom fløyene, promenaden i sør, Kjelhuset.
   Fløyene (Hovedbygningen vest/øst) er flanke- og utkikksposisjoner.
 - **Kulisser:** Sentralbygg 1 og 2 (høyblokkene i sør), Bergbygget, Elektrobygget. Ingen loot, ingen møbler.
-- **Tatt ut:** IT-bygget, Stripa, Kjemiblokkene, Varmeteknisk, Realfagbygget, Idrettsbygget
-  (modellfilene ligger igjen i `SourceArt/Models`, de bare brukes ikke).
+- **Tatt ut:** IT-bygget, Stripa, Kjemiblokkene, Realfagbygget, Idrettsbygget
+  (modellfilene ligger igjen i `SourceArt/Models`, de bare brukes ikke). Varmeteknisk er tatt inn igjen i runde 3.
 - **Symmetri (fra runde 2):** begge basene er 46 × 22 m, og Gamle kjemi er snudd 180°, så banen er lik fra
-  begge sider (snudd om punktet (0, 10)). Dekning i rutene legges alltid likt på begge sider.
-  Gjenstående skjevhet: Kjelhuset finnes bare på vestsiden.
+  begge sider (snudd om punktet (0, 10)). Rutene og alt på dem er like om x = 0 (X-speiling): dekningen
+  ligger i `GSCampus::RouteCover()` (vest), og øst speiles av koden. Fra runde 3 har Kjelhuset en motpart i øst
+  (Varmeteknisk, (62, 105)).
 - **Spawn (fra runde 2):** bak egen base, i et riggområde mellom bygget og gjerdet.
 - **Kanten (fra runde 2):** byggegjerder 0,5 m innenfor `PlayArea()`, sperringer der veier krysser, og en
   usynlig vegg nøyaktig på kanten bak gjerdet.
-- **Regel for ruter:** ingen sti skal ha mer enn ca. 80 m fri sikt. Brytes med ting som finnes på en
+- **Regel for ruter:** ingen sti skal ha mer enn ca. 80 m fri sikt, heller ikke 4 m ved siden av stien
+  (sjekkes av `check_campus.py` j fra runde 3), og man skal komme fra base til base uten å sette seg fast (k). Brytes med ting som finnes på en
   campus under ombygging (gravefelt med gjerde, parkerte biler, containere), ikke med tilfeldige kasser.
 
 ### Faste regler for laget
@@ -52,9 +54,12 @@ Koordinater i meter, X = øst, Y = sør, origo midt i Hovedbygningen (som i `GSC
   modeller) brukes der de er bedre enn våre egne. Vi endrer dem ikke.
 
 ## Neste ideer (backlog, viktigst øverst)
-Gjort: runde 1 (CTF-utsnitt, baser, åpne dører og ramper, plasser, allé).
-I køen: `ko/plan-02.md` (ytelse P1/P2/P8 og litt P3, kanten, dekning og spawn K4, tårn og roboter bort,
-Lysgården åpnet, like baser K5, K1–K3, K6, F3, F9) og `ko/plan-03.md` (flaggrommene, faner, K7).
+Gjort: runde 1 (CTF-utsnitt, baser, åpne dører og ramper, plasser, allé), runde 2 og rettingene (ytelse,
+kanten, sluser, spawn bak basene, tårn og roboter bort; 1ee5e98, 6f7e35a).
+I køen: `ko/plan-03.md` (spillbart først: N1 sikksakk-dekning på nord- og sørruta, N3 Varmeteknisk som motpart
+til Kjelhuset, K7 repos, N2 vegger og flaggrom i basene, faner; sjekkene j og k).
+Neste (plan-04): flaggrommet innredet som gammelt laboratorium (FurnishBase fra utkastet), resten av basene
+innvendig, flaggsokkel og flaggmodell (bestilt av Spillbarhet), og P3 (Nanite for trær) når Andreas kan se det.
 
 1. **Ytelse, del 2** (etter at Andreas har målt plan-02 med `stat unit`/`stat gpu`): Nanite for trær,
    busker og hekker (P3), ny vind som slås av på avstand (F23), regn/snø ut av strålesporing og
@@ -64,8 +69,8 @@ Lysgården åpnet, like baser K5, K1–K3, K6, F3, F9) og `ko/plan-03.md` (flagg
 2. **Novemberkveld: lyset** (ferdig utredet, se «Utredet» under): riktig solbane for Trondheim i
    november, låst eksponering, gatelys som spotlys med skygge (F10) og lampehoder som gløder (F21), lys i
    vinduer. Må ses i editoren av Andreas.
-3. **Basene, del 3:** rom og vegger i 2.–4. etasje, trapper i stedet for ramper (R1/R2), dørblad med ekte
-   tykkelse, et motstykke til Kjelhuset på østsiden, flaggsokkel og flaggmodell (bestilt av Spillbarhet).
+3. **Basene, del 3:** flaggrommet møblert (plan-04), rom og vegger i 2.–4. etasje, trapper i stedet for ramper
+   (R1/R2), dørblad med ekte tykkelse, flaggsokkel og flaggmodell (bestilt av Spillbarhet).
 4. **Materialmerking for kuler (bestilling fra Kamp):** fysisk materiale på hver materialinstans
    (`gs_materials.py`). `_In`-instansene arver fra forelderen, så det holder å merke foreldrene.
 5. **Teksturer og modeller som ser feil ut på nært hold:** skjøt hver 2. meter på mur og granitt (F18),
@@ -95,7 +100,9 @@ Lysgården åpnet, like baser K5, K1–K3, K6, F3, F9) og `ko/plan-03.md` (flagg
 Feiljakt 1: F5, F10, F11, F12, F13, F14 (delvis tatt), F15, F16, R1/R2 (øvre etasjer, trapper), R3, R4, R6,
 R7–R9, R10, R12, R13. Feiljakt 2: P3 (Nanite), P6, P10, F17 (valgfri i plan-02), F18–F26. Hos andre lag
 (bestilt av hovedagenten): P1 punkt 3–4, P5, P7, P9 for `GSTerminal`. Andreas' fil: P4.
-Tatt i plan-02: F3 (unntatt løv), F8/P1, F9, P2, P8, P9 (gatelys), R5, R11, K1–K6. Plan-03: K7, R1 (1. etasje).
+Tatt i plan-02: F3 (unntatt løv), F8/P1, F9, P2, P8, P9 (gatelys), R5, R11, K1–K6. Rettinger: M1–M3, N4.
+Plan-03: N1, N2, N3, K7, R1 (vegger i 1. etasje i basene). Åpne fra kontroll 2: N5 (må ses av Andreas), N6 (gjelder
+bare hvis åpent byggegjerde brukes inne på banen).
 
 ### Utredet: novemberkveld-lyset (til backlog 4)
 Funn fra gjennomgangen av `GSEnvironment.cpp` og gatelysene, så neste plan kan skrives raskt:
@@ -117,6 +124,13 @@ Funn fra gjennomgangen av `GSEnvironment.cpp` og gatelysene, så neste plan kan 
 - Bestilling som hører til: Spillbarhet lar kampen starte mellom kl. 13.30 og 17.30 (skumring til kveld).
 
 ## Endringer i retningen
+- 2026-11-27 (runde 3): Hovedagenten: «spillbart først». Andreas har testet som eget spillvindu (menyen virker,
+  ca. 60 bilder/s). Runde 3 tar derfor først det som avgjør om kartet er spillbart: åpne skytebaner langs nord- og
+  sørruta (N1, løst med dypere gravefelt og sikksakk av containere, regnet til ≤ 80 m fri sikt), ulik side ved
+  sørruta (N3, nytt bygg Varmeteknisk), trang rampetopp (K7) og flagget sett fra endedøra (N2, vegger i basene).
+  Faner tas med fordi de gjør det lett å se hvilken base er hvilken. Møbleringen av flaggrommet og Nanite (P3) er
+  skjøvet til plan-04. Symmetrien gjøres eksplisitt: rutene speiles om x = 0, og dekningen ligger som data i
+  `GSCampus.h` så sjekkskriptet kan regne på den.
 - 2026-11-26 (runde 2): Hovedagenten setter ytelse først (feiljakt 2: RTX 3050 6 GB, skygger som tegnes
   på nytt hver frame), så dekning og spawn for CTF (K4) sammen med kanten, så tårn og roboter (Andreas'
   avgjørelse) og småfeilene. Detaljløftet er delt ut i plan-03 (flaggrommene). Valgt foran lysrunden

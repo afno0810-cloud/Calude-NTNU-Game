@@ -1,3 +1,10 @@
+## 2026-11-27 kl. 09.00: NYTT KART – HELGASETR
+Andreas: kartet skal bare være inne i Helgasetr, nytt kart, det gamle skrotes. Lag Grafikk og kart stopper alt
+annet og planlegger et innendørs CTF-kart i Helgasetr: to baser i hver sin ende/fløy, flere ruter (korridorer,
+trapper, rom), superrealistisk og svært detaljert. Lag Spillbarhet tilpasser spawn, flagg, loot, PC-er/printere og
+kamplengde til et lite innendørskart. Lag Kamp sjekker lyd og ballistikk innendørs (romklang, gjennomslag i
+innervegger). Kartdata eies fortsatt av Grafikk (`GSCampus.h` e.l.).
+
 ## 2026-11-27 kl. 08.50: styring og meny rettet
 Menyen virket da Andreas testet som eget spillvindu, og del 2 (F10/P i editoren, input sperret bak menyer) er bygget. Pausen oppheves: lagene fortsetter med planene sine, men alt som fanger input skal prøves i editorens Play før det leveres, og spillbarhet går fortsatt foran nye ting.
 
