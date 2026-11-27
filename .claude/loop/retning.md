@@ -52,6 +52,9 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
   Sonniss GDC 2019/2020/2024/2026, Snake's Authentic Gun Sounds, Kenney – venter på hans ja) og en lydmotor i C++: varianter,
   skudd i lag med romhale, okklusjon, romklang målt automatisk, miks der fottrinn og flagg alltid høres, eksplosjonslyd
   (i dag stumme), avstandsforsinkelse. Virker med de syntetiske lydene til filene kommer.
+- **Runde 13 (Kamp)** (`ko/plan-13.md`, **etter lydrunde 1, før plan-09**): Interaktivs K1–K5 (kuler knuser glass og
+  bremses, varige kulehull, skyte opp låser, granater sprenger dører/glass, kolben stopper i ruta, bruk-tasten, dørlyder)
+  + rettinger 10–13 fra kontroll av 14b.
 - **Runde 15** (`ko/plan-09.md`, skisse): animasjoner på kroppen – hopp/landing, glid, klatring med hender på kanten,
   slag, rekyl og lading på kroppen, treffrykk, hodebevegelse – uten GASP/Lyra (hovedagenten 27. nov.).
 - **Runde 16** (`ko/plan-10.md`, skisse): bruke ting med kroppen (andre ser det) og gradvise skjermeffekter per stoff
