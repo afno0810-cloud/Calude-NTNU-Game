@@ -33,6 +33,8 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-27: Lydnedlasting: Andreas sa ja til **bare det lille (ca. 21 MB)**: Snake's Authentic Gun Sounds,
+  Kenney Impact Sounds og Kenney Interface Sounds. IKKE Sonniss-pakkene (spør på nytt senere om det trengs).
 - 2026-11-27: «bedre spillmekanikk», «få spillet til å se tydeligere ut» (skarpere bilde: oppløsning/TSR/skarphet).
 - 2026-11-27: «bedre grafikk», «bedre animasjoner», «flere animasjoner», «mye bedre lydeffekter» (og lyseffekter).
 - 2026-11-27: «Fortsett og forbedre spillet, ønsker ikke å teste det ennå.» Ikke spør Andreas om testing; bruk
