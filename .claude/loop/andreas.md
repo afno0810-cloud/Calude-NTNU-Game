@@ -33,6 +33,14 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-27: «ødelegge ting», «plukke opp ting» – løse ting i bygget (stoler, puffer, flasker, kaffekopper, bøker,
+  brannslukker osv.) kan plukkes opp, bæres, kastes og ødelegges; pulter/stoler kan bæres foran dører.
+- 2026-11-27: «vinduer kan knuse», «granater kan få deler av mappet til å sprenge», «man kan skyte hull i vegger» –
+  ødeleggelse: glass knuses, eksplosiver sprenger lettvegger/dører/møbler, kuler lager varige hull og går
+  gjennom tynne vegger (gjennomslag).
+- 2026-11-27: «Fiks så mye på mappet er interaktivt» – så mye som mulig i Helgasetr skal kunne brukes: dører og
+  glassdører med kodelås, lys/brytere, heiser, kjøleskap/kiosk, piano, bordtennis, stoler og bord som kan flyttes
+  eller veltes, glass som knuses, skap som kan åpnes, skjermer osv.
 - 2026-11-27: Spillet skal hete **«Helgasetr Shootout»**.
 - 2026-11-27: «Bruk god tid og lag det nye mappet veldig bra.» Deretter, i rekkefølge:
   1. Bedre førsteperson: hele kroppen synlig (ikke bare beina), bedre animasjoner for hopp, slag, sliding,
