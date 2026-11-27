@@ -48,14 +48,19 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
   hode og armer (dagens førstepersonsarmer beholdes), hel egen skygge, tilbakefall. + rettingene fra runde 13.
 - **Runde 14b** (`ko/plan-08b.md`): hånd-IK på egen kropp (armene erstatter `SM_FPArm`), rekkevidde, fot-IK i trapper,
   armer skjult i kikkert, ev. delt førstepersonsskalering.
+- **Lydrunde 1** (`ko/plan-11.md`, **bygges rett etter 14b, før plan-09**): ekte innspilte lyder (nedlastingsliste til Andreas:
+  Sonniss GDC 2019/2020/2024/2026, Snake's Authentic Gun Sounds, Kenney – venter på hans ja) og en lydmotor i C++: varianter,
+  skudd i lag med romhale, okklusjon, romklang målt automatisk, miks der fottrinn og flagg alltid høres, eksplosjonslyd
+  (i dag stumme), avstandsforsinkelse. Virker med de syntetiske lydene til filene kommer.
 - **Runde 15** (`ko/plan-09.md`, skisse): animasjoner på kroppen – hopp/landing, glid, klatring med hender på kanten,
   slag, rekyl og lading på kroppen, treffrykk, hodebevegelse – uten GASP/Lyra (hovedagenten 27. nov.).
 - **Runde 16** (`ko/plan-10.md`, skisse): bruke ting med kroppen (andre ser det) og gradvise skjermeffekter per stoff
   (rød røyk, hvit amfetamin, tunnelsyn …). Venter på katalogsvar fra Spillbarhet (bestilt 27. nov.).
 - **Runde 17: V8, tilbakespoling av treffbokser** til skytterens tid, og «sist sett»-punktet for avslørt bærer.
 - **Runde 18: N1, nettrelevans** (`IsNetRelevantFor`).
-- Lydrunde for innendørs Helgasetr (romklang, gjennomslag i innervegger – prioriteringer 27. nov.) settes inn når
-  kartet har romdata; kan bli 17a.
+- **Lydrunde 2** (`ko/plan-12.md`, skisse): romklang og romtone per sone i Helgasetr, vegg-for-vegg-okklusjon etter materiale,
+  glass/dører/ødeleggelse med ekte lyd (Interaktiv spiller, Kamp leverer), kroppslyder, radio. Etter plan-09, når Grafikks
+  `SoundZones()`/`PM_GS_*` og Interaktivs `OnBroken` finnes. Rekkefølge nå: 14b → lyd 1 → 15 (plan-09) → 16 (plan-10) → lyd 2 → V8 → N1.
 - Runde 13 (`ko/plan-07.md`): **godkjent** (`b1eb305`) – blødning, blodspor, sår, frakobling, Esc-meny.
 
 ## Neste ideer (backlog, viktigst øverst)
@@ -82,7 +87,7 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
 6. **[Spor 4] Kropp med ordentlige animasjoner**. Gammelt: mannekengen andre ser har ingen huke-, sikte- eller
    haltebevegelse og holder ikke våpenet. Nytt: animasjoner fra Game Animation Sample/Lyra, treffbokser festet til
    beina på skjelettet (da stemmer løpende bein og armer også), halting som synes for andre.
-7. **[Spor 3] Ekte lyd på avstand** (R11). Nytt: smellet forsinkes med avstanden (343 m/s), lengre rekkevidde med
+7. **[Spor 3] Ekte lyd på avstand** (R11) – smell forsinket og fjernlyd tas i lydrunde 1 (plan-11); demper-delen (V6) står. Nytt: smellet forsinkes med avstanden (343 m/s), lengre rekkevidde med
    demping (overlydssmell og sus når en kule passerer kommer i 5b). Gammelt: lyddempet våpen høres lenger enn 40 m, demper
    trekker ikke skade, hagle med demper (V6).
 8. **[Spor 1] Sår som synes, resten**. Blodflekk på kroppen der kula traff kommer i runde 13. Gjenstår: blod på egne
@@ -98,7 +103,7 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
 12. **[Spor 1] Drapskamera fra drapsmannens side** (Andreas' godkjente forslag), bygger på dødskameraet.
 13. **[Spor 5] Slank HUD videre**: treffmarkør tones ned eller fjernes (blodet viser treffet), ammo vises ved
     «sjekk magasin», valg for HUD-mengde.
-14. **[Spor 3] Kroppen høres**: våt trefflyd, stønn, gisping ved lavt liv, pust etter sprint.
+14. **[Spor 3] Kroppen høres** (tas i lydrunde 2, plan-12): våt trefflyd, stønn, gisping ved lavt liv, pust etter sprint.
 15. **[Spor 1] Eksplosjoner som ødelegger**: sot, trykkbølge, øresus, splinter som egne treff per sone.
 16. **[Spor 2] Lommelykt og nattsikte montert på våpen; vind på lange skudd** (leser vær fra Grafikk; vinden legges
     som en ekstra kraft i `UGSBallistics::Step`).
@@ -111,6 +116,15 @@ lederen, lysstråle i sjeldenhetsfarge på loot, glødende omriss rundt drapsman
 rundeslutt med «høydepunkter». Statistikk kan vises nøkternt på resultattavla etter kampen, ikke underveis.
 
 ## Endringer i retningen
+- 2026-11-27 (plan-11/12): **Lyd før animasjonene i plan-09.** Andreas vil ha både «mye bedre lydeffekter» og «bedre/flere
+  animasjoner». Lyd går først fordi (1) den er det svakeste i spillet målt mot «superrealistisk»: alle 48 lydene er syntetisert
+  med numpy, og eksplosjoner har ingen lyd i det hele tatt; (2) den merkes i hvert sekund av spillet (hvert skudd og fottrinn);
+  (3) plan-09 kan uansett ikke skrives ferdig før 14b er kontrollert, og plan-10 venter på katalogsvar; (4) lydrunden trenger
+  ingenting fra andre lag (motoren måler rommene selv) og rører andre funksjoner enn plan-09 (bare lydlinjene i glid/landing/lading);
+  (5) nedlastingen må godkjennes av Andreas, så spørsmålet bør gå nå mens 14b bygges – planen virker også om svaret er nei.
+  Lydrunde 2 (soner, materialer, glass/dører) venter på Grafikk og Interaktiv og kommer etter plan-09. Backlog 7 (ekte lyd på
+  avstand) og 14 (kroppen høres) er tatt inn i lydrundene. Ekte filer: bare kilder der lisensen tillater spill uten krav (CC0,
+  Sonniss GDC-lisensen, Snake), Sonniss-filer holdes utenfor GitHub.
 - 2026-11-27 (runde 14–16): **Kroppen før V8.** Andreas' liste etter det nye Helgasetr-kartet har «bedre førsteperson:
   hele kroppen synlig, bedre animasjoner» øverst og «ting med animasjoner og skjermeffekter» som punkt 3. Alt det
   trenger en kropp med hender som kan styres fra kode, så runde 14 er grunnmuren (ekte førsteperson, `UGSBodyAnim`,

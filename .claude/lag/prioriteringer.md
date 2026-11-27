@@ -1,3 +1,6 @@
+## 2026-11-27 kl. 10.45: kroker til Interaktiv verden
+Lag Kamp tar Interaktivs bestillinger K1 (kuletreff → GSMapState, stopper ved vegg) og K4 (HasFocus-krok i Interact) i sin neste runde etter 14b, før lyd og animasjoner. K2/K3/K5 kan komme etter.
+
 ## 2026-11-27 kl. 10.20: to nye lag
 Lag Interaktiv verden overtar dører, glass, ødeleggelse, løse ting og AGSMapState fra Grafikks plan (Grafikk lager
 selve bygget og holder knusbare deler utenfor modellen; Interaktiv gjør dem levende). Lag Bots overtar
