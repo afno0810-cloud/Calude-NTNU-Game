@@ -86,8 +86,13 @@ Ytre mål **51,5 × 67,77 m** (målt). Arealet per etasje er ca. 2 900–3 300 m
 - **Utsparinger** (utendørs, ingen kan gå dit): NV-hjørnet X < −13,54, Y < −12,02 fra Plan 3 og oppover (tak over klatrehallen
   under); vestterrassen X < −15,4, Y +6…+18 på Plan 3 («åpent ned (ute)»); sørterrassen X −6,77…+13,54, Y +29,8…+35,66 fra
   Plan 3 og oppover. Fra Plan 1–2 er vestsiden nord for H en utendørs forplass med hovedinngangen.
-- **Trapperom (betong, målt plassering):** *Trapp sør* X −13,54…−6,77, Y +23,85…+35,66 (57 m²); *Trapp øst* X +16,9…+25,75,
-  Y −12,5…−7,5 (32 m²). Heis sør X −11,0…−8,6, Y +18,5…+21,0; heis øst X +13,6…+15,6, Y −12,5…−10,0.
+- **Trapperom, heiser og lobbyer (målt på Plan 4, rettet etter kontrollørens forhåndssjekk):**
+  - *Sør-lobbyen* X −13,5…−10,2, Y +20,05…+26,9, med 3,2 m åpning mot ringen (X −13,4…−10,2). *Heis sør* X −10,2…−6,6,
+    Y +20,4…+23,8 (østre halvdel av lobbysonen); WC-blokk X −10,2…−6,77, Y +23,8…+26,9. *Trapp sør* X −13,54…−6,77,
+    Y +26,9…+35,66, dør fra lobbyen i sør.
+  - *Heis øst* X +15,6…+18,2, Y −11,9…−9,9; *Trapp øst-lobby* X +15,6…+18,5, Y −9,9…−7,5, åpen mot østkorridoren;
+    *Trapp øst* X +18,5…+25,75, Y −12,5…−7,5.
+  - Ingen heis står i ringkorridoren.
 
 ## 3. Etasjene, en for en
 
@@ -111,7 +116,7 @@ Det store, lyse gulvet under atriet, ca. X −15,4…+15,4, Y −20,3…+5,6, i 
 - **Øst:** Sit-treningssenteret bak glass (styrketrening, spinning) – lukket; åpning til **Trapp øst**-lobbyen (X +15,4…+16,9,
   Y −12,5…−7,5).
 - **Sørvest:** korridor X −15,4…−12,9, Y +5,6…+20,3 forbi studentlokalet (vest, lukket) og kjøkkenet (øst, lukket) til
-  **Sør-lobbyen** (X −13,54…−6,77, Y +20,3…+23,85) og Trapp sør.
+  **Sør-lobbyen** (X −13,5…−10,2, Y +20,05…+26,9) og Trapp sør.
 
 ### Plan 2 (Z 5,6) – mesaninen
 - **U-formet ring:** vest, sør og øst. I nord er det ingen gulv mellom atriet og klatrehallen (glassvegg).
@@ -180,7 +185,8 @@ ca. X −8,3…+9,0, Y −12,3…+12,3.
 
 **Grupperommene** (bilde 18–21): glassdør i grønn/svart ramme med **kodelås** (tastatur), prikkebånd på glasset, brunt
 linoleum/kork, svarte bord på svart fot, grå og grønne kontorstoler på hjul, en trestol, whiteboard på lettveggen,
-glassvegg ut mot atriet.
+glassvegg ut mot atriet. **I spillet er veggen mot korridoren og veggene mellom boksene lettvegg (hvit, med whiteboard,
+ugjennomsiktig)**; bare veggene mot atriet og dørene er glass. Det gir dekning langs korridorene og bryter sikten tvers over.
 
 ## 5. Spillet: CTF i Helgasetr
 
@@ -189,25 +195,31 @@ glassvegg ut mot atriet.
 | | Sørbasen (indeks 0, rødt lag) | Nordbasen (indeks 1, blått lag) |
 |---|---|---|
 | Rom | undervisningsrom 100 pl (4.019 i 2018-nummerering) | undervisningsrom 50 pl ×2, foldeveggen åpen (4.014 + 4.015) |
-| Rommet | X −6,77…+13,54, Y +20,3…+29,8 | X −13,54…+6,77, Y −32,11…−20,3 |
-| Flagg (m) | (+3,4, +26,0, 13,9) | (−3,4, −26,0, 13,9) |
-| Dører til korridoren | (+10,0, +20,3) og (−3,0, +20,3), 1,0 m | (−10,0, −20,3) og (+3,0, −20,3), 1,0 m |
-| Sidedør til egen lobby | (−6,77, +22,0) → Sør-lobbyen | (+6,77, −22,0) → Nord-lobbyen |
+| Rommet | X −6,77…+13,54, Y +20,05…+29,8 | X −13,54…+6,77, Y −32,11…−20,05 |
+| Flagg (m) | (+3,4, +26,0, 13,9) – i `GSCampus::Bases()` Z 13,4, se under | (−3,4, −26,0, 13,9) – Z 13,4 |
+| Dører til korridoren | (+10,0, +20,05) og (−3,0, +20,05), 1,0 m | (−10,0, −20,05) og (+3,0, −20,05), 1,0 m |
+| L-skjerm innenfor hver dør | 1,6 × 2,1 m, 1,5 m inn (oppslagstavle/knaggrekke) | samme |
+| Sidedør | **ingen** | **ingen** |
 | SpawnYaw | −90° (ser nordover) | +90° (ser sørover) |
 
-Flagg til flagg: 52,4 m i luftlinje. Begge flaggene står 5,7 m fra korridorveggen (sør-rommet er grunnere, så sørflagget står
-3,8 m fra yttervinduet, nordflagget 6,1 m). Tre innganger per base (to fra korridoren, én fra egen side) – Spillbarhets ønske
-om «minst to innganger» er oppfylt.
+Flagg til flagg: 52,4 m i luftlinje. Begge flaggene står 5,7 m fra korridorveggen. To innganger per base, begge fra
+korridoren (Spillbarhets ønske om «minst to innganger» er oppfylt). Dørene er punktsymmetriske, så linja gjennom et dørpar
+går alltid gjennom origo og tvers over atriet (52,6 m): den brytes av L-skjermene og av at glassboksene har lettvegg mot
+korridoren (kontrollørens K6; sjekk e2).
 
-**Spawn** (rom bak egen base, med to utganger hver):
-- Sør (rødt): grupperom SV, S1 X −25,75…−15,4, Y +20,3…+26,0 og S2 Y +26,0…+32,11. Gangen X −15,4…−13,54, Y +20,3…+32,11
-  er lukket mot ringkorridoren og åpen mot Sør-lobbyen. Andre utgang: dør fra S1 nordover til venterommet i vestfløyen
-  (−24,0, +20,3). Punkter: (−23,0/−18,0) × (+22,2, +24,4, +27,8, +30,4).
-- Nord (blått), samme rotert: N1 X +15,4…+25,75, Y −26,0…−20,3, N2 Y −32,11…−26,0, gangen X +13,54…+15,4, dør fra N1 til
-  gangen nord for Trapp øst (+24,0, −20,3). Punkter: (+23,0/+18,0) × (−22,2, −24,4, −27,8, −30,4).
-- Lobbyene: Sør-lobby X −13,54…−6,77, Y +20,3…+23,85 (heis sør, dør til Trapp sør ved (−10,2, +23,85)), åpning 1,8 m til
-  sørkorridoren ved (−10,2, +20,3). Nord-lobby X +6,77…+13,54, Y −23,85…−20,3, åpning 1,8 m ved (+10,2, −20,3). Rommet bak
-  Nord-lobbyen (grupperom 4.022, X +6,77…+13,54, Y −32,11…−23,85) står der Trapp sør står på sørsiden.
+**Flaggets Z i dataene:** `AGSGameMode::PickSpawnTransform` sporer ned fra `Base.Z + 4 m`. Med Z 13,9 starter sporet på
+17,9 m, inne i P5-dekket (17,85–18,2). Da avvises alle punkter og hele laget spawner på flagget. Til Spillbarhet har
+flyttet starten til +2 m (bestilt), står `Flag.Z = 13,4` i `GSCampus::Bases()`. Sporene starter da på 17,4 og 16,4 m.
+
+**Spawn** (rom bak egen base, sluse med L-sving, to utganger hver):
+- Sør (rødt): S1 grupperom X −25,75…−15,4, Y +20,3…+26,0 og S2 Y +26,0…+32,11. Spawngangen X −15,4…−13,54 er stengt mot
+  ringen; døra fra gangen til Sør-lobbyen sitter i lobbyens vestvegg ved Y ≈ +25,9 (L-sving). Andre utgang: dør fra S1 til
+  venterommet (−24,6, +20,3) med L-skjerm innenfor. Punkter: (−23,0/−18,5) × (+22,2, +24,6, +27,6, +30,6).
+- Nord (blått), rotert: N1 X +15,4…+25,75, Y −26,0…−20,3, N2 Y −32,11…−26,0, Nord-spawngangen X +13,54…+15,4, døra til
+  Nord-lobbyen (X +10,2…+13,54, Y −26,9…−20,05) ved Y ≈ −25,9, andre utgang (+24,6, −20,3) til NØ-gangen.
+- **Trapp sør stopper på Plan 3** for spillet: alarmdøra på Plan 4 er låst (K9). Ellers kommer blått lag opp i rødt lags
+  lobby, 8 m fra rødt flagg og i rødt lags spawnutgang. På Plan 4 lander bare Trapp øst og atriumtrappa løp 3. Begge lag
+  bruker dem: fra Trapp øst til nordflagget ca. 29 m, fra løp 3 til sørflagget ca. 34 m (≤ 20 % forskjell, sjekk d2).
 
 ### Ruter mellom basene
 
@@ -218,12 +230,12 @@ om «minst to innganger» er oppfylt.
 | R3 Østkorridoren | P4 ringen øst, langs atriumtrappa | 62 m | trappa gir innsyn ovenfra og nedenfra |
 | R4 Østfløyens rom | radiografi → vernepleier → treningsleiligheten → Trapp øst-lobbyen | 66 m | nærkamp, kjøkken og senger som dekning |
 | R5 Gjennom atriet | P4 → trappeløp 3 ned → P3 → løp 2 over atriet → mesaninen P2 → opp igjen | 75–85 m | vertikal, utsatt i trappene, mye å se |
-| R6 Kantina (lavruta) | ned Trapp sør / Trapp øst / løp 1 til P1, over kantina, opp på andre siden | 95–110 m | lang, men usett fra Plan 4; dekning: Ryddekroken, salatbaren, plantekasser, båsene |
+| R6 Kantina (lavruta) | ned Trapp øst / løp 1–3 til P1, over kantina, opp på andre siden (Trapp sør går P1–P3) | 95–110 m | lang, men usett fra Plan 4; dekning: Ryddekroken, salatbaren, plantekasser, båsene |
 | R7 Klatreruter (runde 8) | se under | – | Andreas liker klatring |
 
-**Kjent skjevhet:** Trapp sør kommer opp rett ved rødt lags lobby (8 m fra sørflagget), mens Trapp øst kommer opp 15 m fra
-blått lags side. Til gjengjeld lander atriumtrappa (løp 3) nærmest Nordbasen. Sjekkskriptet regner rutelengdene fra hver
-spawn til motstanderens flagg og krever under 20 % forskjell; justeres med dørplassering, ikke med vegger som ikke finnes.
+**Balanse (målt i `check_helgasetr.py`):** korteste vei fra spawn til fiendens flagg lik for begge lag ±20 % (d). Veien fra
+hver trappeutgang på P4 til fiendens flagg er lik for begge lag ±20 %, og ingen fiendtlig trappeutgang har sikt til eller
+ligger nærmere enn 12 m fra egen spawnutgang (d2). Justeres med dører, skjermer og møbler, ikke med vegger som ikke finnes.
 
 **Klatreruter (planlagt, runde 8):** Kamps mantling tar kanter 0,55–2,2 m over føttene. Kandidater: (a) Ryddekroken –
 kiosktaket (2,1 m) → tårnets hylle → sittegalleriet på P2; (b) klatrehallen – buldreveggene som trinn fra P1 opp til et
@@ -235,13 +247,26 @@ utkikksgalleri mot atriet på P2/P3 (nord), med motstykke i studentarbeidsplasse
 - **Lengste siktlinjer:** vest-/østkorridoren 40 m; tvers over atriet 26–36 m gjennom glass (rekkverk og bokser er
   gjennomsiktige, men gir dekning mot kuler når de blir skuddfaste/knusbare). Ingen sti skal ha mer enn **42 m** fri sikt
   (innendørsregelen, erstatter 80 m ute), heller ikke 1,0 m til siden av midtlinjen i korridorer (de er bare 2,3 m brede).
-- **Dekning i korridorene:** betongsøyler Ø 0,5 m med svarte ringer (bilde 22) på atriesiden hver 6. m, skap (grønne/svarte
-  oppbevaringsskap, «44 skap», «56 skap» på tegningene) mot veggen, sofagrupper og info-skjermer ved knekkene.
-- **Dekning i atriet:** glassboksenes hvite undertak og svarte rammer, trappevangene, plantekasser, sittetrappa.
-- **Spawn skal aldri synes** fra ringkorridoren, trappene, lobbyene eller rutene R1–R6 (2D-sikt gjennom åpne dører og
-  glass, regnet av `check_helgasetr.py`).
-- **Lærdom tatt med:** åpninger er siktlinjer (dører, glass); sjekk både midtlinja og ved siden av; usynlige grenser trengs ikke
-  (ytterveggene er ekte), men takluka og glasstaket må tåle gripekrok.
+- **Ingen fri linje over 42 m fra base til base** (sjekk e2).
+- **Dekningslomme minst hver 8. m** langs vest- og østkorridoren (R1/R3): et sted (r 0,75 m) uten sikt til motsatt ringside og
+  til P3-ringen (sjekk e3). Glass slipper kuler gjennom og er ingen dekning. Dekningen kommer fra ugjennomsiktige, ekte ting:
+  boksenes lettvegger mot korridoren og mellom boksene (whiteboard), boksenes hvite undertak og rammer, trappevangene,
+  miljøstasjonene (tette skap), og sofagrupper og skap ved knekkene på atriesiden. Søylene Ø 0,5 m med svarte ringer
+  (bilde 22) og skapene mot ytterveggen (grønne/svarte, «44 skap», «56 skap» på tegningene) hjelper, men er ikke nok alene.
+- **Spawn skal aldri synes** fra ringkorridoren, trappene, lobbyene eller rutene R1–R6 (2D-sikt gjennom åpne dører og glass,
+  regnet av `check_helgasetr.py`).
+- **Lærdom tatt med:** åpninger er siktlinjer (dører, glass); sjekk både midtlinja og ved siden av.
+
+### Fall, fastsetting og gripekrok (fra forhåndssjekken)
+- **Fall ned i atriet er greit:** GSCharacter har ingen fallskade, P1 henger sammen med trappene, og rekkverket på 1,1 m er
+  høyere enn hopphøyden (ca. 0,94 m). Mantling over rekkverket feiler, fordi toppsporet 30 cm forbi glasset bare treffer luft.
+  **Regel:** ingenting man kan stå på (møbler, plantekasser, benker) settes inntil et rekkverk mot atriet. Hold minst 0,6 m
+  avstand, så man ikke kan klatre over.
+- **Gripekroken** (35 m, `ECC_WorldStatic`) skal ikke nå over Plan 4 i atriet. Alt der oppe (P4-boksenes tak, P5/P6-boksene,
+  fagverk, hengestenger, de øvre trappeløpene) blokkerer `Visibility`, men ignorerer `Pawn` og `WorldStatic`. P5/P6-kanten mot
+  atriet har en usynlig vegg i full høyde (blokkerer `Pawn` og `WorldStatic`). Glasstaket er BlockAll.
+- **Lave rom:** alle soner under trapper med under 2,0 m fri høyde fylles med noe massivt (vange, benk, plantekasse, teknisk
+  rom). Ingen spalte på 0,3–0,9 m mellom trappeløp og dekkekant.
 
 ### Hva Spillbarhet og Kamp trenger (bestilt i `bestillinger.md`)
 - **Data i `GSHelgasetr.h`** (Grafikk eier, generert fra `Tools/Blender/helgasetr_plan.py`): etasjer, sonene/stedsnavn,
@@ -302,7 +327,8 @@ bytter klossene mot ekte oppførsel.
   i atriet (8–10 stk.); mindre runde hvite pendler Ø 0,6 m i grupper over bordene (bilde 08). Lysende overflate (emissive) +
   ett rektangellys per stor lampe, uten skygge.
 - **Downlights:** runde innfelte lys i de hvite undertakene under hver etasjekant og glassboks (bilde 06, 07) – emissive, Lumen
-  tar resten. Korridorene: runde downlights hver 3. m, ett punktlys uten skygge per ca. 10 m.
+  tar resten. Korridorene: runde downlights hver 3. m, ett punktlys uten skygge per ca. 8 m med demping ≤ 6 m
+  (ellers lyser det gjennom veggene inn i naborom og etasjen over), minst 3 m fra baseveggene.
 - **Grupperom og undervisningsrom:** lysrør/paneler i himlingen; fra runde 7 egne lysgrupper per rom (lysbrytere).
 - Kveld/natt: alt innelys står på (bygget er åpent til kl. 23); glasstaket blir mørkt.
 
@@ -370,16 +396,18 @@ dagens pool. Måles med `stat unit` / `stat gpu` fra Plan 4 nord-korridor ser mo
 | Kontroll uten editor | rendres til bilder og strålesjekkes i Blender | bare tall |
 | Interaktivt | nei – én modell kan ikke knuses i biter | ja – hver instans har en ID |
 
-**Valg: blanding med én felles datakilde.** `Tools/Blender/helgasetr_plan.py` holder aksene, etasjene, rom, dører, hull,
-trapper, bokser, baser, spawn og plasser. Fra den lager
-1. `building_helgasetr.py` den faste strukturen i Blender (dekker, vegger, søyler, trapper, trapperom, boksenes gulv/tak/
-   rammer, fasade, tak og fagverk), delt i biter per plan og kvadrant (`SM_Bygg_Helgasetr_P4_NV` osv.), Nanite og
-   «complex as simple»-kollisjon (finnes fra før for `SM_Bygg_`), og fast glass (fasade, tak) i `SM_Glass_Helgasetr_*`;
-2. `gen_helgasetr.py` `Source/Gloshaugen/Public/GSHelgasetr.gen.inl` (generert, aldri rediger for hånd – som
-   `GSItemCatalog.gen.inl`);
-3. `AGSHelgasetrBuilder` (C++) setter modellene på plass og legger ut alt som skal være interaktivt som instanser med ID:
-   glassmoduler (rekkverk, boksvegger, glassdører), lettvegg-paneler, dørplasser, lys, lagfargene ved basene, og senere møbler.
-4. `check_helgasetr.py` (data) og `check_helgasetr_walk.py` (stråler i Blender) sjekker begge.
+**Valg: blanding med én felles datakilde, bygget i to steg.** `Tools/Blender/helgasetr_plan.py` holder aksene, etasjene,
+rom, dører, hull, trapper, bokser, baser, spawn og plasser.
+1. **Runde 4a:** `gen_helgasetr.py` skriver `Source/Gloshaugen/Public/GSHelgasetr.gen.inl`. Den er generert (aldri rediger for
+   hånd), har bare `inline constexpr`, og inneholder også ferdige vegg-, trinn- og dekkebokser. `AGSHelgasetrBuilder` bygger
+   **hele bygget som klosser** av dem, så kartet er spillbart med en gang uten import i editoren. Den legger også ut alt
+   interaktivt (glassfelt, lettvegger, dekning) i egne ISM-er med id-tabell. `check_helgasetr.py` sjekker dataene.
+2. **Runde 4b:** `building_helgasetr.py` lager den faste strukturen i Blender, 6 biter per plan (ingen over ca. 26 m) pluss
+   trapper, «over atriet», tak og fast glass. Bitene har Nanite og «complex as simple»-kollisjon. Byggeren bruker en
+   modellbit når den finnes og klossene ellers (**reserve per bit**). `check_helgasetr_walk.py` etterligner GameMode-sporene
+   og strålesjekker modellen.
+3. Glassfelt og moduler har enkel bokskollisjon på minst 5 cm (aldri kompleks på tynne flater), og hverken skygge,
+   avstandsfelt eller strålesporing. Løse ting (`COVER`, møbler) er aldri del av strukturmodellen.
 
 ## 12. Hvordan det nye kartet erstatter det gamle
 - De gamle filene slettes ikke ennå: `GSCampusBuilder.*`, gamle data i `GSCampus.h`, `buildings.py`,

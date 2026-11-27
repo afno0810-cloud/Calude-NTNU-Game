@@ -37,7 +37,8 @@ Hver runde: minst én gammel ting bedre og én ny. Detaljnivået legges der det 
 
 | Runde | Innhold | Hvorfor da |
 |---|---|---|
-| **4 (`ko/plan-04.md`)** | **Råbygget**: datakilden, Blender-struktur P1–P6 i riktig skala, atriet, ringen, trappene med ekte trinn, glassboksene, glasstak og fagverk, baser/spawn/flagg på P4, dekningsvolumer, enkle lys, glassfelt/lettvegger/dørplasser som egne instanser med ID, `GSCampus` peker på Helgasetr, to sjekkskript | alt annet bygger på dette; Andreas skal kunne gå rundt |
+| **4a (`ko/plan-04.md`)** | **Spillbart klossbygg fra data**: datakilden, generert `GSHelgasetr.gen.inl`, `AGSHelgasetrBuilder` bygger hele bygget (vegger, dekker, trinn, rekkverk, bokser, tak) som klosser, baser/spawn i sluser/flagg på P4, dekning hver 8. m, glassfelt/lettvegger/dekning som egne ISM-er med id, `GSCampus` peker på Helgasetr, sporprøve i loggen, `check_helgasetr.py` (inkl. e2/e3/d2, kapsel, gripekrok). **Bare startpistol** til Spillbarhet leverer loot | Andreas kan spille samme dag, uten import |
+| **4b (`ko/plan-04b.md`)** | **Blender-modellen**: 6 biter per plan, trapper, over-atriet (med gule løp P4→P6 som kulisse), sagtak og fagverk, fast glass, moduler, hengelampe; reserve per bit; DF-skala 2; FBX bare ved endring; `check_helgasetr_walk.py` (GameMode-spor, rekkverk langs hele kanten, kapsel); rendringer | kvalitet: ser ut som bildene |
 | **5 – Interaktiv 1: dører, knusbart glass, sprengning, flyttbar dekning** | `AGSMapState` (replikert tilstand: ødelagte ID-er, `FFastArraySerializer`); glass som sprekker/knuses (3 varianter + skår), ødelagt modell + lokale biter og støv, tak 150 biter; sprengbare lettvegger; dørmodeller (tre, glass med kodelås, dobbel, brann) og ødelagte dører; fysikkmøbler (stoler, puffer, små bord, søppelkasser, ≤ 60 som simuleres); fysiske materialer per materialinstans (`PM_GS_*`); glass slutter å ignorere `Visibility`. Bestillinger: Kamp kobler `ApplyBlast`/`ApplyBulletHit` og lager lyd; Spillbarhet lager `AGSDoor` (åpne/lukke/låse/dirke) og tilbakestiller kartet ved kampstart | Andreas: «så mye som mulig interaktivt», granater som sprenger; påvirker spillet mest |
 | **6 – Atriet og kantina, detaljert** | Ryddekroken (kiosk, kjøleskap, sittegalleri), salatbar med trebjelker, kaféøya med mosesirkler, piano og sofaer i loungen, stålbur-båser, kantinemøbler som instanser, plantekasser med planter, oransje mesanin med sittetrapp, trelameller på dekkekantene, runde blå matter, skilt og info-skjermer; ekte sagtak og fagverk i detalj; hengelampene | det mest kjente og mest synlige |
 | **7 – Basene og Plan 4-rommene + Interaktiv 2** | undervisningsrom (pulter, stoler, kateter, lerret, tavler), grupperom (svarte bord, kontorstoler, whiteboard, skjerm, kodelås), korridorer (stavparkett, søyler med svarte ringer, grønne/svarte skap, vasker), laber og treningsleilighet, flaggsokkel og flaggmodell (Spillbarhets ønske), lagfarger; lysbrytere og lysgrupper per rom, skjermer som knuses, skap og kiosk med loot | der basekampene står |
@@ -65,6 +66,12 @@ novemberlyset (sol for 63,4° N: høyeste sol 6°, opp ca. 09.15, ned ca. 14.45;
 månen uten skygge) gjelder fortsatt for `GSEnvironment`.
 
 ## Endringer i retningen
+- 2026-11-27 (forhåndssjekk av plan-04, hovedagentens avgjørelse): runde 4 er delt i **4a** (klossbygg fra data, spillbart
+  uten import) og **4b** (Blender-modellen, walk-sjekk, rendringer). Klossbygget blir reserve per modellbit. CTF-rettelser:
+  ingen sidedør i basene, L-skjermer og lettvegg mot korridoren på glassboksene (bryter base-til-base-sikten over atriet),
+  dekningslomme hver 8. m, spawn ut gjennom sluse med L-sving, og Trapp sør stopper på P3 (ellers snarvei inn i rødt lags
+  lobby). Heiser og lobbyer er rettet etter tegningen. Gripekroken skal ikke feste over P4 i atriet. `Flag.Z = 13,4` til
+  spawnsporet er flyttet (bestilt hos Spillbarhet).
 - 2026-11-27 (plan-04): Andreas: «mappet skal bare være inni Helgasetr … skrap det gamle mappet», «bruk god tid og lag det
   nye mappet veldig bra», basene i hver sin ende på samme etasje. Ny visjon og ny rundeplan. Basene legges på **Plan 4** fordi
   den er nesten punktsymmetrisk (ringen er symmetrisk om akse 5 × H), har undervisningsrom i begge ender og ser ned i hele
