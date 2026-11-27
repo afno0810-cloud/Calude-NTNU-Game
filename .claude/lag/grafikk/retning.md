@@ -66,6 +66,7 @@ novemberlyset (sol for 63,4° N: høyeste sol 6°, opp ca. 09.15, ned ca. 14.45;
 månen uten skygge) gjelder fortsatt for `GSEnvironment`.
 
 ## Endringer i retningen
+- 2026-11-27 (plan-05, hovedagentens prioriteringer): runde 5 er nå **5a** (bevis 4b hodeløst med import-rapport og `Grafikk.Foto`, fysisk riktig sol og eksponering, volumetriske solstråler, Lumen innendørs, 4 skyggelys, lootrettinger F1/F2) og **5b** (møbler med id `Props()`, lettveggmodell). Glass- og dørmoduler er Interaktivs (deres 1b), så de strykes hos oss. Runde atriehjørner utsatt til Interaktiv godtar at glass-id-er ved hjørnene endres. Lys og måling flyttes fram fra runde 9 fordi Andreas ber om det nå og alle senere runder trenger måleverktøyet.
 - 2026-11-27 (forhåndssjekk av plan-04, hovedagentens avgjørelse): runde 4 er delt i **4a** (klossbygg fra data, spillbart
   uten import) og **4b** (Blender-modellen, walk-sjekk, rendringer). Klossbygget blir reserve per modellbit. CTF-rettelser:
   ingen sidedør i basene, L-skjermer og lettvegg mot korridoren på glassboksene (bryter base-til-base-sikten over atriet),
