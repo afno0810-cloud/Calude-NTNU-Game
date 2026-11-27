@@ -48,6 +48,10 @@ public:
 	bool bRespawns = true;
 	bool bIsCrate = false;          // locked loot crate, relocks with new loot
 	EGSRarity MinRarity = EGSRarity::Common;
+	// Server only (Helgasetr): what kind of room the spot is in, the best rarity, and 0..1 how far it is from the bases
+	EGSLootPlace Place = EGSLootPlace::Campus;
+	EGSRarity MaxRarity = EGSRarity::Mythic;
+	float Depth = 0.f;
 	FRandomStream Rng;
 
 protected:

@@ -3,6 +3,7 @@
 #include "Misc/FileHelper.h"
 #include "Engine/StaticMesh.h"
 #include "UObject/UObjectGlobals.h"
+#include "HAL/IConsoleManager.h"
 
 #include "GSItemCatalog.gen.inl"
 
@@ -208,52 +209,146 @@ const TCHAR* GSItems::CategoryName(EGSItemCat C)
 	}
 }
 
+namespace GSItemsImpl
+{
+	static const float RarityWeight[] = { 40.f, 28.f, 17.f, 9.f, 4.5f, 1.5f };
+	// Groups: EGSItemCat in order, plus ammo (ammo boxes are gadgets in the catalog, but are needed far more often).
+	enum { GroupAmmo = (int32)EGSItemCat::MAX, NumGroups };
+	// Share of all loot per group and place (EGSLootPlace order). Campus is the old outdoor map, tuned for 20 players
+	// on ~410 spots. Helgasetr: corridors arm you, medical rooms heal you, the canteen feeds you, crates hold weapons.
+	static const float GroupWeight[][NumGroups] = {
+		//  Weapon Armor Helmet Food Drug Medicine Throwable Gadget Ammo
+		{ 20.f,  7.f,  5.f, 20.f,  8.f, 13.f,  7.f,  8.f, 12.f },   // Campus
+		{ 30.f,  6.f,  5.f,  4.f,  3.f, 18.f,  8.f,  4.f, 22.f },   // Corridor
+		{ 10.f,  2.f,  2.f,  4.f,  6.f, 60.f,  2.f,  4.f, 10.f },   // Medical
+		{ 18.f,  3.f,  2.f, 35.f,  2.f, 15.f,  5.f,  0.f, 20.f },   // Canteen
+		{ 45.f, 12.f,  8.f,  0.f,  3.f, 15.f, 12.f,  3.f,  2.f },   // Crate
+	};
+	static const FName KindAmmo(TEXT("ammo"));
+	static const FName KindDrone(TEXT("drone"));
+	static const FName IdParachute(TEXT("Parachute"));
+	static const FName IdOyet(TEXT("Oyet"));
+
+	int32 GroupOf(const FGSItemDef& D)
+	{
+		return (D.Kind == KindAmmo || D.Rounds > 0) ? (int32)GroupAmmo : (int32)D.Cat;
+	}
+
+	/** Indoors (Helgasetr): no parachute (nothing to jump from), no drones or the mushroom (wall vision is not realistic). */
+	bool Excluded(const FGSItemDef& D, EGSLootPlace Place)
+	{
+		return Place != EGSLootPlace::Campus && (D.Id == IdParachute || D.Id == IdOyet || D.Kind == KindDrone);
+	}
+
+	/**
+	 * Ammo weights outside Campus: a caliber is as likely as the weapons that use it (their rarity weights summed,
+	 * only weapons that can drop here). The generic ammo box gets the mean of the calibers that can drop.
+	 */
+	void AmmoWeights(EGSRarity MinRarity, EGSRarity MaxRarity, EGSLootPlace Place, TArray<TPair<const FGSItemDef*, float>>& Out)
+	{
+		TMap<FName, float> ByCaliber;
+		for (const FGSItemDef& D : GSItems::All())
+		{
+			if (!D.IsWeapon() || D.W.Caliber.IsNone() || D.Rarity < MinRarity || D.Rarity > MaxRarity || Excluded(D, Place)) continue;
+			ByCaliber.FindOrAdd(D.W.Caliber) += RarityWeight[FMath::Min((int32)D.Rarity, 5)];
+		}
+		float Sum = 0.f;
+		int32 NonZero = 0;
+		const FGSItemDef* Box = nullptr;
+		for (const FGSItemDef& D : GSItems::All())
+		{
+			// MinRarity does not apply to ammo (it is Common/Uncommon): a Rare crate may still hold a box for its guns.
+			if (GroupOf(D) != GroupAmmo || D.Rarity > MaxRarity || Excluded(D, Place)) continue;
+			if (D.Caliber.IsNone()) { Box = &D; continue; }
+			const float* W = ByCaliber.Find(D.Caliber);
+			if (!W || *W <= 0.f) continue;
+			Out.Add({ &D, *W });
+			Sum += *W;
+			++NonZero;
+		}
+		if (Box && NonZero > 0) Out.Add({ Box, Sum / NonZero });
+	}
+}
+
 FName GSItems::RandomLoot(FRandomStream& Rng, EGSRarity MinRarity)
 {
+	return RandomLoot(Rng, MinRarity, EGSRarity::Mythic, EGSLootPlace::Campus, 0.f);
+}
+
+FName GSItems::RandomLoot(FRandomStream& Rng, EGSRarity MinRarity, EGSRarity MaxRarity, EGSLootPlace Place, float Depth)
+{
+	using namespace GSItemsImpl;
 	// Three draws: first what kind of thing it is, then how rare, then which item of that kind and rarity.
 	// (Weighting every item on its own made loot follow the size of the catalog: 59 weapons drowned 5 medicines.)
-	static const float RarityWeight[] = { 40.f, 28.f, 17.f, 9.f, 4.5f, 1.5f };
-	// Share of all loot per group, tuned for 20 players on ~410 loot spots. Order of EGSItemCat, plus ammo
-	// (ammo boxes are gadgets in the catalog, but are needed far more often than other gadgets).
-	enum { GroupAmmo = (int32)EGSItemCat::MAX, NumGroups };
-	static const float GroupWeight[NumGroups] = { 20.f, 7.f, 5.f, 20.f, 8.f, 13.f, 7.f, 8.f, 12.f };
-	static const FName SortKindAmmo(TEXT("ammo"));
-	auto GroupOf = [](const FGSItemDef& D) -> int32
-	{
-		return (D.Kind == SortKindAmmo || D.Rounds > 0) ? (int32)GroupAmmo : (int32)D.Cat;
-	};
+	// With (Campus, Mythic, Depth 0) every weight and every random call is the same as before Helgasetr.
+	const bool bIndoor = Place != EGSLootPlace::Campus;
+	const float* PlaceWeight = GroupWeight[FMath::Clamp((int32)Place, 0, (int32)UE_ARRAY_COUNT(GroupWeight) - 1)];
+	if (MaxRarity < MinRarity) MaxRarity = MinRarity;
 
-	// 1) Group, among those that have anything at this rarity or better.
+	// 1) Group, among those that have anything in MinRarity..MaxRarity.
 	const int32 NumRarities = (int32)EGSRarity::MAX;
 	int32 Count[NumGroups][(int32)EGSRarity::MAX] = {};
 	for (const FGSItemDef& D : All())
 	{
-		if (D.Rarity >= MinRarity) ++Count[GroupOf(D)][(int32)D.Rarity];
+		if (D.Rarity >= MinRarity && D.Rarity <= MaxRarity && !Excluded(D, Place)) ++Count[GroupOf(D)][(int32)D.Rarity];
 	}
-	auto GroupTotal = [&](int32 G) { int32 N = 0; for (int32 R = 0; R < NumRarities; ++R) N += Count[G][R]; return N; };
+	TArray<TPair<const FGSItemDef*, float>> Ammo;
+	float AmmoTotal = 0.f;
+	if (bIndoor)
+	{
+		AmmoWeights(MinRarity, MaxRarity, Place, Ammo);
+		for (const TPair<const FGSItemDef*, float>& A : Ammo) AmmoTotal += A.Value;
+	}
+	auto GroupTotal = [&](int32 G) -> int32
+	{
+		if (bIndoor && G == GroupAmmo) return AmmoTotal > 0.f ? 1 : 0;
+		int32 N = 0;
+		for (int32 R = 0; R < NumRarities; ++R) N += Count[G][R];
+		return N;
+	};
+	auto Usable = [&](int32 G) { return PlaceWeight[G] > 0.f && GroupTotal(G) > 0; };
 	float Total = 0.f;
-	for (int32 G = 0; G < NumGroups; ++G) if (GroupTotal(G) > 0) Total += GroupWeight[G];
+	for (int32 G = 0; G < NumGroups; ++G) if (Usable(G)) Total += PlaceWeight[G];
 	if (Total <= 0.f) return All().Last().Id;
 	int32 Group = INDEX_NONE;
 	float Pick = Rng.FRandRange(0.f, Total);
 	for (int32 G = 0; G < NumGroups; ++G)
 	{
-		if (GroupTotal(G) == 0) continue;
+		if (!Usable(G)) continue;
 		Group = G;
-		Pick -= GroupWeight[G];
+		Pick -= PlaceWeight[G];
 		if (Pick <= 0.f) break;
 	}
 
-	// 2) Rarity, among those the group has.
+	// Indoor ammo: one caliber, weighted by the weapons that use it (no rarity draw).
+	if (bIndoor && Group == GroupAmmo)
+	{
+		Pick = Rng.FRandRange(0.f, AmmoTotal);
+		for (const TPair<const FGSItemDef*, float>& A : Ammo)
+		{
+			Pick -= A.Value;
+			if (Pick <= 0.f) return A.Key->Id;
+		}
+		return Ammo.Last().Key->Id;
+	}
+
+	// 2) Rarity, among those the group has. Deeper (further from the bases) makes rare things likelier.
+	const float DepthBoost = 1.f + 0.6f * FMath::Clamp(Depth, 0.f, 1.f);
+	float RarityW[(int32)EGSRarity::MAX] = {};
 	Total = 0.f;
-	for (int32 R = 0; R < NumRarities; ++R) if (Count[Group][R] > 0) Total += RarityWeight[R];
+	for (int32 R = 0; R < NumRarities; ++R)
+	{
+		if (Count[Group][R] == 0) continue;
+		RarityW[R] = Depth > 0.f ? RarityWeight[R] * FMath::Pow(DepthBoost, (float)R) : RarityWeight[R];
+		Total += RarityW[R];
+	}
 	int32 Rarity = 0;
 	Pick = Rng.FRandRange(0.f, Total);
 	for (int32 R = 0; R < NumRarities; ++R)
 	{
 		if (Count[Group][R] == 0) continue;
 		Rarity = R;
-		Pick -= RarityWeight[R];
+		Pick -= RarityW[R];
 		if (Pick <= 0.f) break;
 	}
 
@@ -261,10 +356,66 @@ FName GSItems::RandomLoot(FRandomStream& Rng, EGSRarity MinRarity)
 	int32 Index = Rng.RandRange(0, Count[Group][Rarity] - 1);
 	for (const FGSItemDef& D : All())
 	{
-		if (D.Rarity < MinRarity || GroupOf(D) != Group || (int32)D.Rarity != Rarity) continue;
+		if (D.Rarity < MinRarity || D.Rarity > MaxRarity || Excluded(D, Place) || GroupOf(D) != Group || (int32)D.Rarity != Rarity) continue;
 		if (Index-- == 0) return D.Id;
 	}
 	return All().Last().Id;
+}
+
+namespace GSItemsImpl
+{
+	/** gs.loot.stats [N]: draws N times per place, min rarity and depth (max Legendary, like Helgasetr) and logs the shares. */
+	void LootStats(const TArray<FString>& Args)
+	{
+		const int32 N = Args.Num() > 0 ? FMath::Clamp(FCString::Atoi(*Args[0]), 100, 200000) : 2000;
+		static const TCHAR* PlaceNames[] = { TEXT("Campus"), TEXT("Corridor"), TEXT("Medical"), TEXT("Canteen"), TEXT("Crate") };
+		static const TCHAR* GroupNames[NumGroups] = { TEXT("weapon"), TEXT("armor"), TEXT("helmet"), TEXT("food"), TEXT("drug"),
+			TEXT("medicine"), TEXT("throwable"), TEXT("gadget"), TEXT("ammo") };
+		const EGSRarity Mins[] = { EGSRarity::Common, EGSRarity::Uncommon, EGSRarity::Rare };
+		const float Depths[] = { 0.f, 1.f };
+		const FName Rocket(TEXT("Ammo_rocket")), Bmg(TEXT("Ammo_50bmg"));
+		UE_LOG(LogTemp, Display, TEXT("gs.loot.stats: %d trekninger per linje, Max Legendary"), N);
+		for (int32 P = (int32)EGSLootPlace::Corridor; P <= (int32)EGSLootPlace::Crate; ++P)
+		{
+			for (EGSRarity Min : Mins)
+			{
+				for (float Depth : Depths)
+				{
+					FRandomStream Rng(1234 + P * 100 + (int32)Min * 10 + (int32)Depth);
+					int32 Groups[NumGroups] = {};
+					int32 EpicPlus = 0, Forbidden = 0, Banned = 0;
+					TMap<FName, int32> Calibers;
+					for (int32 I = 0; I < N; ++I)
+					{
+						const FName Id = GSItems::RandomLoot(Rng, Min, EGSRarity::Legendary, (EGSLootPlace)P, Depth);
+						const FGSItemDef* D = GSItems::Find(Id);
+						if (!D) continue;
+						++Groups[GroupOf(*D)];
+						if (D->Rarity >= EGSRarity::Epic) ++EpicPlus;
+						if (Id == Rocket || Id == Bmg) ++Forbidden;
+						if (Excluded(*D, (EGSLootPlace)P) || D->Rarity > EGSRarity::Legendary) ++Banned;
+						if (GroupOf(*D) == GroupAmmo) ++Calibers.FindOrAdd(D->Caliber.IsNone() ? FName(TEXT("ammobox")) : D->Caliber);
+					}
+					FString Line;
+					for (int32 G = 0; G < NumGroups; ++G) Line += FString::Printf(TEXT("%s %.1f%% "), GroupNames[G], 100.f * Groups[G] / N);
+					Calibers.ValueSort([](int32 A, int32 B) { return A > B; });
+					FString Top;
+					int32 Shown = 0;
+					for (const TPair<FName, int32>& C : Calibers)
+					{
+						if (Shown++ == 3) break;
+						Top += FString::Printf(TEXT("%s %d "), *C.Key.ToString(), C.Value);
+					}
+					UE_LOG(LogTemp, Display, TEXT("gs.loot.stats %s Min=%s Depth=%.0f: %s| Epic+ %.1f%% | rakett/.50 %d | utelatt %d | ammo topp: %s"),
+						PlaceNames[P], GSItems::RarityName(Min), Depth, *Line, 100.f * EpicPlus / N, Forbidden, Banned, *Top);
+				}
+			}
+		}
+	}
+
+	static FAutoConsoleCommand LootStatsCommand(TEXT("gs.loot.stats"),
+		TEXT("gs.loot.stats [N=2000]: fordelingen av Helgasetr-loot per sted, minste sjeldenhet og dybde"),
+		FConsoleCommandWithArgsDelegate::CreateStatic(&LootStats));
 }
 
 int32 GSItems::PickupCount(const FGSItemDef& Def, FRandomStream& Rng)

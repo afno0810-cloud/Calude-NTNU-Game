@@ -14,6 +14,8 @@ enum class EGSItemCat : uint8 { Weapon, Armor, Helmet, Food, Drug, Medicine, Thr
 enum class EGSRarity : uint8 { Common, Uncommon, Rare, Epic, Legendary, Mythic, MAX };
 enum class EGSWeaponClass : uint8 { Pistol, SMG, Rifle, Sniper, Shotgun, LMG, Launcher, Bow, Melee };
 enum class EGSFireMode : uint8 { Hitscan, Pellets, Projectile, Melee };
+/** Where a loot spot lies (Helgasetr): decides what kind of things it holds. Campus = the old outdoor map. */
+enum class EGSLootPlace : uint8 { Campus, Corridor, Medical, Canteen, Crate };
 
 /** Multipliers from boosts and side effects. 1 = normal. */
 struct FGSEffectMods
@@ -123,6 +125,12 @@ namespace GSItems
 
 	/** Random loot. MinRarity lets locked crates give only good stuff. */
 	GLOSHAUGEN_API FName RandomLoot(FRandomStream& Rng, EGSRarity MinRarity = EGSRarity::Common);
+	/**
+	 * Random loot for a place (room kind). Only MinRarity..MaxRarity. Depth 0..1 (near a base .. far from both)
+	 * makes rarer things likelier. Outside Campus: no parachutes, drones or wall vision, and ammo follows how many
+	 * of the possible weapons use each caliber. (Campus, Mythic, 0) is exactly the old draw.
+	 */
+	GLOSHAUGEN_API FName RandomLoot(FRandomStream& Rng, EGSRarity MinRarity, EGSRarity MaxRarity, EGSLootPlace Place, float Depth);
 	/** How many of the item a pickup holds (grenades come in pairs, grapples have charges ...). */
 	GLOSHAUGEN_API int32 PickupCount(const FGSItemDef& Def, FRandomStream& Rng);
 

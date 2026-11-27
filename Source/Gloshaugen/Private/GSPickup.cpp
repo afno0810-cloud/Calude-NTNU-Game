@@ -95,7 +95,7 @@ void AGSPickup::BeginPlay()
 
 void AGSPickup::Roll()
 {
-	ItemId = GSItems::RandomLoot(Rng, MinRarity);
+	ItemId = GSItems::RandomLoot(Rng, MinRarity, MaxRarity, Place, Depth);
 	const FGSItemDef* Def = GSItems::Find(ItemId);
 	Count = Def ? GSItems::PickupCount(*Def, Rng) : 1;
 	Ammo = Reserve = -1;

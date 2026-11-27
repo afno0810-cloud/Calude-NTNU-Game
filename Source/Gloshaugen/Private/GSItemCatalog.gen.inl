@@ -865,11 +865,11 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		D.MeshPath = TEXT("/Game/Models/SM_Parachute.SM_Parachute"); D.MaxStack = 1;
 		D.Kind = FName(TEXT("parachute")); D.UseTime = 0.5f; D.Slots = 0; D.Charges = 1; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Keycard")); D.Name = TEXT("NTNU-adgangskort");
-		D.Desc = TEXT("\u00C5pner l\u00E5ste kasser med god loot med en gang."); D.Cat = EGSItemCat::Gadget; D.Rarity = EGSRarity::Rare;
+		D.Desc = TEXT("\u00C5pner l\u00E5ste kasser og kodel\u00E5ser p\u00E5 d\u00F8rer med en gang."); D.Cat = EGSItemCat::Gadget; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_Keycard.SM_Keycard"); D.MaxStack = 1;
 		D.Kind = FName(TEXT("key")); D.UseTime = 0.5f; D.Slots = 0; D.Charges = 1; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Lockpick")); D.Name = TEXT("Dirkesett");
-		D.Desc = TEXT("\u00C5pner l\u00E5ste kasser p\u00E5 6 sekunder."); D.Cat = EGSItemCat::Gadget; D.Rarity = EGSRarity::Uncommon;
+		D.Desc = TEXT("\u00C5pner l\u00E5ste kasser og kodel\u00E5ser p\u00E5 6 sekunder."); D.Cat = EGSItemCat::Gadget; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Lockpick.SM_Lockpick"); D.MaxStack = 1;
 		D.Kind = FName(TEXT("lockpick")); D.UseTime = 6.0f; D.Slots = 0; D.Charges = 1; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Flashlight")); D.Name = TEXT("Lommelykt");

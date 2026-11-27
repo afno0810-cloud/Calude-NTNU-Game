@@ -225,34 +225,62 @@ namespace
 
 	/** Where a world point (cm) is, in words: "inne i Gamle fysikk, 2. etasje", "ute, nord for Hovedbygningen".
 	 *  From the map data (GSCampus, meters, X east, Y south). No distance, no direction from the viewer. */
+	/** Helgasetr: the smallest named room box (the room-acoustics boxes in the map data) around a point (m), or nullptr.
+	 *  The point is lifted 0.3 m so a spot on a floor belongs to the room above it. The atrium only wins when nothing
+	 *  smaller fits. (Grafikk's GSHelgasetr::PlaceName() replaces this when it comes.) */
+	const TCHAR* HelpRoomAt(const FVector& PM)
+	{
+		const TCHAR* Best = nullptr;
+		float BestVolume = TNumericLimits<float>::Max();
+		const float Z = PM.Z + 0.3f;
+		for (const GSHelgasetr::FSoundZoneM& S : GSHelgasetr::SoundZones())
+		{
+			if (PM.X < S.X0 || PM.X > S.X1 || PM.Y < S.Y0 || PM.Y > S.Y1 || Z < S.Z0 || Z > S.Z1) continue;
+			const float Volume = (S.X1 - S.X0) * (S.Y1 - S.Y0) * (S.Z1 - S.Z0);
+			if (Volume < BestVolume) { BestVolume = Volume; Best = S.Name; }
+		}
+		return Best;
+	}
+
 	FString HelpPlaceName(const FVector& WorldCm)
 	{
 		const FVector P = WorldCm / 100.f;
-		const GSCampus::FBuilding* Nearest = nullptr;
-		float NearestDist = TNumericLimits<float>::Max();
-		for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+		if constexpr (GSCampus::bHelgasetr)
 		{
-			if (B.bBackdrop) continue;
-			// Into the building's own axes.
-			const FVector2D Local = FVector2D(FVector(P.X - B.X, P.Y - B.Y, 0.f).RotateAngleAxis(-B.Yaw, FVector::UpVector));
-			const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
-			if (FMath::Abs(Local.X) <= HX && FMath::Abs(Local.Y) <= HY)
-			{
-				if (P.Z >= B.Height - 0.5f) return FString::Printf(TEXT("på taket av %s"), *HelpBuildingName(B));
-				const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
-				// 0.25 m slack: a floor surface a hair under its nominal height still counts as that floor.
-				const int32 Floor = FMath::Clamp(FMath::FloorToInt((P.Z + 0.25f) / FMath::Max(B.FloorHeight, 1.f)) + 1, 1, Floors);
-				return FString::Printf(TEXT("inne i %s, %d. etasje"), *HelpBuildingName(B), Floor);
-			}
-			const float DX = FMath::Max(0.f, FMath::Abs(Local.X) - HX), DY = FMath::Max(0.f, FMath::Abs(Local.Y) - HY);
-			const float Dist = FMath::Sqrt(DX * DX + DY * DY);
-			if (Dist < NearestDist) { NearestDist = Dist; Nearest = &B; }
+			// "i Laberadene, 4. etasje", "i Helgasetr sørfløy, 2. etasje", or "ute"
+			const TCHAR* Room = HelpRoomAt(P);
+			if (!Room) Room = GSHelgasetr::ZoneAt(FVector2D(P.X, P.Y));
+			if (!Room) return TEXT("ute");
+			return FString::Printf(TEXT("i %s, %s"), Room, *GSHelgasetr::LevelName(GSHelgasetr::LevelAt(P.Z)));
 		}
-		if (!Nearest || NearestDist > 60.f) return TEXT("ute i det åpne");
-		// Compass direction from the building's middle: +X east, +Y south.
-		const float DX = P.X - Nearest->X, DY = P.Y - Nearest->Y;
-		const TCHAR* Dir = FMath::Abs(DX) > FMath::Abs(DY) ? (DX > 0.f ? TEXT("øst") : TEXT("vest")) : (DY > 0.f ? TEXT("sør") : TEXT("nord"));
-		return FString::Printf(TEXT("ute, %s for %s"), Dir, *HelpBuildingName(*Nearest));
+		else   // the old campus
+		{
+			const GSCampus::FBuilding* Nearest = nullptr;
+			float NearestDist = TNumericLimits<float>::Max();
+			for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+			{
+				if (B.bBackdrop) continue;
+				// Into the building's own axes.
+				const FVector2D Local = FVector2D(FVector(P.X - B.X, P.Y - B.Y, 0.f).RotateAngleAxis(-B.Yaw, FVector::UpVector));
+				const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
+				if (FMath::Abs(Local.X) <= HX && FMath::Abs(Local.Y) <= HY)
+				{
+					if (P.Z >= B.Height - 0.5f) return FString::Printf(TEXT("på taket av %s"), *HelpBuildingName(B));
+					const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
+					// 0.25 m slack: a floor surface a hair under its nominal height still counts as that floor.
+					const int32 Floor = FMath::Clamp(FMath::FloorToInt((P.Z + 0.25f) / FMath::Max(B.FloorHeight, 1.f)) + 1, 1, Floors);
+					return FString::Printf(TEXT("inne i %s, %d. etasje"), *HelpBuildingName(B), Floor);
+				}
+				const float DX = FMath::Max(0.f, FMath::Abs(Local.X) - HX), DY = FMath::Max(0.f, FMath::Abs(Local.Y) - HY);
+				const float Dist = FMath::Sqrt(DX * DX + DY * DY);
+				if (Dist < NearestDist) { NearestDist = Dist; Nearest = &B; }
+			}
+			if (!Nearest || NearestDist > 60.f) return TEXT("ute i det åpne");
+			// Compass direction from the building's middle: +X east, +Y south.
+			const float DX = P.X - Nearest->X, DY = P.Y - Nearest->Y;
+			const TCHAR* Dir = FMath::Abs(DX) > FMath::Abs(DY) ? (DX > 0.f ? TEXT("øst") : TEXT("vest")) : (DY > 0.f ? TEXT("sør") : TEXT("nord"));
+			return FString::Printf(TEXT("ute, %s for %s"), Dir, *HelpBuildingName(*Nearest));
+		}
 	}
 
 	/** The overview "Taster og regler". bDraw = false only measures. Returns the height. */

@@ -12,6 +12,7 @@
 #include "GSProjectile.h"
 #include "GSExplore.h"
 #include "GSItems.h"
+#include "GSMapState.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -463,6 +464,7 @@ void AGSGameMode::CleanWorldForMatch()
 	// Collect first, destroy afterwards (never destroy while iterating).
 	TArray<AActor*> Doomed;
 	for (TActorIterator<AGSProjectile> It(World); It; ++It) Doomed.Add(*It);   // mines, fire, smoke, grenades, bullets
+	AGSMapState::ResetForMatch(World);   // doors, locks and broken glass as new (Interaktiv resets too; twice is harmless)
 	for (TActorIterator<AGSPickup> It(World); It; ++It)
 	{
 		if (!It->bRespawns) Doomed.Add(*It);   // dropped items and loot from the dead
@@ -502,83 +504,229 @@ void AGSGameMode::BeginPlay()
 	}
 }
 
+namespace GSGameModeImpl
+{
+	/** Smallest room-acoustics box (Helgasetr) that holds a floor point (m), or nullptr. The point is lifted 0.3 m so a
+	 *  spot on a floor belongs to the room above that floor, not to the one below whose ceiling it is. */
+	const TCHAR* HelgasetrRoomAt(const FVector& PM)
+	{
+		const TCHAR* Best = nullptr;
+		float BestVolume = TNumericLimits<float>::Max();
+		const float Z = PM.Z + 0.3f;
+		for (const GSHelgasetr::FSoundZoneM& S : GSHelgasetr::SoundZones())
+		{
+			if (PM.X < S.X0 || PM.X > S.X1 || PM.Y < S.Y0 || PM.Y > S.Y1 || Z < S.Z0 || Z > S.Z1) continue;
+			const float Volume = (S.X1 - S.X0) * (S.Y1 - S.Y0) * (S.Z1 - S.Z0);
+			if (Volume < BestVolume) { BestVolume = Volume; Best = S.Name; }
+		}
+		return Best;
+	}
+
+	/**
+	 * Helgasetr loot from the map data (GSHelgasetr::LootSpots()): what a spot holds follows the room it is in, how far it
+	 * is from both bases (further = rarer) and its tier. Both teams get the same worth within reach. Server only.
+	 */
+	void SpawnPickupsHelgasetr(UWorld* World, FRandomStream& Rng)
+	{
+		struct FSpot { FVector PM; int32 Tier; EGSLootPlace Place; float Depth; float DistRed; float DistBlue; int32 Level; };
+		const TConstArrayView<GSHelgasetr::FBaseM> Bases = GSHelgasetr::Bases();
+		if (Bases.Num() < 2) { UE_LOG(LogTemp, Warning, TEXT("Helgasetr-loot: mangler baser i kartdataene")); return; }
+		const FVector FlagRed(Bases[0].X, Bases[0].Y, Bases[0].Z);    // Sørbasen = rødt lag (index 0, like GSCampus::Bases())
+		const FVector FlagBlue(Bases[1].X, Bases[1].Y, Bases[1].Z);   // Nordbasen = blått lag
+
+		TArray<FSpot> Spots;
+		int32 NearDoor = 0;
+		for (const GSHelgasetr::FLootM& L : GSHelgasetr::LootSpots())
+		{
+			FSpot S;
+			S.PM = FVector(L.X, L.Y, L.Z);
+			S.Tier = FMath::Clamp<int32>(L.Tier, 0, 2);
+			S.Level = GSHelgasetr::LevelAt(L.Z);
+			S.DistRed = FVector::Dist(S.PM, FlagRed);
+			S.DistBlue = FVector::Dist(S.PM, FlagBlue);
+			S.Depth = FMath::Clamp((FMath::Min(S.DistRed, S.DistBlue) - 12.f) / 16.f, 0.f, 1.f);
+
+			for (const GSHelgasetr::FDoorM& D : GSHelgasetr::DoorSlots())
+			{
+				if (D.Level != S.Level) continue;
+				const float Dist2D = FVector2D::Distance(FVector2D(S.PM), FVector2D(D.X, D.Y));
+				// Rooms behind a locked code door (glass_kode) hold one tier better (a crate stays a crate)
+				if (S.Tier < 1 && D.Kind == 1 && D.bLocked && Dist2D <= 4.f) S.Tier = 1;
+				if (Dist2D < 0.8f)
+				{
+					++NearDoor;
+					UE_LOG(LogTemp, Warning, TEXT("Helgasetr-loot: plassen (%.1f, %.1f, %.1f) ligger %.2f m fra døra %d (%s)"),
+						L.X, L.Y, L.Z, Dist2D, D.Id, D.Room ? D.Room : TEXT(""));
+				}
+			}
+
+			const TCHAR* Room = HelgasetrRoomAt(S.PM);
+			const FString RoomName = Room ? Room : TEXT("");
+			if (S.Tier >= 2) S.Place = EGSLootPlace::Crate;
+			else if (RoomName == TEXT("Laberadene") || RoomName == TEXT("Østfløyens rom")) S.Place = EGSLootPlace::Medical;
+			else if (RoomName == TEXT("Kantina") || RoomName == TEXT("Studentarbeidsplassene")) S.Place = EGSLootPlace::Canteen;
+			else S.Place = EGSLootPlace::Corridor;
+			Spots.Add(S);
+		}
+
+		// Balance: a spot belongs to a side when it is at least 3 m closer to that side's flag. Worth = (1 + 2 tier)(1 + depth).
+		auto Worth = [](const FSpot& S) { return (1.f + 2.f * S.Tier) * (1.f + S.Depth); };
+		float Red = 0.f, Blue = 0.f;
+		auto Measure = [&]()
+		{
+			Red = Blue = 0.f;
+			for (const FSpot& S : Spots)
+			{
+				if (S.DistRed <= S.DistBlue - 3.f) Red += Worth(S);
+				else if (S.DistBlue <= S.DistRed - 3.f) Blue += Worth(S);
+			}
+		};
+		Measure();
+		int32 Adjusted = 0;
+		for (int32 Round = 0; Round < 4 && FMath::Abs(Red - Blue) > 0.1f * FMath::Max(Red, Blue); ++Round)
+		{
+			// The richer side gives up its better spot nearest its own base (least felt by the team that loses it)
+			const bool bRedRicher = Red > Blue;
+			int32 Best = INDEX_NONE;
+			float BestDist = TNumericLimits<float>::Max();
+			for (int32 I = 0; I < Spots.Num(); ++I)
+			{
+				const FSpot& S = Spots[I];
+				if (S.Tier != 1) continue;
+				const bool bSide = bRedRicher ? S.DistRed <= S.DistBlue - 3.f : S.DistBlue <= S.DistRed - 3.f;
+				const float Own = bRedRicher ? S.DistRed : S.DistBlue;
+				if (bSide && Own < BestDist) { BestDist = Own; Best = I; }
+			}
+			if (Best == INDEX_NONE) break;
+			Spots[Best].Tier = 0;
+			++Adjusted;
+			Measure();
+		}
+
+		// Put each thing on the floor (or the table) under its spot. Object trace: only the world blocks, not players.
+		int32 Total = 0, NoFloor = 0, Counts[3] = {}, Places[5] = {}, PerLevel[GSHelgasetr::NumLevels] = {};
+		const FCollisionObjectQueryParams WorldOnly(ECC_WorldStatic);
+		FCollisionQueryParams Query(SCENE_QUERY_STAT(GSHelgasetrLoot), false);
+		for (const FSpot& S : Spots)
+		{
+			const FVector P = S.PM * 100.f;
+			FHitResult Hit;
+			if (!World->LineTraceSingleByObjectType(Hit, P + FVector(0.f, 0.f, 150.f), P - FVector(0.f, 0.f, 150.f), WorldOnly, Query))
+			{
+				++NoFloor;
+				UE_LOG(LogTemp, Warning, TEXT("Helgasetr-loot: ingen gulv under (%.1f, %.1f, %.1f)"), S.PM.X, S.PM.Y, S.PM.Z);
+				continue;
+			}
+			FActorSpawnParameters SP;
+			SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			const FVector Loc(P.X, P.Y, Hit.ImpactPoint.Z + 60.f);
+			AGSPickup* Pickup = World->SpawnActor<AGSPickup>(Loc, FRotator::ZeroRotator, SP);
+			if (!Pickup) continue;
+			Pickup->Rng.Initialize(Rng.RandHelper(1 << 30));
+			Pickup->bIsCrate = S.Tier >= 2;
+			Pickup->MinRarity = S.Tier >= 2 ? (S.Depth >= 0.8f ? EGSRarity::Epic : EGSRarity::Rare)
+				: S.Tier == 1 ? EGSRarity::Uncommon : EGSRarity::Common;
+			Pickup->MaxRarity = EGSRarity::Legendary;
+			Pickup->Place = S.Place;
+			Pickup->Depth = S.Depth;
+			Pickup->Roll();
+			++Total;
+			++Counts[S.Tier];
+			++Places[(int32)S.Place];
+			++PerLevel[FMath::Clamp(S.Level, 0, GSHelgasetr::NumLevels - 1)];
+		}
+		UE_LOG(LogTemp, Log, TEXT("Helgasetr-loot: %d plasser (%d vanlige, %d bedre, %d kasser), %d uten gulv; korridor %d, medisinsk %d, kantine %d; balanse rød %.1f / blå %.1f (%d justert)"),
+			Total, Counts[0], Counts[1], Counts[2], NoFloor, Places[(int32)EGSLootPlace::Corridor], Places[(int32)EGSLootPlace::Medical],
+			Places[(int32)EGSLootPlace::Canteen], Red, Blue, Adjusted);
+		UE_LOG(LogTemp, Log, TEXT("Helgasetr-loot per etasje: 1. %d, 2. %d, 3. %d, 4. %d; %d plasser nærmere enn 0,8 m en dør"),
+			PerLevel[0], PerLevel[1], PerLevel[2], PerLevel[3], NearDoor);
+	}
+}
+
 void AGSGameMode::SpawnPickups()
 {
 	FRandomStream Rng(FMath::Rand());
-	int32 Total = 0;
-	auto Spawn = [&](const FVector& LocM, bool bCrate, EGSRarity MinRarity)
+	if constexpr (GSCampus::bHelgasetr)
 	{
-		FActorSpawnParameters P;
-		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		const FVector Loc = LocM * 100.f + FVector(0.f, 0.f, 60.f);
-		if (AGSPickup* Pickup = GetWorld()->SpawnActor<AGSPickup>(Loc, FRotator::ZeroRotator, P))
-		{
-			Pickup->Rng.Initialize(Rng.RandHelper(1 << 30));
-			Pickup->bIsCrate = bCrate;
-			Pickup->MinRarity = MinRarity;
-			Pickup->Roll();
-			++Total;
-		}
-	};
-
-	// Loot inside every building, on every floor. Stay away from walls and the stairwell corner (+X +Y).
-	const TArray<GSCampus::FBuilding>& Buildings = GSCampus::Buildings();
-	const bool bCustomMain = AGSCampusBuilder::MainBuildingMesh() != nullptr;
-	for (const GSCampus::FBuilding& B : Buildings)
+		GSGameModeImpl::SpawnPickupsHelgasetr(GetWorld(), Rng);   // no mythic crate and no outdoor loot on Helgasetr
+	}
+	else   // the old campus
 	{
-		if (!B.bEnterable) continue;
-		const bool bMain = bCustomMain && FString(B.Name) == TEXT("Hovedbygningen");
-		const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
-		const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X, B.Y, 0.f));
-		const float HX = B.SizeX * 0.5f - 2.f, HY = B.SizeY * 0.5f - 2.f;
-		const int32 PerFloor = FMath::Clamp(FMath::RoundToInt(B.SizeX * B.SizeY / 450.f), 2, 9);
-		for (int32 F = 0; F < Floors; ++F)
+		int32 Total = 0;
+		auto Spawn = [&](const FVector& LocM, bool bCrate, EGSRarity MinRarity)
 		{
-			for (int32 I = 0; I < PerFloor; ++I)
+			FActorSpawnParameters P;
+			P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			const FVector Loc = LocM * 100.f + FVector(0.f, 0.f, 60.f);
+			if (AGSPickup* Pickup = GetWorld()->SpawnActor<AGSPickup>(Loc, FRotator::ZeroRotator, P))
 			{
-				float X = 0.f, Y = 0.f;
-				for (int32 Try = 0; Try < 10; ++Try)
+				Pickup->Rng.Initialize(Rng.RandHelper(1 << 30));
+				Pickup->bIsCrate = bCrate;
+				Pickup->MinRarity = MinRarity;
+				Pickup->Roll();
+				++Total;
+			}
+		};
+
+		// Loot inside every building, on every floor. Stay away from walls and the stairwell corner (+X +Y).
+		const TArray<GSCampus::FBuilding>& Buildings = GSCampus::Buildings();
+		const bool bCustomMain = AGSCampusBuilder::MainBuildingMesh() != nullptr;
+		for (const GSCampus::FBuilding& B : Buildings)
+		{
+			if (!B.bEnterable) continue;
+			const bool bMain = bCustomMain && FString(B.Name) == TEXT("Hovedbygningen");
+			const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
+			const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X, B.Y, 0.f));
+			const float HX = B.SizeX * 0.5f - 2.f, HY = B.SizeY * 0.5f - 2.f;
+			const int32 PerFloor = FMath::Clamp(FMath::RoundToInt(B.SizeX * B.SizeY / 450.f), 2, 9);
+			for (int32 F = 0; F < Floors; ++F)
+			{
+				for (int32 I = 0; I < PerFloor; ++I)
 				{
-					X = Rng.FRandRange(-HX, HX);
-					Y = Rng.FRandRange(-HY, HY);
-					if (bMain)
+					float X = 0.f, Y = 0.f;
+					for (int32 Try = 0; Try < 10; ++Try)
 					{
-						// Hovedbygningen model: no loot in the air over Lysgaarden, on the grand stair or on the ramps
-						const bool bAtrium = FMath::Abs(X) < 15.f && FMath::Abs(Y) < 10.f && (F > 0 || (FMath::Abs(X) < 4.5f && Y > -0.5f));
-						const bool bRamp = FMath::Abs(X) > 38.f && Y > 9.5f;
-						if (!bAtrium && !bRamp) break;
+						X = Rng.FRandRange(-HX, HX);
+						Y = Rng.FRandRange(-HY, HY);
+						if (bMain)
+						{
+							// Hovedbygningen model: no loot in the air over Lysgaarden, on the grand stair or on the ramps
+							const bool bAtrium = FMath::Abs(X) < 15.f && FMath::Abs(Y) < 10.f && (F > 0 || (FMath::Abs(X) < 4.5f && Y > -0.5f));
+							const bool bRamp = FMath::Abs(X) > 38.f && Y > 9.5f;
+							if (!bAtrium && !bRamp) break;
+						}
+						else if (!(X > HX - 16.f && Y > HY - 5.f)) break;
 					}
-					else if (!(X > HX - 16.f && Y > HY - 5.f)) break;
+					Spawn(BT.TransformPosition(FVector(X, Y, F * B.FloorHeight + 0.35f)), false, EGSRarity::Common);
 				}
-				Spawn(BT.TransformPosition(FVector(X, Y, F * B.FloorHeight + 0.35f)), false, EGSRarity::Common);
 			}
-		}
-		// A locked crate with good stuff on the top floor of the bigger buildings
-		if (Floors >= 3 || B.SizeX * B.SizeY > 4000.f)
-		{
-			Spawn(BT.TransformPosition(FVector(Rng.FRandRange(-HX, 0.f), Rng.FRandRange(-HY, 0.f), (Floors - 1) * B.FloorHeight + 0.35f)), true,
-				Floors >= 8 ? EGSRarity::Legendary : EGSRarity::Epic);
-		}
-	}
-	// The big one: a mythic crate in the middle of Lysgaarden
-	Spawn(bCustomMain ? FVector(0.f, -7.5f, 0.85f) : FVector(0.f, 4.f, 0.35f), true, EGSRarity::Mythic); // on the stage
-
-	// Outdoors: scattered over the play area (5 m in from the edge), not inside buildings
-	const FBox2D Area = GSCampus::PlayArea().ExpandBy(-5.f);
-	for (int32 I = 0; I < 20; ++I)
-	{
-		for (int32 Try = 0; Try < 20; ++Try)
-		{
-			const FVector2D P(Rng.FRandRange(Area.Min.X, Area.Max.X), Rng.FRandRange(Area.Min.Y, Area.Max.Y));
-			bool bInside = false;
-			for (const GSCampus::FBuilding& B : Buildings)
+			// A locked crate with good stuff on the top floor of the bigger buildings
+			if (Floors >= 3 || B.SizeX * B.SizeY > 4000.f)
 			{
-				if (FMath::Abs(P.X - B.X) < B.SizeX * 0.5f + 3.f && FMath::Abs(P.Y - B.Y) < B.SizeY * 0.5f + 3.f) { bInside = true; break; }
+				Spawn(BT.TransformPosition(FVector(Rng.FRandRange(-HX, 0.f), Rng.FRandRange(-HY, 0.f), (Floors - 1) * B.FloorHeight + 0.35f)), true,
+					Floors >= 8 ? EGSRarity::Legendary : EGSRarity::Epic);
 			}
-			if (!bInside) { Spawn(FVector(P.X, P.Y, 0.f), false, EGSRarity::Common); break; }
 		}
+		// The big one: a mythic crate in the middle of Lysgaarden
+		Spawn(bCustomMain ? FVector(0.f, -7.5f, 0.85f) : FVector(0.f, 4.f, 0.35f), true, EGSRarity::Mythic); // on the stage
+
+		// Outdoors: scattered over the play area (5 m in from the edge), not inside buildings
+		const FBox2D Area = GSCampus::PlayArea().ExpandBy(-5.f);
+		for (int32 I = 0; I < 20; ++I)
+		{
+			for (int32 Try = 0; Try < 20; ++Try)
+			{
+				const FVector2D P(Rng.FRandRange(Area.Min.X, Area.Max.X), Rng.FRandRange(Area.Min.Y, Area.Max.Y));
+				bool bInside = false;
+				for (const GSCampus::FBuilding& B : Buildings)
+				{
+					if (FMath::Abs(P.X - B.X) < B.SizeX * 0.5f + 3.f && FMath::Abs(P.Y - B.Y) < B.SizeY * 0.5f + 3.f) { bInside = true; break; }
+				}
+				if (!bInside) { Spawn(FVector(P.X, P.Y, 0.f), false, EGSRarity::Common); break; }
+			}
+		}
+		UE_LOG(LogTemp, Log, TEXT("Gloshaugen: spawned %d loot spots"), Total);
 	}
-	UE_LOG(LogTemp, Log, TEXT("Gloshaugen: spawned %d loot spots"), Total);
 }
 
 FTransform AGSGameMode::PickSpawnTransform(const AController* For) const
@@ -764,49 +912,68 @@ void AGSGameMode::SpawnTerminals()
 		}
 	};
 
-	const bool bCustomMain = AGSCampusBuilder::MainBuildingMesh() != nullptr;
-	for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+	if constexpr (GSCampus::bHelgasetr)
 	{
-		const FString Name(B.Name);
-		const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X, B.Y, 0.f));
-		const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
-
-		if (bCustomMain && Name == TEXT("Hovedbygningen"))
+		// Helgasetr: the PCs, 3D printers and cameras stand in real rooms from the map data (GSHelgasetr.h)
+		for (const GSHelgasetr::FTerminalM& T : GSHelgasetr::Terminals())
 		{
-			// Hand-made model: corridors at y = +-5, Lysgaarden in the middle, tower behind.
-			Terminal(EGSTerminalKind::Computer, FVector(-30.f, -4.5f, 0.f), 90.f, TEXT("Hovedbygningen, vaktrommet"));
-			Terminal(EGSTerminalKind::Computer, FVector(30.f, 4.5f, 11.f), -90.f, TEXT("Hovedbygningen, 3. etasje"));
-			Terminal(EGSTerminalKind::Printer, FVector(30.f, -4.5f, 5.5f), 90.f, TEXT("Hovedbygningen, verkstedet"));
-			Terminal(EGSTerminalKind::Printer, FVector(-30.f, 4.5f, 16.5f), -90.f, TEXT("Hovedbygningen, 4. etasje"));
-			Camera(FVector(-13.3f, -8.3f, 4.6f), 35.f, TEXT("Lysg\u00E5rden, scenen"));
-			Camera(FVector(13.3f, 8.3f, 4.6f), -145.f, TEXT("Lysg\u00E5rden, trappa"));
-			Camera(FVector(0.f, -19.f, 6.5f), -90.f, TEXT("Hovedinngangen"), 50.f);
-			Camera(FVector(0.f, 13.f, 3.6f), -90.f, TEXT("Korridoren mot t\u00E5rnet"));
-			Camera(FVector(-50.f, -4.f, 4.6f), 0.f, TEXT("Hovedbygningen vest, korridor"));
-			Camera(FVector(50.f, 4.f, 4.6f), 180.f, TEXT("Hovedbygningen \u00F8st, korridor"));
-			Camera(FVector(4.f, 24.f, 35.f), 90.f, TEXT("T\u00E5rnet, utsikt s\u00F8r"), 70.f);
-			Camera(FVector(-4.f, 16.f, 35.f), -90.f, TEXT("T\u00E5rnet, utsikt nord"), 70.f);
-			continue;
+			Terminal(T.Kind == 1 ? EGSTerminalKind::Printer : EGSTerminalKind::Computer, FVector(T.X, T.Y, T.Z), T.Yaw, T.Name);
 		}
-		if (bCustomMain && Name == TEXT("Hovedbygningen taarn")) continue;
-		if (!B.bEnterable) continue;
-
-		const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
-		// PC against the -X wall on the ground floor, facing into the room.
-		Terminal(EGSTerminalKind::Computer, BT.TransformPosition(FVector(-HX + 1.0f, -HY * 0.4f, 0.f)), B.Yaw, Name);
-		// 3D printer on the first floor of the bigger buildings
-		if (Floors >= 2 && B.SizeX * B.SizeY > 1200.f)
+		for (const GSHelgasetr::FCameraM& C : GSHelgasetr::Cameras())
 		{
-			Terminal(EGSTerminalKind::Printer, BT.TransformPosition(FVector(-HX + 0.9f, HY * 0.4f, B.FloorHeight)), B.Yaw,
-				FString::Printf(TEXT("%s, 2. etasje"), *Name));
+			// Over the open atrium, the canteen and the mezzanine a camera sweeps wider than in a corridor
+			const FString Name(C.Name);
+			const bool bWide = Name.Contains(TEXT("Atriet")) || Name.Contains(TEXT("Kantina")) || Name.Contains(TEXT("Mesaninen"));
+			Camera(FVector(C.X, C.Y, C.Z), C.Yaw, Name, bWide ? 50.f : 35.f);
 		}
-		// One camera inside (high in the -X -Y corner looking across the room) and one outside the front
-		Camera(BT.TransformPosition(FVector(-HX + 0.7f, -HY + 0.7f, FMath::Min(B.FloorHeight - 0.6f, 3.6f))), B.Yaw + 40.f,
-			FString::Printf(TEXT("%s, inne"), *Name));
-		Camera(BT.TransformPosition(FVector(0.f, -HY - 0.4f, FMath::Min(B.Height - 1.f, 6.f))), B.Yaw - 90.f,
-			FString::Printf(TEXT("%s, utenfor"), *Name), 45.f);
+		UE_LOG(LogTemp, Log, TEXT("Helgasetr: %d PC-er, %d 3D-printere, %d kameraer"), NumPC, NumPrinters, NumCams);
 	}
-	UE_LOG(LogTemp, Log, TEXT("Gloshaugen: %d PC-er, %d 3D-printere, %d kameraer"), NumPC, NumPrinters, NumCams);
+	else   // the old campus
+	{
+		const bool bCustomMain = AGSCampusBuilder::MainBuildingMesh() != nullptr;
+		for (const GSCampus::FBuilding& B : GSCampus::Buildings())
+		{
+			const FString Name(B.Name);
+			const FTransform BT(FRotator(0.f, B.Yaw, 0.f), FVector(B.X, B.Y, 0.f));
+			const float HX = B.SizeX * 0.5f, HY = B.SizeY * 0.5f;
+
+			if (bCustomMain && Name == TEXT("Hovedbygningen"))
+			{
+				// Hand-made model: corridors at y = +-5, Lysgaarden in the middle, tower behind.
+				Terminal(EGSTerminalKind::Computer, FVector(-30.f, -4.5f, 0.f), 90.f, TEXT("Hovedbygningen, vaktrommet"));
+				Terminal(EGSTerminalKind::Computer, FVector(30.f, 4.5f, 11.f), -90.f, TEXT("Hovedbygningen, 3. etasje"));
+				Terminal(EGSTerminalKind::Printer, FVector(30.f, -4.5f, 5.5f), 90.f, TEXT("Hovedbygningen, verkstedet"));
+				Terminal(EGSTerminalKind::Printer, FVector(-30.f, 4.5f, 16.5f), -90.f, TEXT("Hovedbygningen, 4. etasje"));
+				Camera(FVector(-13.3f, -8.3f, 4.6f), 35.f, TEXT("Lysg\u00E5rden, scenen"));
+				Camera(FVector(13.3f, 8.3f, 4.6f), -145.f, TEXT("Lysg\u00E5rden, trappa"));
+				Camera(FVector(0.f, -19.f, 6.5f), -90.f, TEXT("Hovedinngangen"), 50.f);
+				Camera(FVector(0.f, 13.f, 3.6f), -90.f, TEXT("Korridoren mot t\u00E5rnet"));
+				Camera(FVector(-50.f, -4.f, 4.6f), 0.f, TEXT("Hovedbygningen vest, korridor"));
+				Camera(FVector(50.f, 4.f, 4.6f), 180.f, TEXT("Hovedbygningen \u00F8st, korridor"));
+				Camera(FVector(4.f, 24.f, 35.f), 90.f, TEXT("T\u00E5rnet, utsikt s\u00F8r"), 70.f);
+				Camera(FVector(-4.f, 16.f, 35.f), -90.f, TEXT("T\u00E5rnet, utsikt nord"), 70.f);
+				continue;
+			}
+			if (bCustomMain && Name == TEXT("Hovedbygningen taarn")) continue;
+			if (!B.bEnterable) continue;
+
+			const int32 Floors = FMath::Max(1, FMath::FloorToInt(B.Height / B.FloorHeight + 0.01f));
+			// PC against the -X wall on the ground floor, facing into the room.
+			Terminal(EGSTerminalKind::Computer, BT.TransformPosition(FVector(-HX + 1.0f, -HY * 0.4f, 0.f)), B.Yaw, Name);
+			// 3D printer on the first floor of the bigger buildings
+			if (Floors >= 2 && B.SizeX * B.SizeY > 1200.f)
+			{
+				Terminal(EGSTerminalKind::Printer, BT.TransformPosition(FVector(-HX + 0.9f, HY * 0.4f, B.FloorHeight)), B.Yaw,
+					FString::Printf(TEXT("%s, 2. etasje"), *Name));
+			}
+			// One camera inside (high in the -X -Y corner looking across the room) and one outside the front
+			Camera(BT.TransformPosition(FVector(-HX + 0.7f, -HY + 0.7f, FMath::Min(B.FloorHeight - 0.6f, 3.6f))), B.Yaw + 40.f,
+				FString::Printf(TEXT("%s, inne"), *Name));
+			Camera(BT.TransformPosition(FVector(0.f, -HY - 0.4f, FMath::Min(B.Height - 1.f, 6.f))), B.Yaw - 90.f,
+				FString::Printf(TEXT("%s, utenfor"), *Name), 45.f);
+		}
+		UE_LOG(LogTemp, Log, TEXT("Gloshaugen: %d PC-er, %d 3D-printere, %d kameraer"), NumPC, NumPrinters, NumCams);
+	}
 }
 
 void AGSGameMode::ChangeName(AController* Controller, const FString& NewName, bool bNameChange)

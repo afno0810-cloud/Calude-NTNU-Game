@@ -3,6 +3,113 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 4b (Grafikk og kart): Helgasetr som ekte modell (27. nov.)
+
+Gammelt som er forbedret: klossbygget fra 4a byttes bit for bit mot Blender-modeller (800), glasset (810, 811), hengelampene (812, 822), flaggets høyde og sporprøven (817), dørdataene (818, 819), boksetakene på 4. etasje (820) og lyset under basene (821).
+Nytt: sagtak og stålfagverk med skygger (801, 802), trelameller og downlights på dekkekantene (803, 804), runde søyler (805), gule trapper med vanger (806), løp og bro over atriet (807, 808), tre nye materialer (809), avstandsfelt (813), import bare ved endring (814) og nye sjekker med motprøver (815, 816, 823, 824).
+
+800. Helgasetr er nå ekte 3D-modeller fra Blender, delt i 58 biter; klossene fra 4a brukes bare der en bit mangler
+801. Sagtaket over atriet har hvite takflater og glass i de bratte flatene, som vender mot sør så sola skinner inn
+802. Hvitt stålfagverk av runde rør under glasstaket (store Warren-fagverk med diagonaler, mønebjelker og sperrer) kaster skygger ned i atriet
+803. Dekkekantene mot atriet har mørke, liggende trelameller og hvit underkant, som på bildene
+804. Runde downlights i undersiden av dekkekantene rundt atriet
+805. Betongsøylene er runde (Ø 0,5 m) med to svarte ringer
+806. De gule trappeløpene har heldekkende gule vanger, svart håndløper og gul bunnplate under løpene
+807. Gule trappeløp og en bro krysser atriet høyt oppe, fra 5. til 6. etasje, som på bildene (kulisse, ingen kommer dit)
+808. Glassboksene i 4. etasje henger i hvite stenger fra takfagverket
+809. Nye materialer: Helgasetr-gult på trappene og Ryddekroken, oransje mesaningulv og hvitmalt stål
+810. Glasset er billigere og penere: nesten klart når man ser rett gjennom, grønnlig og speilende på skrå, uten refraksjon og tunge refleksjoner
+811. Fast glass kaster ikke skygge, så sollyset slipper gjennom glasstaket
+812. De store runde hengelampene (Ø 2,4 m) er ekte modeller med lysende underside
+813. Bygningsbitene får dobbel oppløsning på avstandsfeltet, så lyset ikke lekker gjennom vegger og dekker
+814. Modellene skrives bare på nytt når de faktisk er endret, så Unreal ikke importerer dem igjen for ingenting
+815. Nytt sjekkskript som går gjennom selve modellen med stråler: spawn og flagg, åpne dører, trinn, rekkverk langs hele atriekanten, ingenting å stå på over 4. etasje og kroppsprøve, med motprøver
+816. Rendringer av hver etasje ovenfra og fem utsnitt inne i atriet, til kontroll mot bildene
+817. Flagget står nå på gulvet (13,9 m), og sporprøven i spillet kjører de samme sporene som GameMode
+818. Alarmdøra til Trapp sør i 4. etasje er merket forseglet (ingen åpning), så ingen dør dukker opp i en hel vegg
+819. Kodelåsdørene er merket låst i kartdataene, likt med det som skjer i spillet
+820. Taket på glassboksene i 4. etasje stopper kropper og kan ikke stås på, og veggtoppene under har en hvit kappe
+821. Korridorlysene i 3. etasje rett under basene er fjernet, så de ikke lyser opp basene gjennom gulvet
+822. Hengelampenes lys rekker 13 m i stedet for 26 m, så det ikke skinner gjennom dekkene
+823. Id-manifest: sjekken feiler hvis en eksisterende dør, glassrute, lettvegg eller dekning får ny id
+824. Ny sjekk: ingen vegg-, stolpe- eller glasstopp over 4. etasje i atriet kan brukes som gulv
+
+## Runde 1a (Bots): bots som spiller Capture the Flag (27. nov.)
+
+Gammelt som er forbedret: «Spill mot bots» fyller nå lagene etter valgene på bot-siden (841), og gjenoppliving, lag, startutstyr, flaggradioen og drapslista gjelder også datastyrte spillere (845, 851).
+Nytt: navnett laget i kode med selvtest (842, 855), ruter, forsvar og flaggroller (843–845), syn uten veggsyn, reaksjon, sikte og rekyl (846–851), fire vanskelighetsgrader (852) og hjelp når de står fast (854).
+
+840. Bots: datastyrte soldater spiller Capture the Flag med deg og mot deg i Helgasetr, i samme kropp og med samme våpen, skade og blod som spillere
+841. «Spill mot bots» fyller nå lagene med så mange bots du valgte på bot-siden, med vanskelighetsgraden du valgte
+842. Botene finner veien gjennom ganger, rom, trapper og etasjer med et navigasjonsnett som lages når kartet bygges; låste dører skjæres ut av nettet til de låses opp eller brytes
+843. Botene velger ulike ruter mot flagget: vest- og østsiden, rommene i fløyene, gjennom atriet og nede i kantina
+844. Noen bots blir igjen og forsvarer eget flagg fra steder med utsyn mot dørene inn til baserommet, og bytter plass etter en stund
+845. Botene tar flagget ditt og bærer det hjem en annen vei enn de kom, og henter sitt eget flagg tilbake når det er mistet
+846. Botene ser bare det de faktisk ser: synsfelt, synsvidde og vegger teller, og de ser gjennom glass
+847. Botene husker bare fiender de har sett, og vet om flaggbæreren bare når laget får den samme radiomeldingen som du
+848. Botene trenger reaksjonstid før første skudd, og siktet blir bedre jo lenger de har sett deg
+849. Botene sikter opp og ned: de treffer i trapper, mellom etasjer og tvers over atriet
+850. Botene skyter salver på avstand, holder avtrekkeren inne på nært hold og må holde rekylen nede selv
+851. Botene skyter ikke i fast glass de ikke kan skyte gjennom, og ikke når en lagkamerat står i skuddlinja – de flytter seg i stedet
+852. Fire vanskelighetsgrader – Lett, Middels, Vanskelig og Ekspert – skiller bare på ferdighet, aldri på helse eller skade
+853. Botene heter vanlige norske navn merket «(bot)» i drapslista og på poengtavla
+854. Bots som står fast åpner døra foran seg, hopper eller velger en annen rute, og plukker opp ammo til våpenet sitt når den ligger rett ved
+855. Navnettet sjekker seg selv ved kampstart: veien mellom basene og gjennom hver døråpning skrives i loggen, og `gs.bots.debug` tegner botenes ruter
+
+## Runde 6b (Spillbarhet): PC-er, kameraer og stedsnavn i Helgasetr (27. nov.)
+
+Gammelt som er forbedret: radiomeldingen om flaggbæreren sier romnavn og etasje i stedet for fløy (894), en ny kamp setter også kartet tilbake (895), og nøkkelkortet og dirkesettet har riktige tekster (896).
+Nytt: PC-er, 3D-printere og kameraer i ekte Helgasetr-rom (890–893), testrommet i menyen (897) og menylyder (898).
+
+890. Fire PC-er i ekte Helgasetr-rom: Audiologi 4.056, ferdighetsrommet for vernepleiere, Studentforeningen og grupperom 2.1
+891. To 3D-printere i grupperommene i 3. etasje
+892. Åtte overvåkingskameraer med navn, fra klatreveggen i kantina til korridorene i 4. etasje
+893. Kameraene over atriet og kantina dekker en større vinkel enn kameraene i korridorene
+894. Radiomeldingen om flaggbæreren sier rom og etasje («i Laberadene, 4. etasje»)
+895. Dører, låser og knust glass settes tilbake når en ny kamp starter
+896. Nøkkelkortet og dirkesettet forteller at de også åpner kodelåser på dører
+897. «Test kartet» → Gå til → «Testrom for dører og glass»
+898. Menyknappene gir et nøkternt klikk, og bekreftelse og tilbake har egne lyder
+
+## Runde 6a (Spillbarhet): loot i Helgasetr (27. nov.)
+
+Gammelt som er forbedret: ammo kommer etter hvor mange våpen som bruker kaliberet (885), loot leses fra kartdataene og legges på gulvet (880, 887), og den mytiske kassa er borte fra Helgasetr (888).
+Nytt: lootsteder etter rom (882, 883), sjeldnere ting lenger fra basene (881), låste kasser (884), automatisk balanse mellom lagene (886) og konsollkommandoen `gs.loot.stats` (889).
+
+880. Helgasetr har loot: 58 plasser i alle fire etasjer, med våpen, ammo, medisin, vester og granater
+881. Det vanlige ligger nær basene og det sjeldne lenger ut mot midten av bygget
+882. Ferdighetsrommene og laberadene har mest bandasjer, førstehjelpsskrin og smertestillende
+883. Kantina og studentarbeidsplassene har mat og drikke i tillegg til våpen og ammo
+884. Låste kasser med gode våpen i laberadene, i østfløyen og i kantina
+885. Ammo kommer etter hvor mange våpen som bruker kaliberet: mye 9 mm og 5,56, ingen rakettammo uten rakettkaster
+886. Begge lag har like mye og like god loot innen rekkevidde (automatisk balanse)
+887. Tingene legges på gulvet eller bordet der de står, aldri i lufta over atriet
+888. Ingen mytiske ting, fallskjermer, droner eller veggsyn i Helgasetr
+889. Konsollen `gs.loot.stats` viser hvordan loot fordeler seg per rom og sjeldenhet
+
+## Lydrunde 1 (Kamp): ekte lyd og rom (27. nov.)
+
+Gammelt som er forbedret: skudd, fottrinn, kulenedslag, lading og treff har fått ekte innspilte lyder og flere varianter (662, 664, 670, 671, 673, 674, 676), og flagg-radioen kan ikke lenger druknes (675).
+Nytt: romklang som måles der du står (663, 666), okklusjon bak vegger (665), eksplosjonslyd med trykkbølge (667, 668), lydens forsinkelse (669), utstyrsrasling (672) og et verktøy for lydbiblioteket (677).
+Ekte lyder: Snake's Authentic Gun Sounds (skudd og våpenmekanikk), Kenney Impact Sounds og Kenney Interface Sounds (CC0). Sonniss er ikke brukt; glass, eksplosjoner og rusk er laget av Kenney-lyder eller syntetisert.
+
+662. Skudd fra andre høres i lag: nært smell med mekanikk, dempet på middels hold og et dumpt drønn langt unna, med myk overgang
+663. Skuddet får etterklang etter rommet skytteren står i: kort i grupperom, lang i atriet, hard og ekkoende i trapperommet
+664. Egne skudd har en egen nærlyd med trykk og et tydelig klikk fra mekanismen, og romklangen kommer fra rommet du står i
+665. Lyd bak vegger blir dumpere og lavere i stedet for å høres like klart gjennom betong
+666. Romklangen skifter jevnt når du går fra en korridor til atriet eller inn i et trapperom, uten at kartet trenger egne lydsoner
+667. Eksplosjoner fra granater, raketter og miner har lyd: et kraftig smell nært, et drønn innendørs og rusk som faller etterpå
+668. En eksplosjon nær deg demper alt annet et par sekunder og gir øresus, men fottrinn og flagg-radio høres fortsatt
+669. Smellet fra skudd og eksplosjoner kommer litt etter glimtet når det er langt unna (lydens fart, 343 m/s)
+670. Alle lyder har flere varianter, og den samme varianten spilles aldri to ganger på rad
+671. Fottrinn høres forskjellig på terrazzo, parkett, linoleum, stål, betong og teppe, og landing og glid følger underlaget
+672. Når du sprinter, rasler utstyret ditt hørbart for dem rundt deg
+673. Kulenedslag høres etter materialet: betong, gips, tre, metall, glass og jord
+674. Lading, pumpe og bolt har egne lyder per våpentype
+675. Lyder har prioritet: mange hylser og nedslag kan aldri drukne fottrinn eller flagg-radioen
+676. Ekte innspilte lyder (Snake's Authentic Gun Sounds, Kenney) erstatter de syntetiske der de finnes, med kreditering av hver fil
+677. Et nytt verktøy henter, klipper og normaliserer lydfiler fra lydbiblioteket, så nye ekte lyder bare trenger én linje i en liste
+
 ## Runde 1a (Interaktiv verden): dører og bruk-tasten (27. nov.)
 
 Gammelt som er forbedret: dirkesett og NTNU-adgangskort åpner nå også kodelåser på dører (654, 655), bruk-tasten E virker på dører med hint i samme stil (649, 650, 659), og botene blir ikke stående foran lukkede dører (660).
