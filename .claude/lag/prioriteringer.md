@@ -1,3 +1,8 @@
+## 2026-11-27 kl. 10.10: rekkefølge for Spillbarhet
+Hovedagentens avgjørelse: plan-05 (ny meny med bots/online/test kartet, uten selve botene) bygges nå. Rett etter
+at Grafikk har levert råbygget av Helgasetr kommer plan-08 (loot, PC-er, kameraer, dører i Helgasetr) – det følger
+Andreas' rekkefølge (kartet komplett med våpen og helse) og går foran botene (plan-06/07).
+
 ## 2026-11-27 kl. 09.00: NYTT KART – HELGASETR
 Andreas: kartet skal bare være inne i Helgasetr, nytt kart, det gamle skrotes. Lag Grafikk og kart stopper alt
 annet og planlegger et innendørs CTF-kart i Helgasetr: to baser i hver sin ende/fløy, flere ruter (korridorer,

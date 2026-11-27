@@ -50,28 +50,36 @@ spillet til kampen er over skal henge sammen, forklare seg selv og være rettfer
    er ute kan avgjøre (ønske 33), hjemmeflagg kan ikke tas når tiden er ute, flaggbæreren meldes etter 20 s som
    **radiomelding med sted** («Flagget sist sett: inne i Gamle fysikk, 2. etasje», hvert 5. s – ingen markør), `Logout`
    legger ned flagget (C1), og Grafikks ytelsesbestilling for `GSPickup`/`GSTerminal`. IMPROVEMENTS 468–475.
-4b. **[plan-05] Vertsvalg og resten av CTF for det nye kartet.**
-   - **Vertsvalg i lagvalg-panelet** (`GSMenu`): venneild av/på, kamplengde, antall erobringer, «Start nå». Nye replikerte
-     `CaptureGoal`/`MatchLengthMinutes` i `GSGameState` (konstantene `CaptureLimit`/`MatchMinutes` blir standardverdier;
-     Kamp leser dem, så de fjernes ikke). Verten er listen-server, så valget settes rett i `GSGameMode` uten RPC.
-   - Regel for dem som går ut av `GSCampus::PlayArea()` (varsel, så skade) – Grafikks ønske c. Sidebytte mellom
-     kampene (ønske e / ønskeliste 34). Utendørs loot innenfor området og færre plasser (Grafikks ønske a), hvis ikke gjort.
-   - Respawn i bølger (hvert 10. s) ved egen base, aldri i sikte av en fiende; kort spawnbeskyttelse.
-   - Når Kamp har levert `PawnLeavingGame`: drap til siste skytter og utstyr som blir liggende ved frakobling.
-     Lag som står tomt midt i en kamp; av/på-kobling som fyller hendelseslista.
-   - Eget lag må stå ved et mistet flagg i 3 s for å sende det hjem, hvis berøring viser seg for lett i testing.
-5. **[plan-06] Våpendata som følger virkeligheten (Kamps bestilling, funn R5–R7, R13) + loot for CTF.**
+5. **[plan-05, skrevet 27. nov.] Ny hovedmeny: Spill mot bots, Spill online, Test kartet.** Se `ko/plan-05.md`.
+   `GameKind` (Online/Bots/Explore) og vertsvalg (kamplengde, erobringer, venneild) som valg i adressen til `OpenLevel`,
+   lest og klemt i `AGSGameMode::InitGame`; bot-siden (lag, antall bots per lag, vanskelighetsgrad, startutstyr); «Test
+   kartet» (`EGSMatchPhase::Explore`, ingen skade/sult, fri flyging på N, «Gå til» basene, klokke og vær) i nye
+   `GSExplore.*`; meny etter modus inne i spillet; pause i bot-kamp/test. IMPROVEMENTS 598–613.
+6. **[plan-06, skrevet 27. nov.] Bots for CTF.** Se `ko/plan-06.md`. `AGSBotController` (AIController + crowd) i samme
+   `AGSCharacter`; navnett laget i kode (`ANavMeshBoundsVolume` med `BrushBodySetup`-boks, `RuntimeGeneration=Dynamic`,
+   reserve: invoker); via- og forsvarspunkter regnet fra navnettet (ingen koordinater → tåler Helgasetr); syn/hørsel uten
+   veggsyn, reaksjonstid, siktefeil som krymper, egen rekyl, enkel dekning, medisin; `AGSBotTeam` fordeler roller; fire
+   grader. Kroker bestilt hos Kamp (K1 `IsLocalHuman` + `friend`, K2) og Grafikk (G1–G4). IMPROVEMENTS 614–629.
+7. **[plan-07, skisse] Bots med taktikk:** dører, eskorte, flanke, undertrykkende ild, granater, loot, nærkamp, bots i
+   online-kamper. Se `ko/plan-07.md`.
+8. **[plan-08] Resten av CTF for Helgasetr** (det gamle 4b): regel utenfor området trengs ikke inne (ytterveggene er ekte);
+   sidebytte mellom kampene; respawn i bølger (10 s) aldri i sikte av fiende, kort spawnbeskyttelse; lag som står tomt;
+   av/på-kobling i hendelseslista; 3 s ved mistet flagg hvis berøring er for lett; loot, PC-er og kameraer fra Grafikks
+   `GSHelgasetr`-lister (`Loot()`, `Terminals()`, `Cameras()`), `AGSDoor` i egne filer og `AGSMapState::ResetForMatch()` i
+   `CleanWorldForMatch` (Grafikks bestilling 27. nov., deres runde 5) – **dette kan måtte rykke foran bots** hvis Helgasetr
+   lander uten loot (hovedagentens prioritering 27. nov.: Spillbarhet tilpasser spawn, loot, PC-er og kamplengde).
+9. **[plan-09] Våpendata som følger virkeligheten (Kamps bestilling, funn R5–R7, R13) + loot for CTF.**
    - Kalibertabell i `catalog.py`: `MuzzleVelocity`, `BulletMassG`, `PenClass`, skade etter patron, riktige
      kalibre med egne ammoesker, `ProtClass` på vester og hjelmer, ekte prosjektilfarter.
    - `RandomLoot`: ammovekt per kaliber, sjeldenhet som ikke snus i små grupper, våpen oftere i låste kasser
      (Kamps kontroll-bestilling). Loot-tetthet for det lille kartet; det beste lootet i midtområdet, ikke i basene.
    - Medisin: «Skinne» og «Tourniquet»/trykkbandasje med `Kind` Kamp kan lese (avtales i `bestillinger.md`).
      Kikkert-teksten «Hold F» rettes (funn G6).
-6. **[plan-07] Utstyr/klasse før runden.** Velg startpakke i lobbyen (f.eks. gevær, sanitet, støtte, speider),
+10. **[plan-10] Utstyr/klasse før runden.** Velg startpakke i lobbyen (f.eks. gevær, sanitet, støtte, speider),
    realistisk utstyr og vekt; loot blir tillegg, ikke grunnlag.
-7. **[plan-08] Invitere venner, steg 1 (0c):** «Finn spill på nettverket» (LAN-søk) og kode/IP man kan kopiere;
+11. **[plan-11] Invitere venner, steg 1 (0c), inn på siden «Spill online»:** «Finn spill på nettverket» (LAN-søk) og kode/IP man kan kopiere;
    koden legges opp mot OnlineSubsystem-sesjoner så Steam/EOS kan komme når Andreas har konto.
-8. **[plan-09] Lagverktøy:** markere fiender og ping for laget; kart/minikart med flagg, baser og lagkamerater
+12. **[plan-12] Lagverktøy:** markere fiender og ping for laget; kart/minikart med flagg, baser og lagkamerater
    (egne filer + ett bestilt tegnekall); nærradio/stemmechat (Unreal VoIP) som egen runde.
 
 ### Deretter
@@ -89,6 +97,12 @@ spillet til kampen er over skal henge sammen, forklare seg selv og være rettfer
 - **Feiljakt som gjenstår i egne filer:** `GSTerminal` videre, lootplassering per bygg, til-/frakobling.
 
 ## Endringer i retningen
+- 2026-11-27 (plan-05/06/07): **Andreas: «menysystem med spill mot bots, spill online og test mappet».** Hovedmenyen
+  bygges om rundt tre valg (plan-05), bots kommer i to runder (plan-06 grunnmur, plan-07 taktikk). Vertsvalgene fra gamle
+  4b er bakt inn i plan-05 (samme kode for bot- og vertskamper). Resten av gamle 4b er nå plan-08 og tilpasses Helgasetr;
+  våpendata blir plan-09, resten ett hakk ned. «Test kartet» er også et verktøy for Grafikk (gå/fly rundt, lys og vær,
+  «Vis navnett»). Alt i bot-koden er kartuavhengig: flagg, spawn og grenser fra `GSCampus`, ruter og forsvarspunkter
+  regnet av navnettet ved hver kampstart. Bots får aldri informasjon en spiller ikke har.
 - 2026-11-26 (etter forhåndssjekk av plan-03): **Delt i 3A (plan-03: hjelp) og 3B (plan-04: regler og ytelse)**, fordi
   runden var for stor. **Avslørt bærer vises som radiomelding med stedsnavn, ikke som markør** (hovedagentens valg: en
   firkant med meter gjennom vegger er veggsyn i praksis, siden nesten alle flaggløp varer over 20 s). Overtid spør nå
