@@ -16,3 +16,6 @@ Saved/
 # Blender backups and Python caches
 *.blend1
 __pycache__/
+
+# Large reference PDFs (download from NTNU campusutvikling, see .claude/loop/andreas.md)
+SourceArt/Reference/Helgasetr/plans/
