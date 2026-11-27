@@ -28,3 +28,9 @@ Alle seks RETTET av bygger (Kamp) 26. nov., IMPROVEMENTS 376–385. G1 (punkt 6)
 16. **RETTET** – F3: selvtesten skal bruke motorens tall (`GetNumActiveSounds`) og prøve 4 samtidige skyttere.
 
 10–16 RETTET av bygger (Kamp) 27. nov. i runde 13 (plan-13 Del A), IMPROVEMENTS 760–763 og 771–774. 597 er skrevet om. 14: Weapon StopFarthestThenOldest, egne grupper for Tail_ (6), egne 2D-skudd (4) og Flag_/Radio_ (4). 16: selvtesten leser FAudioDevice::GetNumActiveSources() (motorens tall; GetActiveSounds() krever lydtråden) med 4 skyttere, og kategori/sluttid lagres i en struct.
+
+## Fra kontroll av runde 13 (.claude/loop/kontroll/runde-13.md)
+17. MÅ: retting 12 virker ikke – AG3 sikte +70° gir fortsatt 105 % (venstre hånd). Logg Steep/UsesBodyHands, juster til ≤100 %, og skriv tallene før/etter i rapporten. Ikke merk RETTET før tallet er målt.
+18. Egne skudd: 8 plasser i stedet for 4 (to lyder per skudd).
+19. Romklang: StopFarthestThenOldest også der.
+20. Dør-, glass- og låslyder i egen gruppe, ikke sammen med kuletreff.

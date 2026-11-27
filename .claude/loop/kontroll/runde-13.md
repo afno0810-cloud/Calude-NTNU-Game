@@ -1,3 +1,98 @@
+**MÅ FIKSES** – Kamp runde 13 (plan-13, commit `2d16a3b`): én ting mangler. Retting 12 er merket RETTET, men AG3 når fortsatt ikke grepet når man sikter 70° opp: **105 %** (grensen er 100 %). Alt annet er godkjent.
+
+Kontrollert ved å lese commiten (`git show 2d16a3b`, hele filer med `git show 2d16a3b:<fil>`), ikke arbeidsmappen. Interaktivs filer (`GSMapState.cpp`, `GSBreakable.cpp`, `GSDoor.cpp`, `GSInteract.cpp`) er lest slik de var ved commiten. Jeg har ikke bygget (det sier instruksen). Unreal-editoren kjørte ikke, så jeg kjørte en hodeløs test med binæren som lå der (`UnrealEditor-Gloshaugen.dll`, bygd 12:13:19, 50 s før commiten):
+`UnrealEditor-Cmd Gloshaugen.uproject -game -nullrhi -nosound -ExecCmds="gs.FP.ReachTest 1, gs.Test.Glasskudd"`.
+
+## Resultat av den hodeløse testen
+- `gs.Test.Glasskudd`: **OK**. En 5,56-kule mot rute 19 (glassvegg, 4. etasje) gikk gjennom 5 glassvegger på rad i grupperommene (19, 27, 35, 39 og 62 ligger på linja y = 12,6 m, uten vegger imellom). Alle 5 ble knust. Loggen: `GlassF 0.779` (3 ruter i første steg) og så `0.846` (2 ruter). Farten falt fra 927 til 604 m/s og skaden fra 30 til 19,8. Tallene stemmer med 0,92 per rute.
+- `gs.FP.ReachTest` (30 stillinger): alle er ≤ 100 % unntatt **rifle (AG3) sikte +70: høyre 79 %, venstre 105 %, OVER 100**. Det er samme tall som kommentaren i koden sier det var *før* rettingen («AG3 aimed 70 degrees up was 105 %»). Andre tall ved ±70°: LMG (MG3) +70 gir 85/89, hagle (Pump) +70 gir 77/95, SVD +70 gir 79/82, og alle −70 ligger på 30–82 %.
+
+## Funn
+1. **MÅ FIKSES – Retting 12 virker ikke (AG3 +70° = 105 %).** `GSCharacter.cpp` l. 1443–1450 (`UpdateWeaponAnimation`): `Pos.X -= 6.f * Steep` gir 4,3 cm ved 70°, men målingen endret seg ikke. Venstre hånd blir da trukket inn til 97 % (`FillOwnHands`, l. ~3600), så hånden svever omtrent 5 cm bak håndvernet. Planen sier rett ut «til målingen er ≤ 100 %». Både `rettinger.md` (12 RETTET) og IMPROVEMENTS 762 sier at dette virker, og det gjør det ikke.
+   Hva byggeren må gjøre: bygg på nytt og kjør `gs.FP.ReachTest 1`. Hvis det fortsatt er 105 %: logg `Steep` og `UsesBodyHands()` i stillingen for å se at grenen faktisk nås. Flytt så våpenet også ned (Z), eller mer bakover (X), til AG3 +70 er ≤ 100 % uten at andre stillinger går over. Skriv tallene før og etter i rapporten.
+
+## Planens «Ferdig når», punkt for punkt
+- **Bygger:** ikke kjørt av meg. Binæren lastet og kjørte uten feil. Testkommandoen er ny i denne commiten og finnes i binæren, så den er bygget fra denne koden.
+- **Retting 10 (armer vippes):** OK. `Tick` setter ikke lenger synlighet. `UpdateArms` (l. 1763/1809) og `UpdateItemUse` (l. 1861) bestemmer synligheten ett sted, og `SetVisibility` gjør ingenting når verdien ikke endres. `UpdateWeaponAnimation` har ingen tidlig `return` før `UpdateArms`, så synligheten settes hvert bilde så lenge man lever.
+- **Retting 11 (oppløsning):** OK. `ApplyGraphicsLevel` leser oppløsningen før nivået settes og legger den tilbake etterpå, likt med `Set.Graphics` i `GSMenu.cpp`. Både 597 og ini-kommentaren er skrevet om.
+- **Retting 12:** **ikke ferdig**, se funn 1. Testen er utvidet riktig: 5 stillinger, riktig vinkel holdes, og blikket settes tilbake til vannrett etterpå. Klasser uten modell hopper over `NumPoses - 1`.
+- **Retting 13 (beinboks):** OK. `StandExt.X` har gått fra 9 til 13. Magen går fra Z −2 til 33 og beina fra −92 til −2, så de berører hverandre uten å overlappe.
+- **Retting 14–16 (lydgrupper):** OK. Våpen bruker nå 24 plasser med «fjernest først». Halene har en egen gruppe med 6, egne 2D-skudd 4 og Flag/Radio 4. Treffmarkør, øresus og hjerteslag deler ikke lenger plass med flaggradioen. Selvtesten bruker motorens eget tall og 4 skyttere. Se merknadene under.
+- **K1 kuler:** OK.
+  - `BulletSegment` kalles for ekte og viste kuler, og bare fram til `End` (treffpunktet).
+  - `ApplyBulletHit` kalles bare for ekte kuler som ikke treffer en figur, med skaden etter avstand.
+  - `AddBulletMark` kalles bare for viste kuler, før `SpawnImpact`. Flisa er fjernet, og det er riktig, for 1b lager ekte hull (`GSBreakable::AddMark`, med tak via `TakeMarkToken`).
+  - Kulehull på dører og kodelåser kunne ikke sjekkes hodeløst.
+- **K2 eksplosjoner:** OK. Kallet ligger bare i grenen for granat/mine/C4/rakett, kommer før `DamageAround` og er vernet med `Radius > 0`. `Explode` kjører bare på serveren. Flash, røyk og brann får ikke kallet.
+- **K3 nærkamp:** OK (se merknad 4). `ApplyMelee` kalles før sveipet, og et treff bak glass gir verken skade eller støv.
+- **K4 bruk-tasten:** koden er riktig (se under), men **ikke testet i PIE** av meg (Andreas spilte). Lærdommen krever at alt som har med input å gjøre testes i PIE. Det må gjøres når editoren er ledig.
+- **K5 lyder:** OK. Det finnes 6 wav-filer, de står i `sources.json` og `CREDITS.md` (Kenney, CC0), og `GSAudio::Get` finner `_1.._n`. `S_GS_Door_Open/Close_*.uasset` er ikke importert ennå, fordi editoren må åpnes én gang. Fram til da spiller dørene reservelydene.
+- **Bestilling og rettinger:** K1–K5 er merket LEVERT, og 10–16 er merket RETTET. Merkingen av 12 er feil, se funn 1.
+
+## De særlige sjekkene dirigenten ba om
+- **Kuler gjennom vegger via glass: kan ikke skje.**
+  - Glasset (`UGSGlassSet`, glassfeltet i dørene) har typen `ECC_Destructible` og ignorerer `Visibility`. Kulesporet stopper derfor på første vegg eller dørblad og går bare gjennom glass.
+  - `BulletSegment` søker bare fra `B.Pos` til `End`, og `End` er treffpunktet. Glass bak veggen blir ikke rørt.
+  - Knuste ruter skaleres til 0 (`SetPaneShown`), så kroppen deres forsvinner med en gang og bremser ikke flere kuler.
+  - Fast glass fra byggeren (fasadevinduer, tak) blokkerer `Visibility`. Kula stopper der som mot en vegg, med et glasshull, og ruta knuses ikke (se forslag 3).
+- **Vist kule og ekte kule: ingen ulik spilltilstand, bare en usynlig forskjell.**
+  - Bare ekte kuler på serveren skader glass. Viste kuler endrer ikke glasstilstanden, de lager bare lokale sprekkestjerner i laminert glass.
+  - Forskjellen byggeren nevner: hos verten flyttes den ekte kula først i samme bilde. Ruta er da borte når den viste kula kommer, så den viste blir ikke bremset. Hos en klient kan det gå motsatt vei hvis knusingen ennå ikke er kommet fram.
+  - Utslaget er 8 % fart for én kule, og det gir under 1 mm forskjell i kulefall over 20 m. Det påvirker bare hvor støv og hull havner, ikke skade. Det er greit og ikke Kamps ansvar å rette.
+- **Drapstall gjennom én rute** (bryst, ingen vest, innenfor nullavstand, skade × 0,92). Normalt antall treff → gjennom glass:
+  - Glock 22 → 20,2: **5 → 5**
+  - Makarov 20 → 18,4: **5 → 6**
+  - Luger 26 → 23,9: **4 → 5**
+  - MP40 20: **5 → 6**
+  - Uzi 18: **6 → 7**
+  - Suomi 19: **6 → 6**
+  - MP5 21: **5 → 6**
+  - PPSh 18: **6 → 7**
+  - Pistolkniv/PrintPistol 30: **4 → 4**
+  - 5,56 (HK416, G36, Minimi) 30 → 27,6: **4 → 4**
+
+  Ingen våpen får mer enn +1 treff, og det er innenfor planen. Herdet glass knuses av første kule, så i praksis er det bare én kule i en salve som blir svekket. Laminert rekkverk holder i omtrent 6 kuler (18 per kule mot 100), og de kulene blir svekket hver gang.
+- **E gjør aldri to ting: riktig i koden.**
+  - Enhanced Input sender `IA_Interact Started` til alle som har bundet den (`EnhancedPlayerInput.cpp`: ingen oppbruk uten `ShouldConsume`).
+  - Interaktivs inndatakomponent er lagt på kontrollerens stabel og kjøres før figurens. Den oppdaterer fokuset ved trykket.
+  - Kamps `Interact` spør så `HasFocus`, og begge leser samme `FocusKey` i samme bilde.
+  - Interaktivs `KampFocusScore` er samme formel som `UpdateFocusPickup`, så bare den ene vinner. Kamp tømmer sitt hint når Interaktiv har fokus, så hintet vises ikke to steder (høyst 50 ms forsinkelse ved grensen).
+  - Terminalen får fortsatt E. Må testes i PIE.
+- **Ytelse med LMG-salve mot glassboks: ikke målt med `stat game`** (det krever skjerm, og byggeren har ikke skrevet noe tall).
+  - Regnet ut: for hver ekte kule kommer ett ekstra linjespor (`LineTraceMultiByObjectType`, bare Destructible) og ett `AGSMapState::Get` (en `TActorIterator`) per steg på 1/60 s.
+  - 20 spillere med LMG (13 skudd/s, kulene lever 2–4 steg innendørs) gir omtrent 15–20 ekstra spor per bilde, godt under 0,1 ms.
+  - Hver knust rute sender `OnWalkableChanged` (navnett) og lager skår (felles tak `MaxFlyingBits`). En glassboks med 8 ruter gir 8 oppdateringer, og det er begrenset.
+  - `UE_LOG` per ekte kule gjennom glass er greit fordi ruta knuses med en gang (se forslag 2).
+- **Lydgruppene:** retting 14–16 er gjort som bestilt, med tre merknader (ingen må rettes nå):
+  - **Egne skudd 4 plasser, StopOldest:** hvert skudd spiller `_FP` og `_Mech`. Da lever bare de 2 siste skuddene, og ved 800–1000 skudd/min kuttes hvert skudd etter 120–150 ms. 8 plasser hadde latt klangen i eget skudd bygge seg opp.
+  - **Halene 6 plasser, StopOldest, felles for alle skyttere:** en fjern hale kan stoppe din egen nære. `StopFarthestThenOldest` er bedre også her.
+  - **`Door_`, `Glass_`, `Keypad_` og `Lock_` deler Impact (12, StopQuietest) med alle kuletreff:** stille dørlyder (−14 dB) blir stoppet først midt i skuddveksling. De bør få en egen gruppe for verden (som FlagRadio).
+  - Det er også en liten skjønnhetsfeil: `ActiveEstimate` tar fortsatt Weapon-taket (24) for hale og egne skudd, som nå har egne grupper. Det betyr ingenting, fordi selvtesten bruker motorens tall.
+
+## Andre merknader (ikke krav til denne runden)
+2. **Fasadevinduer er ikke knusbare.** «Kuler knuser vinduer» (764) gjelder bare de innvendige glassveggene og rekkverkene i Helgasetr. Fast glass fra byggeren blokkerer `Visibility` og knuses ikke. Andreas har sagt «vinduer kan knuse», så dette bør til Grafikk/Interaktiv.
+3. **Interaktivs `ApplyMelee` ved commiten** (`GSMapState.cpp` l. 950–958): glass-sveipet sjekker ikke vegger, så en kniv kan knuse en rute bak en tynn vegg innenfor 1,6 m. Interaktiv retter allerede dette i arbeidsmappen (`WallDist`, ikke committet). Kamps del er riktig.
+4. **K3, liten kant:** `bBehindGlass` sammenligner Kamps `Hit.ImpactPoint` (på overflaten av figuren) med Interaktivs `G.Location` (midten av kula på 22 cm). En figur som står innenfor ca. 22 cm *foran* ruta, sett fra den som slår, regnes som «bak glass». I praksis holder kapselen (34 cm) folk lenger unna, så det gjør nesten aldri noe. Rent: sammenlign `Hit.Distance` med `G.Distance`.
+5. **Commit-hygiene i felles arbeidsmappe:** Kamps IMPROVEMENTS 760–774 kom med i Spillbarhets commit `0d7cdd1`, og Spillbarhets 7b-del (933–941) kom med i denne commiten. Det finnes ingen duplikater i HEAD, men commitene inneholder andre lags linjer.
+
+## Andreas' faste regel
+- **Forbedret (gammelt):** kuletreff (fart og skade gjennom glass, skudd i dører og låser), nærkamp (stoppes av glass), eksplosjoner (påvirker kartet), bruk-tasten (én ting per trykk), armene skjules ett sted, oppløsningen beholdes, beinboksen og lydgruppene.
+- **Nytt:** glass som knuses av kuler, varige kulehull, granater som blåser opp dører, dørlyder og testen `gs.Test.Glasskudd`.
+- Regelen er oppfylt.
+
+## Forslag til neste runde
+1. Rett funn 1 (AG3 +70) og kjør `gs.FP.ReachTest` med tallene i rapporten. Ta lydmerknadene samtidig: egne skudd 8 plasser, halene «fjernest først» og en egen gruppe for verden for dør, glass og lås.
+2. Hold på `AGSMapState` i `UGSBallistics` (`TWeakObjectPtr`, hentes én gang) i stedet for `TActorIterator` per kulesteg, og sett glass-loggen i `Step` til `Verbose`.
+3. Bestilling til Grafikk/Interaktiv: fasadevinduer som kan knuses (dagens faste glass blokkerer `Visibility`). Bestilling til Interaktiv: glass skal ikke knuses av en eksplosjon gjennom betongvegger. I dag knuses alt herdet glass innenfor 2 × radius uten linjesjekk (`ApplyBlast`, l. 903–918). Det er urealistisk for en håndgranat på 12–16 m.
+
+## Lærdom
+- En retting som skal få et målt tall under en grense er ikke ferdig før målingen *etter* endringen står i rapporten. «RETTET» uten tall etter endringen er ikke godt nok.
+- I felles arbeidsmappe: legg bare til egne linjer i delte filer (`git add -p` på IMPROVEMENTS.md, bestillinger.md), ellers havner andre lags arbeid i feil commit.
+
+---
+
+# Eldre vurdering under samme filnavn (runde 13 i gammel nummerering, b1eb305)
+
 Styring del 2 (c10df95): **GODKJENT**
 Runde 13 (b1eb305): **GODKJENT**
 
