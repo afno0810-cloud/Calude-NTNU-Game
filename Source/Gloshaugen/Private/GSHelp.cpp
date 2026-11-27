@@ -223,8 +223,6 @@ namespace
 		return Name;
 	}
 
-	/** Where a world point (cm) is, in words: "inne i Gamle fysikk, 2. etasje", "ute, nord for Hovedbygningen".
-	 *  From the map data (GSCampus, meters, X east, Y south). No distance, no direction from the viewer. */
 	/** Helgasetr: the smallest named room box (the room-acoustics boxes in the map data) around a point (m), or nullptr.
 	 *  The point is lifted 0.3 m so a spot on a floor belongs to the room above it. The atrium only wins when nothing
 	 *  smaller fits. (Grafikk's GSHelgasetr::PlaceName() replaces this when it comes.) */
@@ -242,6 +240,9 @@ namespace
 		return Best;
 	}
 
+	/** Where a world point (cm) is, in words: "i Laberadene, 4. etasje" on Helgasetr; on the old campus "inne i Gamle
+	 *  fysikk, 2. etasje", "ute, nord for Hovedbygningen". From the map data (meters). No distance, no direction from
+	 *  the viewer. */
 	FString HelpPlaceName(const FVector& WorldCm)
 	{
 		const FVector P = WorldCm / 100.f;

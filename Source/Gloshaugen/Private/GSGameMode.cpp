@@ -15,6 +15,7 @@
 #include "GSMapState.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
+#include "Engine/OverlapResult.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 
@@ -535,7 +536,7 @@ namespace GSGameModeImpl
 		const FVector FlagBlue(Bases[1].X, Bases[1].Y, Bases[1].Z);   // Nordbasen = blått lag
 
 		TArray<FSpot> Spots;
-		int32 NearDoor = 0;
+		int32 NearDoor = 0, Upgraded = 0;
 		for (const GSHelgasetr::FLootM& L : GSHelgasetr::LootSpots())
 		{
 			FSpot S;
@@ -546,12 +547,25 @@ namespace GSGameModeImpl
 			S.DistBlue = FVector::Dist(S.PM, FlagBlue);
 			S.Depth = FMath::Clamp((FMath::Min(S.DistRed, S.DistBlue) - 12.f) / 16.f, 0.f, 1.f);
 
+			const TCHAR* SpotRoom = HelgasetrRoomAt(S.PM);
 			for (const GSHelgasetr::FDoorM& D : GSHelgasetr::DoorSlots())
 			{
 				if (D.Level != S.Level) continue;
 				const float Dist2D = FVector2D::Distance(FVector2D(S.PM), FVector2D(D.X, D.Y));
-				// Rooms behind a locked code door (glass_kode) hold one tier better (a crate stays a crate)
-				if (S.Tier < 1 && D.Kind == 1 && D.bLocked && Dist2D <= 4.f) S.Tier = 1;
+				// Rooms behind a locked code door (glass_kode) hold one tier better (a crate stays a crate). Only on the
+				// room side: a door faces out of its room (Yaw = the front, helgasetr_plan.py), so the room lies behind
+				// it. The spot must also be in the same room box (HelgasetrRoomAt) as a point 1 m inside the door, so a
+				// spot past the room in the atrium does not count. The data flag bLocked decides here, not
+				// AGSDoor::MakeDefault (which locks every GlassCode door; with the 4b data the two agree).
+				if (S.Tier < 1 && D.Kind == 1 && D.bLocked && Dist2D <= 4.f)
+				{
+					const FVector2D Front(FMath::Cos(FMath::DegreesToRadians(D.Yaw)), FMath::Sin(FMath::DegreesToRadians(D.Yaw)));
+					const float Behind = -FVector2D::DotProduct(FVector2D(S.PM) - FVector2D(D.X, D.Y), Front);
+					const TCHAR* Inside = HelgasetrRoomAt(FVector(D.X - Front.X, D.Y - Front.Y, D.Z));
+					const bool bSameRoom = (SpotRoom == nullptr && Inside == nullptr)
+						|| (SpotRoom && Inside && FCString::Strcmp(SpotRoom, Inside) == 0);
+					if (Behind >= 0.3f && bSameRoom) { S.Tier = 1; ++Upgraded; }
+				}
 				if (Dist2D < 0.8f)
 				{
 					++NearDoor;
@@ -560,8 +574,7 @@ namespace GSGameModeImpl
 				}
 			}
 
-			const TCHAR* Room = HelgasetrRoomAt(S.PM);
-			const FString RoomName = Room ? Room : TEXT("");
+			const FString RoomName = SpotRoom ? SpotRoom : TEXT("");
 			if (S.Tier >= 2) S.Place = EGSLootPlace::Crate;
 			else if (RoomName == TEXT("Laberadene") || RoomName == TEXT("Østfløyens rom")) S.Place = EGSLootPlace::Medical;
 			else if (RoomName == TEXT("Kantina") || RoomName == TEXT("Studentarbeidsplassene")) S.Place = EGSLootPlace::Canteen;
@@ -611,15 +624,32 @@ namespace GSGameModeImpl
 		{
 			const FVector P = S.PM * 100.f;
 			FHitResult Hit;
-			if (!World->LineTraceSingleByObjectType(Hit, P + FVector(0.f, 0.f, 150.f), P - FVector(0.f, 0.f, 150.f), WorldOnly, Query))
+			if (!World->LineTraceSingleByObjectType(Hit, P + FVector(0.f, 0.f, 150.f), P - FVector(0.f, 0.f, 150.f), WorldOnly, Query)
+				|| Hit.bStartPenetrating)   // a trace that starts inside a block (a stair, a wall) "hits" where it starts
 			{
 				++NoFloor;
-				UE_LOG(LogTemp, Warning, TEXT("Helgasetr-loot: ingen gulv under (%.1f, %.1f, %.1f)"), S.PM.X, S.PM.Y, S.PM.Z);
+				UE_LOG(LogTemp, Warning, TEXT("Helgasetr-loot: ingen gulv under (%.1f, %.1f, %.1f)%s"), S.PM.X, S.PM.Y, S.PM.Z,
+					Hit.bStartPenetrating ? TEXT(" (sporet starter inne i noe)") : TEXT(""));
+				continue;
+			}
+			const FVector Loc(P.X, P.Y, Hit.ImpactPoint.Z + 60.f);
+			// The final spot must be free: nothing a player bumps into within 15 cm (the floor is 60 cm below)
+			TArray<FOverlapResult> Overlaps;
+			World->OverlapMultiByObjectType(Overlaps, Loc, FQuat::Identity, WorldOnly, FCollisionShape::MakeSphere(15.f), Query);
+			const FOverlapResult* Blocking = Overlaps.FindByPredicate([](const FOverlapResult& O)
+			{
+				const UPrimitiveComponent* C = O.GetComponent();
+				return C && C->GetCollisionResponseToChannel(ECC_Pawn) == ECR_Block;
+			});
+			if (Blocking)
+			{
+				++NoFloor;
+				UE_LOG(LogTemp, Warning, TEXT("Helgasetr-loot: plassen (%.1f, %.1f, %.1f) ligger inne i noe (%s)"), S.PM.X, S.PM.Y, S.PM.Z,
+					Blocking->GetComponent() ? *Blocking->GetComponent()->GetName() : TEXT("?"));
 				continue;
 			}
 			FActorSpawnParameters SP;
 			SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-			const FVector Loc(P.X, P.Y, Hit.ImpactPoint.Z + 60.f);
 			AGSPickup* Pickup = World->SpawnActor<AGSPickup>(Loc, FRotator::ZeroRotator, SP);
 			if (!Pickup) continue;
 			Pickup->Rng.Initialize(Rng.RandHelper(1 << 30));
@@ -635,9 +665,9 @@ namespace GSGameModeImpl
 			++Places[(int32)S.Place];
 			++PerLevel[FMath::Clamp(S.Level, 0, GSHelgasetr::NumLevels - 1)];
 		}
-		UE_LOG(LogTemp, Log, TEXT("Helgasetr-loot: %d plasser (%d vanlige, %d bedre, %d kasser), %d uten gulv; korridor %d, medisinsk %d, kantine %d; balanse rød %.1f / blå %.1f (%d justert)"),
+		UE_LOG(LogTemp, Log, TEXT("Helgasetr-loot: %d plasser (%d vanlige, %d bedre, %d kasser), %d uten gulv eller inne i noe; korridor %d, medisinsk %d, kantine %d; %d bedre bak låst kodelås; balanse rød %.1f / blå %.1f (%d justert)"),
 			Total, Counts[0], Counts[1], Counts[2], NoFloor, Places[(int32)EGSLootPlace::Corridor], Places[(int32)EGSLootPlace::Medical],
-			Places[(int32)EGSLootPlace::Canteen], Red, Blue, Adjusted);
+			Places[(int32)EGSLootPlace::Canteen], Upgraded, Red, Blue, Adjusted);
 		UE_LOG(LogTemp, Log, TEXT("Helgasetr-loot per etasje: 1. %d, 2. %d, 3. %d, 4. %d; %d plasser nærmere enn 0,8 m en dør"),
 			PerLevel[0], PerLevel[1], PerLevel[2], PerLevel[3], NearDoor);
 	}

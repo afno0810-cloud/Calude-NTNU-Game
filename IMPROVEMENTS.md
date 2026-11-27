@@ -3,6 +3,16 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 6c (Spillbarhet): rettinger etter kontrollen av runde 6 (27. nov.)
+
+Gammelt som er forbedret: bedre loot ved kodelåsdører havner bare inne i de låste grupperommene, ikke i korridoren utenfor (899), og lootplasseringen oppdager ting som ville ligget inne i en trapp eller vegg (900, 901).
+Nytt: loggen sier hvor mange plasser som ble bedre bak en låst dør (902).
+
+899. Bare lootplasser på innsiden av en låst kodelåsdør blir én tier bedre – korridoren utenfor gir ingen gratis belønning
+900. En lootplass der gulvsporet starter inne i noe (trapp, vegg) blir hoppet over og skrevet i loggen
+901. Hver lootplass sjekkes for plass rundt seg før tingen legges der; tingen i den gule trappa i 3. etasje dukker ikke lenger opp inne i trinnene
+902. Loot-loggen teller hvor mange plasser som ble bedre bak en låst kodelås, og «uten gulv» teller også plasser som ligger inne i noe
+
 ## Runde 1b (Interaktiv verden): glass som knuses og kulehull (27. nov.)
 
 Gammelt som er forbedret: glassfeltene i Helgasetr er nå ekte knusbart glass i stedet for klosser kulene gikk gjennom (718), glassdørene fra 1a kan knuses (724), og dørene har fått ekte modeller med håndtak og kodelås (732).
