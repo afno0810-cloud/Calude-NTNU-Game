@@ -47,3 +47,6 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Komponenter skal ikke vippes synlig/usynlig hvert bilde: hver endring gjenskaper render-tilstanden. Bestem synlighet ett sted. (runde 14b)
 - Tak på kosmetiske ting (biter, skår, hull) håndheves når de lages, regnet mot verste tilfelle – ikke ved å avbryte de eldste. (Interaktiv 1b)
 - Et søk som bare ser etter én objekttype (f.eks. glass) ser ikke vegger; klipp det ved første vegg. (Interaktiv 1a/1b)
+- Et budsjett som hopper over arbeid må ikke la gammel tilstand stå som sann. (Bots 01a)
+- AI som sikter selv slipper spillets siktestøy og må lage den selv; en feil som krymper trenger et gulv. (Bots 01a)
+- Tidsmåling av AI må skille hjernen fra handlingene den utløser. (Bots 01a)
