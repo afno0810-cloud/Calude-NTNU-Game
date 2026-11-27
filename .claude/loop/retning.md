@@ -43,15 +43,20 @@ Andreas har veldig høye standarder: heller én ting som ser ekte ut enn fem hal
   holdemerker.
 
 ## I arbeid / planlagt
-- **Runde 13** (`ko/plan-07.md`): blødning (replikert `BleedLevel`, mest ved mageskudd, størkner av seg selv),
-  bandasje/plaster/skrin stopper den (Id-tabell, uavhengig av `Heal`), blodspor med eget tak, blodflekk festet til beinet
-  der kula traff, drap og dødskort ved blødning (retting 9) og brann (S3), pøl etter blødningsdød, hjerteslag etter
-  blodtap. Pluss bestillingene: `PawnLeavingGame` (C1), Esc-meny → `GSMenu`, grafikknivå, stille bildefrekvens, taster i
-  hint, ammoesken.
-- **Runde 14: V8, tilbakespoling av treffbokser** til skytterens tid. Og, hvis Spillbarhets plan-04 er committet:
-  «sist sett»-punkt for avslørt bærer på minikart/PC-kart for eierlaget.
-- **Runde 15: N1, nettrelevans** (`IsNetRelevantFor`): fiender langt unna uten fri sikt sendes ikke, veid mot lyd på
-  avstand og figurer som popper inn.
+- **Runde 14** (`ko/plan-08.md`): **ekte førsteperson** – én kropp for eier og andre. Ny `UGSBodyAnim` (C++ uten
+  Blueprint: samplede sekvenser fra Mannequin-pakken, rygg etter sikte, hånd-IK til våpenet, fot-IK i trapper, huk i
+  kode), `FPBody` uten hode i stedet for `FPLegs`, hendene følger de gamle `FPArm`-punktene så all lading/sikting
+  beholdes, førstepersonstegning mot klipping, hel egen skygge. Pluss rettingene fra runde 13-kontrollen. Bygges når
+  Helgasetr-kartet er spillbart.
+- **Runde 15** (`ko/plan-09.md`, skisse): animasjoner på kroppen – hopp/landing, glid, klatring med hender på kanten,
+  slag, rekyl og lading på kroppen, treffrykk. Bruker GASP/Lyra hvis Andreas har migrert dem, ellers kode.
+- **Runde 16** (`ko/plan-10.md`, skisse): bruke ting med kroppen (andre ser det) og gradvise skjermeffekter per stoff
+  (rød røyk, hvit amfetamin, tunnelsyn …). Venter på katalogsvar fra Spillbarhet (bestilt 27. nov.).
+- **Runde 17: V8, tilbakespoling av treffbokser** til skytterens tid, og «sist sett»-punktet for avslørt bærer.
+- **Runde 18: N1, nettrelevans** (`IsNetRelevantFor`).
+- Lydrunde for innendørs Helgasetr (romklang, gjennomslag i innervegger – prioriteringer 27. nov.) settes inn når
+  kartet har romdata; kan bli 17a.
+- Runde 13 (`ko/plan-07.md`): **godkjent** (`b1eb305`) – blødning, blodspor, sår, frakobling, Esc-meny.
 
 ## Neste ideer (backlog, viktigst øverst)
 1. **[Spor 8] Lag i kamp (CTF), resten** – lagfeltene er levert; venneild og bærerfart er inne, lagfarger og
@@ -106,6 +111,14 @@ lederen, lysstråle i sjeldenhetsfarge på loot, glødende omriss rundt drapsman
 rundeslutt med «høydepunkter». Statistikk kan vises nøkternt på resultattavla etter kampen, ikke underveis.
 
 ## Endringer i retningen
+- 2026-11-27 (runde 14–16): **Kroppen før V8.** Andreas' liste etter det nye Helgasetr-kartet har «bedre førsteperson:
+  hele kroppen synlig, bedre animasjoner» øverst og «ting med animasjoner og skjermeffekter» som punkt 3. Alt det
+  trenger en kropp med hender som kan styres fra kode, så runde 14 er grunnmuren (ekte førsteperson, `UGSBodyAnim`,
+  IK), 15 animasjonene og 16 bruk av ting/skjermeffekter. Funnet som avgjorde metoden: prosjektet har bare
+  `ABP_Unarmed`, men 100+ sekvenser for gevær/pistol/ubevæpnet ligger ubrukt i `Content/Characters` – de kan spilles
+  fra C++ uten Blueprint. Det som mangler (huk, glid, klatring) lages i kode; GASP og Lyra er foreslått for Andreas,
+  men ingenting venter på dem. V8 flyttes til runde 17, N1 til 18. Backlog 6 (kropp med animasjoner), 4 og 10 er
+  dermed tatt inn i rundene 14–16.
 - 2026-11-26 (runde 13): **Blødning før V8.** Hovedagenten foreslo blødning + de små åpne bestillingene; det er det
   Andreas merker mest («veldig groteskt», ønsket om skader som må bandasjeres) og trenger ingenting fra andre lag
   (bandasjen finnes; tourniquet kan komme senere uten mer kode). V8 blir runde 14 sammen med «sist sett»-punktet på
