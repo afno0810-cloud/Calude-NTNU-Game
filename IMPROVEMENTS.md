@@ -3,6 +3,28 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 5a (Grafikk og kart): lys i Helgasetr og bevis i Unreal (27. nov.)
+
+Gammelt som er forbedret: importen tåler låste filer og skriver rapport (961), kollisjonen på modelldelene følger tegningen og rettes ved hver oppstart (960), sola og lampene i ekte enheter (962), eksponeringen har faste grenser (963), lootplassen i trappa er flyttet (972).
+Nytt: fysiske materialer per flate, solstråler i dis, skyggelys, Lumen for innendørs, `Grafikk.Foto`, hodeløs import og fotorunde, lootplasser i de låste grupperommene.
+
+960. Helgasetr-modellen sjekkes i Unreal uten at noen åpner editoren: alle 58 modelldeler skal være importert, ha presis kollisjon og riktige materialer, og trinn og karmer kolliderer der de er tegnet (Nanite-reserven har alle trekanter)
+961. Importen av modeller og materialer tåler at en fil er låst av en annen prosess, prøver igjen og skriver en rapport; alle flater har fått fysiske materialer (stein, betong, gips, tre, stål, stoff, glass, linoleum), så kulehull, nedslagslyd og fottrinn følger flaten du treffer
+962. Sola er like sterk som ekte sol, så dagslyset fyller atriet og lampene lyser som ekte lamper
+963. Kameraet tilpasser seg lyset som et øye: korridorer og atrium er riktig opplyst, og natta er mørk
+964. Solstråler står ned gjennom glasstaket i en lett dis, med skyggene av fagverket i lufta
+965. Lumen er stilt inn for innendørs: mindre lekkasje i hjørner og bedre lys på små ting som rekkverk og søyleringer
+966. De to midterste hengelampene over kantina kaster myke skygger av bord og folk
+967. Basene har et skyggekastende taklys i lobbyen, så du ser skyggen av den som kommer rundt hjørnet
+968. Innelysene betaler ikke for tåka, så solstrålene ikke koster bildefrekvens
+969. Ny konsollkommando Grafikk.Foto: fast kamerarute med bilder og tidsmåling, som lukker spillet selv
+970. Hodeløs import og fotorunde med én kommando hver, som nekter å starte hvis Unreal allerede kjører
+971. Målinger av bildetid og GPU-tid fra Helgasetr før og etter, med og uten maskinvare-strålesporing
+972. Lootplassen som lå inne i den gule trappa i 3. etasje er flyttet ut
+973. Nye lootplasser inne i de låste grupperommene: bryt opp døra og finn bedre utstyr
+974. Kartsjekken stopper lootplasser som ligger inne i vegger, trapper eller møbler
+975. Lootplassene har faste id-er i manifestet, så de ikke flytter seg mellom runder
+
 ## Runde 7b (Spillbarhet): rus, overdose og motgift (27. nov.)
 
 Gammelt som er forbedret: stoffene slås ikke lenger av og på brått (933), en ny dose starter ikke rusen på nytt (934), og taket på boosts regnes én gang til slutt (939). Lattergass regnes nå som et dempende stoff, så den teller med i farlige blandinger.

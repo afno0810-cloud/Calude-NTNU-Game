@@ -68,10 +68,9 @@ def looted(it):
     return it.get("loot", True) is not False
 
 
-# (2) every drug in loot has an effect with a drug class (Lattergass has none in plan-07a: laughing gas is no habit)
-NO_CLASS_OK = {"LaughGas"}
+# (2) every drug in loot has an effect with a drug class
 for it in ITEMS:
-    if it["cat"] == "Drug" and looted(it) and it["id"] not in NO_CLASS_OK:
+    if it["cat"] == "Drug" and looted(it):
         assert EFFECTS[it["effect"]].get("cls"), ("drug without cls", it["id"])
 # (3) the ids Kamp's code uses
 for k in ("Foniks", "Glide", "Avslort", "Blendet", "Matforgiftning", "Smertestillende", "Brennende", "Sjokk", "Adrenalin", "Turbo"):

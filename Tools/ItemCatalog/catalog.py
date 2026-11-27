@@ -53,11 +53,13 @@ EFFECTS = {
                          spread=0.95, visual=8),
     "Alkohol":      dict(name="Alkohol", cls="alcohol", load=0.5, onset=15, fade=30, dur=150, numb=1, speed=0.98, spread=1.15,
                          recoil=1.1, reload=1.15, visual=11),
-    "Nalokson":     dict(name="Nalokson", cls="antidote", load=0, onset=2, fade=10, dur=60),   # what it does comes in 07b
+    "Nalokson":     dict(name="Nalokson", cls="antidote", load=0, onset=2, fade=10, dur=60),   # blocks opioids (GSItems::DrugLoad)
     "Stell":        dict(name="Sårstell", load=0, onset=0, fade=0, dur=90, regen=0.35),
     "Foniks":       dict(name="Føniks", dur=120, phoenix=1, visual=6),
     "Blodtorst":    dict(name="Blodtørst", dur=45, lifesteal=0.25, visual=2),
-    "Lattergass":   dict(name="Lattergass", load=0.3, onset=1, fade=5, dur=25, speed=0.95, spread=1.3, visual=2),
+    # Nitrous oxide is a dissociative anaesthetic that depresses the nervous system: counted as a depressant, so it
+    # adds to the dangerous mix with opioids and alcohol (plan-07b).
+    "Lattergass":   dict(name="Lattergass", cls="depressant", load=0.3, onset=1, fade=5, dur=25, speed=0.95, spread=1.3, visual=2),
     "Koffein":      dict(name="Koffein", cls="caffeine", load=0.15, onset=15, fade=30, dur=180, stamina_drain=0.9),
     "KoffeinPlus":  dict(name="Mye koffein", cls="caffeine", load=0.3, onset=10, fade=30, dur=150, stamina_drain=0.85,
                          reload=0.97, spread=1.05),
@@ -290,6 +292,8 @@ med("Tourniquet", "Årepresse", "Uncommon", 5.0, 0, "", dict(arch="bandage"),
     "Strammes over såret og stopper all blødning fra et bein eller en arm. Gir ingen helse.", kind="tourniquet")
 med("Splint", "Skinne", "Uncommon", 8.0, 0, "", dict(arch="bandage"),
     "Spjelker et brukket bein eller en arm, så du kan gå og sikte igjen. Gir ingen helse.", kind="splint", treat=1.0, loot=False)
+med("Naloxone", "Nalokson nesespray", "Rare", 2.0, 0, "Nalokson", dict(arch="dropper", color=(0.9, 0.9, 0.95)),
+    "Opphever morfin og andre opioider i et minutt og kan redde deg fra overdose. Morfinen kommer tilbake når sprayen går ut.")
 
 # ------------------------------------------------------------------ food and drink (20+)
 # Food never heals (round 7): it fills hunger and thirst, and some of it gives stamina or an effect.

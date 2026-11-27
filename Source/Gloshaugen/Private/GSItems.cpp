@@ -5,6 +5,7 @@
 #include "Engine/StaticMesh.h"
 #include "UObject/UObjectGlobals.h"
 #include "HAL/IConsoleManager.h"
+#include "Algo/Sort.h"
 
 #include "GSItemCatalog.gen.inl"
 
@@ -445,43 +446,173 @@ void GSItems::ClampMods(FGSEffectMods& M)
 	M.Lifesteal = FMath::Min(M.Lifesteal, 0.f);
 }
 
-// Simple versions until plan-07b (onset, fade, load and overdose come there). They build and can be called now.
-float GSItems::EffectStrength(const FGSEffectDef& Def, const FGSActiveEffect& Active, float Now)
+// The drug engine (plan-07b): onset, peak and come-down per effect, load on the body, overdose and the antidote.
+namespace GSItemsImpl
 {
-	return Now < Active.EndTime ? 1.f : 0.f;
+	constexpr int32 NumDrugClasses = (int32)EGSDrugClass::Antidote + 1;
+
+	/** Load stages: 0 none, 1 Uvel, 2 Forgiftet, 3 Overdose. Only the highest applies; it fades in over 0.2 of load. */
+	struct FLoadStage { float Threshold, Speed, Spread, StaminaRegen, Reload, Drain; int32 Visual; };
+	static const FLoadStage LoadStages[] = {
+		{ 0.f, 1.f,   1.f,    1.f,  1.f,  0.f,  0 },
+		{ 1.2f, 1.f,  1.15f,  0.8f, 1.f,  0.f,  3 },    // Uvel: shaking
+		{ 2.0f, 0.85f, 1.4f,  1.f,  1.3f, 0.5f, 1 },    // Forgiftet: blurred
+		{ 3.0f, 0.5f, 1.4f,   1.f,  1.3f, 2.5f, 10 },   // Overdose: tunnel vision, dead in 40 s from 100 HP
+	};
+	constexpr float StageRamp = 0.2f;
+
+	/** The stage the load L reaches and how far into it (0..1), and the stage's effects blended with the one below. */
+	FLoadStage StageFor(float L, int32& OutStage, float& OutWeight)
+	{
+		OutStage = 0;
+		OutWeight = 0.f;
+		for (int32 K = UE_ARRAY_COUNT(LoadStages) - 1; K > 0; --K)
+		{
+			if (L > LoadStages[K].Threshold - StageRamp)
+			{
+				OutStage = K;
+				OutWeight = FMath::Clamp((L - (LoadStages[K].Threshold - StageRamp)) / StageRamp, 0.f, 1.f);
+				break;
+			}
+		}
+		const FLoadStage& Lo = LoadStages[FMath::Max(OutStage - 1, 0)];
+		const FLoadStage& Hi = LoadStages[OutStage];
+		const float W = OutStage > 0 ? OutWeight : 0.f;
+		FLoadStage S;
+		S.Threshold = Hi.Threshold;
+		S.Speed = FMath::Lerp(Lo.Speed, Hi.Speed, W);
+		S.Spread = FMath::Lerp(Lo.Spread, Hi.Spread, W);
+		S.StaminaRegen = FMath::Lerp(Lo.StaminaRegen, Hi.StaminaRegen, W);
+		S.Reload = FMath::Lerp(Lo.Reload, Hi.Reload, W);
+		S.Drain = FMath::Lerp(Lo.Drain, Hi.Drain, W);
+		S.Visual = Hi.Visual;
+		return S;
+	}
+
+	/** Strongest antidote right now (opioids do not count while it is >= 0.5). */
+	float AntidoteStrength(const TArray<FGSActiveEffect>& Effects, float Now)
+	{
+		float Best = 0.f;
+		for (const FGSActiveEffect& E : Effects)
+		{
+			const FGSEffectDef* Def = GSItems::FindEffect(E.Id);
+			if (Def && Def->Class == EGSDrugClass::Antidote) Best = FMath::Max(Best, GSItems::EffectStrength(*Def, E, Now));
+		}
+		return Best;
+	}
+
+	/** Mods scaled by strength: multipliers 1 + (m - 1) s, per-second values times s, flags and visual from s >= 0.5. */
+	FGSEffectMods Scaled(const FGSEffectMods& M, float S)
+	{
+		auto Mul = [S](float V) { return 1.f + (V - 1.f) * S; };
+		FGSEffectMods R;
+		R.Speed = Mul(M.Speed); R.StaminaDrain = Mul(M.StaminaDrain); R.StaminaRegen = Mul(M.StaminaRegen); R.Recoil = Mul(M.Recoil);
+		R.Spread = Mul(M.Spread); R.Damage = Mul(M.Damage); R.Taken = Mul(M.Taken); R.Jump = Mul(M.Jump); R.Reload = Mul(M.Reload);
+		R.Hunger = Mul(M.Hunger); R.Thirst = Mul(M.Thirst);
+		R.Regen = M.Regen * S; R.Drain = M.Drain * S; R.Lifesteal = M.Lifesteal * S;
+		if (S >= 0.5f)
+		{
+			R.bNightVision = M.bNightVision; R.bWallhack = M.bWallhack; R.bPhoenix = M.bPhoenix; R.bSilent = M.bSilent;
+			R.bFlashImmune = M.bFlashImmune; R.bGhost = M.bGhost; R.bGlide = M.bGlide; R.bNumb = M.bNumb; R.bCough = M.bCough;
+			R.Visual = M.Visual;
+		}
+		return R;
+	}
 }
 
-FGSEffectMods GSItems::CombineActive(const TArray<FGSActiveEffect>& Effects, float Now)
+float GSItems::EffectStrength(const FGSEffectDef& Def, const FGSActiveEffect& Active, float Now)
 {
-	FGSEffectMods M;
-	for (const FGSActiveEffect& E : Effects)
-	{
-		const FGSEffectDef* Def = FindEffect(E.Id);
-		if (Def && EffectStrength(*Def, E, Now) > 0.f) M.CombineRaw(Def->Mods);
-	}
-	ClampMods(M);
-	return M;
+	// A new dose keeps StartTime and only moves EndTime (Kamp's AddEffect), so the onset does not start again.
+	const float Start = Active.StartTime > 0.f ? Active.StartTime : Active.EndTime - Def.Duration;
+	if (Now < Start || Now >= Active.EndTime) return 0.f;
+	float S = 1.f;
+	if (Def.Onset > 0.f) S = FMath::Min(S, (Now - Start) / Def.Onset);
+	if (Def.Fade > 0.f) S = FMath::Min(S, (Active.EndTime - Now) / Def.Fade);
+	return FMath::Clamp(S, 0.f, 1.f);
 }
 
 float GSItems::DrugLoad(const TArray<FGSActiveEffect>& Effects, float Now)
 {
-	return 0.f;
+	using namespace GSItemsImpl;
+	float PerClass[NumDrugClasses] = {};
+	int32 Stimulants = 0;
+	const bool bAntidote = AntidoteStrength(Effects, Now) >= 0.5f;
+	for (const FGSActiveEffect& E : Effects)
+	{
+		const FGSEffectDef* Def = FindEffect(E.Id);
+		if (!Def || Def->Load <= 0.f) continue;
+		if (bAntidote && Def->Class == EGSDrugClass::Opioid) continue;
+		const float S = EffectStrength(*Def, E, Now);
+		if (S <= 0.f) continue;
+		PerClass[(int32)Def->Class] += Def->Load * FMath::Max<int32>(1, E.Doses) * S;
+		if (Def->Class == EGSDrugClass::Stimulant) ++Stimulants;
+	}
+	float& Opioid = PerClass[(int32)EGSDrugClass::Opioid];
+	float& Depressant = PerClass[(int32)EGSDrugClass::Depressant];
+	float& Alcohol = PerClass[(int32)EGSDrugClass::Alcohol];
+	float& Stimulant = PerClass[(int32)EGSDrugClass::Stimulant];
+	float& Caffeine = PerClass[(int32)EGSDrugClass::Caffeine];
+	// Opioid with a sedative or alcohol: the breathing stops (the most dangerous mix there is)
+	if (Opioid > 0.f && (Depressant > 0.f || Alcohol > 0.f)) { Opioid *= 1.5f; Depressant *= 1.5f; Alcohol *= 1.5f; }
+	// Two stimulants, or a stimulant with caffeine, strengthen each other
+	if (Stimulant > 0.f && (Stimulants >= 2 || Caffeine > 0.f)) { Stimulant *= 1.25f; Caffeine *= 1.25f; }
+	float L = 0.f;
+	for (float V : PerClass) L += V;
+	return L;
+}
+
+FGSEffectMods GSItems::CombineActive(const TArray<FGSActiveEffect>& Effects, float Now)
+{
+	using namespace GSItemsImpl;
+	FGSEffectMods M;
+	const bool bAntidote = AntidoteStrength(Effects, Now) >= 0.5f;
+	for (const FGSActiveEffect& E : Effects)
+	{
+		if (E.EndTime < Now) continue;
+		const FGSEffectDef* Def = FindEffect(E.Id);
+		if (!Def || (bAntidote && Def->Class == EGSDrugClass::Opioid)) continue;
+		const float S = EffectStrength(*Def, E, Now);
+		if (S > 0.f) M.CombineRaw(Scaled(Def->Mods, S));
+	}
+	ClampMods(M);   // once, at the end: the order the effects were taken in does not matter
+
+	// The load stage on top, outside the caps: an overdose may make you slower than any cap would
+	int32 Stage = 0;
+	float Weight = 0.f;
+	const FLoadStage S = StageFor(DrugLoad(Effects, Now), Stage, Weight);
+	if (Stage > 0)
+	{
+		M.Speed *= S.Speed; M.Spread *= S.Spread; M.StaminaRegen *= S.StaminaRegen; M.Reload *= S.Reload; M.Drain += S.Drain;
+		if (Weight >= 0.5f) M.Visual = S.Visual;
+	}
+	return M;
 }
 
 void GSItems::ActiveVisuals(const TArray<FGSActiveEffect>& Effects, float Now, TArray<FGSVisualLayer>& Out)
 {
+	using namespace GSItemsImpl;
+	const int32 First = Out.Num();
+	const bool bAntidote = AntidoteStrength(Effects, Now) >= 0.5f;
 	for (const FGSActiveEffect& E : Effects)
 	{
 		const FGSEffectDef* Def = FindEffect(E.Id);
-		if (!Def || Def->Mods.Visual == 0) continue;
+		if (!Def || Def->Mods.Visual == 0 || (bAntidote && Def->Class == EGSDrugClass::Opioid)) continue;
 		const float Strength = EffectStrength(*Def, E, Now);
-		if (Strength > 0.f) Out.Add({ Def->Mods.Visual, Strength });
+		if (Strength > 0.05f) Out.Add({ Def->Mods.Visual, Strength });
 	}
+	int32 Stage = 0;
+	float Weight = 0.f;
+	const FLoadStage S = StageFor(DrugLoad(Effects, Now), Stage, Weight);
+	if (Stage > 0 && Weight > 0.05f) Out.Add({ S.Visual, Weight });
+	// Strongest first (only the layers added here)
+	Algo::Sort(MakeArrayView(Out.GetData() + First, Out.Num() - First),
+		[](const FGSVisualLayer& A, const FGSVisualLayer& B) { return A.Strength > B.Strength; });
 }
 
 namespace GSItemsImpl
 {
-	/** gs.fx.test: checks the drugs and boosts (part 1 of plan-07: caps, loot, ids). Logs PASS/FAIL per line. */
+	/** gs.fx.test: checks the drugs and boosts (plan-07a: caps, loot, ids; plan-07b: onset, doses, mixes, overdose, antidote,
+	 *  soft stages). Logs PASS/FAIL per line. */
 	void FxTest(const TArray<FString>& Args)
 	{
 		int32 Passed = 0, Run = 0;
@@ -555,6 +686,79 @@ namespace GSItemsImpl
 			}
 			Report(TEXT("(j) Id-er og helse"), Missing.IsEmpty() && Heals.IsEmpty(),
 				FString::Printf(TEXT("mangler: [%s], mat/stoff som leger: [%s]"), *Missing, *Heals));
+		}
+
+		// ---- plan-07b: the drug engine. Artificial effect lists; Now = 1000 s. A "full" effect started 60 s ago and lasts
+		// 60 s more, so it is past its onset and before its come-down.
+		const float Now = 1000.f;
+		auto Make = [](const TCHAR* Id, float StartTime, float EndTime, int32 Doses)
+		{
+			FGSActiveEffect A;
+			A.Id = FName(Id);
+			A.StartTime = StartTime;
+			A.EndTime = EndTime;
+			A.Doses = (uint8)Doses;
+			return A;
+		};
+		auto Full = [&](const TCHAR* Id, int32 Doses) { return Make(Id, Now - 60.f, Now + 60.f, Doses); };
+		auto StageOf = [](float L, float& W) { int32 K = 0; GSItemsImpl::StageFor(L, K, W); return K; };
+		static const TCHAR* StageNames[] = { TEXT("ingen"), TEXT("Uvel"), TEXT("Forgiftet"), TEXT("Overdose") };
+		auto Near = [](float A, float B) { return FMath::Abs(A - B) <= 0.01f; };
+
+		// (a) Morfin taken at t = 0 (120 s, onset 8, fade 20): 0 / 0.5 / 1 / 1 / 0 at 0, 4, 8, 100, 120 s
+		if (const FGSEffectDef* Morfin = GSItems::FindEffect(FName(TEXT("Morfin"))))
+		{
+			const FGSActiveEffect A = Make(TEXT("Morfin"), 0.f, 120.f, 1);
+			const float S[] = { GSItems::EffectStrength(*Morfin, A, 0.f), GSItems::EffectStrength(*Morfin, A, 4.f),
+				GSItems::EffectStrength(*Morfin, A, 8.f), GSItems::EffectStrength(*Morfin, A, 100.f), GSItems::EffectStrength(*Morfin, A, 120.f) };
+			Report(TEXT("(a) innslag og nedtur"), Near(S[0], 0.f) && Near(S[1], 0.5f) && Near(S[2], 1.f) && Near(S[3], 1.f) && Near(S[4], 0.f),
+				FString::Printf(TEXT("morfin ved 0/4/8/100/120 s: %.2f / %.2f / %.2f / %.2f / %.2f (skal være 0 / 0,5 / 1 / 1 / 0)"), S[0], S[1], S[2], S[3], S[4]));
+
+			// (k) a second dose 50 s later keeps StartTime and only moves EndTime: full strength, not 0
+			const FGSActiveEffect Twice = Make(TEXT("Morfin"), Now - 50.f, Now + 120.f, 2);
+			const FGSActiveEffect Reset = Make(TEXT("Morfin"), 0.f, Now + 120.f, 2);   // what restarting the onset would give
+			const float SK = GSItems::EffectStrength(*Morfin, Twice, Now), SR = GSItems::EffectStrength(*Morfin, Reset, Now);
+			Report(TEXT("(k) ny dose"), Near(SK, 1.f),
+				FString::Printf(TEXT("morfin ×2, første dose for 50 s siden: styrke %.2f (skal være 1; uten StartTime ville den vært %.2f)"), SK, SR));
+		}
+		else Report(TEXT("(a) innslag og nedtur"), false, TEXT("fant ikke Morfin"));
+
+		auto LoadLine = [&](const TCHAR* Name, const TArray<FGSActiveEffect>& List, TFunctionRef<bool(float, int32, float, const FGSEffectMods&)> Ok, const TCHAR* Want)
+		{
+			const float L = GSItems::DrugLoad(List, Now);
+			float W = 0.f;
+			const int32 K = StageOf(L, W);
+			const FGSEffectMods M = GSItems::CombineActive(List, Now);
+			Report(Name, Ok(L, K, W, M), FString::Printf(TEXT("L = %.3f, %s (vekt %.2f), fart %.3f, tap %.2f HP/s (skal: %s)"),
+				L, StageNames[K], W, M.Speed, M.Drain, Want));
+		};
+		// (b) Morfin ×2
+		LoadLine(TEXT("(b) morfin ×2"), { Full(TEXT("Morfin"), 2) },
+			[&](float L, int32 K, float W, const FGSEffectMods&) { return Near(L, 2.1f) && K == 2 && Near(W, 1.f); }, TEXT("L 2,1, Forgiftet, vekt 1"));
+		// (c) Morfin ×3: overdose, and only the highest stage applies (drain 2.5, not 0.5 + 2.5)
+		LoadLine(TEXT("(c) morfin ×3"), { Full(TEXT("Morfin"), 3) },
+			[&](float L, int32 K, float W, const FGSEffectMods& M) { return Near(L, 3.15f) && K == 3 && Near(W, 1.f) && Near(M.Drain, 2.5f); },
+			TEXT("L 3,15, Overdose, tap 2,5"));
+		// (d) Morfin + Alkohol ×2: (1.05 + 1.0) × 1.5
+		LoadLine(TEXT("(d) morfin + 2 pils"), { Full(TEXT("Morfin"), 1), Full(TEXT("Alkohol"), 2) },
+			[&](float L, int32 K, float, const FGSEffectMods&) { return Near(L, 3.075f) && K == 3; }, TEXT("L 3,075, Overdose"));
+		// (e) Morfin ×3 + Nalokson at full strength: only the antidote is left
+		LoadLine(TEXT("(e) morfin ×3 + nalokson"), { Full(TEXT("Morfin"), 3), Full(TEXT("Nalokson"), 1) },
+			[&](float L, int32, float, const FGSEffectMods&) { return L < 1.f; }, TEXT("L under 1"));
+		// (f) Amfetamin ×2 + KoffeinPlus: (1.6 + 0.3) × 1.25
+		LoadLine(TEXT("(f) amfetamin ×2 + mye koffein"), { Full(TEXT("Turbo"), 2), Full(TEXT("KoffeinPlus"), 1) },
+			[&](float L, int32 K, float, const FGSEffectMods&) { return Near(L, 2.375f) && K == 2; }, TEXT("L 2,375, Forgiftet"));
+		// (g) Sigarett + Snus + Nikotinplaster
+		LoadLine(TEXT("(g) røyk + snus + plaster"), { Full(TEXT("Royk"), 1), Full(TEXT("Snus"), 1), Full(TEXT("Nikotin"), 1) },
+			[&](float L, int32, float, const FGSEffectMods&) { return L < 1.f; }, TEXT("L under 1"));
+		// (l) L = 2.9: halfway into Overdose, speed between Forgiftet (0.85) and Overdose (0.5)
+		{
+			int32 K = 0;
+			float W = 0.f;
+			const GSItemsImpl::FLoadStage S = GSItemsImpl::StageFor(2.9f, K, W);
+			Report(TEXT("(l) myk overgang"), K == 3 && W > 0.f && W < 1.f && S.Speed < 0.85f && S.Speed > 0.5f,
+				FString::Printf(TEXT("L = 2,9: %s med vekt %.2f, fart %.3f, tap %.2f HP/s (skal: vekt mellom 0 og 1, fart mellom 0,5 og 0,85)"),
+					StageNames[K], W, S.Speed, S.Drain));
 		}
 
 		UE_LOG(LogTemp, Display, TEXT("gs.fx.test: %d/%d OK"), Passed, Run);

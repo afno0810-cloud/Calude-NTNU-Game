@@ -62,7 +62,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Blodtorst")); E.Name = TEXT("Blodt\u00F8rst"); E.Duration = 45.0f;
 		E.Mods.Lifesteal = 0.25f; E.Mods.Visual = 2; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Lattergass")); E.Name = TEXT("Lattergass"); E.Duration = 25.0f;
-		E.Load = 0.3f; E.Onset = 1.0f; E.Fade = 5.0f; E.Mods.Speed = 0.95f; E.Mods.Spread = 1.3f; E.Mods.Visual = 2; }
+		E.Class = EGSDrugClass::Depressant; E.Load = 0.3f; E.Onset = 1.0f; E.Fade = 5.0f; E.Mods.Speed = 0.95f; E.Mods.Spread = 1.3f; E.Mods.Visual = 2; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Koffein")); E.Name = TEXT("Koffein"); E.Duration = 180.0f;
 		E.Class = EGSDrugClass::Caffeine; E.Load = 0.15f; E.Onset = 15.0f; E.Fade = 30.0f; E.Mods.StaminaDrain = 0.9f; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("KoffeinPlus")); E.Name = TEXT("Mye koffein"); E.Duration = 150.0f;
@@ -774,6 +774,12 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		D.Treat = 1.0f; D.UseAnim = FName(TEXT("bandage"));
 		D.Kind = FName(TEXT("splint"));
 		D.bNoLoot = true; }
+	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Naloxone")); D.Name = TEXT("Nalokson nesespray");
+		D.Desc = TEXT("Opphever morfin og andre opioider i et minutt og kan redde deg fra overdose. Morfinen kommer tilbake n\u00E5r sprayen g\u00E5r ut."); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Rare;
+		D.MeshPath = TEXT("/Game/Models/SM_Naloxone.SM_Naloxone"); D.MaxStack = 5;
+		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Nalokson"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("dropper")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Coffee")); D.Name = TEXT("Kaffe fra Realfag-kaffebaren");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Coffee.SM_Coffee"); D.MaxStack = 5;
