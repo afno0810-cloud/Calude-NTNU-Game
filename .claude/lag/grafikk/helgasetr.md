@@ -196,7 +196,7 @@ ugjennomsiktig)**; bare veggene mot atriet og dørene er glass. Det gir dekning 
 |---|---|---|
 | Rom | undervisningsrom 100 pl (4.019 i 2018-nummerering) | undervisningsrom 50 pl ×2, foldeveggen åpen (4.014 + 4.015) |
 | Rommet | X −6,77…+13,54, Y +20,05…+29,8 | X −13,54…+6,77, Y −32,11…−20,05 |
-| Flagg (m) | (+3,4, +26,0, 13,9) – i `GSCampus::Bases()` Z 13,4, se under | (−3,4, −26,0, 13,9) – Z 13,4 |
+| Flagg (m) | (+3,4, +26,0, 13,9) – i `GSCampus::Bases()` Z 13,7, se under | (−3,4, −26,0, 13,9) – Z 13,7 |
 | Dører til korridoren | (+10,0, +20,05) og (−3,0, +20,05), 1,0 m | (−10,0, −20,05) og (+3,0, −20,05), 1,0 m |
 | L-skjerm innenfor hver dør | 1,6 × 2,1 m, 1,5 m inn (oppslagstavle/knaggrekke) | samme |
 | Sidedør | **ingen** | **ingen** |
@@ -209,7 +209,7 @@ korridoren (kontrollørens K6; sjekk e2).
 
 **Flaggets Z i dataene:** `AGSGameMode::PickSpawnTransform` sporer ned fra `Base.Z + 4 m`. Med Z 13,9 starter sporet på
 17,9 m, inne i P5-dekket (17,85–18,2). Da avvises alle punkter og hele laget spawner på flagget. Til Spillbarhet har
-flyttet starten til +2 m (bestilt), står `Flag.Z = 13,4` i `GSCampus::Bases()`. Sporene starter da på 17,4 og 16,4 m.
+flyttet starten til +2 m (bestilt), står `Flag.Z = 13,7` i `GSCampus::Bases()` (byggeren, runde 4a: ikke 13,4 – da havner reserveplassen Base + 1,2 m med kapselen 22 cm ned i gulvet). Sporene starter da på 17,7 og 16,7 m, under P5-dekket (17,85).
 
 **Spawn** (rom bak egen base, sluse med L-sving, to utganger hver):
 - Sør (rødt): S1 grupperom X −25,75…−15,4, Y +20,3…+26,0 og S2 Y +26,0…+32,11. Spawngangen X −15,4…−13,54 er stengt mot
@@ -417,3 +417,33 @@ rom, dører, hull, trapper, bokser, baser, spawn og plasser.
 - `check_campus.py` tester bare de gamle dataene (frosset). Løkken kjører `check_helgasetr.py` og
   `check_helgasetr_walk.py` i stedet. Når Andreas har spilt Helgasetr og sagt ja, slettes campusdelen i en egen opprydning
   (spør først: det er Andreas' innhold).
+
+## 13. Id-tabeller og navn i koden (fra runde 4a, skrevet av byggeren)
+
+Alt kommer fra `Tools/Blender/helgasetr_plan.py` → `python Tools/Blender/gen_helgasetr.py` → `GSHelgasetr.gen.inl`, lest
+gjennom `GSHelgasetr.h` (`namespace GSHelgasetr`). **Id = plass i lista.** Lista bygges i fast rekkefølge (etasje for
+etasje, rom for rom i den rekkefølgen de står i `make_plan()`), så id-ene endrer seg bare hvis noen legger til, fjerner eller
+flytter rom, dører eller vegger i datakilden. Den som gjør det, skal si fra i `bestillinger.md` (Interaktiv verden nøkler
+tilstanden sin på id-ene).
+
+| Funksjon | Hva | Felter |
+|---|---|---|
+| `DoorSlots()` | 54 døråpninger (P1–P4), alle åpne hull i 4a | `Id`, `X, Y, Z` (gulv midt i åpningen, m), `Width`, `Height` (2,1), `Yaw` (forsiden peker ut av rommet døra tilhører), `bHingeLeft`, `Kind` (`DoorKindNames`: tre / glass_kode / dobbel / brann / laast), `bLocked` (Trapp sør på P4), `bOpen`, `Level` (0 = Plan 1), `Room` |
+| `GlassPanels()` | 343 knusbare glassfelt ≤ 1,5 m (rekkverk P1–P4 og boksvegger mot atriet, grupperommene i glass på mesaninen) | `Id`, senter `Cx, Cy, Cz`, `Len` (langs `Yaw`), `Height`, `Thick` (0,06), `Yaw` (0 = langs X, 90 = langs Y), `Type` (0 rekkverk, 1 vegg), `Level`. Glassdørene er **ikke** med (de er dører i `DoorSlots()`). |
+| `BreachWalls()` | 6 lettvegger 2,4 × 2,8 m, parvis punktsymmetriske: P4 vest Y 0,6…3,0 og −11,4…−9,0, P4 øst Y −3,0…−0,6 og 9,0…11,4, P3 vest Y −10…−7,6, P3 øst Y 7,6…10 | `Id`, boks `X0…Z1`, `Mat`, `Level`, `Name` |
+| `Cover()` | 24 dekningsklosser (plantekasser, salatbar, båser, disker, skap, sofagrupper, miljøstasjonen) | samme som over; `Name` sier hva det er |
+| `LootSpots()`, `Terminals()`, `Cameras()`, `SoundZones()`, `Lights()`, `Signs()` | data til Spillbarhet og Kamp | se `GSHelgasetr.h` |
+| `Bases()`, `Spawns()`, `Zones()`, `FloorRects(nivå)`, `Corridors()`, `LevelAt(z)`, `LevelName(nivå)`, `ZoneAt(p)`, `NavBoundsM()` | kartet | meter |
+
+I spillet (`AGSHelgasetrBuilder`): glassfeltene ligger i én komponent per type, dekning i én per materiale, lettveggene i én;
+**instans N = id N** innen sin komponent, og `FindGlassPanel(Id, Comp, Index)`, `FindBreachWall`, `FindCover` gir svaret.
+Instanser fjernes aldri (skaler til 0). Tagger: glass `Mat_Glass` + `GS_Int_Glass` (+ `Glass_Rekkverk` / `Glass_Vegg`),
+lettvegger `Mat_Plaster` + `GS_Int_Breach`, dekning `GS_Int_Cover`. Glassfeltene blokkerer Pawn, PhysicsBody, WorldDynamic og
+WorldStatic-kanalen og slipper Visibility og Camera gjennom (kulene går gjennom til knusing finnes).
+
+**Endret fra tabellene over under byggingen (sjekkene krevde det):** dørene i P4 vest-boksene sitter parvis ved skilleveggene
+(Y −9,5 / −8,55 / −3,55 / −2,6 / 4,0 / 9,4) og øst-boksene ved Y 8,75 / 9,75, så lettveggene mot korridoren blir lange nok til
+å gi dekning (e3); døra fra S1 til venterommet står på X −23,6 (N1: +23,6) med en ekte L-skjerm (2,2 m + 1,25 m ben), ellers så
+venterommet spawnpunktene diagonalt (c); boks 4.N1 har lettvegg også mot vest (ellers en fri linje på 45,5 m dør til dør, e2);
+løp 2 ligger på Y 6,6…9,0 (ikke 6,2…8,6: 0,6 m spalte mot mesaninkanten, i); løp 1 og 3 går helt ut til dekkekanten
+(X −13,25 / +13,25). Atriehjørnene er rette i klossbygget (avrundes i 4b).

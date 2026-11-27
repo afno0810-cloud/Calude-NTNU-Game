@@ -40,7 +40,10 @@ def report(ok, text):
 
 
 def section(name):
-    a = SRC.index(name)
+    # The old campus lists sit in the "else" branch after the Helgasetr branch (GSCampus::bHelgasetr): start there.
+    a = SRC.index(name, SRC.index("namespace GSCampus"))
+    if "bHelgasetr" in SRC[a:a + 300]:
+        a = SRC.index("else", a)
     return SRC[a:SRC.index("return List;", a)]
 
 
@@ -54,7 +57,7 @@ roads = []
 for m in re.finditer(r'\{\s*FVector2D\(' + NUM + r',\s*' + NUM + r'\),\s*FVector2D\(' + NUM + r',\s*' + NUM + r'\),\s*' + NUM + r',\s*(true|false)\s*\}',
                      section("Roads()")):
     roads.append(tuple(float(m.group(i)) for i in range(1, 6)))
-pa = re.search(r'PlayArea\(\)\s*\{\s*return FBox2D\(FVector2D\(' + NUM + r',\s*' + NUM + r'\),\s*FVector2D\(' + NUM + r',\s*' + NUM + r'\)', SRC)
+pa = re.search(r'return FBox2D\(FVector2D\(' + NUM + r',\s*' + NUM + r'\),\s*FVector2D\(' + NUM + r',\s*' + NUM + r'\)', SRC)
 PX0, PY0, PX1, PY1 = (float(pa.group(i)) for i in range(1, 5))
 bases = []
 for m in re.finditer(r'\{\s*TEXT\("([^"]+)"\),\s*TEXT\("([^"]+)"\),\s*FVector\(' + NUM + r',\s*' + NUM + r',\s*' + NUM + r'\),\s*' + NUM +

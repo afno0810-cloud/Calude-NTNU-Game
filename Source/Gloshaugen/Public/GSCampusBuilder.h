@@ -21,10 +21,11 @@ class GLOSHAUGEN_API AGSCampusBuilder : public AActor
 public:
 	AGSCampusBuilder();
 
-	void Build();
+	/** Lays out the whole map. Virtual: AGSHelgasetrBuilder builds Helgasetr instead (GSCampus::bHelgasetr). */
+	virtual void Build();
 
 	/** Street lights, switched on at night by the environment. */
-	void SetStreetLightsOn(bool bOn);
+	virtual void SetStreetLightsOn(bool bOn);
 
 	/** The hand-made Hovedbygningen model (main block and Lysgaarden), or null if not imported yet. */
 	static class UStaticMesh* MainBuildingMesh();

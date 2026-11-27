@@ -3,6 +3,129 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 1a (Interaktiv verden): dører og bruk-tasten (27. nov.)
+
+Gammelt som er forbedret: dirkesett og NTNU-adgangskort åpner nå også kodelåser på dører (654, 655), bruk-tasten E virker på dører med hint i samme stil (649, 650, 659), og botene blir ikke stående foran lukkede dører (660).
+Nytt: felles replikert tilstand for kartet (646–648), alle dørtypene i Helgasetr med lås, spark, rømning og branndører (651–658), og testrom med konsollkommandoer (661).
+
+646. Ny felles tilstand for alt som kan åpnes og ødelegges i kartet, lik for alle spillere online
+647. Den som kommer inn midt i kampen ser åpne dører og brutte låser slik de er, uten gamle lyder
+648. Alle dører og låser settes tilbake når en ny kamp starter
+649. Bruk-tasten (E) virker på dører: trykk for å åpne eller lukke, hold for å sparke
+650. E gjør aldri to ting: den tingen du ser på når du trykker, er den som brukes
+651. Dører går opp vekk fra deg, med lyd når de åpnes og smekker igjen
+652. Dører kan sparkes opp med et høyt smell som andre hører
+653. Låste tredører kan sparkes inn (tre spark) eller skytes opp ved låsen
+654. Glassdørene til grupperommene har kodelås: NTNU-adgangskort åpner med et pip
+655. Kodelåsen kan dirkes opp med dirkesett (6 s) eller brytes opp med makt (4 s, høylytt), eller skytes i stykker
+656. Låste dører og alarmdører kan alltid åpnes innenfra, som ekte rømningsdører
+657. Branndører i trapperommene lukker seg selv, men aldri oppå noen som står i døråpningen
+658. Granater blåser opp dører i nærheten og ødelegger låsene
+659. Kort hint midt på skjermen ved dører med framdriftslinje ved dirking og brekking
+660. Botene åpner ulåste dører de går mot
+661. Testrom for dørene (konsoll: Interaktiv.Testrom, Interaktiv.Smell, Interaktiv.Knus)
+
+## Runde 4a (Grafikk og kart): Helgasetr (27. nov.)
+
+Gammelt som er forbedret: kartdataene som baser, spawn, flagg, minikart og «Flagget sist sett» leser (549, 558, 559), etasjenavnene i et bygg med ulike etasjehøyder (550), regn og snø inne (551).
+Nytt: hele Helgasetr som spillbart kart (549–557), glassbokser, ruter og dekning (557, 560, 561), lagfarger (562), sperre mot gripekroken (563) og egne deler med nummer for knusing og sprenging (564).
+
+549. Nytt kart: Capture the Flag spilles nå inne i Helgasetr (NTNU, Elgeseter gate 10); campuskartet bygges ikke lenger
+550. Helgasetr har målene fra arkitektens tegninger: 51,5 × 67,8 m, søyleaksene 1–10 og A–N, og etasjehøyder på 5,6, 4,3 og 4,0 m
+551. Atriet går gjennom alle seks etasjene opp til et sagtak av glass med hvitt fagverk, og regn og snø stopper ved taket
+552. Ringkorridor rundt atriet i 3. og 4. etasje (og som U i 2. etasje) med betongsøyler og glassrekkverk med treoverkant
+553. Kantina i 1. etasje med lyst gulv, Ryddekroken-tårnet, salatbaren, plantekassene og båsene der de står i virkeligheten
+554. Mesaninen i 2. etasje med oransje gulv, sittetrapp og grupperom i glass, og studentarbeidsplassene med dobbel takhøyde
+555. Atriumtrappa i tre gule løp med ekte trinn: langs vestsiden, tvers over atriet i lufta og langs østsiden
+556. Trapp øst går fra 1. til 4. etasje og Trapp sør fra 1. til 3. etasje (alarmdøra på 4. er låst)
+557. Glassboksene henger ut i atriet i 3. og 4. etasje, med lettvegg og whiteboard mot korridoren og glass mot atriet
+558. Sørbasen (rødt lag) i undervisningsrommet i sørenden av 4. etasje og Nordbasen (blått lag) i nordenden, med to dører og skjermer innenfor som hindrer sikt tvers over atriet
+559. Spawn i grupperom bak hver base, med sluse og L-sving ut, så ingen ser inn fra korridorene eller trappene
+560. Seks veier mellom basene: vest- og østkorridoren, laberadene og østfløyens rom, gjennom atriet via trappene, og ned gjennom kantina
+561. Dekning minst hver 8. meter i korridorene langs atriet: søyler, skap, sofagrupper og glassboksenes vegger
+562. Røde og blå striper og skilt «SØR»/«NORD» viser hvilken base du er ved
+563. Gripekroken fester ikke i noe over 4. etasje i atriet, og ingen kan stå på glassboksene eller fagverket
+564. Glass, lettvegger og dekning er egne deler med nummer, klare til å bli knust, sprengt og flyttet i neste runder
+
+## Runde 14b (Kamp): hendene og føttene (27. nov.)
+
+Gammelt som er forbedret: de løse armene foran kameraet (582–587), egen skygge (590), huk og hodetreff (591–592), «Avslutt» i reservemenyen (593), bildeskarphet (597).
+Nytt: kroppens egne hender på våpenet med lading, spising og kikkert (582–587), føtter i trapper (588–589), alt som er «bare for spilleren bak skjermen» holdes unna botene, og botene sikter i høyden (594–596).
+
+582. Hendene som holder våpenet er nå kroppens egne hender, ikke løse armer foran kameraet (`gs.FP.Hands 0` eller en kropp som mangler gir de gamle armene)
+583. Ved lading henter kroppens venstre hånd magasinet fra beltet på venstre side og setter det inn, og magasinet følger hånda hele veien
+584. Når du spiser, drikker eller bruker noe, er det kroppens høyre hånd som holder tingen
+585. Hendene henger ikke etter når du snur deg fort: våpenet og hendene regnes ut fra der du ser i dette bildet, ikke det forrige
+586. Albuene peker ned, ut og litt bak, og gevær holdes litt nærmere kroppen i hofta, så hendene når fram med alle våpen (målt under 100 % av armlengden i hofta, i sikte og under lading)
+587. Armene skjules når du ser gjennom en kikkert, så de ikke synes i siktebildet
+588. Føttene står på trappetrinn og ujevnt gulv, og hofta senkes når den ene foten står lavere, både for deg og for andre nær deg
+589. Fot-sporingen slås av for figurer som er langt unna, ikke synes eller beveger seg fort, så den koster lite
+590. Skyggen din holder nå våpenet, og vest, hjelm, sekk og armbind er også med i skyggen
+591. Hukende figurer skyver hofta bakover som i en ekte huk, så knærne er inne i beintreffet i stedet for 10–15 cm foran det
+592. Hodetreffet er flyttet 3 cm bakover, så det dekker hodet også når andre sikter rett opp eller ned (målt: innenfor ved ±80 grader og hukende)
+593. «Avslutt» i reservemenyen avslutter nå også Play i editoren
+594. Datastyrte spillere gir ikke verten hjerteslag, treffmarkører, skjermeffekter, meldinger eller en førstepersonskropp
+595. Verten hører botenes skudd og slag fra der boten står, og ser kulene deres, i stedet for å høre dem som sine egne
+596. Bots sikter opp og ned også med selve skuddet, så de kan treffe mellom etasjer og i trapper
+597. Skarpere bilde: spillet tegnes i full oppløsning på Høy og Episk (85 % på Lav og Middels) i stedet for 72 %, også når grafikknivået velges i hovedmenyen
+
+## Rettinger (Spillbarhet): test kartet og spawn (27. nov.)
+
+Gammelt som er forbedret: fri flyging (710–713), spawn og flagg innendørs (714–716), teksten til lysspor (717).
+
+710. Fri flyging ned virker med alle huk-tastene, både C og Ctrl (før bare den første), og opp og fort med alle tastene sine
+711. Tekstene i test kartet viser alle tastene som virker i lufta, f.eks. «C / V. Ctrl ned»
+712. Mens du flyr, hopper, klatrer, huker eller sklir ikke figuren i tillegg når du trykker Mellomrom eller C
+713. Slår du av flygingen uten ledig plass og uten å ha stått på bakken før, settes du ned ved egen base, aldri inne i en vegg
+714. Startplassene finner gulvet fra 2 m over punktet, så i Helgasetr havner du i rommet og ikke oppå dekket over
+715. Flaggene settes på gulvet fra 2 m over basepunktet, så de aldri treffer taket over en innendørs base
+716. En spiller som står på en startplass gjør ikke at neste spiller spawner oppå hodet hans
+717. Lysspor-ammo sier nå riktig: kulene lyser og du ser hvor de går, men fienden ser hvor du skyter fra (ikke lenger «bedre treff»)
+
+## Runde 5 (Spillbarhet): ny hovedmeny og test kartet (27. nov.)
+
+Gammelt som er forbedret: hovedmenyens valg (598), vert og bli med (599), faste regler for kamplengde og erobringer (600, 605), menyen inne i spillet (611), «Til hovedmenyen» og tastelista (613).
+Nytt: bot-siden og bot-kamp uten lobby (601–604), test kartet med fri flyging, flytting og lys/vær (606–610), pause (612). Selve botene kommer i neste runde; til da sier menyen og skjermen tydelig at du spiller alene.
+
+598. Hovedmenyen har tre tydelige valg øverst: Spill mot bots, Spill online og Test kartet, og under dem Innstillinger, Kontroller og Avslutt
+599. «Spill online» samler vert og bli med på én side, med adressene vennene skal skrive inn og feltet for å koble til
+600. Som vert velger du kamplengde, antall erobringer og venneild før kampen starter, og alle som kobler til får de samme reglene
+601. «Spill mot bots» har egen side: ditt lag, antall bots på hvert lag, vanskelighetsgrad, kamplengde, erobringer, venneild og startutstyr (til botene er ferdige står det tydelig at du spiller alene)
+602. Valgene på bot-siden og vertssiden huskes til neste gang du starter spillet
+603. En kamp mot bots starter med én knapp: kartet lastes, fem sekunders nedtelling, og du står på valgt lag uten å vente i lobbyen
+604. Med startutstyr får alle i en bot-kamp det samme geværet, en pistol og to bandasjer ved hver start
+605. Kampens lengde og antall erobringer for å vinne følger det du valgte, ikke faste 15 minutter og 3 erobringer
+606. «Test kartet»: gå fritt rundt i hele kartet uten lobby, uten kamp og uten å ta skade eller bli sulten
+607. Fri flyging i test kartet: N slår det av og på, Mellomrom flyr opp og C ned, og du går gjennom vegger
+608. Når du slår av flygingen, settes du alltid ned på et gulv, aldri fast inne i en vegg
+609. I test kartet kan du flytte deg rett til flagget og startplassen til hvert lag fra menyen
+610. I test kartet kan du stille klokka og været fra menyen for å se kartet i morgenlys, kveld, regn eller tåke
+611. Menyen inne i spillet viser knapper som passer det du gjør: start kampen på nytt og endre kampen i bot-kamp, flyging, flytting og lys i test
+612. Spillet står stille på pause mens menyen er åpen i bot-kamp og test kartet (aldri i online-kamp)
+613. «Til hovedmenyen» tar deg tilbake til startmenyen, også i editorens Play, og tasten for fri flyging kan endres i Kontroller
+
+## Runde 14 (Kamp): hel kropp i førsteperson (27. nov.)
+
+Gammelt som er forbedret: beina du ser når du ser ned (566), andre spilleres armer og gange (569, 570), huking (573), våpenet på andre (576), reservemenyen (579), inventar og «klar» under menyen (580), sår langt unna (581).
+Nytt: egen kroppsanimasjon i C++ med åtte retninger og rotlås (567, 568), ryggbøy etter sikte (571), skytterstilling (572), knebøy i glid (574), hel skygge (575), hodet i hodeboksen (577), fallanimasjon (578).
+
+566. Ser du ned, ser du din egen kropp – bryst, mage, bein og føtter – ikke bare beina
+567. Din egen kropp går, jogger og stopper i takt med farten din, i åtte retninger
+568. Kroppen glir ikke fram og hopper tilbake mellom skrittene (rotbevegelsen er låst)
+569. Andre spillere holder våpenet med begge hender i stedet for å la armene henge
+570. Andre spillere går og jogger med egne animasjoner for gevær og pistol, i åtte retninger
+571. Andre spillere bøyer overkroppen litt etter hvor de sikter, uten at hodet flytter seg ut av treffet
+572. Gevær og hagle holdes i skytterstilling med venstre skulder fram
+573. Hukende figurer bøyer knærne og senker hoftene i stedet for å stå rett opp
+574. Under glid bøyes knærne, og beina går ikke gjennom gulvet
+575. Du har en hel skygge av deg selv på gulvet (våpenet kom med i skyggen i runde 14b, se 590)
+576. Andre spilleres våpen følger skulderen når de huker
+577. Hodet på andre spillere ligger der hode-treffet er, også når de huker (ryggbøyen er begrenset til 10 grader)
+578. Fallanimasjon når du hopper eller faller, for deg og for andre
+579. «Avslutt» og «Hovedmeny» i reservemenyen virker også når hovedmenyen ikke kan vises
+580. Inventar og «klar» kan ikke slås av og på mens menyen er åpen
+581. Sår på kropper langt unna (over 80 m) lages ikke, så store kamper går lettere
+
 ## Navn: Helgasetr Shootout (27. nov.)
 
 565. Spillet heter nå «Helgasetr Shootout»: i hovedmenyens tittel, i vindustittelen og i README
