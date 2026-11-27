@@ -1,3 +1,6 @@
+## 2026-11-27 kl. 08.50: styring og meny rettet
+Menyen virket da Andreas testet som eget spillvindu, og del 2 (F10/P i editoren, input sperret bak menyer) er bygget. Pausen oppheves: lagene fortsetter med planene sine, men alt som fanger input skal prøves i editorens Play før det leveres, og spillbarhet går fortsatt foran nye ting.
+
 ## 2026-11-26 kl. 22.55: SPILLBART FØRST
 Andreas: «spillet er ikke spillbart i det hele tatt». Ingen nye funksjoner før dette er løst. Alle lag:
 feilretting og stabilitet først. Lag Spillbarhet retter menyen og styringen (hastesak). Lag Grafikk tar
