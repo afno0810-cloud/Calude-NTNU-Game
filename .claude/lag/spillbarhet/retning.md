@@ -97,6 +97,11 @@ spillet til kampen er over skal henge sammen, forklare seg selv og være rettfer
 - **Feiljakt som gjenstår i egne filer:** `GSTerminal` videre, lootplassering per bygg, til-/frakobling.
 
 ## Endringer i retningen
+- 2026-11-27 (plan-07): **Medisin og stoffer som i virkeligheten rykker frem** (Andreas' punkt 3; Kamp venter på svar
+  før plan-10). Vi leverer mekanikken i katalogen/`GSItems` (innslag/nedtur, belastning og overdose, tak på stabling,
+  overnaturlige boosts ut av loot, sigarett/pils/årepresse/skinne/nalokson); Kamp kobler på med én funksjon
+  (`GSItems::CombineActive`) og tegner skjermen. Dekker funn B3, R1, R2, R7 og Kamps bestilling 27. nov. Bots-skissen
+  (gamle plan-07) eies av lag Bots; resten av køen står.
 - 2026-11-27 (plan-06a/06b): **Loot, PC-er og kameraer i Helgasetr rykker foran alt annet** (Andreas' punkt 2, hovedagentens prioritering 10.10): Helgasetr er spillbart, men har bare startpistolen. Gamle plan-06/07 (bots) er overtatt av lag Bots; nummeret 06 brukes nå til loot (06a: steder etter rom, bedre lenger fra basene, balanse mellom lagene, ammo etter kaliber) og terminaler/stedsnavn/bestillinger (06b). Bots' kroker venter til Bots 01a er godkjent.
 - 2026-11-27 (plan-05/06/07): **Andreas: «menysystem med spill mot bots, spill online og test mappet».** Hovedmenyen
   bygges om rundt tre valg (plan-05), bots kommer i to runder (plan-06 grunnmur, plan-07 taktikk). Vertsvalgene fra gamle
