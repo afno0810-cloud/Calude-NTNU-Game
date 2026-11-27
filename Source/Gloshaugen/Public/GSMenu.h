@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameViewportClient.h"
+#include "InputCoreTypes.h"
 #include "GSMenu.generated.h"
 
 class AHUD;
@@ -41,6 +42,8 @@ namespace GSMenu
 	GLOSHAUGEN_API bool IsModal(const APlayerController* PC);
 	/** The key an action is on right now, Norwegian name ("E", "Mellomrom"). Action = "IA_Interact" or own "GS_Team". */
 	GLOSHAUGEN_API FString KeyName(const APlayerController* PC, FName Action);
+	/** The key an action is on right now (same lookup as KeyName; also "GS_Team" and "GS_Fly"). Invalid when it has none. */
+	GLOSHAUGEN_API FKey KeyFor(const APlayerController* PC, FName Action);
 	/** Every control with its current key, in the order of the controls page. */
 	GLOSHAUGEN_API TArray<FGSControlRow> Controls(const APlayerController* PC);
 	/** Called by UGSGameViewportClient::InputChar; true = the menu took the character. */

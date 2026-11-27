@@ -22,6 +22,8 @@ enum class EGSMatchPhase : uint8
 	Countdown,
 	Playing,
 	Ended,
+	/** "Test kartet": walk and fly freely, no match, no damage (Spillbarhet, GSExplore). */
+	Explore,
 };
 
 /** Attachment bits stored on a weapon slot. */

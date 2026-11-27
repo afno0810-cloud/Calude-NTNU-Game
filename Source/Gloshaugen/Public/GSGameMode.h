@@ -15,6 +15,12 @@ class GLOSHAUGEN_API AGSGameMode : public AGameModeBase
 public:
 	AGSGameMode();
 
+	/** Reads the menu's choices from the travel URL (Mode, Caps, Min, FF, Skill, Allies, Enemies, Team, Kit) and clamps them. */
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+	/** Writes those choices into AGSGameState (it exists from here, before the first player logs in). */
+	virtual void InitGameState() override;
+	/** Bot match: the one human gets the chosen team and is ready at once (no waiting in a lobby). */
+	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void BeginPlay() override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
 	/** A player leaves: a flag he carries is laid down where he stood, and the event list says so. */
@@ -30,6 +36,9 @@ public:
 	static constexpr float TeamSwitchCooldown = 2.f;
 	/** Seconds between two name changes for one player (a name cannot be swapped in a stream to confuse). */
 	static constexpr float NameChangeCooldown = 2.f;
+	/** Bot match: countdown before each match, and the longest pause between two matches (Ready starts it sooner). */
+	static constexpr float BotCountdownSeconds = 5.f;
+	static constexpr float BotLobbySeconds = 15.f;
 
 	virtual void Tick(float DeltaSeconds) override;
 	/** Lobby: a player toggles ready. */
@@ -45,7 +54,19 @@ public:
 	static FVector BasePointM(uint8 Team);
 
 protected:
-	void StartCountdown(bool bForced);
+	/** Seconds < 0: the usual AGSGameState::CountdownSeconds. */
+	void StartCountdown(bool bForced, float Seconds = -1.f);
+	// The menu's choices from the URL, clamped (InitGame), written to the game state in InitGameState.
+	uint8 PendingKind = 0, PendingCaps = 3, PendingMinutes = 15, PendingSkill = 1, PendingAllies = 0, PendingEnemies = 0, PendingTeam = 0;
+	bool bPendingFF = false, bPendingKit = false;
+	/** Bot match: the human has been given his team. */
+	bool bBotHumanPlaced = false;
+	/** Explore: "startet ved rød base" is logged once. */
+	bool bExploreStartLogged = false;
+	/** Start kit: looked up in the catalog once (the same for everyone). */
+	FName KitRifle, KitBandage;
+	bool bKitLooked = false;
+	void GiveStartKit(AController* C);
 	void StartMatch();
 	void EndMatch();
 	void BackToLobby();

@@ -10,8 +10,11 @@
 #include "GSCampus.h"
 #include "GSFlag.h"
 #include "GSProjectile.h"
+#include "GSExplore.h"
+#include "GSItems.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 
 AGSGameMode::AGSGameMode()
@@ -45,11 +48,107 @@ void AGSGameMode::SetReady(AController* Who, bool bReady)
 	}
 }
 
+void AGSGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+	// The engine has already started listening for a listen server here (UEngine::LoadMap: Listen before
+	// InitializeActorsForPlay), so the net mode is the real one. Everything is clamped: the URL can come from anyone.
+	const FString Mode = UGameplayStatics::ParseOption(Options, TEXT("Mode"));
+	uint8 Kind = GSGameKind::Online;
+	if (Mode.Equals(TEXT("Bots"), ESearchCase::IgnoreCase)) Kind = GSGameKind::Bots;
+	else if (Mode.Equals(TEXT("Explore"), ESearchCase::IgnoreCase)) Kind = GSGameKind::Explore;
+	if (Kind != GSGameKind::Online && GetNetMode() != NM_Standalone)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GSGameMode: Mode=%s ignoreres: bots og test kartet bare når du spiller alene (nettmodus %d)"), *Mode, int32(GetNetMode()));
+		Kind = GSGameKind::Online;
+	}
+	PendingKind = Kind;
+	const bool bBots = Kind == GSGameKind::Bots;
+	PendingCaps = uint8(FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Caps"), 3), 1, 10));
+	PendingMinutes = uint8(FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Min"), 15), 3, 60));
+	bPendingFF = UGameplayStatics::GetIntOption(Options, TEXT("FF"), 0) != 0;
+	PendingSkill = uint8(FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Skill"), 1), 0, 3));
+	PendingAllies = bBots ? uint8(FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Allies"), 4), 0, 9)) : 0;
+	PendingEnemies = bBots ? uint8(FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Enemies"), 5), 1, 10)) : 0;
+	PendingTeam = uint8(FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Team"), 0), 0, 2));
+	bPendingKit = Kind != GSGameKind::Explore && UGameplayStatics::GetIntOption(Options, TEXT("Kit"), bBots ? 1 : 0) != 0;
+	UE_LOG(LogTemp, Log, TEXT("GSGameMode: spill %s, %d min, %d erobringer, venneild %s, startutstyr %s%s"),
+		Kind == GSGameKind::Bots ? TEXT("mot bots") : (Kind == GSGameKind::Explore ? TEXT("test kartet") : TEXT("online")),
+		PendingMinutes, PendingCaps, bPendingFF ? TEXT("på") : TEXT("av"), bPendingKit ? TEXT("på") : TEXT("av"),
+		bBots ? *FString::Printf(TEXT(", bots %d + %d (nivå %d)%s"), PendingAllies, PendingEnemies, PendingSkill,
+			AGSGameState::bBotsAvailable ? TEXT("") : TEXT(" - botene finnes ikke ennå, du spiller alene")) : TEXT(""));
+}
+
+void AGSGameMode::InitGameState()
+{
+	Super::InitGameState();
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	if (!GS) return;
+	GS->GameKind = PendingKind;
+	GS->CaptureGoal = PendingCaps;
+	GS->MatchMinutesSet = PendingMinutes;
+	GS->bFriendlyFire = bPendingFF;
+	GS->BotSkill = PendingSkill;
+	GS->BotAllies = PendingAllies;
+	GS->BotEnemies = PendingEnemies;
+	GS->bStartKit = bPendingKit;
+	if (PendingKind == GSGameKind::Explore) GS->Phase = EGSMatchPhase::Explore;
+}
+
+void AGSGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	// Before Super: Super spawns the body (HandleStartingNewPlayer -> RestartPlayer), and the team decides the base.
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	if (GS && GS->GameKind == GSGameKind::Bots && !bBotHumanPlaced && NewPlayer)
+	{
+		if (AGSPlayerState* PS = NewPlayer->GetPlayerState<AGSPlayerState>())
+		{
+			bBotHumanPlaced = true;
+			PS->Team = PendingTeam == 1 ? GSTeam::Red : (PendingTeam == 2 ? GSTeam::Blue : (FMath::RandBool() ? GSTeam::Red : GSTeam::Blue));
+			PS->bReady = true;   // the countdown starts at once (Tick)
+			PS->ForceNetUpdate();
+			UE_LOG(LogTemp, Log, TEXT("GSGameMode: kamp mot bots, du er på %s"), GSTeam::Name(PS->Team));
+		}
+	}
+	Super::PostLogin(NewPlayer);
+}
+
+void AGSGameMode::GiveStartKit(AController* C)
+{
+	AGSCharacter* Char = C ? Cast<AGSCharacter>(C->GetPawn()) : nullptr;
+	if (!Char) return;
+	if (!bKitLooked)
+	{
+		// Looked up in the catalog, not by fixed names: the first plain rifle (Common/Uncommon), else the least rare rifle.
+		bKitLooked = true;
+		const FGSItemDef* Best = nullptr;
+		for (const FGSItemDef& D : GSItems::All())
+		{
+			if (D.IsWeapon() && D.W.Class == EGSWeaponClass::Rifle && (!Best || D.Rarity < Best->Rarity)) Best = &D;
+			if (Best && Best->Rarity <= EGSRarity::Uncommon) break;
+		}
+		if (Best) KitRifle = Best->Id;
+		for (const FGSItemDef& D : GSItems::All())
+		{
+			if (D.Cat == EGSItemCat::Medicine && (D.Id.ToString().Contains(TEXT("Bandage")) || D.Name.Contains(TEXT("Bandasje"))))
+			{
+				KitBandage = D.Id;
+				break;
+			}
+		}
+		UE_LOG(LogTemp, Log, TEXT("GSGameMode: startutstyr = %s, %s, 2 x %s"), *KitRifle.ToString(), *GSItems::Pistol.ToString(), *KitBandage.ToString());
+	}
+	if (!KitRifle.IsNone()) Char->GiveWeapon(KitRifle);
+	Char->GiveWeapon(GSItems::Pistol);
+	if (!KitBandage.IsNone()) Char->AddToBackpack(KitBandage, 2);
+}
+
 void AGSGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	AGSGameState* GS = GetGameState<AGSGameState>();
 	if (!GS) return;
+	if (GS->Phase == EGSMatchPhase::Explore) return;   // Test kartet: no lobby, no countdown, no match
 	const float Now = GS->GetServerWorldTimeSeconds();
 	switch (GS->Phase)
 	{
@@ -60,6 +159,14 @@ void AGSGameMode::Tick(float DeltaSeconds)
 		for (APlayerState* P : GS->PlayerArray)
 		{
 			if (const AGSPlayerState* PS = Cast<AGSPlayerState>(P)) { ++Total; Ready += PS->bReady ? 1 : 0; }
+		}
+		if (GS->GameKind == GSGameKind::Bots)
+		{
+			// Bot match: no waiting for players. Ready (or BotLobbySeconds after the last match) starts a short countdown.
+			if (Total == 0) break;
+			GS->PhaseEndsAt = LobbyStartedAt + BotLobbySeconds;
+			if (Ready == Total || Now >= GS->PhaseEndsAt) StartCountdown(true, BotCountdownSeconds);
+			break;
 		}
 		if (Total >= 2 && LobbyPlayersLast < 2) LobbyStartedAt = Now;   // the 90 s start when player two arrives
 		LobbyPlayersLast = Total;
@@ -72,7 +179,7 @@ void AGSGameMode::Tick(float DeltaSeconds)
 		if (Now >= GS->PhaseEndsAt) StartMatch();
 		break;
 	case EGSMatchPhase::Playing:
-		if (GS->RedScore >= AGSGameState::CaptureLimit || GS->BlueScore >= AGSGameState::CaptureLimit)
+		if (GS->RedScore >= GS->CaptureGoal || GS->BlueScore >= GS->CaptureGoal)
 		{
 			EndMatch();
 		}
@@ -104,14 +211,16 @@ void AGSGameMode::Tick(float DeltaSeconds)
 	case EGSMatchPhase::Ended:
 		if (Now >= GS->PhaseEndsAt) BackToLobby();
 		break;
+	default:
+		break;
 	}
 }
 
-void AGSGameMode::StartCountdown(bool bForced)
+void AGSGameMode::StartCountdown(bool bForced, float Seconds)
 {
 	AGSGameState* GS = GetGameState<AGSGameState>();
 	GS->Phase = EGSMatchPhase::Countdown;
-	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + AGSGameState::CountdownSeconds;
+	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + (Seconds < 0.f ? AGSGameState::CountdownSeconds : Seconds);
 	bCountdownForced = bForced;
 }
 
@@ -120,7 +229,7 @@ void AGSGameMode::StartMatch()
 	AGSGameState* GS = GetGameState<AGSGameState>();
 	// 1. Clock and scores: everyone starts fresh.
 	GS->Phase = EGSMatchPhase::Playing;
-	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + AGSGameState::MatchMinutes * 60.f;
+	GS->PhaseEndsAt = GS->GetServerWorldTimeSeconds() + float(GS->MatchMinutesSet) * 60.f;
 	GS->bOvertime = false;
 	GS->Winner.Empty();
 	GS->KillFeed.Reset();
@@ -142,11 +251,13 @@ void AGSGameMode::StartMatch()
 	}
 
 	// 2. Even teams: nobody without a team, and never more than one player difference.
+	//    Not in a bot match: there the menu chose the team (and the bots fill the rest, plan-06).
+	const bool bBotMatch = GS->GameKind == GSGameKind::Bots;
 	for (AGSPlayerState* PS : States)
 	{
 		if (PS->Team == GSTeam::None) AssignTeam(PS);
 	}
-	for (int32 Guard = 0; Guard < 40; ++Guard)
+	for (int32 Guard = 0; Guard < 40 && !bBotMatch; ++Guard)
 	{
 		const int32 Red = TeamCount(GSTeam::Red), Blue = TeamCount(GSTeam::Blue);
 		if (FMath::Abs(Red - Blue) <= 1) break;
@@ -157,7 +268,7 @@ void AGSGameMode::StartMatch()
 	}
 
 	// 3. A match started alone is stopped when a friend comes in.
-	bSoloMatch = States.Num() == 1;
+	bSoloMatch = !bBotMatch && States.Num() == 1;
 
 	// 4. Remove all old bodies first (no new bodies yet) ...
 	TArray<AController*> Players;
@@ -368,9 +479,26 @@ void AGSGameMode::CleanWorldForMatch()
 void AGSGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+	AGSGameState* GS = GetGameState<AGSGameState>();
+	// Second check (the editor's Play may start listening later than a packaged game): bots and test only alone.
+	if (GS && GS->GameKind != GSGameKind::Online && GetNetMode() != NM_Standalone)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GSGameMode: bots/test kartet slått av: nettmodus %d er ikke alene"), int32(GetNetMode()));
+		GS->GameKind = GSGameKind::Online;
+		GS->BotAllies = GS->BotEnemies = 0;
+		GS->bStartKit = false;
+		if (GS->Phase == EGSMatchPhase::Explore) GS->Phase = EGSMatchPhase::Lobby;
+	}
 	SpawnPickups();
 	SpawnTerminals();
-	SpawnFlags();   // campus is built before this (UGSWorldSubsystem::OnWorldBeginPlay)
+	SpawnFlags();   // campus is built before this (UGSWorldSubsystem::OnWorldBeginPlay); in the test they only mark the bases
+	if (GS && GS->GameKind == GSGameKind::Explore)
+	{
+		FActorSpawnParameters P;
+		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		GetWorld()->SpawnActor<AGSExplore>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+		UE_LOG(LogTemp, Log, TEXT("GSGameMode: Test kartet - ingen kamp, ingen skade"));
+	}
 }
 
 void AGSGameMode::SpawnPickups()
@@ -533,6 +661,19 @@ void AGSGameMode::RestartPlayer(AController* NewPlayer)
 	if (!NewPlayer || NewPlayer->IsPendingKillPending()) return;
 	// The team is set before the body is made, so it spawns at the right base.
 	AGSPlayerState* PS = NewPlayer->GetPlayerState<AGSPlayerState>();
+	const AGSGameState* KindGS = GetGameState<AGSGameState>();
+	const bool bExplore = KindGS && KindGS->GameKind == GSGameKind::Explore;
+	if (bExplore)
+	{
+		// Test kartet: no teams; PickSpawnTransform puts a player without a team at the red base.
+		RestartPlayerAtTransform(NewPlayer, PickSpawnTransform(NewPlayer));
+		if (!bExploreStartLogged)
+		{
+			bExploreStartLogged = true;
+			UE_LOG(LogTemp, Log, TEXT("Test kartet: startet ved rød base"));
+		}
+		return;
+	}
 	if (PS && PS->Team == GSTeam::None)
 	{
 		AssignTeam(PS);
@@ -553,6 +694,11 @@ void AGSGameMode::RestartPlayer(AController* NewPlayer)
 		}
 	}
 	RestartPlayerAtTransform(NewPlayer, PickSpawnTransform(NewPlayer));
+	// Start kit (bot match by default): only for a match, not for warming up in the lobby.
+	if (KindGS && KindGS->bStartKit && (KindGS->Phase == EGSMatchPhase::Playing || KindGS->Phase == EGSMatchPhase::Countdown))
+	{
+		GiveStartKit(NewPlayer);
+	}
 }
 
 void AGSGameMode::OnPlayerKilled(AController* Killer, AController* Victim, const FString& WeaponName, bool bHeadshot)

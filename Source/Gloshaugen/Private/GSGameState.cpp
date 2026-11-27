@@ -26,6 +26,19 @@ void AGSGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AGSGameState, BlueScore);
 	DOREPLIFETIME(AGSGameState, bFriendlyFire);
 	DOREPLIFETIME(AGSGameState, bOvertime);
+	DOREPLIFETIME(AGSGameState, GameKind);
+	DOREPLIFETIME(AGSGameState, CaptureGoal);
+	DOREPLIFETIME(AGSGameState, MatchMinutesSet);
+	DOREPLIFETIME(AGSGameState, BotSkill);
+	DOREPLIFETIME(AGSGameState, BotAllies);
+	DOREPLIFETIME(AGSGameState, BotEnemies);
+	DOREPLIFETIME(AGSGameState, bStartKit);
+}
+
+void AGSGameState::HoldWeather(float Seconds)
+{
+	if (!HasAuthority()) return;
+	NextWeatherChange = GetServerWorldTimeSeconds() + FMath::Max(0.f, Seconds);
 }
 
 void AGSGameState::MulticastFlagEvent_Implementation(uint8 Event, uint8 FlagTeam, FVector_NetQuantize Where, APlayerState* Who)

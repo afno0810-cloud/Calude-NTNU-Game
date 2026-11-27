@@ -1,6 +1,7 @@
 #include "GSHelp.h"
 #include "GSCampus.h"
 #include "GSCharacter.h"
+#include "GSExplore.h"
 #include "GSFlag.h"
 #include "GSGameState.h"
 #include "GSItems.h"
@@ -195,8 +196,10 @@ namespace
 	}
 
 	/** The CTF rules as they are in the game today. */
-	TArray<FString> RuleLines(const AGSGameState* /*GS*/)
+	TArray<FString> RuleLines(const AGSGameState* GS)
 	{
+		const int32 Goal = GS ? int32(GS->CaptureGoal) : AGSGameState::CaptureLimit;
+		const int32 Minutes = GS ? int32(GS->MatchMinutesSet) : int32(AGSGameState::MatchMinutes);
 		TArray<FString> L;
 		L.Add(TEXT("Ta motstanderens flagg ved å gå helt bort til det, og bær det til din egen base."));
 		L.Add(TEXT("Du får bare poeng når ditt eget flagg står hjemme."));
@@ -204,8 +207,7 @@ namespace
 		L.Add(FString::Printf(TEXT("Etter %d sekunder med flagget får motstanderne melding om hvor bæreren sist ble sett."),
 			int32(AGSGameState::CarrierRevealSeconds)));
 		L.Add(TEXT("Faller bæreren, blir flagget liggende. Motstanderne kan ta det opp; eget lag sender det hjem ved å gå bort til det."));
-		L.Add(FString::Printf(TEXT("Første lag til %d erobringer vinner, ellers flest når %d minutter er gått."),
-			AGSGameState::CaptureLimit, int32(AGSGameState::MatchMinutes)));
+		L.Add(FString::Printf(TEXT("Første lag til %d erobringer vinner, ellers flest når %d minutter er gått."), Goal, Minutes));
 		L.Add(FString::Printf(TEXT("Kan et flagg som er ute avgjøre kampen når tiden går, spilles det overtid til det er erobret eller hjemme (høyst %d minutter)."),
 			int32(AGSGameState::OvertimeMaxSeconds / 60.f)));
 		L.Add(TEXT("Du kommer tilbake ved egen base. Det du bar, ligger igjen der du falt."));
@@ -538,6 +540,37 @@ namespace
 		}
 	}
 
+	/** "Test kartet": a small panel where the lobby panel sits (left, a third down), no match texts. */
+	void DrawExplorePanel(UCanvas* Canvas, const APlayerController* PC, const UWorld* World)
+	{
+		const bool bEditor = World && World->WorldType == EWorldType::PIE;   // Esc stops Play there: F10 / P
+		const bool bFly = GSExplore::IsFlying(PC);
+		TArray<TPair<FString, FLinearColor>> Lines;
+		Lines.Emplace(FString::Printf(TEXT("%s: fri flyging (%s)"), *HelpKey(PC, TEXT("GS_Fly"), TEXT("N")), bFly ? TEXT("på") : TEXT("av")),
+			bFly ? FLinearColor::White : TextColor);
+		if (bFly)
+		{
+			Lines.Emplace(FString::Printf(TEXT("%s opp · %s ned · %s fort"), *HelpKey(PC, TEXT("IA_Jump"), TEXT("Mellomrom")),
+				*HelpKey(PC, TEXT("IA_Crouch"), TEXT("C")), *HelpKey(PC, TEXT("IA_Sprint"), TEXT("Shift"))), TextColor);
+		}
+		Lines.Emplace(bEditor ? FString(TEXT("F10 eller P: meny (gå til, lys og vær)")) : FString(TEXT("Esc eller P: meny (gå til, lys og vær)")), TextColor);
+		Lines.Emplace(TEXT("H: taster og regler"), DimColor);
+		const float X = 28.f, W = 360.f, S = 0.8f, LH = LineHeight(S) + 4.f;
+		float Y = Canvas->SizeY * 0.30f;
+		const float TitleH = LineHeight(0.95f) + 6.f;
+		const float H = 12.f + TitleH + LH * Lines.Num() + 8.f;
+		Box(Canvas, X, Y, W, H, PanelColor);
+		Y += 10.f;
+		Text(Canvas, TEXT("TEST KARTET"), X + 16.f, Y, FLinearColor::White, 0.95f);
+		Text(Canvas, TEXT("ingen kamp, ingen skade"), X + 16.f + TextWidth(TEXT("TEST KARTET  "), 0.95f), Y + 2.f, DimColor, 0.75f);
+		Y += TitleH;
+		for (const TPair<FString, FLinearColor>& L : Lines)
+		{
+			Text(Canvas, L.Key, X + 16.f, Y, L.Value, S);
+			Y += LH;
+		}
+	}
+
 	void DrawImpl(AHUD* HUD, UCanvas* Canvas)
 	{
 		if (!HUD || !Canvas || Canvas->SizeX <= 0) return;
@@ -582,6 +615,15 @@ namespace
 		if (GPC && (GPC->bMenuOpen || GPC->IsOnTerminal()))
 		{
 			HelpUpdateHints(Canvas, World, PC, nullptr, PS, GS, St, Now, false);
+			return;
+		}
+
+		// "Test kartet": no score, no lobby, no CTF hints. Only what the test is and its keys; H works as always.
+		if (GS->Phase == EGSMatchPhase::Explore)
+		{
+			HelpUpdateHints(Canvas, World, PC, nullptr, PS, GS, St, Now, false);
+			if (!GSMenu::IsModal(PC) && !St.bOpen) DrawExplorePanel(Canvas, PC, World);
+			if (St.bOpen) DrawOverview(Canvas, PC, GS);
 			return;
 		}
 
@@ -713,7 +755,23 @@ namespace
 			const float X = 28.f, W = 400.f, S = 0.8f, LH = LineHeight(S) + 4.f;
 			float Y = Canvas->SizeY * 0.30f;
 			TArray<TPair<FString, FLinearColor>> Lines;
-			if (GS->Phase == EGSMatchPhase::Lobby)
+			const bool bBotGame = GS->GameKind == GSGameKind::Bots;
+			if (bBotGame)
+			{
+				// Bot match: no waiting for players. Honest about the bots until plan-06 has built them.
+				if (AGSGameState::bBotsAvailable)
+				{
+					static const TCHAR* const Skill[] = { TEXT("Lett"), TEXT("Middels"), TEXT("Vanskelig"), TEXT("Ekspert") };
+					Lines.Emplace(FString::Printf(TEXT("Kamp mot bots: du + %d mot %d, %s."), GS->BotAllies, GS->BotEnemies,
+						Skill[FMath::Clamp(int32(GS->BotSkill), 0, 3)]), FLinearColor::White);
+				}
+				else
+				{
+					Lines.Emplace(TEXT("Botene kommer i neste oppdatering."), FLinearColor(0.85f, 0.65f, 0.25f));
+					Lines.Emplace(TEXT("Nå er du alene på kartet."), FLinearColor(0.85f, 0.65f, 0.25f));
+				}
+			}
+			else if (GS->Phase == EGSMatchPhase::Lobby)
 			{
 				Lines.Emplace(FString::Printf(TEXT("%s: velg lag."), *GSMenu::KeyName(PC, TEXT("GS_Team"))), DimColor);
 			}
@@ -722,12 +780,27 @@ namespace
 			Lines.Emplace(TEXT("Du får bare poeng når ditt eget flagg står hjemme."), TextColor);
 			Lines.Emplace(TEXT("Dør du, blir flagget liggende. Eget flagg hentes"), TextColor);
 			Lines.Emplace(TEXT("hjem ved å gå bort til det."), TextColor);
-			Lines.Emplace(FString::Printf(TEXT("Første lag til %d erobringer vinner, ellers flest"), AGSGameState::CaptureLimit), TextColor);
-			Lines.Emplace(FString::Printf(TEXT("når %d minutter er gått."), int32(AGSGameState::MatchMinutes)), TextColor);
-			Lines.Emplace(FString::Printf(TEXT("Oppvarming nå, ingen skade. Trykk %s når du er klar."), *GSMenu::KeyName(PC, TEXT("IA_Ready"))), DimColor);
-			if (GS->Phase == EGSMatchPhase::Lobby && GS->PhaseEndsAt > 0.f)
+			Lines.Emplace(FString::Printf(TEXT("Første lag til %d erobringer vinner, ellers flest"), int32(GS->CaptureGoal)), TextColor);
+			Lines.Emplace(FString::Printf(TEXT("når %d minutter er gått."), int32(GS->MatchMinutesSet)), TextColor);
+			if (bBotGame)
 			{
-				Lines.Emplace(FString::Printf(TEXT("Starter av seg selv om %d s."), FMath::CeilToInt(GS->PhaseSecondsLeft())), DimColor);
+				if (GS->Phase == EGSMatchPhase::Countdown)
+				{
+					Lines.Emplace(FString::Printf(TEXT("Starter om %d s."), FMath::CeilToInt(GS->PhaseSecondsLeft())), FLinearColor::White);
+				}
+				else
+				{
+					Lines.Emplace(FString::Printf(TEXT("Neste kamp om %d s. %s starter nå."), FMath::CeilToInt(GS->PhaseSecondsLeft()),
+						*GSMenu::KeyName(PC, TEXT("IA_Ready"))), DimColor);
+				}
+			}
+			else
+			{
+				Lines.Emplace(FString::Printf(TEXT("Oppvarming nå, ingen skade. Trykk %s når du er klar."), *GSMenu::KeyName(PC, TEXT("IA_Ready"))), DimColor);
+				if (GS->Phase == EGSMatchPhase::Lobby && GS->PhaseEndsAt > 0.f)
+				{
+					Lines.Emplace(FString::Printf(TEXT("Starter av seg selv om %d s."), FMath::CeilToInt(GS->PhaseSecondsLeft())), DimColor);
+				}
 			}
 			Lines.Emplace(TEXT("H viser alle taster og regler."), DimColor);
 			const float TitleH = LineHeight(1.f) + 8.f;
@@ -735,7 +808,7 @@ namespace
 			Box(Canvas, X, Y, W, H, PanelColor);
 			Box(Canvas, X, Y, 3.f, H, GSTeam::Color(PS->Team).CopyWithNewOpacity(0.9f));
 			Y += 12.f;
-			Text(Canvas, TEXT("Capture the Flag"), X + 16.f, Y, FLinearColor::White, 1.f);
+			Text(Canvas, bBotGame ? TEXT("Capture the Flag mot bots") : TEXT("Capture the Flag"), X + 16.f, Y, FLinearColor::White, 1.f);
 			Y += TitleH;
 			const FString Prefix = TEXT("Du er på ");
 			Text(Canvas, Prefix, X + 16.f, Y, TextColor, S);

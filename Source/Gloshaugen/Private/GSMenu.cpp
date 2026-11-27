@@ -1,4 +1,6 @@
 #include "GSMenu.h"
+#include "GSCampus.h"
+#include "GSExplore.h"
 #include "GSGameMode.h"
 #include "GSGameState.h"
 #include "GSHelp.h"
@@ -48,10 +50,14 @@ namespace GSMenuImpl
 	const TCHAR* const Sec = TEXT("Gloshaugen");
 	const TCHAR* const KeySec = TEXT("Gloshaugen.Keys");
 	const TCHAR* const TeamRowId = TEXT("GS_Team.L");
+	const TCHAR* const FlyRowId = TEXT("GS_Fly.N");
 	constexpr double ConnectTimeoutSeconds = 20.0;
 
-	enum class EPage : uint8 { Root, Host, Join, Connecting, Settings, Controls };
-	enum class EDialog : uint8 { None, Host, Join, Leave, Quit, Message };
+	// Bots, Online and Explore are the three choices of the start menu; Goto and Light are pages inside "Test kartet".
+	enum class EPage : uint8 { Root, Host, Join, Connecting, Settings, Controls, Bots, Online, Explore, Goto, Light };
+	enum class EDialog : uint8 { None, Host, Join, Leave, Quit, Message, Restart };
+	/** What EDialog::Host starts once confirmed. */
+	enum class EStart : uint8 { Host, Bots, Explore };
 
 	struct FHit
 	{
@@ -79,6 +85,10 @@ namespace GSMenuImpl
 		bool bModalApplied = false, bHudHidden = false;
 		double TeamClickAt = -100.0;       // our last team button click (the server allows one switch per 2 s)
 		TArray<FHit> Hits;                 // rebuilt every frame, read by the next click
+		bool bPausedByUs = false;          // bot match / test: we paused the game while the menu is open
+		EStart PendingStart = EStart::Host;
+		// --- per window, kept across map changes (not touched by ResetWorld) ---
+		bool bOpenMainAfterTravel = false; // "Til hovedmenyen": open the start menu in the next world, also in the editor's Play
 		// --- per window (kept across map changes) ---
 		FString MsgTitle, MsgText, MsgDetail;
 		double MsgTime = 0.0;
@@ -114,6 +124,8 @@ namespace GSMenuImpl
 			bModalApplied = bHudHidden = false;
 			TeamClickAt = -100.0;
 			Hits.Reset();
+			bPausedByUs = false;           // a new world starts unpaused
+			PendingStart = EStart::Host;
 		}
 	};
 
@@ -318,6 +330,18 @@ namespace GSMenuImpl
 		return EKeys::L;
 	}
 
+	/** Free flying in "Test kartet" (GSExplore). Our own row like the team key; N unless changed. */
+	FKey FlyKey()
+	{
+		const FString Str = CfgString(KeySec, FlyRowId);
+		if (!Str.IsEmpty())
+		{
+			const FKey K(*Str);
+			if (K.IsValid() && K != EKeys::H && K != EKeys::P && K != EKeys::Escape && K != EKeys::F10) return K;
+		}
+		return EKeys::N;
+	}
+
 	/** The key an action has now (after rebinding); invalid when it has none. */
 	FKey ActionKey(const AGSPlayerController* PC, FName Action)
 	{
@@ -351,6 +375,8 @@ namespace GSMenuImpl
 			Reserved->Reset();
 			Reserved->Add(EKeys::Escape);
 			Reserved->Add(EKeys::H);   // opens "Taster og regler" (GSHelp)
+			Reserved->Add(EKeys::P);   // opens and closes the menu (also in the editor's Play)
+			Reserved->Add(EKeys::F10);
 		}
 		const UInputMappingContext* C = PC ? PC->MappingContext.Get() : nullptr;
 		if (C)
@@ -381,6 +407,12 @@ namespace GSMenuImpl
 		Team.Original = EKeys::L;
 		Team.Current = TeamKey();
 		Out.Add(Team);
+		FKeyRow Fly;
+		Fly.Action = FName(TEXT("GS_Fly"));
+		Fly.Id = FlyRowId;
+		Fly.Original = EKeys::N;
+		Fly.Current = FlyKey();
+		Out.Add(Fly);
 	}
 
 	FString KeyDisplay(const FKey& K)
@@ -412,7 +444,8 @@ namespace GSMenuImpl
 			{ TEXT("IA_NextItem"), TEXT("Neste ting i sekken") }, { TEXT("IA_DropItem"), TEXT("Slipp valgt ting") },
 			{ TEXT("IA_Melee"), TEXT("Slag") }, { TEXT("IA_Inventory"), TEXT("Inventar") },
 			{ TEXT("IA_Scoreboard"), TEXT("Poengtavle (hold)") }, { TEXT("IA_Inspect"), TEXT("Se på våpenet") },
-			{ TEXT("IA_Ready"), TEXT("Klar (lobby)") }, { TEXT("GS_Team"), TEXT("Velg lag (lobby)") } };
+			{ TEXT("IA_Ready"), TEXT("Klar (lobby)") }, { TEXT("GS_Team"), TEXT("Velg lag (lobby)") },
+			{ TEXT("GS_Fly"), TEXT("Fri flyging (test kartet)") } };
 		if (const FString* L = Labels.Find(Row.Id)) return *L;
 		const FString Action = Row.Action.ToString();
 		if (const FString* L = Labels.Find(Action)) return *L;
@@ -681,6 +714,20 @@ namespace GSMenuImpl
 		return Mode == NM_ListenServer || (Mode == NM_Client && W->GetNetDriver() != nullptr);
 	}
 
+	/** GSGameKind of this world: Bots or Explore only alone on this machine (the server allows nothing else). */
+	uint8 LocalKind(const UWorld* W)
+	{
+		if (!W || W->GetNetMode() != NM_Standalone) return GSGameKind::Online;
+		const AGSGameState* GS = W->GetGameState<AGSGameState>();
+		return GS ? GS->GameKind : GSGameKind::Online;
+	}
+
+	/** A bot match or "Test kartet" (never a match with others). */
+	bool InLocalGame(const UWorld* W)
+	{
+		return LocalKind(W) != GSGameKind::Online;
+	}
+
 	/** The port this host actually listens on: the engine quietly takes the next free one when 7777 is taken. */
 	int32 HostPort(const UWorld* W)
 	{
@@ -737,6 +784,26 @@ namespace GSMenuImpl
 			UE_LOG(LogTemp, Log, TEXT("GSMenu: input sluppet til spillet (musepeker av, bare spill)"));
 		}
 		S.bCursorShown = PC->ShouldShowMouseCursor();
+		// Bot match and test: the game stands still while the menu or a dialog is open. Never online. Only a pause we
+		// set ourselves is lifted again (the input hooks are on the window, so the menu still gets keys while paused).
+		{
+			UWorld* W = PC->GetWorld();
+			const bool bWantPause = W && (S.bMainOpen || S.Dialog != EDialog::None) && InLocalGame(W);
+			if (bWantPause && !S.bPausedByUs)
+			{
+				if (!UGameplayStatics::IsGamePaused(PC) && UGameplayStatics::SetGamePaused(PC, true))
+				{
+					S.bPausedByUs = true;
+					UE_LOG(LogTemp, Log, TEXT("GSMenu: spillet står på pause mens menyen er åpen"));
+				}
+			}
+			else if (!bWantPause && S.bPausedByUs)
+			{
+				S.bPausedByUs = false;
+				UGameplayStatics::SetGamePaused(PC, false);
+				UE_LOG(LogTemp, Log, TEXT("GSMenu: pausen er slått av"));
+			}
+		}
 		// The main menu covers everything: the combat HUD is not drawn under it.
 		if (AHUD* HUD = PC->MyHUD)
 		{
@@ -782,10 +849,10 @@ namespace GSMenuImpl
 		}
 		S.KeyNote.Empty();
 		S.JoinNote.Empty();
-		if (Page == EPage::Join)
+		if (Page == EPage::Join || Page == EPage::Online)
 		{
 			if (S.AddressEdit.IsEmpty() && PC) S.AddressEdit = PC->LastJoinAddress;
-			S.Focus = FName(TEXT("Address"));
+			if (Page == EPage::Join) S.Focus = FName(TEXT("Address"));   // on the online page P still closes the menu
 		}
 	}
 
@@ -826,6 +893,146 @@ namespace GSMenuImpl
 		UGameplayStatics::OpenLevel(PC, FName(*UGameplayStatics::GetCurrentLevelName(PC, true)));
 	}
 
+	// ------------------------------------------------------------------ the rules of a new game (bot page, host)
+	static const int32 MinuteSteps[] = { 5, 10, 15, 20, 30 };
+	static const int32 CapSteps[] = { 1, 2, 3, 5 };
+	constexpr int32 NumMinuteSteps = 5, NumCapSteps = 4;
+	static const TCHAR* const SkillNames[] = { TEXT("Lett"), TEXT("Middels"), TEXT("Vanskelig"), TEXT("Ekspert") };
+	static const TCHAR* const SkillInfo[] = {
+		TEXT("Lett: reagerer sent og bommer mye. Fint for å lære kartet."),
+		TEXT("Middels: reagerer som en vanlig spiller, bommer ofte på lang avstand."),
+		TEXT("Vanskelig: reagerer raskt, bruker dekning og treffer godt."),
+		TEXT("Ekspert: som en erfaren spiller, og samarbeider om flagget.") };
+	static const TCHAR* const TeamChoiceNames[] = { TEXT("Tilfeldig"), TEXT("Rødt lag"), TEXT("Blått lag") };
+
+	int32 CfgInt(const TCHAR* Key, int32 Default)
+	{
+		int32 V = Default;
+		if (GConfig) GConfig->GetInt(Sec, Key, V, GGameUserSettingsIni);
+		return V;
+	}
+
+	void SetCfgInt(const TCHAR* Key, int32 V)
+	{
+		if (!GConfig) return;
+		GConfig->SetInt(Sec, Key, V, GGameUserSettingsIni);
+		CfgFlush();
+	}
+
+	int32 NearestStep(const int32* Steps, int32 Num, int32 Value)
+	{
+		int32 Best = 0;
+		for (int32 I = 1; I < Num; ++I)
+		{
+			if (FMath::Abs(Steps[I] - Value) < FMath::Abs(Steps[Best] - Value)) Best = I;
+		}
+		return Best;
+	}
+
+	/** The saved choices, clamped the same way the server clamps them (AGSGameMode::InitGame). */
+	struct FRules
+	{
+		int32 Team = 0, Allies = 4, Enemies = 5, Skill = 1, Minutes = 10, Caps = 3;
+		bool bFF = false, bKit = true;
+	};
+
+	FRules BotRules()
+	{
+		FRules R;
+		R.Team = FMath::Clamp(CfgInt(TEXT("BotTeam"), 0), 0, 2);
+		R.Allies = FMath::Clamp(CfgInt(TEXT("BotAllies"), 4), 0, 9);
+		R.Enemies = FMath::Clamp(CfgInt(TEXT("BotEnemies"), 5), 1, 10);
+		R.Skill = FMath::Clamp(CfgInt(TEXT("BotSkill"), 1), 0, 3);
+		R.Minutes = MinuteSteps[NearestStep(MinuteSteps, NumMinuteSteps, CfgInt(TEXT("BotMinutes"), 10))];
+		R.Caps = CapSteps[NearestStep(CapSteps, NumCapSteps, CfgInt(TEXT("BotCaps"), 3))];
+		R.bFF = CfgInt(TEXT("BotFF"), 0) != 0;
+		R.bKit = CfgInt(TEXT("BotKit"), 1) != 0;
+		return R;
+	}
+
+	FRules HostRules()
+	{
+		FRules R;
+		R.Minutes = MinuteSteps[NearestStep(MinuteSteps, NumMinuteSteps, CfgInt(TEXT("HostMinutes"), 15))];
+		R.Caps = CapSteps[NearestStep(CapSteps, NumCapSteps, CfgInt(TEXT("HostCaps"), 3))];
+		R.bFF = CfgInt(TEXT("HostFF"), 0) != 0;
+		R.bKit = false;
+		return R;
+	}
+
+	/** One "<  >" press on a rule; saved at once. */
+	void ChangeRule(const FString& Id, int32 Dir)
+	{
+		auto Step = [Dir](const TCHAR* Key, const int32* Steps, int32 Num, int32 Default)
+		{
+			const int32 I = FMath::Clamp(NearestStep(Steps, Num, CfgInt(Key, Default)) + Dir, 0, Num - 1);
+			SetCfgInt(Key, Steps[I]);
+		};
+		auto Range = [Dir](const TCHAR* Key, int32 Lo, int32 Hi, int32 Default)
+		{
+			SetCfgInt(Key, FMath::Clamp(FMath::Clamp(CfgInt(Key, Default), Lo, Hi) + Dir, Lo, Hi));
+		};
+		auto Toggle = [](const TCHAR* Key, int32 Default) { SetCfgInt(Key, CfgInt(Key, Default) != 0 ? 0 : 1); };
+		if (Id == TEXT("Rule.Bot.Team")) Range(TEXT("BotTeam"), 0, 2, 0);
+		else if (Id == TEXT("Rule.Bot.Allies")) Range(TEXT("BotAllies"), 0, 9, 4);
+		else if (Id == TEXT("Rule.Bot.Enemies")) Range(TEXT("BotEnemies"), 1, 10, 5);
+		else if (Id == TEXT("Rule.Bot.Skill")) Range(TEXT("BotSkill"), 0, 3, 1);
+		else if (Id == TEXT("Rule.Bot.Min")) Step(TEXT("BotMinutes"), MinuteSteps, NumMinuteSteps, 10);
+		else if (Id == TEXT("Rule.Bot.Caps")) Step(TEXT("BotCaps"), CapSteps, NumCapSteps, 3);
+		else if (Id == TEXT("Rule.Bot.FF")) Toggle(TEXT("BotFF"), 0);
+		else if (Id == TEXT("Rule.Bot.Kit")) Toggle(TEXT("BotKit"), 1);
+		else if (Id == TEXT("Rule.Host.Min")) Step(TEXT("HostMinutes"), MinuteSteps, NumMinuteSteps, 15);
+		else if (Id == TEXT("Rule.Host.Caps")) Step(TEXT("HostCaps"), CapSteps, NumCapSteps, 3);
+		else if (Id == TEXT("Rule.Host.FF")) Toggle(TEXT("HostFF"), 0);
+	}
+
+	/** Loads this map again with options (the server reads and clamps them, AGSGameMode::InitGame). */
+	void OpenSameMap(AGSPlayerController* PC, FState& S, const FString& Options)
+	{
+		if (!PC) return;
+		S.LeavingUntil = FPlatformTime::Seconds() + 10.0;   // leaving a match on purpose: no "connection lost"
+		UGameplayStatics::OpenLevel(PC, FName(*UGameplayStatics::GetCurrentLevelName(PC, true)), true, Options);
+	}
+
+	void StartBots(AGSPlayerController* PC, FState& S)
+	{
+		const FRules R = BotRules();
+		if (AGSGameState::bBotsAvailable)
+		{
+			UE_LOG(LogTemp, Log, TEXT("GSMenu: Spill mot bots startes (du + %d mot %d, %s, %d min, %d erobringer)"),
+				R.Allies, R.Enemies, SkillNames[R.Skill], R.Minutes, R.Caps);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("GSMenu: Spill mot bots startes (botene finnes ikke ennå: du er alene, %d min, %d erobringer)"), R.Minutes, R.Caps);
+		}
+		OpenSameMap(PC, S, FString::Printf(TEXT("Mode=Bots?Team=%d?Allies=%d?Enemies=%d?Skill=%d?Min=%d?Caps=%d?FF=%d?Kit=%d"),
+			R.Team, R.Allies, R.Enemies, R.Skill, R.Minutes, R.Caps, R.bFF ? 1 : 0, R.bKit ? 1 : 0));
+	}
+
+	void StartHost(AGSPlayerController* PC, FState& S)
+	{
+		const FRules R = HostRules();
+		UE_LOG(LogTemp, Log, TEXT("GSMenu: vert startes (%d min, %d erobringer, venneild %s)"), R.Minutes, R.Caps, R.bFF ? TEXT("på") : TEXT("av"));
+		OpenSameMap(PC, S, FString::Printf(TEXT("listen?Min=%d?Caps=%d?FF=%d"), R.Minutes, R.Caps, R.bFF ? 1 : 0));
+	}
+
+	void StartExplore(AGSPlayerController* PC, FState& S)
+	{
+		UE_LOG(LogTemp, Log, TEXT("GSMenu: Test kartet startes"));
+		OpenSameMap(PC, S, TEXT("Mode=Explore"));
+	}
+
+	void StartPending(AGSPlayerController* PC, FState& S)
+	{
+		switch (S.PendingStart)
+		{
+		case EStart::Bots: StartBots(PC, S); break;
+		case EStart::Explore: StartExplore(PC, S); break;
+		default: StartHost(PC, S); break;
+		}
+	}
+
 	void CancelConnect(AGSPlayerController* PC, UWorld* World, FState& S)
 	{
 		if (GEngine && World)
@@ -838,7 +1045,7 @@ namespace GSMenuImpl
 		}
 		const bool bWasConnecting = S.bConnecting;
 		S.bConnecting = false;
-		if (S.Page == EPage::Connecting) S.Page = EPage::Join;
+		if (S.Page == EPage::Connecting) S.Page = EPage::Online;
 		// The engine closed the old match's connection the moment the attempt started: that world is dead, load the map alone.
 		if (bWasConnecting && S.bConnectFromMatch && PC && S.ConnectWorld.Get() == World)
 		{
@@ -1086,8 +1293,9 @@ namespace GSMenuImpl
 		const UWorld* KeyWorld = PC ? PC->GetWorld() : nullptr;
 		const FString Help = FString::Printf(TEXT("Klikk en linje og trykk den nye tasten (%s avbryter). Faste: mus = se rundt · musehjul = bla i våpnene, eller i sekken når inventaret er åpent · %s = meny · H = taster og regler."),
 			BackKeyText(KeyWorld), MenuKeysText(KeyWorld));
+		const AGSGameState* RulesGS = KeyWorld ? KeyWorld->GetGameState<AGSGameState>() : nullptr;
 		const FString Rules = FString::Printf(TEXT("Ta motstanderens flagg og bær det til din egen base. Du får bare poeng når ditt eget flagg står hjemme. Første lag til %d erobringer vinner."),
-			AGSGameState::CaptureLimit);
+			RulesGS ? int32(RulesGS->CaptureGoal) : AGSGameState::CaptureLimit);
 		auto ParaH = [](const FString& Str, float Scale, float Width) { return Wrap(Str, Scale, Width).Num() * (LineHeight(Scale) + 3.f); };
 		// What goes under the rows: help text, the note, the reset button, and (if there is room) the CTF rules.
 		const float FooterH = 8.f + ParaH(Help, 0.72f, MaxW) + 2.f + LineHeight(0.8f) + 8.f + 44.f;
@@ -1146,6 +1354,170 @@ namespace GSMenuImpl
 		Para(U, Rules, LX, Y, MaxW, TextColor, 0.78f);
 	}
 
+	/** "Label   <  value  >"; returns the Y of the next row. */
+	float RuleRow(const FUi& U, const TCHAR* Label, const TCHAR* Id, const FString& Value, float LX, float CX, float CW, float Y, float RowH, bool bEnabled = true)
+	{
+		const float S = 0.85f;
+		Text(U.C, Label, LX, Y + (28.f - LineHeight(S)) * 0.5f, bEnabled ? TextColor : LockedColor, S);
+		Choice(U, FName(Id), Value, CX, Y, CW, bEnabled);
+		return Y + RowH;
+	}
+
+	FLinearColor TeamTextColor(uint8 T)
+	{
+		return FMath::Lerp(GSTeam::Color(T), FLinearColor::White, 0.45f);
+	}
+
+	/** Host: addresses for friends, the port, the three rules and the start button. Returns the Y under it. */
+	float DrawHostPart(const FUi& U, float IX, float Y, float MaxW, bool bMatch)
+	{
+		const float TS = 0.85f;
+		Y = Para(U, TEXT("Du blir vert for en ny kamp. Vennene dine kobler seg til deg."), IX, Y, MaxW, TextColor, TS) + 6.f;
+		const TArray<FString>& Addrs = LocalAddresses();
+		if (Addrs.Num() > 0)
+		{
+			Text(U.C, TEXT("Venner på samme nett skriver inn:"), IX, Y, TextColor, TS);
+			Y += LineHeight(TS) + 4.f;
+			for (const FString& A : Addrs)
+			{
+				Text(U.C, A, IX + 12.f, Y, FLinearColor::White, 1.05f);
+				Y += LineHeight(1.05f) + 2.f;
+			}
+		}
+		else
+		{
+			Text(U.C, TEXT("Fant ingen nettverksadresse."), IX, Y, DimColor, TS);
+			Y += LineHeight(TS) + 4.f;
+		}
+		Y += 4.f;
+		Y = Para(U, TEXT("Over internett må port 7777 (UDP) åpnes i ruteren din. Første gang spør Windows om brannmuren: trykk Tillat."),
+			IX, Y, MaxW, DimColor, 0.78f) + 8.f;
+		const FRules R = HostRules();
+		const float CX = IX + FMath::Min(230.f, MaxW * 0.42f);
+		const float CW = FMath::Min(MaxW - (CX - IX), 300.f);
+		Y = RuleRow(U, TEXT("Kamplengde"), TEXT("Rule.Host.Min"), FString::Printf(TEXT("%d min"), R.Minutes), IX, CX, CW, Y, 34.f);
+		Y = RuleRow(U, TEXT("Erobringer for å vinne"), TEXT("Rule.Host.Caps"), FString::FromInt(R.Caps), IX, CX, CW, Y, 34.f);
+		Y = RuleRow(U, TEXT("Venneild"), TEXT("Rule.Host.FF"), R.bFF ? TEXT("På") : TEXT("Av"), IX, CX, CW, Y, 34.f);
+		if (bMatch) Y = Para(U, TEXT("Kampen du er i nå avsluttes."), IX, Y + 2.f, MaxW, AccentColor, TS);
+		Button(U, TEXT("Host.Go"), TEXT("Start som vert"), IX, Y + 6.f, FMath::Min(300.f, MaxW), 42.f, true, false, 0, true);
+		return Y + 6.f + 42.f + 12.f;
+	}
+
+	/** Join: the address field, connect, the last address and how it works. Returns the Y under it. */
+	float DrawJoinPart(const FUi& U, AGSPlayerController* PC, float IX, float Y, float MaxW)
+	{
+		const float TS = 0.85f;
+		Text(U.C, TEXT("Adresse"), IX, Y, DimColor, 0.8f);
+		Y += LineHeight(0.8f) + 4.f;
+		const float FW = FMath::Min(420.f, MaxW);
+		Field(U, TEXT("Address"), U.S.AddressEdit, TEXT("192.168.1.20"), IX, Y, FW, 36.f);
+		Y += 36.f + 10.f;
+		Button(U, TEXT("Join.Go"), TEXT("Koble til"), IX, Y, FMath::Min(200.f, FW), 42.f, true, false, 0, true);
+		if (PC && !PC->LastJoinAddress.IsEmpty() && PC->LastJoinAddress != U.S.AddressEdit)
+		{
+			Button(U, TEXT("Join.Last"), FString::Printf(TEXT("Siste: %s"), *PC->LastJoinAddress), IX + FMath::Min(200.f, FW) + 10.f, Y,
+				FMath::Min(300.f, MaxW - 210.f), 42.f);
+		}
+		Y += 42.f + 8.f;
+		Text(U.C, U.S.JoinNote, IX, Y, AccentColor, TS);
+		Y += LineHeight(TS) + 4.f;
+		return Para(U, TEXT("Skriv adressen verten ser under «Start som vert», for eksempel 192.168.1.20. Ctrl+V limer inn."), IX, Y, MaxW, DimColor, 0.78f);
+	}
+
+	void DrawBotsPage(const FUi& U, UWorld* World, float IX, float Y, float MaxW, float Bottom, bool bMatch)
+	{
+		const FRules R = BotRules();
+		const bool bAvail = AGSGameState::bBotsAvailable;
+		const float CX = IX + FMath::Min(250.f, MaxW * 0.42f);
+		const float CW = FMath::Min(MaxW - (CX - IX), 330.f);
+		const float RowH = FMath::Clamp((Bottom - Y - 150.f) / 8.f, 30.f, 38.f);
+		Y = RuleRow(U, TEXT("Ditt lag"), TEXT("Rule.Bot.Team"), TeamChoiceNames[R.Team], IX, CX, CW, Y, RowH);
+		Y = RuleRow(U, TEXT("Bots på ditt lag"), TEXT("Rule.Bot.Allies"), FString::FromInt(R.Allies), IX, CX, CW, Y, RowH, bAvail);
+		Y = RuleRow(U, TEXT("Bots på motstanderlaget"), TEXT("Rule.Bot.Enemies"), FString::FromInt(R.Enemies), IX, CX, CW, Y, RowH, bAvail);
+		Y = RuleRow(U, TEXT("Vanskelighetsgrad"), TEXT("Rule.Bot.Skill"), SkillNames[R.Skill], IX, CX, CW, Y, RowH, bAvail);
+		Y = RuleRow(U, TEXT("Kamplengde"), TEXT("Rule.Bot.Min"), FString::Printf(TEXT("%d min"), R.Minutes), IX, CX, CW, Y, RowH);
+		Y = RuleRow(U, TEXT("Erobringer for å vinne"), TEXT("Rule.Bot.Caps"), FString::FromInt(R.Caps), IX, CX, CW, Y, RowH);
+		Y = RuleRow(U, TEXT("Venneild"), TEXT("Rule.Bot.FF"), R.bFF ? TEXT("På") : TEXT("Av"), IX, CX, CW, Y, RowH);
+		Y = RuleRow(U, TEXT("Startutstyr"), TEXT("Rule.Bot.Kit"), R.bKit ? TEXT("Gevær, pistol og bandasjer") : TEXT("Bare det du finner"), IX, CX, CW, Y, RowH);
+		Y += 4.f;
+		if (bAvail)
+		{
+			Text(U.C, SkillInfo[R.Skill], IX, Y, DimColor, 0.78f);
+			Y += LineHeight(0.78f) + 3.f;
+			Text(U.C, FString::Printf(TEXT("Lagene: du + %d mot %d"), R.Allies, R.Enemies), IX, Y, DimColor, 0.78f);
+			Y += LineHeight(0.78f) + 6.f;
+		}
+		else
+		{
+			// Not pretending: there are no bots yet. The match runs, alone on the map.
+			Y = Para(U, TEXT("Bots kommer i neste oppdatering. Nå spiller du alene på kartet: fin måte å lære rutene og flaggene på."),
+				IX, Y, MaxW, AccentColor, 0.8f) + 4.f;
+		}
+		if (bMatch) Y = Para(U, TEXT("Kampen du er i nå avsluttes."), IX, Y, MaxW, AccentColor, 0.8f);
+		const bool bRestart = LocalKind(World) == GSGameKind::Bots;
+		Button(U, TEXT("Bots.Go"), bRestart ? TEXT("Start på nytt med disse") : TEXT("Start kampen"), IX, Y + 4.f, FMath::Min(320.f, MaxW), 44.f, true, false, 0, true);
+	}
+
+	void DrawExplorePage(const FUi& U, AGSPlayerController* PC, UWorld* World, float IX, float Y, float MaxW, bool bMatch)
+	{
+		const float TS = 0.85f;
+		Y = Para(U, TEXT("Gå fritt rundt i kartet. Ingen kamp, ingen skade og ingen sult."), IX, Y, MaxW, TextColor, TS) + 6.f;
+		Y = Para(U, FString::Printf(TEXT("%s slår fri flyging av og på: du flyr gjennom vegger, %s opp og %s ned. I menyen (%s) kan du flytte deg til basene og stille klokka og været."),
+			*KeyDisplay(FlyKey()), *GSMenu::KeyName(PC, TEXT("IA_Jump")), *GSMenu::KeyName(PC, TEXT("IA_Crouch")), MenuKeysText(World)),
+			IX, Y, MaxW, DimColor, 0.8f) + 8.f;
+		if (bMatch) Y = Para(U, TEXT("Kampen du er i nå avsluttes."), IX, Y, MaxW, AccentColor, TS) + 4.f;
+		Button(U, TEXT("Explore.Go"), TEXT("Gå inn i kartet"), IX, Y + 4.f, FMath::Min(320.f, MaxW), 44.f, true, false, 0, true);
+	}
+
+	void DrawGotoPage(const FUi& U, AGSPlayerController* PC, float IX, float Y, float MaxW)
+	{
+		const TArray<GSCampus::FBase>& Bases = GSCampus::Bases();
+		const float BW = FMath::Min(260.f, (MaxW - 12.f) * 0.5f);
+		for (uint8 T = GSTeam::Red; T <= GSTeam::Blue; ++T)
+		{
+			const int32 I = T == GSTeam::Blue ? 1 : 0;   // same order as AGSGameMode::BasePointM
+			if (!Bases.IsValidIndex(I)) continue;
+			Text(U.C, FString::Printf(TEXT("%s  ·  %s"), GSTeam::Name(T), Bases[I].Building), IX, Y, TeamTextColor(T), 0.95f);
+			Y += LineHeight(0.95f) + 6.f;
+			Button(U, TEXT("Goto.Flag"), TEXT("Til flagget"), IX, Y, BW, 38.f, true, false, T);
+			Button(U, TEXT("Goto.Spawn"), TEXT("Til startplassen"), IX + BW + 12.f, Y, BW, 38.f, Bases[I].Spawns.Num() > 0, false, T);
+			Y += 38.f + 16.f;
+		}
+		Button(U, TEXT("Goto.Back"), TEXT("Der du sto sist"), IX, Y, BW, 38.f, GSExplore::HasPreviousSpot(PC));
+		Y += 38.f + 12.f;
+		Para(U, TEXT("Du settes ned på gulvet der, og fri flyging slås av."), IX, Y, MaxW, DimColor, 0.78f);
+	}
+
+	static const int32 ClockSteps[] = { 6, 8, 10, 12, 14, 16, 18, 20, 22, 0 };
+	constexpr int32 NumClockSteps = 10;
+
+	int32 NearestClockStep(float Hours)
+	{
+		int32 Best = 0;
+		float BestD = 100.f;
+		for (int32 I = 0; I < NumClockSteps; ++I)
+		{
+			float D = FMath::Abs(Hours - ClockSteps[I]);
+			D = FMath::Min(D, 24.f - D);   // round the clock
+			if (D < BestD) { BestD = D; Best = I; }
+		}
+		return Best;
+	}
+
+	void DrawLightPage(const FUi& U, UWorld* World, float IX, float Y, float MaxW)
+	{
+		const AGSGameState* GS = World ? World->GetGameState<AGSGameState>() : nullptr;
+		const float Hours = GS ? GS->GetTimeOfDayHours() : 12.f;
+		const int32 H = FMath::FloorToInt(Hours) % 24, M = FMath::FloorToInt(FMath::Frac(Hours) * 60.f);
+		const float CX = IX + FMath::Min(200.f, MaxW * 0.4f);
+		const float CW = FMath::Min(MaxW - (CX - IX), 300.f);
+		Y = RuleRow(U, TEXT("Klokka"), TEXT("Light.Clock"), FString::Printf(TEXT("%02d:%02d"), H, M), IX, CX, CW, Y, 38.f, GS != nullptr);
+		Y = RuleRow(U, TEXT("Vær"), TEXT("Light.Weather"), GS ? FString(GSNames::Weather(GS->Weather)) : FString(), IX, CX, CW, Y, 38.f, GS != nullptr);
+		Y += 6.f;
+		Para(U, FString::Printf(TEXT("Klokka går videre herfra (et døgn tar %d minutter). Været blir stående til du endrer det."), int32(AGSGameState::DayLengthMinutes)),
+			IX, Y, MaxW, DimColor, 0.78f);
+	}
+
 	void DrawMain(const FUi& U, AGSPlayerController* PC, UWorld* World)
 	{
 		FState& S = U.S;
@@ -1168,34 +1540,67 @@ namespace GSMenuImpl
 		Y += 36.f + 22.f;
 		Y = FMath::Max(Y, SY * 0.32f);
 
-		struct FNav { const TCHAR* Id; const TCHAR* Label; bool bSelected; };
+		struct FNav { const TCHAR* Id; FString Label; bool bSelected; bool bBig; float GapBefore; };
 		TArray<FNav> Nav;
+		const uint8 Kind = LocalKind(World);
+		const bool bOnline = S.Page == EPage::Online || S.Page == EPage::Host || S.Page == EPage::Join || S.Page == EPage::Connecting;
 		if (bMatch)
 		{
-			Nav.Add(FNav{ TEXT("Nav.Resume"), TEXT("Tilbake til kampen"), false });
-			Nav.Add(FNav{ TEXT("Nav.Host"), TEXT("Ny kamp som vert"), S.Page == EPage::Host });
-			Nav.Add(FNav{ TEXT("Nav.Join"), TEXT("Bli med i en annen"), S.Page == EPage::Join || S.Page == EPage::Connecting });
-			Nav.Add(FNav{ TEXT("Nav.Settings"), TEXT("Innstillinger"), S.Page == EPage::Settings });
-			Nav.Add(FNav{ TEXT("Nav.Controls"), TEXT("Kontroller"), S.Page == EPage::Controls });
-			Nav.Add(FNav{ TEXT("Nav.Leave"), TEXT("Forlat kampen"), false });
-			Nav.Add(FNav{ TEXT("Nav.Quit"), TEXT("Avslutt"), false });
+			Nav.Add(FNav{ TEXT("Nav.Resume"), TEXT("Tilbake til kampen"), false, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Host"), TEXT("Ny kamp som vert"), bOnline, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Join"), TEXT("Bli med i en annen"), false, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Settings"), TEXT("Innstillinger"), S.Page == EPage::Settings, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Controls"), TEXT("Kontroller"), S.Page == EPage::Controls, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Leave"), TEXT("Forlat kampen"), false, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Quit"), TEXT("Avslutt"), false, false, 0.f });
+		}
+		else if (Kind == GSGameKind::Bots)
+		{
+			Nav.Add(FNav{ TEXT("Nav.Resume"), TEXT("Tilbake til kampen"), false, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Restart"), TEXT("Start kampen på nytt"), false, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Bots"), TEXT("Endre kampen ..."), S.Page == EPage::Bots, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Settings"), TEXT("Innstillinger"), S.Page == EPage::Settings, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Controls"), TEXT("Kontroller"), S.Page == EPage::Controls, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.ToMain"), TEXT("Til hovedmenyen"), false, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Quit"), TEXT("Avslutt"), false, false, 0.f });
+		}
+		else if (Kind == GSGameKind::Explore)
+		{
+			const FString Fly = FString::Printf(TEXT("Fri flyging: %s (%s)"), GSExplore::IsFlying(PC) ? TEXT("på") : TEXT("av"), *KeyDisplay(FlyKey()));
+			Nav.Add(FNav{ TEXT("Nav.Resume"), TEXT("Tilbake"), false, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Fly"), Fly, false, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Goto"), TEXT("Gå til ..."), S.Page == EPage::Goto, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Light"), TEXT("Lys og vær ..."), S.Page == EPage::Light, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Settings"), TEXT("Innstillinger"), S.Page == EPage::Settings, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Controls"), TEXT("Kontroller"), S.Page == EPage::Controls, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.ToMain"), TEXT("Til hovedmenyen"), false, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Quit"), TEXT("Avslutt"), false, false, 0.f });
 		}
 		else
 		{
-			Nav.Add(FNav{ TEXT("Nav.Host"), TEXT("Start spill"), S.Page == EPage::Host });
-			Nav.Add(FNav{ TEXT("Nav.Join"), TEXT("Bli med"), S.Page == EPage::Join || S.Page == EPage::Connecting });
-			Nav.Add(FNav{ TEXT("Nav.Solo"), TEXT("Øv alene"), false });
-			Nav.Add(FNav{ TEXT("Nav.Settings"), TEXT("Innstillinger"), S.Page == EPage::Settings });
-			Nav.Add(FNav{ TEXT("Nav.Controls"), TEXT("Kontroller"), S.Page == EPage::Controls });
-			Nav.Add(FNav{ TEXT("Nav.Quit"), TEXT("Avslutt"), false });
+			// The start menu: three clear choices, then the rest.
+			Nav.Add(FNav{ TEXT("Nav.Bots"), TEXT("Spill mot bots"), S.Page == EPage::Bots, true, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Online"), TEXT("Spill online"), bOnline, true, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Explore"), TEXT("Test kartet"), S.Page == EPage::Explore, true, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Settings"), TEXT("Innstillinger"), S.Page == EPage::Settings, false, 12.f });
+			Nav.Add(FNav{ TEXT("Nav.Controls"), TEXT("Kontroller"), S.Page == EPage::Controls, false, 0.f });
+			Nav.Add(FNav{ TEXT("Nav.Quit"), TEXT("Avslutt"), false, false, 0.f });
 		}
-		const float BH = FMath::Clamp((SY - Y - 50.f) / Nav.Num() - 6.f, 30.f, 44.f);
+		float Extra = 0.f;
+		for (const FNav& N : Nav) Extra += N.GapBefore + (N.bBig ? 6.f : 0.f);
+		const float BH = FMath::Clamp((SY - Y - 70.f - Extra) / Nav.Num() - 6.f, 30.f, 44.f);
 		for (const FNav& N : Nav)
 		{
+			Y += N.GapBefore;
+			const float H = BH + (N.bBig ? 6.f : 0.f);
 			// While connecting, only Cancel (on the right) and Quit make sense.
 			const bool bEnabled = !S.bConnecting || FCString::Strcmp(N.Id, TEXT("Nav.Quit")) == 0;
-			Button(U, N.Id, N.Label, LX, Y, BW, BH, bEnabled, N.bSelected);
-			Y += BH + 6.f;
+			Button(U, N.Id, N.Label, LX, Y, BW, H, bEnabled, N.bSelected);
+			Y += H + 6.f;
+		}
+		if (Kind != GSGameKind::Online && S.bPausedByUs)
+		{
+			Text(U.C, TEXT("Spillet står på pause"), LX, SY - 58.f, AccentColor, 0.8f);
 		}
 		Text(U.C, IsEditorPlay(World) ? FString(TEXT("F10 eller P: lukk menyen (Esc stopper Play i editoren)")) : FString(TEXT("Esc, F10 eller P: lukk menyen")),
 			LX, SY - 36.f, DimColor, 0.75f);
@@ -1209,8 +1614,13 @@ namespace GSMenuImpl
 		Box(U.C, X, PY, W, H, PanelColor);
 		const float IX = X + 24.f, MaxW = W - 48.f, TS = 0.85f;
 		Y = PY + 18.f;
-		const TCHAR* Title = S.Page == EPage::Host ? (bMatch ? TEXT("Ny kamp som vert") : TEXT("Start spill"))
+		const TCHAR* Title = S.Page == EPage::Host ? (bMatch ? TEXT("Ny kamp som vert") : TEXT("Start som vert"))
 			: S.Page == EPage::Join ? TEXT("Bli med")
+			: S.Page == EPage::Online ? TEXT("Spill online")
+			: S.Page == EPage::Bots ? (Kind == GSGameKind::Bots ? TEXT("Endre kampen") : TEXT("Spill mot bots"))
+			: S.Page == EPage::Explore ? TEXT("Test kartet")
+			: S.Page == EPage::Goto ? TEXT("Gå til")
+			: S.Page == EPage::Light ? TEXT("Lys og vær")
 			: S.Page == EPage::Connecting ? TEXT("Kobler til")
 			: S.Page == EPage::Settings ? TEXT("Innstillinger") : TEXT("Kontroller");
 		Text(U.C, Title, IX, Y, FLinearColor::White, 1.2f);
@@ -1219,49 +1629,47 @@ namespace GSMenuImpl
 		switch (S.Page)
 		{
 		case EPage::Host:
+			DrawHostPart(U, IX, Y, MaxW, bMatch);
+			break;
+		case EPage::Join:
+			DrawJoinPart(U, PC, IX, Y, MaxW);
+			break;
+		case EPage::Online:
 		{
-			Y = Para(U, TEXT("Du blir vert for en ny kamp. Vennene dine kobler seg til deg."), IX, Y, MaxW, TextColor, TS) + 10.f;
-			const TArray<FString>& Addrs = LocalAddresses();
-			if (Addrs.Num() > 0)
+			if (PY + H - Y >= 620.f)
 			{
-				Text(U.C, TEXT("Venner på samme nett skriver inn:"), IX, Y, TextColor, TS);
-				Y += LineHeight(TS) + 6.f;
-				for (const FString& A : Addrs)
-				{
-					Text(U.C, A, IX + 12.f, Y, FLinearColor::White, 1.1f);
-					Y += LineHeight(1.1f) + 4.f;
-				}
+				// Room for both: start as host above, join below. No tabs, fewer clicks.
+				Text(U.C, TEXT("Start som vert"), IX, Y, FLinearColor::White, 1.f);
+				Y += LineHeight(1.f) + 8.f;
+				Y = DrawHostPart(U, IX, Y, MaxW, bMatch);
+				Box(U.C, IX, Y, MaxW, 1.f, FLinearColor(1.f, 1.f, 1.f, 0.12f));
+				Y += 14.f;
+				Text(U.C, TEXT("Bli med"), IX, Y, FLinearColor::White, 1.f);
+				Y += LineHeight(1.f) + 8.f;
+				DrawJoinPart(U, PC, IX, Y, MaxW);
 			}
 			else
 			{
-				Text(U.C, TEXT("Fant ingen nettverksadresse."), IX, Y, DimColor, TS);
-				Y += LineHeight(TS) + 4.f;
+				// A low window (the editor's Play on a laptop): join first, the host part on its own page.
+				Text(U.C, TEXT("Bli med"), IX, Y, FLinearColor::White, 1.f);
+				Y += LineHeight(1.f) + 8.f;
+				Y = DrawJoinPart(U, PC, IX, Y, MaxW) + 12.f;
+				Button(U, TEXT("Nav.HostPage"), TEXT("Start som vert ..."), IX, Y, FMath::Min(300.f, MaxW), 40.f);
 			}
-			Y += 10.f;
-			Y = Para(U, TEXT("Over internett må port 7777 (UDP) åpnes i ruteren din."), IX, Y, MaxW, DimColor, TS);
-			Y = Para(U, TEXT("Første gang spør Windows om brannmuren. Trykk Tillat."), IX, Y, MaxW, DimColor, TS) + 8.f;
-			if (bMatch) Y = Para(U, TEXT("Kampen du er i nå avsluttes."), IX, Y, MaxW, AccentColor, TS) + 8.f;
-			Button(U, TEXT("Host.Go"), TEXT("Start som vert"), IX, Y + 6.f, FMath::Min(300.f, MaxW), 44.f, true, false, 0, true);
 			break;
 		}
-		case EPage::Join:
-		{
-			Text(U.C, TEXT("Adresse"), IX, Y, DimColor, 0.8f);
-			Y += LineHeight(0.8f) + 4.f;
-			const float FW = FMath::Min(420.f, MaxW);
-			Field(U, TEXT("Address"), S.AddressEdit, TEXT("192.168.1.20"), IX, Y, FW, 36.f);
-			Y += 36.f + 10.f;
-			Button(U, TEXT("Join.Go"), TEXT("Koble til"), IX, Y, FMath::Min(200.f, FW), 44.f, true, false, 0, true);
-			if (PC && !PC->LastJoinAddress.IsEmpty() && PC->LastJoinAddress != S.AddressEdit)
-			{
-				Button(U, TEXT("Join.Last"), FString::Printf(TEXT("Siste: %s"), *PC->LastJoinAddress), IX + FMath::Min(200.f, FW) + 10.f, Y, FMath::Min(300.f, MaxW - 210.f), 44.f);
-			}
-			Y += 44.f + 12.f;
-			Text(U.C, S.JoinNote, IX, Y, AccentColor, TS);
-			Y += LineHeight(TS) + 8.f;
-			Para(U, TEXT("Skriv adressen verten ser under Start spill, for eksempel 192.168.1.20. Ctrl+V limer inn."), IX, Y, MaxW, DimColor, TS);
+		case EPage::Bots:
+			DrawBotsPage(U, World, IX, Y, MaxW, PY + H, bMatch);
 			break;
-		}
+		case EPage::Explore:
+			DrawExplorePage(U, PC, World, IX, Y, MaxW, bMatch);
+			break;
+		case EPage::Goto:
+			DrawGotoPage(U, PC, IX, Y, MaxW);
+			break;
+		case EPage::Light:
+			DrawLightPage(U, World, IX, Y, MaxW);
+			break;
 		case EPage::Connecting:
 		{
 			const int32 Secs = FMath::Max(0, FMath::FloorToInt(float(FPlatformTime::Seconds() - S.ConnectStart)));
@@ -1381,7 +1789,23 @@ namespace GSMenuImpl
 		{
 		case EDialog::Host: Title = TEXT("Starte en ny kamp?"); Body = LeaveText(World, S); Yes = TEXT("Ja, start ny"); break;
 		case EDialog::Join: Title = TEXT("Bli med i en annen kamp?"); Body = LeaveText(World, S); Yes = TEXT("Ja, koble til"); break;
-		case EDialog::Leave: Title = TEXT("Forlate kampen?"); Body = LeaveText(World, S); Yes = TEXT("Ja, forlat"); break;
+		case EDialog::Leave:
+			if (InLocalGame(World))
+			{
+				Title = TEXT("Tilbake til hovedmenyen?");
+				Body = LocalKind(World) == GSGameKind::Explore ? TEXT("Testen avsluttes.") : TEXT("Kampen avsluttes.");
+				Yes = TEXT("Ja, til hovedmenyen");
+			}
+			else
+			{
+				Title = TEXT("Forlate kampen?"); Body = LeaveText(World, S); Yes = TEXT("Ja, forlat");
+			}
+			break;
+		case EDialog::Restart:
+			Title = TEXT("Starte kampen på nytt?");
+			Body = TEXT("Kampen du er i nå avsluttes, og en ny starter med valgene på siden «Endre kampen».");
+			Yes = TEXT("Ja, start på nytt");
+			break;
 		case EDialog::Quit: Title = TEXT("Avslutte spillet?"); Body = LeaveText(World, S); Yes = TEXT("Avslutt"); break;
 		case EDialog::Message: Title = S.MsgTitle; Body = S.MsgText; Detail = S.MsgDetail; Yes = TEXT("OK"); bCancel = false; break;
 		default: return;
@@ -1419,14 +1843,18 @@ namespace GSMenuImpl
 		switch (D)
 		{
 		case EDialog::Host:
-			S.LeavingUntil = FPlatformTime::Seconds() + 10.0;
-			PC->Host();
+			StartPending(PC, S);   // host, bots or test, with the choices from the menu
+			break;
+		case EDialog::Restart:
+			StartBots(PC, S);
 			break;
 		case EDialog::Join:
 			if (!S.bMainOpen) OpenMainImpl(PC, S);
 			StartJoin(PC, World, S, S.PendingJoin);
 			break;
 		case EDialog::Leave:
+			// The start menu opens in the next world, also in the editor's Play (it does not open by itself there).
+			S.bOpenMainAfterTravel = true;
 			ReloadAlone(PC, S);
 			break;
 		case EDialog::Quit:
@@ -1462,17 +1890,69 @@ namespace GSMenuImpl
 		if (Id == TEXT("Dlg.Yes")) { DialogYes(PC, World, S); return; }
 		if (Id == TEXT("Dlg.No")) { DialogNo(S); return; }
 
-		if (Id == TEXT("Nav.Host")) SetPage(PC, S, EPage::Host);
-		else if (Id == TEXT("Nav.Join")) SetPage(PC, S, EPage::Join);
+		// A new game: confirmed first when it ends a game in progress (online, a bot match or the test).
+		auto Begin = [&](EStart What)
+		{
+			S.PendingStart = What;
+			if (InMatch(World, S)) S.Dialog = EDialog::Host;
+			else if (What == EStart::Bots && LocalKind(World) == GSGameKind::Bots) S.Dialog = EDialog::Restart;
+			else if (InLocalGame(World)) S.Dialog = EDialog::Host;
+			else StartPending(PC, S);
+		};
+
+		if (Id == TEXT("Nav.Host") || Id == TEXT("Nav.Online")) SetPage(PC, S, EPage::Online);
+		else if (Id == TEXT("Nav.Join")) { SetPage(PC, S, EPage::Online); S.Focus = FName(TEXT("Address")); }
+		else if (Id == TEXT("Nav.HostPage")) SetPage(PC, S, EPage::Host);
+		else if (Id == TEXT("Nav.Bots")) SetPage(PC, S, EPage::Bots);
+		else if (Id == TEXT("Nav.Explore")) SetPage(PC, S, EPage::Explore);
+		else if (Id == TEXT("Nav.Goto")) SetPage(PC, S, EPage::Goto);
+		else if (Id == TEXT("Nav.Light")) SetPage(PC, S, EPage::Light);
 		else if (Id == TEXT("Nav.Settings")) SetPage(PC, S, EPage::Settings);
 		else if (Id == TEXT("Nav.Controls")) SetPage(PC, S, EPage::Controls);
-		else if (Id == TEXT("Nav.Solo") || Id == TEXT("Nav.Resume")) CloseMain(PC, S, *Id);
-		else if (Id == TEXT("Nav.Leave")) S.Dialog = EDialog::Leave;
-		else if (Id == TEXT("Nav.Quit")) S.Dialog = EDialog::Quit;
-		else if (Id == TEXT("Host.Go"))
+		else if (Id == TEXT("Nav.Resume")) CloseMain(PC, S, *Id);
+		else if (Id == TEXT("Nav.Restart")) S.Dialog = EDialog::Restart;
+		else if (Id == TEXT("Nav.Fly"))
 		{
-			if (InMatch(World, S)) S.Dialog = EDialog::Host;
-			else { S.LeavingUntil = FPlatformTime::Seconds() + 10.0; PC->Host(); }
+			CloseMain(PC, S, *Id);   // fly at once: the menu closes and the pause ends
+			GSExplore::ToggleFly(PC);
+		}
+		else if (Id == TEXT("Nav.Leave") || Id == TEXT("Nav.ToMain")) S.Dialog = EDialog::Leave;
+		else if (Id == TEXT("Nav.Quit")) S.Dialog = EDialog::Quit;
+		else if (Id == TEXT("Host.Go")) Begin(EStart::Host);
+		else if (Id == TEXT("Bots.Go")) Begin(EStart::Bots);
+		else if (Id == TEXT("Explore.Go")) Begin(EStart::Explore);
+		else if (Id.StartsWith(TEXT("Rule."))) ChangeRule(Id, Hit.Arg);
+		else if (Id == TEXT("Goto.Flag") || Id == TEXT("Goto.Spawn"))
+		{
+			const TArray<GSCampus::FBase>& Bases = GSCampus::Bases();
+			const int32 I = Hit.Arg == GSTeam::Blue ? 1 : 0;
+			if (Bases.IsValidIndex(I))
+			{
+				const GSCampus::FBase& B = Bases[I];
+				FVector Target = B.Flag * 100.f;
+				if (Id == TEXT("Goto.Spawn") && B.Spawns.Num() > 0) Target = FVector(B.Spawns[0].X * 100.f, B.Spawns[0].Y * 100.f, B.Flag.Z * 100.f);
+				UE_LOG(LogTemp, Log, TEXT("GSMenu: gå til %s, %s"), GSTeam::Name(uint8(Hit.Arg)), Id == TEXT("Goto.Flag") ? TEXT("flagget") : TEXT("startplassen"));
+				CloseMain(PC, S, *Id);
+				GSExplore::Teleport(PC, Target, B.SpawnYaw);
+			}
+		}
+		else if (Id == TEXT("Goto.Back"))
+		{
+			CloseMain(PC, S, *Id);
+			GSExplore::TeleportBack(PC);
+		}
+		else if (Id == TEXT("Light.Clock"))
+		{
+			const AGSGameState* GS = World->GetGameState<AGSGameState>();
+			const int32 Cur = NearestClockStep(GS ? GS->GetTimeOfDayHours() : 12.f);
+			GSExplore::SetClock(PC, float(ClockSteps[(Cur + Hit.Arg + NumClockSteps) % NumClockSteps]));
+		}
+		else if (Id == TEXT("Light.Weather"))
+		{
+			const AGSGameState* GS = World->GetGameState<AGSGameState>();
+			const int32 N = int32(EGSWeather::MAX);
+			const int32 Cur = GS ? int32(GS->Weather) : 0;
+			GSExplore::SetWeather(PC, EGSWeather(uint8((Cur + Hit.Arg + N) % N)));
 		}
 		else if (Id == TEXT("Join.Go")) TryJoin(PC, World, S);
 		else if (Id == TEXT("Join.Last")) { S.AddressEdit = PC->LastJoinAddress; S.Focus = FName(TEXT("Address")); }
@@ -1638,6 +2118,12 @@ namespace GSMenuImpl
 				UE_LOG(LogTemp, Warning, TEXT("GSMenu: musepekeren kom ikke på, menyen lukkes igjen"));
 				CloseMain(PC, S, TEXT("ingen musepeker"));
 				return false;
+			}
+			// Test kartet: the fly key (N) turns free flying on and off. Elsewhere N goes on to the game as before.
+			if (Ev == IE_Pressed && Key == FlyKey() && LocalKind(World) == GSGameKind::Explore && !PC->bMenuOpen && !PC->IsOnTerminal())
+			{
+				GSExplore::ToggleFly(PC);
+				return true;
 			}
 			// Team panel in the lobby
 			if (Ev == IE_Pressed && Key == TeamKey() && !PC->bMenuOpen && !PC->IsOnTerminal())
@@ -1966,9 +2452,18 @@ namespace GSMenuImpl
 		// 5. What opens by itself
 		const AGSGameState* GS = World->GetGameState<AGSGameState>();
 		const AGSPlayerState* PS = PC->GetPlayerState<AGSPlayerState>();
-		// The start menu opens by itself only in the real game. In the editor's Play you start playing at once, and
-		// Esc opens the menu (you test the game more often than the menu, and Play must never start locked).
-		if (NetMode == NM_Standalone && !S.bMainDismissed && !S.bMainOpen)
+		// "Til hovedmenyen" from a bot match or the test: the start menu opens in the new world, also in the editor's Play.
+		const uint8 Kind = LocalKind(World);
+		if (S.bOpenMainAfterTravel && GS && NetMode == NM_Standalone && Kind == GSGameKind::Online)
+		{
+			S.bOpenMainAfterTravel = false;
+			S.bMainDismissed = false;
+			if (!S.bMainOpen) OpenMainImpl(PC, S, TEXT("tilbake til hovedmenyen"));
+		}
+		// The start menu opens by itself only in the real game, and only in the world without a game of its own (not a
+		// bot match or the test). In the editor's Play you start playing at once, and F10/P opens the menu (you test the
+		// game more often than the menu, and Play must never start locked).
+		if (NetMode == NM_Standalone && GS && Kind == GSGameKind::Online && !S.bMainDismissed && !S.bMainOpen)
 		{
 			if (!World->IsPlayInEditor())
 			{
@@ -2024,7 +2519,7 @@ namespace GSMenuImpl
 
 		if (S.bMainOpen)
 		{
-			if (!InMatch(World, S) && !S.bMainDismissed)
+			if (!InMatch(World, S) && Kind == GSGameKind::Online && !S.bMainDismissed)
 			{
 				// Campus turns slowly behind the start menu (also while connecting from it). Not when Esc opened the
 				// menu while practising: then the player's own view must stay where it was.
@@ -2109,9 +2604,17 @@ namespace GSMenu
 		return S && S->World.Get() == World && GSMenuImpl::IsModalState(*S);
 	}
 
+	FKey KeyFor(const APlayerController* PC, FName Action)
+	{
+		if (Action == FName(TEXT("GS_Team"))) return GSMenuImpl::TeamKey();
+		if (Action == FName(TEXT("GS_Fly"))) return GSMenuImpl::FlyKey();
+		return GSMenuImpl::ActionKey(Cast<AGSPlayerController>(PC), Action);
+	}
+
 	FString KeyName(const APlayerController* PC, FName Action)
 	{
 		if (Action == FName(TEXT("GS_Team"))) return GSMenuImpl::KeyDisplay(GSMenuImpl::TeamKey());
+		if (Action == FName(TEXT("GS_Fly"))) return GSMenuImpl::KeyDisplay(GSMenuImpl::FlyKey());
 		const AGSPlayerController* GPC = Cast<AGSPlayerController>(PC);
 		const UInputMappingContext* C = GPC ? GPC->MappingContext.Get() : nullptr;
 		if (!C) return FString();

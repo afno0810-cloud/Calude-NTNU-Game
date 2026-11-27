@@ -5,6 +5,14 @@
 #include "GSTypes.h"
 #include "GSGameState.generated.h"
 
+/** What kind of game this is (AGSGameState::GameKind). Bots and Explore are always alone on one machine (NM_Standalone). */
+namespace GSGameKind
+{
+	constexpr uint8 Online = 0;
+	constexpr uint8 Bots = 1;
+	constexpr uint8 Explore = 2;
+}
+
 UCLASS()
 class GLOSHAUGEN_API AGSGameState : public AGameStateBase
 {
@@ -34,6 +42,7 @@ public:
 	UPROPERTY(Replicated) EGSMatchPhase Phase = EGSMatchPhase::Lobby;
 	UPROPERTY(Replicated) float PhaseEndsAt = 0.f;     // server world time (countdown / match / results)
 	UPROPERTY(Replicated) FString Winner;
+	/** Standard, see MatchMinutesSet (the length chosen for this game). */
 	static constexpr float MatchMinutes = 15.f;
 	static constexpr int32 KillLimit = 25;
 	static constexpr float CountdownSeconds = 10.f;
@@ -47,8 +56,30 @@ public:
 	/** Off: team mates cannot hurt each other (checked in AGSCharacter::TakeDamage by the combat team). */
 	UPROPERTY(Replicated) bool bFriendlyFire = false;
 	int32 TeamScore(uint8 Team) const { return Team == 1 ? RedScore : (Team == 2 ? BlueScore : 0); }
+	/** Standard, see CaptureGoal (the number chosen for this game). */
 	static constexpr int32 CaptureLimit = 3;
 	static constexpr float LobbyAutoStartSeconds = 90.f;
+
+	// --- The game's settings, from the menu (set by AGSGameMode from the travel URL; clamped on the server) ---
+	/** GSGameKind: Online, Bots or Explore ("Test kartet"). */
+	UPROPERTY(Replicated) uint8 GameKind = GSGameKind::Online;
+	/** Captures to win. */
+	UPROPERTY(Replicated) uint8 CaptureGoal = 3;
+	/** Match length in minutes. */
+	UPROPERTY(Replicated) uint8 MatchMinutesSet = 15;
+	/** 0 Lett, 1 Middels, 2 Vanskelig, 3 Ekspert. */
+	UPROPERTY(Replicated) uint8 BotSkill = 1;
+	/** Bots asked for on the player's team / on the other team (no bots exist before plan-06, see bBotsAvailable). */
+	UPROPERTY(Replicated) uint8 BotAllies = 0;
+	UPROPERTY(Replicated) uint8 BotEnemies = 0;
+	/** Everyone gets the same rifle, a pistol and two bandages at each spawn in a match. */
+	UPROPERTY(Replicated) bool bStartKit = false;
+	/** Bots and Test kartet: only one player, on this machine. */
+	bool IsLocalSolo() const { return GameKind != GSGameKind::Online; }
+	/** False until the bots are built (plan-06): "Spill mot bots" then starts the match alone and says so. */
+	static constexpr bool bBotsAvailable = false;
+	/** Test kartet: no weather change for this long (the weather chosen in the menu stays). */
+	void HoldWeather(float Seconds);
 	/** Time is out but a flag run that can still decide the match is on. */
 	UPROPERTY(Replicated) bool bOvertime = false;
 	static constexpr float OvertimeMaxSeconds = 120.f;
