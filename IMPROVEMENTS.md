@@ -3,6 +3,58 @@
 Andreas' mål: minst 1000 forbedringer. Hver linje under er én konkret ting som er lagt til eller gjort bedre.
 Nyeste runde øverst.
 
+## Runde 1b-retting (Interaktiv verden): glass etter kontrollen (27. nov.)
+
+Gammelt som er forbedret: glassbitene fra en granat (734, 735), slag mot glass (736), sprekkelyden ved hagl (737) og kulehullene på dører (738).
+
+734. En granat midt i mye glass lager høyst 40 glassbiter i samme øyeblikk og aldri mer enn 150 i lufta, så bildet ikke hakker
+735. Glassbiter som ikke får plass, blir aldri hengende i lufta: ruta legger bare skårene på gulvet
+736. Kniv og kolbe knuser ikke glass bak en vegg; veggen stopper slaget
+737. Hagl mot et glassrekkverk gir én sprekkelyd, ikke ti oppå hverandre
+738. Kulehull følger dørbladet når døra går; andre ting lager ingen ekstra tegnekall for kulehull
+
+## Runde 7a (Spillbarhet): realistiske stoffer og medisin (27. nov.)
+
+Gammelt som er forbedret: boosts har tak og stables ikke lenger til overmenneskelige verdier (920), de overnaturlige er ute av kartet (921), mat og stoffer leger ikke (922), medisinen er ny og det sjeldneste settet er best (923), Turbo og Drøm er blitt ekte stoffer (924, 929), spisetider (930) og beskrivelser (931).
+Nytt: sigarett, pils, årepresse og skinne (925–928), og katalogen sjekker seg selv (932).
+Merk: Kamp regner fortsatt behandling av bein og armer som helse/60 til de leser det nye feltet `Treat`. Til da setter førstehjelpsskrinet ikke lenger et bein helt i stand, og smertestillende behandler ikke lemmer. Skinnen kommer på kartet når Kamp leser feltet.
+
+920. Tak på boosts: uansett hvor mange stoffer du tar blir du aldri mer enn 10 % raskere eller tåler mer enn 15 % mindre skade
+921. Overnaturlige boosts (Spøkelse, Føniks, Øyet, Blodtørst, Berserk, Lynet, Iskald, Pansertablett m.fl.) finnes ikke lenger på kartet
+922. Mat, adrenalin og morfin leger ikke lenger sår: mat metter, adrenalin og morfin demper smerte
+923. Førstehjelpsskrin og stort sanitetssett gir litt helse med en gang og resten langsomt over halvannet minutt; det sjeldneste er best
+924. Turbo heter nå Amfetamin og virker som det: mindre slitenhet, urolige hender, og et tungt krasj etterpå
+925. Ny: Sigarett – litt roligere hender, men dårligere kondis og hoste etterpå
+926. Ny: Pils – hver boks gjør siktet og ladingen dårligere
+927. Ny: Årepresse (tourniquet) som stopper all blødning fra et bein eller en arm
+928. Ny: Skinne for brukne bein og armer (på kartet når Kamp leser behandlingsfeltet)
+929. Sovetabletten (før «Drøm») gjør deg ikke lenger immun mot blendgranater
+930. Store måltider tar realistisk tid å spise: Grandiosa 12 s, kebab 10 s
+931. Alle stoffer og all medisin har nye, nøkterne beskrivelser av virkning og bivirkning
+932. Katalogen stopper seg selv hvis noen legger inn mat eller stoff som leger, eller gjør deg skuddsikker, usynlig eller udødelig
+
+## Runde 13 (Kamp): verden som tar imot kuler, granater og slag, og rettinger (27. nov.)
+
+Gammelt som er forbedret: kuler, granater, kniv/kolbe og bruk-tasten virker nå på dørene og glasset fra Interaktiv verden
+(764–769), og lydtaket kutter ikke lenger dine egne skudd og romklangen i store kamper (771). Nytt: lyder for dører som
+åpnes og lukkes (770) og en hodeløs glasstest (774).
+
+760. Førstepersonsarmene skjules ett sted i stedet for å vippes synlig/usynlig hvert bilde (mindre arbeid for grafikken)
+761. Grafikknivået i Esc-menyen og «Grafikk N» beholder din egen oppløsning, som i hovedmenyen
+762. Hendene holder grepet også når du sikter bratt opp eller ned (målt med `gs.FP.ReachTest` ved ±70°)
+763. Skudd på knærne til en som går teller som beinskudd (beinboksen dekker hele steget)
+764. Kuler knuser vinduer og glassvegger og blir bremset av dem (litt mindre fart og skade per rute)
+765. Kulehull blir værende i vegger, gulv og tak (etter underlag) i stedet for å forsvinne etter 40 s
+766. Du kan skyte opp kodelåser og låsen på låste tredører
+767. Granater, miner og C4 blåser opp dører, bryter låser og knuser glass i nærheten
+768. Kniv og kolbe knuser glassruter, slår løs kodelåser og sparker dører – og treffer ikke lenger noen bak en hel glassvegg
+769. Bruk-tasten gjør aldri to ting: det som er nærmest midt i blikket (dør, gjenstand eller terminal) vinner
+770. Nye lyder for dører som åpnes og lukkes (håndtak, smekklås), fra Kenney (CC0)
+771. Dine egne skudd og romklangen etter skudd kuttes ikke lenger når mange skyter samtidig: fjerne skudd viker først, og halene og egne skudd har egne plasser
+772. Flaggmeldinger på radioen har egen plass og kan ikke stoppes av treffmarkører, øresus eller hjerteslag
+773. Lydtesten måler hvor mange lyder motoren faktisk spiller, med fire skyttere samtidig
+774. Ny hodeløs test `gs.Test.Glasskudd`: en ekte kule mot en glassvegg i Helgasetr, og loggen sier om den knuses
+
 ## Runde 6c (Spillbarhet): rettinger etter kontrollen av runde 6 (27. nov.)
 
 Gammelt som er forbedret: bedre loot ved kodelåsdører havner bare inne i de låste grupperommene, ikke i korridoren utenfor (899), og lootplasseringen oppdager ting som ville ligget inne i en trapp eller vegg (900, 901).
@@ -207,7 +259,7 @@ Nytt: kroppens egne hender på våpenet med lading, spising og kikkert (582–58
 594. Datastyrte spillere gir ikke verten hjerteslag, treffmarkører, skjermeffekter, meldinger eller en førstepersonskropp
 595. Verten hører botenes skudd og slag fra der boten står, og ser kulene deres, i stedet for å høre dem som sine egne
 596. Bots sikter opp og ned også med selve skuddet, så de kan treffe mellom etasjer og i trapper
-597. Skarpere bilde: spillet tegnes i full oppløsning på Høy og Episk (85 % på Lav og Middels) i stedet for 72 %, også når grafikknivået velges i hovedmenyen
+597. Skarpere bilde: første oppstart og gamle 72 % blir full oppløsning på Høy/Episk (85 % på Lav/Middels)
 
 ## Rettinger (Spillbarhet): test kartet og spawn (27. nov.)
 

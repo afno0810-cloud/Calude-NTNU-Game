@@ -87,6 +87,8 @@ struct FGSActiveEffect
 
 	UPROPERTY(BlueprintReadOnly) FName Id;
 	UPROPERTY(BlueprintReadOnly) float EndTime = 0.f;
+	UPROPERTY(BlueprintReadOnly) uint8 Doses = 1;
+	UPROPERTY(BlueprintReadOnly) float StartTime = 0.f;   // server time of the first dose; 0 = EndTime - Duration
 };
 
 /** A player position sent to someone using the tracker on a PC. */

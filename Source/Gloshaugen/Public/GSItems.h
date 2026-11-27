@@ -4,6 +4,13 @@
 #include "Math/RandomStream.h"
 
 class UStaticMesh;
+struct FGSActiveEffect;   // GSTypes.h (not included here, so files that only need the catalog do not rebuild with it)
+struct FGSEffectMods;
+namespace GSItems
+{
+	/** Caps on stacked boosts (round 7): speed and damage at most +10 %, damage taken at least 0.85 ... */
+	GLOSHAUGEN_API void ClampMods(FGSEffectMods& M);
+}
 
 /**
  * Everything you can find on Gloshaugen: weapons, armor, food, drugs/boosts, medicine, grenades and gadgets.
@@ -16,6 +23,8 @@ enum class EGSWeaponClass : uint8 { Pistol, SMG, Rifle, Sniper, Shotgun, LMG, La
 enum class EGSFireMode : uint8 { Hitscan, Pellets, Projectile, Melee };
 /** Where a loot spot lies (Helgasetr): decides what kind of things it holds. Campus = the old outdoor map. */
 enum class EGSLootPlace : uint8 { Campus, Corridor, Medical, Canteen, Crate };
+/** What kind of drug an effect is (round 7). None = not a drug (medicine, food, game effects). */
+enum class EGSDrugClass : uint8 { None, Stimulant, Opioid, Depressant, Alcohol, Nicotine, Caffeine, Cannabis, Antidote };
 
 /** Multipliers from boosts and side effects. 1 = normal. */
 struct FGSEffectMods
@@ -24,16 +33,29 @@ struct FGSEffectMods
 	float Jump = 1.f, Reload = 1.f, Hunger = 1.f, Thirst = 1.f;
 	float Regen = 0.f, Drain = 0.f, Lifesteal = 0.f;   // HP per second / fraction
 	bool bNightVision = false, bWallhack = false, bPhoenix = false, bSilent = false, bFlashImmune = false, bGhost = false, bGlide = false;
-	int32 Visual = 0; // 0 none, 1 blur, 2 colors, 3 shake, 4 green haze, 5 psychedelic, 6 bright, 7 night vision
+	// 0 none, 1 blur, 2 colors, 3 shake, 4 green haze, 5 psychedelic, 6 bright, 7 night vision, 8 red/warm, 9 white/overexposed,
+	// 10 tunnel vision, 11 double vision
+	int32 Visual = 0;
+	bool bNumb = false, bCough = false;   // dulls pain (limbs) / coughing when sprinting
 
-	void Combine(const FGSEffectMods& O)
+	/** Stacks O onto this without caps (GSItems::CombineActive adds them all, then caps once at the end). */
+	void CombineRaw(const FGSEffectMods& O)
 	{
 		Speed *= O.Speed; StaminaDrain *= O.StaminaDrain; StaminaRegen *= O.StaminaRegen; Recoil *= O.Recoil; Spread *= O.Spread;
 		Damage *= O.Damage; Taken *= O.Taken; Jump *= O.Jump; Reload *= O.Reload; Hunger *= O.Hunger; Thirst *= O.Thirst;
 		Regen += O.Regen; Drain += O.Drain; Lifesteal += O.Lifesteal;
 		bNightVision |= O.bNightVision; bWallhack |= O.bWallhack; bPhoenix |= O.bPhoenix; bSilent |= O.bSilent;
 		bFlashImmune |= O.bFlashImmune; bGhost |= O.bGhost; bGlide |= O.bGlide;
+		bNumb |= O.bNumb; bCough |= O.bCough;
 		if (O.Visual != 0) Visual = O.Visual;
+	}
+
+	/** Stacks O onto this and keeps the result within the caps (GSItems::ClampMods). A guard until Kamp calls
+	 *  GSItems::CombineActive, which caps once at the end (capping after every step depends on the order). */
+	void Combine(const FGSEffectMods& O)
+	{
+		CombineRaw(O);
+		GSItems::ClampMods(*this);
 	}
 };
 
@@ -44,6 +66,16 @@ struct FGSEffectDef
 	float Duration = 10.f;
 	FGSEffectMods Mods;
 	FName After;   // side effect that starts when this one ends
+	float Onset = 0.f, Fade = 0.f;   // seconds to full effect / seconds of come-down at the end (plan-07b)
+	float Load = 0.f;                // how hard one dose is on the body (overdose, plan-07b)
+	EGSDrugClass Class = EGSDrugClass::None;
+};
+
+/** One screen effect and how strong it is now (0..1), for the HUD. */
+struct FGSVisualLayer
+{
+	int32 Visual = 0;
+	float Strength = 0.f;
 };
 
 struct FGSWeaponStats
@@ -99,6 +131,9 @@ struct FGSItemDef
 	int32 Slots = 0, Charges = 1;
 	FName Caliber;                        // ammo boxes: which caliber
 	int32 Rounds = 0;                     // ammo boxes: rounds in one box
+	float Treat = 0.f;                    // medicine: how much a hurt leg or arm is treated (0..1)
+	FName UseAnim;                        // how it is used (model arch or e.g. "cigarette")
+	bool bNoLoot = false;                 // never in loot (supernatural boosts); stays in the catalog
 
 	bool IsWeapon() const { return Cat == EGSItemCat::Weapon; }
 	bool IsWearable() const { return Cat == EGSItemCat::Armor || Cat == EGSItemCat::Helmet || Kind == FName(TEXT("backpack")); }
@@ -133,6 +168,15 @@ namespace GSItems
 	GLOSHAUGEN_API FName RandomLoot(FRandomStream& Rng, EGSRarity MinRarity, EGSRarity MaxRarity, EGSLootPlace Place, float Depth);
 	/** How many of the item a pickup holds (grenades come in pairs, grapples have charges ...). */
 	GLOSHAUGEN_API int32 PickupCount(const FGSItemDef& Def, FRandomStream& Rng);
+
+	/** How strong an active effect is now, 0..1 (onset, fade). Until plan-07b: 1 while it lasts, else 0. */
+	GLOSHAUGEN_API float EffectStrength(const FGSEffectDef& Def, const FGSActiveEffect& Active, float Now);
+	/** All active effects stacked by strength and capped once at the end (the GetMods of plan-07b). */
+	GLOSHAUGEN_API FGSEffectMods CombineActive(const TArray<FGSActiveEffect>& Effects, float Now);
+	/** The load on the body from all drugs (overdose at 3). Until plan-07b: 0. */
+	GLOSHAUGEN_API float DrugLoad(const TArray<FGSActiveEffect>& Effects, float Now);
+	/** Screen effects of all active effects with their strength. Until plan-07b: one layer per Visual at strength 1. */
+	GLOSHAUGEN_API void ActiveVisuals(const TArray<FGSActiveEffect>& Effects, float Now, TArray<FGSVisualLayer>& Out);
 
 	extern GLOSHAUGEN_API const FName Pistol;   // starting weapon
 }

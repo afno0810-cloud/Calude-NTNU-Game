@@ -48,7 +48,54 @@ MODKEYS = dict(speed="Speed", stamina_drain="StaminaDrain", stamina_regen="Stami
                spread="Spread", damage="Damage", taken="Taken", jump="Jump", reload="Reload", hunger="Hunger",
                thirst="Thirst", regen="Regen", drain="Drain", lifesteal="Lifesteal")
 FLAGS = dict(nightvision="bNightVision", wallhack="bWallhack", phoenix="bPhoenix", silent="bSilent",
-             flashimmune="bFlashImmune", ghost="bGhost", glide="bGlide")
+             flashimmune="bFlashImmune", ghost="bGhost", glide="bGlide", numb="bNumb", cough="bCough")
+DRUGCLASS = dict(stim="Stimulant", opioid="Opioid", depressant="Depressant", alcohol="Alcohol", nicotine="Nicotine",
+                 caffeine="Caffeine", cannabis="Cannabis", antidote="Antidote")
+
+# ---------------------------------------------------------------- checks (stop before anything is written)
+EFFECTS, ITEMS = catalog.EFFECTS, catalog.ITEMS
+ids = {it["id"] for it in ITEMS}
+# (1) every effect and after exists
+for it in ITEMS:
+    assert not it.get("effect") or it["effect"] in EFFECTS, ("unknown effect", it["id"], it.get("effect"))
+for k, e in EFFECTS.items():
+    assert not e.get("after") or e["after"] in EFFECTS, ("unknown after", k)
+    assert e.get("cls") is None or e["cls"] in DRUGCLASS, ("unknown cls", k, e.get("cls"))
+    assert int(e.get("visual", 0)) <= 11, ("unknown visual", k)
+
+
+def looted(it):
+    return it.get("loot", True) is not False
+
+
+# (2) every drug in loot has an effect with a drug class (Lattergass has none in plan-07a: laughing gas is no habit)
+NO_CLASS_OK = {"LaughGas"}
+for it in ITEMS:
+    if it["cat"] == "Drug" and looted(it) and it["id"] not in NO_CLASS_OK:
+        assert EFFECTS[it["effect"]].get("cls"), ("drug without cls", it["id"])
+# (3) the ids Kamp's code uses
+for k in ("Foniks", "Glide", "Avslort", "Blendet", "Matforgiftning", "Smertestillende", "Brennende", "Sjokk", "Adrenalin", "Turbo"):
+    assert k in EFFECTS, ("Kamp uses effect", k)
+for k in ("Plaster", "Bandage", "Medkit", "SurgeryKit"):
+    assert k in ids, ("Kamp uses item", k)
+# (4) food and drugs never heal
+for it in ITEMS:
+    if it["cat"] in ("Food", "Drug"):
+        assert it.get("heal", 0) == 0, ("food/drug heals", it["id"])
+# (5) nothing in loot is supernatural (the effect and the side effects after it)
+SUPER = ("lifesteal", "ghost", "wallhack", "phoenix", "nightvision", "flashimmune")
+for it in ITEMS:
+    if not looted(it) or not it.get("effect"):
+        continue
+    k, seen = it["effect"], set()
+    while k and k not in seen:
+        seen.add(k)
+        e = EFFECTS[k]
+        assert e.get("taken", 1) >= 1 and e.get("damage", 1) <= 1, ("supernatural taken/damage", it["id"], k)
+        assert e.get("regen", 0) <= 0 or k in ("Stell", "Kirurgi"), ("regen in loot", it["id"], k)
+        assert not any(e.get(x) for x in SUPER), ("supernatural flag in loot", it["id"], k)
+        k = e.get("after")
+
 for key, e in catalog.EFFECTS.items():
     lines.append(f"\t{{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT(\"{key}\")); E.Name = {s(e['name'])}; E.Duration = {f(e['dur'])};")
     body = []
@@ -61,6 +108,14 @@ for key, e in catalog.EFFECTS.items():
             body.append(f"E.Mods.Visual = {int(v)};")
         elif k == "after":
             body.append(f"E.After = FName(TEXT(\"{v}\"));")
+        elif k == "onset" and v:
+            body.append(f"E.Onset = {f(v)};")
+        elif k == "fade" and v:
+            body.append(f"E.Fade = {f(v)};")
+        elif k == "load" and v:
+            body.append(f"E.Load = {f(v)};")
+        elif k == "cls":
+            body.append(f"E.Class = EGSDrugClass::{DRUGCLASS[v]};")
     lines.append("\t\t" + " ".join(body) + " }")
 
 lines.append("")
@@ -98,6 +153,10 @@ for it in catalog.ITEMS:
     elif cat in ("Food", "Drug", "Medicine"):
         L.append(f"D.UseTime = {f(it.get('use', 2))}; D.Heal = {f(it.get('heal', 0))}; D.Hunger = {f(it.get('hunger', 0))}; D.Thirst = {f(it.get('thirst', 0))};")
         L.append(f"D.StaminaGain = {f(it.get('stamina', 0))}; D.Poison = {f(it.get('poison', 0))}; D.Effect = FName(TEXT(\"{it.get('effect', '')}\"));")
+        anim = it.get("anim") or (it.get("model") or {}).get("arch", "")
+        L.append(f"D.Treat = {f(it.get('treat', 0))}; D.UseAnim = FName(TEXT(\"{anim}\"));")
+        if it.get("kind"):
+            L.append(f"D.Kind = FName(TEXT(\"{it['kind']}\"));")
     elif cat == "Throwable":
         L.append(f"D.Kind = FName(TEXT(\"{it['kind']}\")); D.UseTime = {f(it['use'])}; D.ThrowDamage = {f(it['dmg'])}; D.ThrowRadius = {f(it['radius'] * 100)}; D.Fuse = {f(it['fuse'])};")
     elif cat == "Gadget":
@@ -110,6 +169,8 @@ for it in catalog.ITEMS:
             L.append("D.MaxStack = 10;")
         if it.get("caliber"):
             L.append(f"D.Caliber = FName(TEXT(\"{it['caliber']}\")); D.Rounds = {it.get('rounds', 0)};")
+    if not looted(it):
+        L.append("D.bNoLoot = true;")
     lines.append("\n\t\t".join(L) + " }")
 lines.append("}")
 open(OUT, "w", newline="\n").write("\n".join(lines) + "\n")

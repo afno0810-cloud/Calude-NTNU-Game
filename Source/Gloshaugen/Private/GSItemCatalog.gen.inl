@@ -3,26 +3,26 @@
 
 static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effects)
 {
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Turbo")); E.Name = TEXT("Turbo"); E.Duration = 40.0f;
-		E.Mods.Speed = 1.25f; E.Mods.StaminaDrain = 0.0f; E.Mods.Reload = 0.8f; E.Mods.Visual = 3; E.After = FName(TEXT("TurboKrasj")); }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("TurboKrasj")); E.Name = TEXT("Turbo-krasj"); E.Duration = 30.0f;
-		E.Mods.Speed = 0.85f; E.Mods.Spread = 1.5f; E.Mods.StaminaRegen = 0.5f; E.Mods.Visual = 1; }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Gronn")); E.Name = TEXT("Gr\u00F8nn"); E.Duration = 60.0f;
-		E.Mods.Speed = 0.92f; E.Mods.Spread = 0.6f; E.Mods.Recoil = 0.7f; E.Mods.Taken = 0.9f; E.Mods.Regen = 0.3f; E.Mods.Hunger = 2.5f; E.Mods.Visual = 4; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Turbo")); E.Name = TEXT("Amfetamin"); E.Duration = 90.0f;
+		E.Class = EGSDrugClass::Stimulant; E.Load = 0.8f; E.Onset = 20.0f; E.Fade = 15.0f; E.Mods.Speed = 1.05f; E.Mods.StaminaDrain = 0.5f; E.Mods.Reload = 0.92f; E.Mods.Spread = 1.1f; E.Mods.Hunger = 0.3f; E.Mods.Thirst = 1.5f; E.Mods.Visual = 9; E.After = FName(TEXT("TurboKrasj")); }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("TurboKrasj")); E.Name = TEXT("Amfetaminkrasj"); E.Duration = 60.0f;
+		E.Fade = 10.0f; E.Mods.StaminaRegen = 0.6f; E.Mods.Spread = 1.2f; E.Mods.Reload = 1.1f; E.Mods.Visual = 1; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Gronn")); E.Name = TEXT("Gr\u00F8nn"); E.Duration = 90.0f;
+		E.Class = EGSDrugClass::Cannabis; E.Load = 0.5f; E.Onset = 10.0f; E.Fade = 20.0f; E.Mods.Speed = 0.95f; E.Mods.Recoil = 0.9f; E.Mods.Reload = 1.15f; E.Mods.Hunger = 2.5f; E.Mods.Visual = 4; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Snus")); E.Name = TEXT("Snus"); E.Duration = 120.0f;
-		E.Mods.Reload = 0.9f; E.Mods.Spread = 0.9f; }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Adrenalin")); E.Name = TEXT("Adrenalin"); E.Duration = 15.0f;
-		E.Mods.Speed = 1.15f; E.Mods.Taken = 0.8f; E.Mods.Visual = 6; E.After = FName(TEXT("AdrenalinKrasj")); }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("AdrenalinKrasj")); E.Name = TEXT("Adrenalin-krasj"); E.Duration = 15.0f;
-		E.Mods.StaminaDrain = 2.0f; E.Mods.StaminaRegen = 0.5f; }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Morfin")); E.Name = TEXT("Morfin"); E.Duration = 30.0f;
-		E.Mods.Taken = 0.65f; E.Mods.Speed = 0.95f; E.Mods.Visual = 1; }
+		E.Class = EGSDrugClass::Nicotine; E.Load = 0.15f; E.Onset = 15.0f; E.Fade = 20.0f; E.Mods.Reload = 0.95f; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Adrenalin")); E.Name = TEXT("Adrenalin"); E.Duration = 20.0f;
+		E.Class = EGSDrugClass::Stimulant; E.Load = 0.6f; E.Onset = 1.0f; E.Fade = 5.0f; E.Mods.bNumb = true; E.Mods.Speed = 1.05f; E.Mods.StaminaDrain = 0.6f; E.Mods.Spread = 1.15f; E.Mods.Visual = 10; E.After = FName(TEXT("AdrenalinKrasj")); }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("AdrenalinKrasj")); E.Name = TEXT("Etter adrenalin"); E.Duration = 20.0f;
+		E.Fade = 5.0f; E.Mods.StaminaRegen = 0.5f; E.Mods.Spread = 1.15f; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Morfin")); E.Name = TEXT("Morfin"); E.Duration = 120.0f;
+		E.Class = EGSDrugClass::Opioid; E.Load = 1.05f; E.Onset = 8.0f; E.Fade = 20.0f; E.Mods.bNumb = true; E.Mods.Speed = 0.95f; E.Mods.Spread = 1.1f; E.Mods.Reload = 1.15f; E.Mods.Visual = 1; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Bulk")); E.Name = TEXT("Bulk"); E.Duration = 90.0f;
 		E.Mods.Damage = 1.12f; E.Mods.StaminaDrain = 0.8f; E.After = FName(TEXT("BulkKrasj")); }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("BulkKrasj")); E.Name = TEXT("Muskelkrampe"); E.Duration = 30.0f;
 		E.Mods.Spread = 1.25f; }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Fokus")); E.Name = TEXT("Fokus"); E.Duration = 60.0f;
-		E.Mods.Recoil = 0.6f; E.Mods.Spread = 0.7f; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Fokus")); E.Name = TEXT("Fokus"); E.Duration = 120.0f;
+		E.Class = EGSDrugClass::Stimulant; E.Load = 0.4f; E.Onset = 20.0f; E.Fade = 20.0f; E.Mods.Spread = 0.9f; E.Mods.Recoil = 0.92f; E.Mods.Hunger = 0.5f; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Nattoye")); E.Name = TEXT("Natt\u00F8ye"); E.Duration = 90.0f;
 		E.Mods.bNightVision = true; E.Mods.Visual = 7; E.After = FName(TEXT("Lysomfintlig")); }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Lysomfintlig")); E.Name = TEXT("Lys\u00F8mfintlig"); E.Duration = 20.0f;
@@ -41,32 +41,40 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		E.Mods.Taken = 0.75f; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Regenerator")); E.Name = TEXT("Regenerator"); E.Duration = 30.0f;
 		E.Mods.Regen = 3.0f; E.Mods.Hunger = 3.0f; }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Drom")); E.Name = TEXT("Dr\u00F8m"); E.Duration = 40.0f;
-		E.Mods.bFlashImmune = true; E.Mods.Taken = 0.9f; E.Mods.Speed = 0.9f; E.Mods.Visual = 1; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Drom")); E.Name = TEXT("Sovetablett"); E.Duration = 120.0f;
+		E.Class = EGSDrugClass::Depressant; E.Load = 0.6f; E.Onset = 20.0f; E.Fade = 20.0f; E.Mods.Speed = 0.93f; E.Mods.Spread = 0.92f; E.Mods.Reload = 1.15f; E.Mods.Visual = 1; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Oyet")); E.Name = TEXT("\u00D8yet"); E.Duration = 12.0f;
 		E.Mods.bWallhack = true; E.Mods.Visual = 5; E.After = FName(TEXT("Forvirret")); }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Forvirret")); E.Name = TEXT("Forvirret"); E.Duration = 15.0f;
 		E.Mods.Spread = 1.5f; E.Mods.Visual = 2; }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Nikotin")); E.Name = TEXT("Nikotin"); E.Duration = 180.0f;
-		E.Mods.StaminaDrain = 0.85f; E.Mods.StaminaRegen = 1.3f; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Nikotin")); E.Name = TEXT("Nikotinplaster"); E.Duration = 240.0f;
+		E.Class = EGSDrugClass::Nicotine; E.Load = 0.15f; E.Onset = 60.0f; E.Fade = 30.0f; E.Mods.StaminaDrain = 0.95f; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Royk")); E.Name = TEXT("R\u00F8yk"); E.Duration = 90.0f;
+		E.Class = EGSDrugClass::Nicotine; E.Load = 0.2f; E.Onset = 2.0f; E.Fade = 20.0f; E.Mods.bCough = true; E.Mods.StaminaRegen = 0.85f; E.Mods.Spread = 0.95f; E.Mods.Visual = 8; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Alkohol")); E.Name = TEXT("Alkohol"); E.Duration = 150.0f;
+		E.Class = EGSDrugClass::Alcohol; E.Load = 0.5f; E.Onset = 15.0f; E.Fade = 30.0f; E.Mods.bNumb = true; E.Mods.Speed = 0.98f; E.Mods.Spread = 1.15f; E.Mods.Recoil = 1.1f; E.Mods.Reload = 1.15f; E.Mods.Visual = 11; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Nalokson")); E.Name = TEXT("Nalokson"); E.Duration = 60.0f;
+		E.Class = EGSDrugClass::Antidote; E.Onset = 2.0f; E.Fade = 10.0f; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Stell")); E.Name = TEXT("S\u00E5rstell"); E.Duration = 90.0f;
+		E.Mods.Regen = 0.35f; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Foniks")); E.Name = TEXT("F\u00F8niks"); E.Duration = 120.0f;
 		E.Mods.bPhoenix = true; E.Mods.Visual = 6; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Blodtorst")); E.Name = TEXT("Blodt\u00F8rst"); E.Duration = 45.0f;
 		E.Mods.Lifesteal = 0.25f; E.Mods.Visual = 2; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Lattergass")); E.Name = TEXT("Lattergass"); E.Duration = 25.0f;
-		E.Mods.Speed = 1.2f; E.Mods.Spread = 1.3f; E.Mods.Visual = 2; }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Koffein")); E.Name = TEXT("Koffein"); E.Duration = 90.0f;
-		E.Mods.StaminaDrain = 0.85f; }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("KoffeinPlus")); E.Name = TEXT("Koffein+"); E.Duration = 60.0f;
-		E.Mods.StaminaDrain = 0.7f; E.Mods.Speed = 1.05f; E.Mods.Reload = 0.95f; }
+		E.Load = 0.3f; E.Onset = 1.0f; E.Fade = 5.0f; E.Mods.Speed = 0.95f; E.Mods.Spread = 1.3f; E.Mods.Visual = 2; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Koffein")); E.Name = TEXT("Koffein"); E.Duration = 180.0f;
+		E.Class = EGSDrugClass::Caffeine; E.Load = 0.15f; E.Onset = 15.0f; E.Fade = 30.0f; E.Mods.StaminaDrain = 0.9f; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("KoffeinPlus")); E.Name = TEXT("Mye koffein"); E.Duration = 150.0f;
+		E.Class = EGSDrugClass::Caffeine; E.Load = 0.3f; E.Onset = 10.0f; E.Fade = 30.0f; E.Mods.StaminaDrain = 0.85f; E.Mods.Reload = 0.97f; E.Mods.Spread = 1.05f; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Sukkerrush")); E.Name = TEXT("Sukkerrush"); E.Duration = 40.0f;
 		E.Mods.StaminaRegen = 1.5f; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Matforgiftning")); E.Name = TEXT("Matforgiftning"); E.Duration = 20.0f;
 		E.Mods.Drain = 1.0f; E.Mods.Speed = 0.9f; E.Mods.Visual = 1; }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Smertestillende")); E.Name = TEXT("Smertestillende"); E.Duration = 25.0f;
-		E.Mods.Regen = 1.0f; }
-	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Kirurgi")); E.Name = TEXT("Feltkirurgi"); E.Duration = 20.0f;
-		E.Mods.Regen = 2.0f; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Smertestillende")); E.Name = TEXT("Smertestillende"); E.Duration = 120.0f;
+		E.Load = 0.2f; E.Onset = 20.0f; E.Fade = 15.0f; E.Mods.bNumb = true; }
+	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Kirurgi")); E.Name = TEXT("S\u00E5rstell (stort)"); E.Duration = 90.0f;
+		E.Mods.Regen = 0.5f; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Glide")); E.Name = TEXT("Fallskjerm"); E.Duration = 60.0f;
 		E.Mods.bGlide = true; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Avslort")); E.Name = TEXT("Avsl\u00F8rt av drone"); E.Duration = 10.0f;
@@ -76,9 +84,9 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Brennende")); E.Name = TEXT("Brennende"); E.Duration = 3.0f;
 		E.Mods.Drain = 6.0f; E.Mods.Visual = 6; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Tran")); E.Name = TEXT("Tran"); E.Duration = 120.0f;
-		E.Mods.Regen = 0.4f; E.Mods.StaminaRegen = 1.2f; }
+		E.Mods.StaminaRegen = 1.2f; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Julestemning")); E.Name = TEXT("Julestemning"); E.Duration = 60.0f;
-		E.Mods.Taken = 0.92f; E.Mods.StaminaRegen = 1.2f; E.Mods.Visual = 6; }
+		E.Mods.StaminaRegen = 1.2f; E.Mods.Visual = 6; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Mett")); E.Name = TEXT("Mett og god"); E.Duration = 120.0f;
 		E.Mods.Hunger = 0.5f; E.Mods.Speed = 0.97f; }
 	{ FGSEffectDef& E = Effects.AddDefaulted_GetRef(); E.Id = FName(TEXT("Sjokk")); E.Name = TEXT("Elektrisk sjokk"); E.Duration = 3.0f;
@@ -584,241 +592,326 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Helmet; D.Rarity = EGSRarity::Legendary;
 		D.MeshPath = TEXT("/Game/Models/SM_TacHelmet.SM_TacHelmet"); D.MaxStack = 1;
 		D.Armor = 60.0f; D.Absorb = 0.6f; D.SpeedMul = 0.98f; }
-	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("TurboPill")); D.Name = TEXT("Turbo");
-		D.Desc = TEXT("Raskere, ingen stamina-bruk, raskere lading. S\u00E5 kommer krasjet."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Rare;
+	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("TurboPill")); D.Name = TEXT("Amfetamin");
+		D.Desc = TEXT("Virker etter 20 sek: mindre sliten og litt raskere, men urolige hender, t\u00F8rst og et tungt krasj etterp\u00E5."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_TurboPill.SM_TurboPill"); D.MaxStack = 3;
 		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Turbo")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Turbo"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("pills")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("GronnJar")); D.Name = TEXT("Gr\u00F8nn");
-		D.Desc = TEXT("Rolig sikte og litt helse. Treg og sulten."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Uncommon;
+		D.Desc = TEXT("Litt roligere sikte, men treg, sein til \u00E5 lade og sv\u00E6rt sulten."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_GronnJar.SM_GronnJar"); D.MaxStack = 3;
 		D.UseTime = 3.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Gronn")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Gronn"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("jar")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Snus")); D.Name = TEXT("Snus");
-		D.Desc = TEXT("Litt raskere omlading."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Common;
+		D.Desc = TEXT("Litt raskere omlading i to minutter. Avhengighetsskapende."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Snus.SM_Snus"); D.MaxStack = 3;
 		D.UseTime = 1.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Snus")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Snus"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("tin")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Adrenaline")); D.Name = TEXT("Adrenalinspr\u00F8yte");
-		D.Desc = TEXT(""); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Rare;
+		D.Desc = TEXT("Virker med en gang: du kjenner ikke smerte og blir mindre sliten, men skjelver og f\u00E5r tunnelsyn. Leger ingenting."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_Adrenaline.SM_Adrenaline"); D.MaxStack = 3;
-		D.UseTime = 1.0f; D.Heal = 35.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Adrenalin")); }
+		D.UseTime = 1.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Adrenalin"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("syringe")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Morphine")); D.Name = TEXT("Morfin");
-		D.Desc = TEXT("Tar mindre skade. Alt blir uklart."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Epic;
+		D.Desc = TEXT("Tar bort smerten etter 8 sek, men du blir treg og uklar. For mye kan ta pusten fra deg."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Epic;
 		D.MeshPath = TEXT("/Game/Models/SM_Morphine.SM_Morphine"); D.MaxStack = 3;
-		D.UseTime = 2.0f; D.Heal = 20.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Morfin")); }
+		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Morfin"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("syringe")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Bulk")); D.Name = TEXT("Bulk");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_Bulk.SM_Bulk"); D.MaxStack = 3;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Bulk")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Bulk"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("pills"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Fokus")); D.Name = TEXT("Fokus");
-		D.Desc = TEXT("Mindre rekyl og spredning."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Uncommon;
+		D.Desc = TEXT("Reseptbelagt sentralstimulerende: litt st\u00F8digere sikte etter 20 sek, men d\u00E5rlig matlyst."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Fokus.SM_Fokus"); D.MaxStack = 3;
 		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Fokus")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Fokus"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("blister")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("NightEye")); D.Name = TEXT("Natt\u00F8ye");
 		D.Desc = TEXT("Se i m\u00F8rket."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_NightEye.SM_NightEye"); D.MaxStack = 3;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Nattoye")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Nattoye"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("dropper"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Lynet")); D.Name = TEXT("Lynet");
 		D.Desc = TEXT("Hopp h\u00F8yere."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Lynet.SM_Lynet"); D.MaxStack = 3;
 		D.UseTime = 1.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Lynet")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Lynet"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("can"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Iskald")); D.Name = TEXT("Iskald");
 		D.Desc = TEXT("Lydl\u00F8se skritt. Etterp\u00E5 skjelver du."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Epic;
 		D.MeshPath = TEXT("/Game/Models/SM_Iskald.SM_Iskald"); D.MaxStack = 3;
 		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Iskald")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Iskald"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("syringe"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Berserk")); D.Name = TEXT("Berserk");
 		D.Desc = TEXT("+30% skade, men det spiser helsa di."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Legendary;
 		D.MeshPath = TEXT("/Game/Models/SM_Berserk.SM_Berserk"); D.MaxStack = 3;
 		D.UseTime = 1.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Berserk")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Berserk"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("syringe"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Ghost")); D.Name = TEXT("Sp\u00F8kelse");
 		D.Desc = TEXT("Nesten usynlig i 20 sekunder."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Mythic;
 		D.MeshPath = TEXT("/Game/Models/SM_Ghost.SM_Ghost"); D.MaxStack = 3;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Spokelse")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Spokelse"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("vial"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("ArmorPill")); D.Name = TEXT("Pansertablett");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_ArmorPill.SM_ArmorPill"); D.MaxStack = 3;
 		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Pansertablett")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Pansertablett"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("pills"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Regenerator")); D.Name = TEXT("Regenerator");
 		D.Desc = TEXT("3 HP i sekundet."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Epic;
 		D.MeshPath = TEXT("/Game/Models/SM_Regenerator.SM_Regenerator"); D.MaxStack = 3;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Regenerator")); }
-	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Drom")); D.Name = TEXT("Dr\u00F8m");
-		D.Desc = TEXT("Immun mot blendgranater."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Uncommon;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Regenerator"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("vial"));
+		D.bNoLoot = true; }
+	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Drom")); D.Name = TEXT("Sovetablett");
+		D.Desc = TEXT("Roligere hender etter 20 sek, men du blir d\u00F8sig, treg og sein til \u00E5 lade."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Drom.SM_Drom"); D.MaxStack = 3;
 		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Drom")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Drom"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("blister")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Oyet")); D.Name = TEXT("\u00D8yet (sopp)");
 		D.Desc = TEXT("Ser alle gjennom vegger i 12 sekunder. Fargene, mann."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Legendary;
 		D.MeshPath = TEXT("/Game/Models/SM_Oyet.SM_Oyet"); D.MaxStack = 3;
 		D.UseTime = 2.5f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Oyet")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Oyet"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("mushroom"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Nicotine")); D.Name = TEXT("Nikotinplaster");
-		D.Desc = TEXT(""); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Common;
+		D.Desc = TEXT("Jevn nikotin i fire minutter: litt mindre sliten. Virker sakte."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Nicotine.SM_Nicotine"); D.MaxStack = 3;
 		D.UseTime = 1.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Nikotin")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Nikotin"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("patch")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Phoenix")); D.Name = TEXT("F\u00F8niks");
 		D.Desc = TEXT("D\u00F8r du innen 2 minutter, st\u00E5r du opp igjen."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Mythic;
 		D.MeshPath = TEXT("/Game/Models/SM_Phoenix.SM_Phoenix"); D.MaxStack = 3;
 		D.UseTime = 3.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Foniks")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Foniks"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("vial"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Bloodthirst")); D.Name = TEXT("Blodt\u00F8rst");
 		D.Desc = TEXT("25% av skaden du gj\u00F8r blir helse."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Legendary;
 		D.MeshPath = TEXT("/Game/Models/SM_Bloodthirst.SM_Bloodthirst"); D.MaxStack = 3;
 		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Blodtorst")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Blodtorst"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("vial"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("LaughGas")); D.Name = TEXT("Lattergass");
-		D.Desc = TEXT(""); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Uncommon;
+		D.Desc = TEXT("Et halvt minutt med fnising: du sikter d\u00E5rlig og g\u00E5r litt saktere."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_LaughGas.SM_LaughGas"); D.MaxStack = 3;
 		D.UseTime = 1.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Lattergass")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Lattergass"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("canister")); }
+	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Cigarettes")); D.Name = TEXT("Sigarett");
+		D.Desc = TEXT("Litt roligere hender en stund, men d\u00E5rligere kondis, og du hoster n\u00E5r du l\u00F8per."); D.Cat = EGSItemCat::Drug; D.Rarity = EGSRarity::Common;
+		D.MeshPath = TEXT("/Game/Models/SM_Cigarettes.SM_Cigarettes"); D.MaxStack = 3;
+		D.UseTime = 6.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Royk"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("cigarette")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Plaster")); D.Name = TEXT("Plaster");
-		D.Desc = TEXT(""); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Common;
+		D.Desc = TEXT("Dekker et lite s\u00E5r: 15 helse. Hjelper lite p\u00E5 et skadet bein eller en arm."); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Plaster.SM_Plaster"); D.MaxStack = 5;
 		D.UseTime = 2.0f; D.Heal = 15.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.25f; D.UseAnim = FName(TEXT("plaster")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Bandage")); D.Name = TEXT("Bandasje");
-		D.Desc = TEXT(""); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Uncommon;
+		D.Desc = TEXT("Stopper bl\u00F8dning og gir 30 helse. St\u00F8tter et skadet bein eller en arm litt."); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Bandage.SM_Bandage"); D.MaxStack = 5;
 		D.UseTime = 3.5f; D.Heal = 30.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.5f; D.UseAnim = FName(TEXT("bandage")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Painkillers")); D.Name = TEXT("Smertestillende");
-		D.Desc = TEXT(""); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Common;
+		D.Desc = TEXT("Demper smerten etter 20 sek. Leger ingenting."); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Painkillers.SM_Painkillers"); D.MaxStack = 5;
-		D.UseTime = 1.5f; D.Heal = 5.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Smertestillende")); }
+		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Smertestillende"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("pills")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Medkit")); D.Name = TEXT("F\u00F8rstehjelpsskrin");
-		D.Desc = TEXT(""); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Rare;
+		D.Desc = TEXT("35 helse med en gang og rundt 30 til i l\u00F8pet av halvannet minutt. Setter et skadet bein eller en arm i stand."); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_Medkit.SM_Medkit"); D.MaxStack = 5;
-		D.UseTime = 6.0f; D.Heal = 75.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
-	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("SurgeryKit")); D.Name = TEXT("Feltkirurgsett");
-		D.Desc = TEXT(""); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Legendary;
+		D.UseTime = 6.0f; D.Heal = 35.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Stell"));
+		D.Treat = 1.0f; D.UseAnim = FName(TEXT("medkit")); }
+	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("SurgeryKit")); D.Name = TEXT("Stort sanitetssett");
+		D.Desc = TEXT("Tar 10 sek: 45 helse med en gang og 45 til i l\u00F8pet av halvannet minutt. Det beste du kan finne."); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Legendary;
 		D.MeshPath = TEXT("/Game/Models/SM_SurgeryKit.SM_SurgeryKit"); D.MaxStack = 5;
-		D.UseTime = 10.0f; D.Heal = 100.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Kirurgi")); }
+		D.UseTime = 10.0f; D.Heal = 45.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Kirurgi"));
+		D.Treat = 1.0f; D.UseAnim = FName(TEXT("surgery")); }
+	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Tourniquet")); D.Name = TEXT("\u00C5represse");
+		D.Desc = TEXT("Strammes over s\u00E5ret og stopper all bl\u00F8dning fra et bein eller en arm. Gir ingen helse."); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Uncommon;
+		D.MeshPath = TEXT("/Game/Models/SM_Tourniquet.SM_Tourniquet"); D.MaxStack = 5;
+		D.UseTime = 5.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("bandage"));
+		D.Kind = FName(TEXT("tourniquet")); }
+	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Splint")); D.Name = TEXT("Skinne");
+		D.Desc = TEXT("Spjelker et brukket bein eller en arm, s\u00E5 du kan g\u00E5 og sikte igjen. Gir ingen helse."); D.Cat = EGSItemCat::Medicine; D.Rarity = EGSRarity::Uncommon;
+		D.MeshPath = TEXT("/Game/Models/SM_Splint.SM_Splint"); D.MaxStack = 5;
+		D.UseTime = 8.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 1.0f; D.UseAnim = FName(TEXT("bandage"));
+		D.Kind = FName(TEXT("splint"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Coffee")); D.Name = TEXT("Kaffe fra Realfag-kaffebaren");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Coffee.SM_Coffee"); D.MaxStack = 5;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 15.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Koffein")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Koffein"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("cup")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("EnergyDrink")); D.Name = TEXT("Energidrikk");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_EnergyDrink.SM_EnergyDrink"); D.MaxStack = 5;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 30.0f;
-		D.StaminaGain = 30.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("KoffeinPlus")); }
+		D.StaminaGain = 30.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("KoffeinPlus"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("can")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Water")); D.Name = TEXT("Vannflaske");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Water.SM_Water"); D.MaxStack = 5;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 45.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("bottle")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Milk")); D.Name = TEXT("Melk (lettmelk)");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Milk.SM_Milk"); D.MaxStack = 5;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 10.0f; D.Thirst = 30.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("carton")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("OrangeSoda")); D.Name = TEXT("Appelsinbrus");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_OrangeSoda.SM_OrangeSoda"); D.MaxStack = 5;
-		D.UseTime = 2.0f; D.Heal = 5.0f; D.Hunger = 0.0f; D.Thirst = 35.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 35.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("bottle")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Baguette")); D.Name = TEXT("Baguett");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Baguette.SM_Baguette"); D.MaxStack = 5;
-		D.UseTime = 3.0f; D.Heal = 0.0f; D.Hunger = 35.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 8.0f; D.Heal = 0.0f; D.Hunger = 35.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("baguette")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Lunchbox")); D.Name = TEXT("Matpakke med brunost");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Lunchbox.SM_Lunchbox"); D.MaxStack = 5;
-		D.UseTime = 3.0f; D.Heal = 10.0f; D.Hunger = 40.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 8.0f; D.Heal = 0.0f; D.Hunger = 40.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("lunchbox")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Grandiosa")); D.Name = TEXT("Grandiosa");
 		D.Desc = TEXT("Nasjonalretten."); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_Grandiosa.SM_Grandiosa"); D.MaxStack = 5;
-		D.UseTime = 4.0f; D.Heal = 10.0f; D.Hunger = 70.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 12.0f; D.Heal = 0.0f; D.Hunger = 70.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("pizzabox")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Kebab")); D.Name = TEXT("Kebab i pita");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Kebab.SM_Kebab"); D.MaxStack = 5;
-		D.UseTime = 3.5f; D.Heal = 15.0f; D.Hunger = 60.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 10.0f; D.Heal = 0.0f; D.Hunger = 60.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("kebab")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Hotdog")); D.Name = TEXT("P\u00F8lse i lompe");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Hotdog.SM_Hotdog"); D.MaxStack = 5;
 		D.UseTime = 2.5f; D.Heal = 0.0f; D.Hunger = 30.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("hotdog")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Taco")); D.Name = TEXT("Taco (fredag)");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Taco.SM_Taco"); D.MaxStack = 5;
-		D.UseTime = 3.0f; D.Heal = 5.0f; D.Hunger = 55.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 3.0f; D.Heal = 0.0f; D.Hunger = 55.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("taco")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Skolebolle")); D.Name = TEXT("Skolebolle");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Skolebolle.SM_Skolebolle"); D.MaxStack = 5;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 20.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 30.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Sukkerrush")); }
+		D.StaminaGain = 30.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Sukkerrush"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("bun")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Kanelbolle")); D.Name = TEXT("Kanelbolle");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Kanelbolle.SM_Kanelbolle"); D.MaxStack = 5;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 20.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 25.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 25.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("bun")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Waffle")); D.Name = TEXT("Vaffel med syltet\u00F8y");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Waffle.SM_Waffle"); D.MaxStack = 5;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 25.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 20.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 20.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("waffle")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("ChocoBar")); D.Name = TEXT("Sjokoladekjeks");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_ChocoBar.SM_ChocoBar"); D.MaxStack = 5;
 		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 15.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 40.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Sukkerrush")); }
+		D.StaminaGain = 40.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Sukkerrush"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("bar")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Apple")); D.Name = TEXT("Eple");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Apple.SM_Apple"); D.MaxStack = 5;
-		D.UseTime = 1.5f; D.Heal = 5.0f; D.Hunger = 10.0f; D.Thirst = 10.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 10.0f; D.Thirst = 10.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("apple")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Banana")); D.Name = TEXT("Banan");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Banana.SM_Banana"); D.MaxStack = 5;
 		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 15.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 20.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 20.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("banana")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Noodles")); D.Name = TEXT("Instant nudler");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Noodles.SM_Noodles"); D.MaxStack = 5;
 		D.UseTime = 3.0f; D.Heal = 0.0f; D.Hunger = 35.0f; D.Thirst = -10.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("noodlecup")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("FishBalls")); D.Name = TEXT("Fiskeboller i boks");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_FishBalls.SM_FishBalls"); D.MaxStack = 5;
 		D.UseTime = 3.0f; D.Heal = 0.0f; D.Hunger = 45.0f; D.Thirst = 5.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("can")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Salmon")); D.Name = TEXT("R\u00F8kelaks");
 		D.Desc = TEXT("Norsk luksus."); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_Salmon.SM_Salmon"); D.MaxStack = 5;
-		D.UseTime = 3.0f; D.Heal = 25.0f; D.Hunger = 40.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 3.0f; D.Heal = 0.0f; D.Hunger = 40.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("salmon")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("OldPizza")); D.Name = TEXT("Kald pizzabit fra Samfundet");
 		D.Desc = TEXT("30% sjanse for matforgiftning."); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_OldPizza.SM_OldPizza"); D.MaxStack = 5;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 25.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.3f; D.Effect = FName(TEXT("Matforgiftning")); }
+		D.StaminaGain = 0.0f; D.Poison = 0.3f; D.Effect = FName(TEXT("Matforgiftning"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("pizzaslice")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Brunost")); D.Name = TEXT("Brunost (hel)");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_Brunost.SM_Brunost"); D.MaxStack = 5;
-		D.UseTime = 3.0f; D.Heal = 10.0f; D.Hunger = 50.0f; D.Thirst = -5.0f;
-		D.StaminaGain = 50.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 3.0f; D.Heal = 0.0f; D.Hunger = 50.0f; D.Thirst = -5.0f;
+		D.StaminaGain = 50.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("cheese")); }
+	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Beer")); D.Name = TEXT("Pils (0,5 l)");
+		D.Desc = TEXT("Slukker t\u00F8rsten, men hver boks gj\u00F8r siktet og ladingen d\u00E5rligere og demper smerte."); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
+		D.MeshPath = TEXT("/Game/Models/SM_Beer.SM_Beer"); D.MaxStack = 5;
+		D.UseTime = 6.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 25.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Alkohol"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("can")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("FragGrenade")); D.Name = TEXT("Splintgranat");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Throwable; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_FragGrenade.SM_FragGrenade"); D.MaxStack = 4;
@@ -930,7 +1023,8 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		D.Desc = TEXT("Gir deg F\u00F8niks-effekten: st\u00E5 opp igjen hvis du d\u00F8r."); D.Cat = EGSItemCat::Gadget; D.Rarity = EGSRarity::Legendary;
 		D.MeshPath = TEXT("/Game/Models/SM_Defib.SM_Defib"); D.MaxStack = 1;
 		D.Kind = FName(TEXT("defib")); D.UseTime = 4.0f; D.Slots = 0; D.Charges = 1;
-		D.Effect = FName(TEXT("Foniks")); }
+		D.Effect = FName(TEXT("Foniks"));
+		D.bNoLoot = true; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Trophy")); D.Name = TEXT("NTNU-pokal");
 		D.Desc = TEXT("Helt ubrukelig. Men du er den eneste som har den."); D.Cat = EGSItemCat::Gadget; D.Rarity = EGSRarity::Mythic;
 		D.MeshPath = TEXT("/Game/Models/SM_Trophy.SM_Trophy"); D.MaxStack = 1;
@@ -1263,50 +1357,60 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Lefse.SM_Lefse"); D.MaxStack = 5;
 		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 25.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 20.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.StaminaGain = 20.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("lefse")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Farikal")); D.Name = TEXT("F\u00E5rik\u00E5l p\u00E5 boks");
 		D.Desc = TEXT("Nasjonalretten (den andre)."); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Farikal.SM_Farikal"); D.MaxStack = 5;
-		D.UseTime = 4.0f; D.Heal = 10.0f; D.Hunger = 65.0f; D.Thirst = 5.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Mett")); }
+		D.UseTime = 4.0f; D.Heal = 0.0f; D.Hunger = 65.0f; D.Thirst = 5.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Mett"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("can")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Pinnekjott")); D.Name = TEXT("Pinnekj\u00F8tt");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_Pinnekjott.SM_Pinnekjott"); D.MaxStack = 5;
-		D.UseTime = 4.0f; D.Heal = 20.0f; D.Hunger = 70.0f; D.Thirst = -10.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Mett")); }
+		D.UseTime = 4.0f; D.Heal = 0.0f; D.Hunger = 70.0f; D.Thirst = -10.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Mett"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("lunchbox")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Julebrus")); D.Name = TEXT("Julebrus");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Julebrus.SM_Julebrus"); D.MaxStack = 5;
 		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 35.0f;
-		D.StaminaGain = 25.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Julestemning")); }
+		D.StaminaGain = 25.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Julestemning"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("bottle")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Risgrot")); D.Name = TEXT("Risengrynsgr\u00F8t");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Risgrot.SM_Risgrot"); D.MaxStack = 5;
-		D.UseTime = 3.0f; D.Heal = 5.0f; D.Hunger = 45.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 3.0f; D.Heal = 0.0f; D.Hunger = 45.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("noodlecup")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Tran")); D.Name = TEXT("Tran");
 		D.Desc = TEXT("Vond, men sunn."); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Uncommon;
 		D.MeshPath = TEXT("/Game/Models/SM_Tran.SM_Tran"); D.MaxStack = 5;
-		D.UseTime = 1.0f; D.Heal = 10.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Tran")); }
+		D.UseTime = 1.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Tran"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("bottle")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Kvikklunsj")); D.Name = TEXT("Turkjeks");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Kvikklunsj.SM_Kvikklunsj"); D.MaxStack = 5;
 		D.UseTime = 1.5f; D.Heal = 0.0f; D.Hunger = 15.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 45.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Sukkerrush")); }
+		D.StaminaGain = 45.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Sukkerrush"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("bar")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Solbaer")); D.Name = TEXT("Solb\u00E6rtoddy");
 		D.Desc = TEXT(""); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_Solbaer.SM_Solbaer"); D.MaxStack = 5;
-		D.UseTime = 2.0f; D.Heal = 5.0f; D.Hunger = 0.0f; D.Thirst = 25.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("")); }
+		D.UseTime = 2.0f; D.Heal = 0.0f; D.Hunger = 0.0f; D.Thirst = 25.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT(""));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("cup")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Rakfisk")); D.Name = TEXT("Rakfisk");
 		D.Desc = TEXT("Halvparten blir syke. Den andre halvparten blir sterke."); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_Rakfisk.SM_Rakfisk"); D.MaxStack = 5;
-		D.UseTime = 3.0f; D.Heal = 15.0f; D.Hunger = 50.0f; D.Thirst = 0.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.5f; D.Effect = FName(TEXT("Matforgiftning")); }
+		D.UseTime = 3.0f; D.Heal = 0.0f; D.Hunger = 50.0f; D.Thirst = 0.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.5f; D.Effect = FName(TEXT("Matforgiftning"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("salmon")); }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("Sodd")); D.Name = TEXT("Tr\u00F8ndersodd");
 		D.Desc = TEXT("Trondheims stolthet."); D.Cat = EGSItemCat::Food; D.Rarity = EGSRarity::Rare;
 		D.MeshPath = TEXT("/Game/Models/SM_Sodd.SM_Sodd"); D.MaxStack = 5;
-		D.UseTime = 4.0f; D.Heal = 20.0f; D.Hunger = 60.0f; D.Thirst = 20.0f;
-		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Mett")); }
+		D.UseTime = 4.0f; D.Heal = 0.0f; D.Hunger = 60.0f; D.Thirst = 20.0f;
+		D.StaminaGain = 0.0f; D.Poison = 0.0f; D.Effect = FName(TEXT("Mett"));
+		D.Treat = 0.0f; D.UseAnim = FName(TEXT("noodlecup")); }
 }

@@ -1,4 +1,5 @@
 #include "GSItems.h"
+#include "GSTypes.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "Engine/StaticMesh.h"
@@ -227,17 +228,17 @@ namespace GSItemsImpl
 	static const FName KindAmmo(TEXT("ammo"));
 	static const FName KindDrone(TEXT("drone"));
 	static const FName IdParachute(TEXT("Parachute"));
-	static const FName IdOyet(TEXT("Oyet"));
 
 	int32 GroupOf(const FGSItemDef& D)
 	{
 		return (D.Kind == KindAmmo || D.Rounds > 0) ? (int32)GroupAmmo : (int32)D.Cat;
 	}
 
-	/** Indoors (Helgasetr): no parachute (nothing to jump from), no drones or the mushroom (wall vision is not realistic). */
+	/** Never: supernatural boosts (bNoLoot, round 7). Indoors (Helgasetr) also no parachute (nothing to jump from) and no
+	 *  drones (wall vision is not realistic). */
 	bool Excluded(const FGSItemDef& D, EGSLootPlace Place)
 	{
-		return Place != EGSLootPlace::Campus && (D.Id == IdParachute || D.Id == IdOyet || D.Kind == KindDrone);
+		return D.bNoLoot || (Place != EGSLootPlace::Campus && (D.Id == IdParachute || D.Kind == KindDrone));
 	}
 
 	/**
@@ -424,4 +425,142 @@ int32 GSItems::PickupCount(const FGSItemDef& Def, FRandomStream& Rng)
 	if (Def.Cat == EGSItemCat::Throwable) return Rng.RandRange(1, 2);
 	if (Def.Cat == EGSItemCat::Food && Def.Rarity <= EGSRarity::Uncommon) return Rng.RandRange(1, 2);
 	return 1;
+}
+
+// ------------------------------------------------------------------ effects (round 7)
+
+void GSItems::ClampMods(FGSEffectMods& M)
+{
+	// However many things you take: at most 10 % faster or harder hitting, at least 85 % of the damage taken ...
+	M.Speed = FMath::Min(M.Speed, 1.10f);
+	M.Taken = FMath::Max(M.Taken, 0.85f);
+	M.StaminaDrain = FMath::Max(M.StaminaDrain, 0.5f);
+	M.StaminaRegen = FMath::Min(M.StaminaRegen, 1.6f);
+	M.Recoil = FMath::Max(M.Recoil, 0.75f);
+	M.Spread = FMath::Max(M.Spread, 0.75f);
+	M.Damage = FMath::Min(M.Damage, 1.10f);
+	M.Jump = FMath::Min(M.Jump, 1.05f);
+	M.Reload = FMath::Max(M.Reload, 0.85f);
+	M.Regen = FMath::Min(M.Regen, 1.0f);
+	M.Lifesteal = FMath::Min(M.Lifesteal, 0.f);
+}
+
+// Simple versions until plan-07b (onset, fade, load and overdose come there). They build and can be called now.
+float GSItems::EffectStrength(const FGSEffectDef& Def, const FGSActiveEffect& Active, float Now)
+{
+	return Now < Active.EndTime ? 1.f : 0.f;
+}
+
+FGSEffectMods GSItems::CombineActive(const TArray<FGSActiveEffect>& Effects, float Now)
+{
+	FGSEffectMods M;
+	for (const FGSActiveEffect& E : Effects)
+	{
+		const FGSEffectDef* Def = FindEffect(E.Id);
+		if (Def && EffectStrength(*Def, E, Now) > 0.f) M.CombineRaw(Def->Mods);
+	}
+	ClampMods(M);
+	return M;
+}
+
+float GSItems::DrugLoad(const TArray<FGSActiveEffect>& Effects, float Now)
+{
+	return 0.f;
+}
+
+void GSItems::ActiveVisuals(const TArray<FGSActiveEffect>& Effects, float Now, TArray<FGSVisualLayer>& Out)
+{
+	for (const FGSActiveEffect& E : Effects)
+	{
+		const FGSEffectDef* Def = FindEffect(E.Id);
+		if (!Def || Def->Mods.Visual == 0) continue;
+		const float Strength = EffectStrength(*Def, E, Now);
+		if (Strength > 0.f) Out.Add({ Def->Mods.Visual, Strength });
+	}
+}
+
+namespace GSItemsImpl
+{
+	/** gs.fx.test: checks the drugs and boosts (part 1 of plan-07: caps, loot, ids). Logs PASS/FAIL per line. */
+	void FxTest(const TArray<FString>& Args)
+	{
+		int32 Passed = 0, Run = 0;
+		auto Report = [&](const TCHAR* Name, bool bOk, const FString& Detail)
+		{
+			++Run;
+			if (bOk) ++Passed;
+			UE_LOG(LogTemp, Display, TEXT("gs.fx.test %s: %s %s"), Name, bOk ? TEXT("PASS") : TEXT("FAIL"), *Detail);
+		};
+		auto WithinCaps = [](const FGSEffectMods& M)
+		{
+			const float Eps = 1e-4f;
+			return M.Speed <= 1.10f + Eps && M.Taken >= 0.85f - Eps && M.StaminaDrain >= 0.5f - Eps && M.StaminaRegen <= 1.6f + Eps
+				&& M.Recoil >= 0.75f - Eps && M.Spread >= 0.75f - Eps && M.Damage <= 1.10f + Eps && M.Jump <= 1.05f + Eps
+				&& M.Reload >= 0.85f - Eps && M.Regen <= 1.0f + Eps && M.Lifesteal <= Eps;
+		};
+		auto ModsText = [](const FGSEffectMods& M)
+		{
+			return FString::Printf(TEXT("fart %.3f, skade tatt %.3f, stamina-bruk %.3f, stamina-henting %.3f, rekyl %.3f, spredning %.3f, skade %.3f, hopp %.3f, lading %.3f, regen %.2f, lifesteal %.2f"),
+				M.Speed, M.Taken, M.StaminaDrain, M.StaminaRegen, M.Recoil, M.Spread, M.Damage, M.Jump, M.Reload, M.Regen, M.Lifesteal);
+		};
+
+		// (h) every effect at once, through Combine and through CombineActive
+		{
+			FGSEffectMods M;
+			TArray<FGSActiveEffect> Active;
+			for (const FGSEffectDef& E : Cat().Effects)
+			{
+				M.Combine(E.Mods);
+				FGSActiveEffect& A = Active.AddDefaulted_GetRef();
+				A.Id = E.Id;
+				A.EndTime = 100.f;
+			}
+			const FGSEffectMods Stacked = GSItems::CombineActive(Active, 10.f);
+			Report(TEXT("(h) tak"), WithinCaps(M) && WithinCaps(Stacked),
+				FString::Printf(TEXT("alle %d effekter samtidig: %s"), Cat().Effects.Num(), *ModsText(Stacked)));
+		}
+
+		// (i) nothing with bNoLoot comes out of 20 000 draws per place
+		{
+			const EGSLootPlace Places[] = { EGSLootPlace::Medical, EGSLootPlace::Corridor, EGSLootPlace::Canteen, EGSLootPlace::Crate };
+			int32 NoLootCount = 0, NoLootItems = 0, Draws = 0;
+			FString Found;
+			for (const FGSItemDef& D : GSItems::All()) if (D.bNoLoot) ++NoLootItems;
+			for (EGSLootPlace P : Places)
+			{
+				FRandomStream Rng(777 + (int32)P);
+				for (int32 I = 0; I < 20000; ++I, ++Draws)
+				{
+					// Max Mythic and full depth: the rarest things are possible too
+					const FGSItemDef* D = GSItems::Find(GSItems::RandomLoot(Rng, EGSRarity::Common, EGSRarity::Mythic, P, (I % 2) ? 1.f : 0.f));
+					if (D && D->bNoLoot) { ++NoLootCount; if (Found.Len() < 200) Found += D->Id.ToString() + TEXT(" "); }
+				}
+			}
+			Report(TEXT("(i) ikke i loot"), NoLootItems == 13 && NoLootCount == 0,
+				FString::Printf(TEXT("%d ting med bNoLoot (skal være 13), %d av %d trekninger var slike %s"), NoLootItems, NoLootCount, Draws, *Found));
+		}
+
+		// (j) the ids Kamp's code uses exist, and food and drugs never heal
+		{
+			static const TCHAR* Effects[] = { TEXT("Foniks"), TEXT("Glide"), TEXT("Avslort"), TEXT("Blendet"), TEXT("Matforgiftning"),
+				TEXT("Smertestillende"), TEXT("Brennende"), TEXT("Sjokk"), TEXT("Adrenalin"), TEXT("Turbo") };
+			static const TCHAR* Items[] = { TEXT("Plaster"), TEXT("Bandage"), TEXT("Medkit"), TEXT("SurgeryKit") };
+			FString Missing;
+			for (const TCHAR* Id : Effects) if (!GSItems::FindEffect(FName(Id))) Missing += FString(Id) + TEXT(" ");
+			for (const TCHAR* Id : Items) if (!GSItems::Find(FName(Id))) Missing += FString(Id) + TEXT(" ");
+			FString Heals;
+			for (const FGSItemDef& D : GSItems::All())
+			{
+				if ((D.Cat == EGSItemCat::Food || D.Cat == EGSItemCat::Drug) && D.Heal != 0.f) Heals += D.Id.ToString() + TEXT(" ");
+			}
+			Report(TEXT("(j) Id-er og helse"), Missing.IsEmpty() && Heals.IsEmpty(),
+				FString::Printf(TEXT("mangler: [%s], mat/stoff som leger: [%s]"), *Missing, *Heals));
+		}
+
+		UE_LOG(LogTemp, Display, TEXT("gs.fx.test: %d/%d OK"), Passed, Run);
+	}
+
+	static FAutoConsoleCommand FxTestCommand(TEXT("gs.fx.test"),
+		TEXT("gs.fx.test: selvtest av stoffer og boosts (tak, loot, Id-er, ingen helse fra mat og stoffer)"),
+		FConsoleCommandWithArgsDelegate::CreateStatic(&FxTest));
 }

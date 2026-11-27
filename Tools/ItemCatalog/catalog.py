@@ -14,18 +14,27 @@ RARITIES = ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"]
 # jump, reload (reload time), hunger, thirst (how fast they fall).
 # Per second: regen (HP/s), drain (HP/s). Flags: nightvision, wallhack, phoenix, silent, flashimmune, ghost, glide.
 # lifesteal = fraction of damage dealt you get back as health. visual: 0 none, 1 blur, 2 colors, 3 shake,
-# 4 green haze, 5 psychedelic, 6 bright/bloom, 7 night vision.
+# 4 green haze, 5 psychedelic, 6 bright/bloom, 7 night vision, 8 red/warm (smoke), 9 white/overexposed (amphetamine),
+# 10 tunnel vision (adrenaline), 11 double vision (alcohol).
+# Drugs (round 7): onset = seconds to full effect, fade = seconds of come-down at the end, load = how hard it is on the
+# body (summed per dose for overdose, plan-07b), cls = stim, opioid, depressant, alcohol, nicotine, caffeine, cannabis
+# or antidote. numb = dulls pain (limbs), cough = coughing when sprinting. Game time is compressed (a match is 15 min),
+# but the ratios are real. Nothing found in loot makes you bulletproof, invisible, immortal or healed by food.
 EFFECTS = {
-    "Turbo":        dict(name="Turbo", dur=40, speed=1.25, stamina_drain=0.0, reload=0.8, visual=3, after="TurboKrasj"),
-    "TurboKrasj":   dict(name="Turbo-krasj", dur=30, speed=0.85, spread=1.5, stamina_regen=0.5, visual=1),
-    "Gronn":        dict(name="Grønn", dur=60, speed=0.92, spread=0.6, recoil=0.7, taken=0.9, regen=0.3, hunger=2.5, visual=4),
-    "Snus":         dict(name="Snus", dur=120, reload=0.9, spread=0.9),
-    "Adrenalin":    dict(name="Adrenalin", dur=15, speed=1.15, taken=0.8, visual=6, after="AdrenalinKrasj"),
-    "AdrenalinKrasj": dict(name="Adrenalin-krasj", dur=15, stamina_drain=2.0, stamina_regen=0.5),
-    "Morfin":       dict(name="Morfin", dur=30, taken=0.65, speed=0.95, visual=1),
+    "Turbo":        dict(name="Amfetamin", cls="stim", load=0.8, onset=20, fade=15, dur=90, speed=1.05, stamina_drain=0.5,
+                         reload=0.92, spread=1.1, hunger=0.3, thirst=1.5, visual=9, after="TurboKrasj"),
+    "TurboKrasj":   dict(name="Amfetaminkrasj", load=0, onset=0, fade=10, dur=60, stamina_regen=0.6, spread=1.2, reload=1.1, visual=1),
+    "Gronn":        dict(name="Grønn", cls="cannabis", load=0.5, onset=10, fade=20, dur=90, speed=0.95, recoil=0.9, reload=1.15,
+                         hunger=2.5, visual=4),
+    "Snus":         dict(name="Snus", cls="nicotine", load=0.15, onset=15, fade=20, dur=120, reload=0.95),
+    "Adrenalin":    dict(name="Adrenalin", cls="stim", load=0.6, onset=1, fade=5, dur=20, numb=1, speed=1.05, stamina_drain=0.6,
+                         spread=1.15, visual=10, after="AdrenalinKrasj"),
+    "AdrenalinKrasj": dict(name="Etter adrenalin", load=0, onset=0, fade=5, dur=20, stamina_regen=0.5, spread=1.15),
+    "Morfin":       dict(name="Morfin", cls="opioid", load=1.05, onset=8, fade=20, dur=120, numb=1, speed=0.95, spread=1.1,
+                         reload=1.15, visual=1),
     "Bulk":         dict(name="Bulk", dur=90, damage=1.12, stamina_drain=0.8, after="BulkKrasj"),
     "BulkKrasj":    dict(name="Muskelkrampe", dur=30, spread=1.25),
-    "Fokus":        dict(name="Fokus", dur=60, recoil=0.6, spread=0.7),
+    "Fokus":        dict(name="Fokus", cls="stim", load=0.4, onset=20, fade=20, dur=120, spread=0.9, recoil=0.92, hunger=0.5),
     "Nattoye":      dict(name="Nattøye", dur=90, nightvision=1, visual=7, after="Lysomfintlig"),
     "Lysomfintlig": dict(name="Lysømfintlig", dur=20, visual=6),
     "Lynet":        dict(name="Lynet", dur=30, jump=1.5, speed=1.1),
@@ -35,25 +44,33 @@ EFFECTS = {
     "Spokelse":     dict(name="Spøkelse", dur=20, ghost=1, silent=1, visual=1),
     "Pansertablett": dict(name="Panser", dur=60, taken=0.75),
     "Regenerator":  dict(name="Regenerator", dur=30, regen=3.0, hunger=3.0),
-    "Drom":         dict(name="Drøm", dur=40, flashimmune=1, taken=0.9, speed=0.9, visual=1),
+    "Drom":         dict(name="Sovetablett", cls="depressant", load=0.6, onset=20, fade=20, dur=120, speed=0.93, spread=0.92,
+                         reload=1.15, visual=1),
     "Oyet":         dict(name="Øyet", dur=12, wallhack=1, visual=5, after="Forvirret"),
     "Forvirret":    dict(name="Forvirret", dur=15, spread=1.5, visual=2),
-    "Nikotin":      dict(name="Nikotin", dur=180, stamina_drain=0.85, stamina_regen=1.3),
+    "Nikotin":      dict(name="Nikotinplaster", cls="nicotine", load=0.15, onset=60, fade=30, dur=240, stamina_drain=0.95),
+    "Royk":         dict(name="Røyk", cls="nicotine", load=0.2, onset=2, fade=20, dur=90, cough=1, stamina_regen=0.85,
+                         spread=0.95, visual=8),
+    "Alkohol":      dict(name="Alkohol", cls="alcohol", load=0.5, onset=15, fade=30, dur=150, numb=1, speed=0.98, spread=1.15,
+                         recoil=1.1, reload=1.15, visual=11),
+    "Nalokson":     dict(name="Nalokson", cls="antidote", load=0, onset=2, fade=10, dur=60),   # what it does comes in 07b
+    "Stell":        dict(name="Sårstell", load=0, onset=0, fade=0, dur=90, regen=0.35),
     "Foniks":       dict(name="Føniks", dur=120, phoenix=1, visual=6),
     "Blodtorst":    dict(name="Blodtørst", dur=45, lifesteal=0.25, visual=2),
-    "Lattergass":   dict(name="Lattergass", dur=25, speed=1.2, spread=1.3, visual=2),
-    "Koffein":      dict(name="Koffein", dur=90, stamina_drain=0.85),
-    "KoffeinPlus":  dict(name="Koffein+", dur=60, stamina_drain=0.7, speed=1.05, reload=0.95),
+    "Lattergass":   dict(name="Lattergass", load=0.3, onset=1, fade=5, dur=25, speed=0.95, spread=1.3, visual=2),
+    "Koffein":      dict(name="Koffein", cls="caffeine", load=0.15, onset=15, fade=30, dur=180, stamina_drain=0.9),
+    "KoffeinPlus":  dict(name="Mye koffein", cls="caffeine", load=0.3, onset=10, fade=30, dur=150, stamina_drain=0.85,
+                         reload=0.97, spread=1.05),
     "Sukkerrush":   dict(name="Sukkerrush", dur=40, stamina_regen=1.5),
     "Matforgiftning": dict(name="Matforgiftning", dur=20, drain=1.0, speed=0.9, visual=1),
-    "Smertestillende": dict(name="Smertestillende", dur=25, regen=1.0),
-    "Kirurgi":      dict(name="Feltkirurgi", dur=20, regen=2.0),
+    "Smertestillende": dict(name="Smertestillende", load=0.2, onset=20, fade=15, dur=120, numb=1),
+    "Kirurgi":      dict(name="Sårstell (stort)", load=0, onset=0, fade=0, dur=90, regen=0.5),
     "Glide":        dict(name="Fallskjerm", dur=60, glide=1),
     "Avslort":      dict(name="Avslørt av drone", dur=10, wallhack=1),
     "Blendet":      dict(name="Blendet", dur=4, visual=6, spread=2.0),
     "Brennende":    dict(name="Brennende", dur=3, drain=6.0, visual=6),
-    "Tran":         dict(name="Tran", dur=120, regen=0.4, stamina_regen=1.2),
-    "Julestemning": dict(name="Julestemning", dur=60, taken=0.92, stamina_regen=1.2, visual=6),
+    "Tran":         dict(name="Tran", dur=120, stamina_regen=1.2),
+    "Julestemning": dict(name="Julestemning", dur=60, stamina_regen=1.2, visual=6),
     "Mett":         dict(name="Mett og god", dur=120, hunger=0.5, speed=0.97),
     "Sjokk":        dict(name="Elektrisk sjokk", dur=3, speed=0.3, spread=3.0, visual=3),
 }
@@ -204,48 +221,81 @@ armor("CombatHelmet", "Militærhjelm", "Rare", 35, 0.45, 1.0, dict(arch="helmet"
 armor("TacHelmet", "Taktisk hjelm med visir", "Legendary", 60, 0.6, 0.98, dict(arch="helmet", kind="visor"), slot="Head")
 
 # ------------------------------------------------------------------ boosts / drugs (20)
-def drug(id, name, rarity, use, effect, model, desc="", heal=0):
-    return _add("Drug", id, name, rarity, desc, use=use, effect=effect, heal=heal, model=model)
+# Extra keywords for drug(), med() and food(): loot=False keeps a thing out of all loot (it stays in the catalog),
+# kind (medicine: "tourniquet", "splint"), treat (how much a hurt leg or arm is treated, 0..1), anim (use animation;
+# default the model's arch).
+def drug(id, name, rarity, use, effect, model, desc="", heal=0, **kw):
+    return _add("Drug", id, name, rarity, desc, use=use, effect=effect, heal=heal, model=model, **kw)
 
 
-drug("TurboPill", "Turbo", "Rare", 1.5, "Turbo", dict(arch="pills", color=(0.9, 0.9, 0.95), cap=(0.1, 0.3, 0.9)),
-     "Raskere, ingen stamina-bruk, raskere lading. Så kommer krasjet.")
+# Not in loot (supernatural, round 7): Bulk, Lynet, Iskald, NightEye, Berserk, Ghost, ArmorPill, Regenerator, Oyet, Phoenix,
+# Bloodthirst (and Defib, Splint below).
+drug("TurboPill", "Amfetamin", "Rare", 1.5, "Turbo", dict(arch="pills", color=(0.9, 0.9, 0.95), cap=(0.1, 0.3, 0.9)),
+     "Virker etter 20 sek: mindre sliten og litt raskere, men urolige hender, tørst og et tungt krasj etterpå.")
 drug("GronnJar", "Grønn", "Uncommon", 3.0, "Gronn", dict(arch="jar", color=(0.2, 0.5, 0.15)),
-     "Rolig sikte og litt helse. Treg og sulten.")
-drug("Snus", "Snus", "Common", 1.0, "Snus", dict(arch="tin", color=(0.1, 0.25, 0.6)), "Litt raskere omlading.")
-drug("Adrenaline", "Adrenalinsprøyte", "Rare", 1.0, "Adrenalin", dict(arch="syringe", color=(0.9, 0.2, 0.1)), heal=35)
-drug("Morphine", "Morfin", "Epic", 2.0, "Morfin", dict(arch="syringe", color=(0.8, 0.8, 0.85)), "Tar mindre skade. Alt blir uklart.", heal=20)
-drug("Bulk", "Bulk", "Rare", 2.0, "Bulk", dict(arch="pills", color=(0.9, 0.5, 0.1), cap=(0.9, 0.9, 0.9)))
-drug("Fokus", "Fokus", "Uncommon", 1.5, "Fokus", dict(arch="blister", color=(0.95, 0.95, 0.3)), "Mindre rekyl og spredning.")
-drug("NightEye", "Nattøye", "Rare", 2.0, "Nattoye", dict(arch="dropper", color=(0.2, 0.9, 0.3)), "Se i mørket.")
-drug("Lynet", "Lynet", "Uncommon", 1.0, "Lynet", dict(arch="can", color=(0.95, 0.85, 0.1), h=0.12, r=0.028), "Hopp høyere.")
-drug("Iskald", "Iskald", "Epic", 1.5, "Iskald", dict(arch="syringe", color=(0.4, 0.8, 1.0)), "Lydløse skritt. Etterpå skjelver du.")
-drug("Berserk", "Berserk", "Legendary", 1.0, "Berserk", dict(arch="syringe", color=(0.6, 0.0, 0.0)), "+30% skade, men det spiser helsa di.")
-drug("Ghost", "Spøkelse", "Mythic", 2.0, "Spokelse", dict(arch="vial", color=(0.85, 0.9, 1.0)), "Nesten usynlig i 20 sekunder.")
-drug("ArmorPill", "Pansertablett", "Rare", 1.5, "Pansertablett", dict(arch="pills", color=(0.4, 0.4, 0.45), cap=(0.1, 0.1, 0.1)))
-drug("Regenerator", "Regenerator", "Epic", 2.0, "Regenerator", dict(arch="vial", color=(1.0, 0.3, 0.6)), "3 HP i sekundet.")
-drug("Drom", "Drøm", "Uncommon", 1.5, "Drom", dict(arch="blister", color=(0.6, 0.5, 0.9)), "Immun mot blendgranater.")
-drug("Oyet", "Øyet (sopp)", "Legendary", 2.5, "Oyet", dict(arch="mushroom"), "Ser alle gjennom vegger i 12 sekunder. Fargene, mann.")
-drug("Nicotine", "Nikotinplaster", "Common", 1.0, "Nikotin", dict(arch="patch", color=(0.85, 0.75, 0.6)))
-drug("Phoenix", "Føniks", "Mythic", 3.0, "Foniks", dict(arch="vial", color=(1.0, 0.45, 0.0)), "Dør du innen 2 minutter, står du opp igjen.")
-drug("Bloodthirst", "Blodtørst", "Legendary", 1.5, "Blodtorst", dict(arch="vial", color=(0.5, 0.0, 0.05)), "25% av skaden du gjør blir helse.")
-drug("LaughGas", "Lattergass", "Uncommon", 1.0, "Lattergass", dict(arch="canister", color=(0.7, 0.75, 0.8)))
+     "Litt roligere sikte, men treg, sein til å lade og svært sulten.")
+drug("Snus", "Snus", "Common", 1.0, "Snus", dict(arch="tin", color=(0.1, 0.25, 0.6)),
+     "Litt raskere omlading i to minutter. Avhengighetsskapende.")
+drug("Adrenaline", "Adrenalinsprøyte", "Rare", 1.0, "Adrenalin", dict(arch="syringe", color=(0.9, 0.2, 0.1)),
+     "Virker med en gang: du kjenner ikke smerte og blir mindre sliten, men skjelver og får tunnelsyn. Leger ingenting.")
+drug("Morphine", "Morfin", "Epic", 2.0, "Morfin", dict(arch="syringe", color=(0.8, 0.8, 0.85)),
+     "Tar bort smerten etter 8 sek, men du blir treg og uklar. For mye kan ta pusten fra deg.")
+drug("Bulk", "Bulk", "Rare", 2.0, "Bulk", dict(arch="pills", color=(0.9, 0.5, 0.1), cap=(0.9, 0.9, 0.9)), loot=False)
+drug("Fokus", "Fokus", "Uncommon", 1.5, "Fokus", dict(arch="blister", color=(0.95, 0.95, 0.3)),
+     "Reseptbelagt sentralstimulerende: litt stødigere sikte etter 20 sek, men dårlig matlyst.")
+drug("NightEye", "Nattøye", "Rare", 2.0, "Nattoye", dict(arch="dropper", color=(0.2, 0.9, 0.3)), "Se i mørket.", loot=False)
+drug("Lynet", "Lynet", "Uncommon", 1.0, "Lynet", dict(arch="can", color=(0.95, 0.85, 0.1), h=0.12, r=0.028), "Hopp høyere.",
+     loot=False)
+drug("Iskald", "Iskald", "Epic", 1.5, "Iskald", dict(arch="syringe", color=(0.4, 0.8, 1.0)), "Lydløse skritt. Etterpå skjelver du.",
+     loot=False)
+drug("Berserk", "Berserk", "Legendary", 1.0, "Berserk", dict(arch="syringe", color=(0.6, 0.0, 0.0)),
+     "+30% skade, men det spiser helsa di.", loot=False)
+drug("Ghost", "Spøkelse", "Mythic", 2.0, "Spokelse", dict(arch="vial", color=(0.85, 0.9, 1.0)), "Nesten usynlig i 20 sekunder.",
+     loot=False)
+drug("ArmorPill", "Pansertablett", "Rare", 1.5, "Pansertablett", dict(arch="pills", color=(0.4, 0.4, 0.45), cap=(0.1, 0.1, 0.1)),
+     loot=False)
+drug("Regenerator", "Regenerator", "Epic", 2.0, "Regenerator", dict(arch="vial", color=(1.0, 0.3, 0.6)), "3 HP i sekundet.",
+     loot=False)
+drug("Drom", "Sovetablett", "Uncommon", 1.5, "Drom", dict(arch="blister", color=(0.6, 0.5, 0.9)),
+     "Roligere hender etter 20 sek, men du blir døsig, treg og sein til å lade.")
+drug("Oyet", "Øyet (sopp)", "Legendary", 2.5, "Oyet", dict(arch="mushroom"), "Ser alle gjennom vegger i 12 sekunder. Fargene, mann.",
+     loot=False)
+drug("Nicotine", "Nikotinplaster", "Common", 1.0, "Nikotin", dict(arch="patch", color=(0.85, 0.75, 0.6)),
+     "Jevn nikotin i fire minutter: litt mindre sliten. Virker sakte.")
+drug("Phoenix", "Føniks", "Mythic", 3.0, "Foniks", dict(arch="vial", color=(1.0, 0.45, 0.0)),
+     "Dør du innen 2 minutter, står du opp igjen.", loot=False)
+drug("Bloodthirst", "Blodtørst", "Legendary", 1.5, "Blodtorst", dict(arch="vial", color=(0.5, 0.0, 0.05)),
+     "25% av skaden du gjør blir helse.", loot=False)
+drug("LaughGas", "Lattergass", "Uncommon", 1.0, "Lattergass", dict(arch="canister", color=(0.7, 0.75, 0.8)),
+     "Et halvt minutt med fnising: du sikter dårlig og går litt saktere.")
+drug("Cigarettes", "Sigarett", "Common", 6.0, "Royk", dict(arch="tin", color=(0.95, 0.95, 0.95)),
+     "Litt roligere hender en stund, men dårligere kondis, og du hoster når du løper.", anim="cigarette")
 
 # ------------------------------------------------------------------ medicine
-def med(id, name, rarity, use, heal, effect, model, desc=""):
-    return _add("Medicine", id, name, rarity, desc, use=use, heal=heal, effect=effect, model=model)
+def med(id, name, rarity, use, heal, effect, model, desc="", **kw):
+    return _add("Medicine", id, name, rarity, desc, use=use, heal=heal, effect=effect, model=model, **kw)
 
 
-med("Plaster", "Plaster", "Common", 2.0, 15, "", dict(arch="plaster"))
-med("Bandage", "Bandasje", "Uncommon", 3.5, 30, "", dict(arch="bandage"))
-med("Painkillers", "Smertestillende", "Common", 1.5, 5, "Smertestillende", dict(arch="pills", color=(1, 1, 1), cap=(0.9, 0.1, 0.1)))
-med("Medkit", "Førstehjelpsskrin", "Rare", 6.0, 75, "", dict(arch="medkit"))
-med("SurgeryKit", "Feltkirurgsett", "Legendary", 10.0, 100, "Kirurgi", dict(arch="surgery"))
+med("Plaster", "Plaster", "Common", 2.0, 15, "", dict(arch="plaster"),
+    "Dekker et lite sår: 15 helse. Hjelper lite på et skadet bein eller en arm.", treat=0.25)
+med("Bandage", "Bandasje", "Uncommon", 3.5, 30, "", dict(arch="bandage"),
+    "Stopper blødning og gir 30 helse. Støtter et skadet bein eller en arm litt.", treat=0.5)
+med("Painkillers", "Smertestillende", "Common", 1.5, 0, "Smertestillende", dict(arch="pills", color=(1, 1, 1), cap=(0.9, 0.1, 0.1)),
+    "Demper smerten etter 20 sek. Leger ingenting.", treat=0)
+med("Medkit", "Førstehjelpsskrin", "Rare", 6.0, 35, "Stell", dict(arch="medkit"),
+    "35 helse med en gang og rundt 30 til i løpet av halvannet minutt. Setter et skadet bein eller en arm i stand.", treat=1.0)
+med("SurgeryKit", "Stort sanitetssett", "Legendary", 10.0, 45, "Kirurgi", dict(arch="surgery"),
+    "Tar 10 sek: 45 helse med en gang og 45 til i løpet av halvannet minutt. Det beste du kan finne.", treat=1.0)
+med("Tourniquet", "Årepresse", "Uncommon", 5.0, 0, "", dict(arch="bandage"),
+    "Strammes over såret og stopper all blødning fra et bein eller en arm. Gir ingen helse.", kind="tourniquet")
+med("Splint", "Skinne", "Uncommon", 8.0, 0, "", dict(arch="bandage"),
+    "Spjelker et brukket bein eller en arm, så du kan gå og sikte igjen. Gir ingen helse.", kind="splint", treat=1.0, loot=False)
 
 # ------------------------------------------------------------------ food and drink (20+)
-def food(id, name, rarity, use, hunger, thirst, heal=0, stamina=0, effect="", model=None, desc="", poison=0.0):
+# Food never heals (round 7): it fills hunger and thirst, and some of it gives stamina or an effect.
+def food(id, name, rarity, use, hunger, thirst, heal=0, stamina=0, effect="", model=None, desc="", poison=0.0, **kw):
     return _add("Food", id, name, rarity, desc, use=use, hunger=hunger, thirst=thirst, heal=heal, stamina=stamina,
-                effect=effect, model=model, poison=poison)
+                effect=effect, model=model, poison=poison, **kw)
 
 
 food("Coffee", "Kaffe fra Realfag-kaffebaren", "Common", 2.0, 0, 15, effect="Koffein", model=dict(arch="cup"))
@@ -253,26 +303,29 @@ food("EnergyDrink", "Energidrikk", "Uncommon", 2.0, 0, 30, stamina=30, effect="K
      model=dict(arch="can", color=(0.1, 0.1, 0.1), band=(0.2, 0.9, 0.2), h=0.16, r=0.03))
 food("Water", "Vannflaske", "Common", 2.0, 0, 45, model=dict(arch="bottle", color=(0.7, 0.85, 1.0), cap=(0.1, 0.3, 0.9)))
 food("Milk", "Melk (lettmelk)", "Common", 2.0, 10, 30, model=dict(arch="carton", color=(0.95, 0.95, 0.95), band=(0.1, 0.4, 0.9)))
-food("OrangeSoda", "Appelsinbrus", "Common", 2.0, 0, 35, heal=5,
+food("OrangeSoda", "Appelsinbrus", "Common", 2.0, 0, 35,
      model=dict(arch="bottle", color=(1.0, 0.55, 0.0), cap=(1, 0.8, 0.0)))
-food("Baguette", "Baguett", "Common", 3.0, 35, 0, model=dict(arch="baguette"))
-food("Lunchbox", "Matpakke med brunost", "Uncommon", 3.0, 40, 0, heal=10, model=dict(arch="lunchbox"))
-food("Grandiosa", "Grandiosa", "Rare", 4.0, 70, 0, heal=10, model=dict(arch="pizzabox"), desc="Nasjonalretten.")
-food("Kebab", "Kebab i pita", "Uncommon", 3.5, 60, 0, heal=15, model=dict(arch="kebab"))
+food("Baguette", "Baguett", "Common", 8.0, 35, 0, model=dict(arch="baguette"))
+food("Lunchbox", "Matpakke med brunost", "Uncommon", 8.0, 40, 0, model=dict(arch="lunchbox"))
+food("Grandiosa", "Grandiosa", "Rare", 12.0, 70, 0, model=dict(arch="pizzabox"), desc="Nasjonalretten.")
+food("Kebab", "Kebab i pita", "Uncommon", 10.0, 60, 0, model=dict(arch="kebab"))
 food("Hotdog", "Pølse i lompe", "Common", 2.5, 30, 0, model=dict(arch="hotdog"))
-food("Taco", "Taco (fredag)", "Uncommon", 3.0, 55, 0, heal=5, model=dict(arch="taco"))
+food("Taco", "Taco (fredag)", "Uncommon", 3.0, 55, 0, model=dict(arch="taco"))
 food("Skolebolle", "Skolebolle", "Common", 2.0, 20, 0, stamina=30, effect="Sukkerrush", model=dict(arch="bun", color=(0.85, 0.6, 0.3), top=True))
 food("Kanelbolle", "Kanelbolle", "Common", 2.0, 20, 0, stamina=25, model=dict(arch="bun", color=(0.65, 0.4, 0.2), swirl=True))
 food("Waffle", "Vaffel med syltetøy", "Uncommon", 2.0, 25, 0, stamina=20, model=dict(arch="waffle"))
 food("ChocoBar", "Sjokoladekjeks", "Common", 1.5, 15, 0, stamina=40, effect="Sukkerrush", model=dict(arch="bar", color=(0.9, 0.1, 0.1)))
-food("Apple", "Eple", "Common", 1.5, 10, 10, heal=5, model=dict(arch="apple"))
+food("Apple", "Eple", "Common", 1.5, 10, 10, model=dict(arch="apple"))
 food("Banana", "Banan", "Common", 1.5, 15, 0, stamina=20, model=dict(arch="banana"))
 food("Noodles", "Instant nudler", "Common", 3.0, 35, -10, model=dict(arch="noodlecup"))
 food("FishBalls", "Fiskeboller i boks", "Uncommon", 3.0, 45, 5, model=dict(arch="can", color=(0.9, 0.9, 0.9), band=(0.1, 0.2, 0.6), h=0.09, r=0.045))
-food("Salmon", "Røkelaks", "Rare", 3.0, 40, 0, heal=25, model=dict(arch="salmon"), desc="Norsk luksus.")
+food("Salmon", "Røkelaks", "Rare", 3.0, 40, 0, model=dict(arch="salmon"), desc="Norsk luksus.")
 food("OldPizza", "Kald pizzabit fra Samfundet", "Common", 2.0, 25, 0, effect="Matforgiftning", poison=0.3,
      model=dict(arch="pizzaslice"), desc="30% sjanse for matforgiftning.")
-food("Brunost", "Brunost (hel)", "Rare", 3.0, 50, -5, heal=10, stamina=50, model=dict(arch="cheese"))
+food("Brunost", "Brunost (hel)", "Rare", 3.0, 50, -5, stamina=50, model=dict(arch="cheese"))
+
+food("Beer", "Pils (0,5 l)", "Common", 6.0, 0, 25, effect="Alkohol", model=dict(arch="can", color=(0.85, 0.7, 0.2), h=0.17, r=0.033),
+     desc="Slukker tørsten, men hver boks gjør siktet og ladingen dårligere og demper smerte.")
 
 # ------------------------------------------------------------------ throwables
 def throwable(id, name, rarity, kind, dmg, radius, fuse, model, desc=""):
@@ -311,7 +364,7 @@ gadget("ExtMag", "Utvidet magasin", "Rare", "att_extmag", dict(arch="extmag"), "
 gadget("Laser", "Laser", "Uncommon", "att_laser", dict(arch="laser"), "Bedre treff fra hofta.", use=2.0)
 gadget("Compass", "Kompass", "Common", "compass", dict(arch="compass"), "Viser kompass i HUD-en.", use=0.0)
 gadget("StudentCard", "Studentbevis", "Common", "joke", dict(arch="keycard", color=(0.1, 0.4, 0.8)), "Gir 10% rabatt i kantina. Ellers ubrukelig.", use=0.0)
-gadget("Defib", "Hjertestarter", "Legendary", "defib", dict(arch="defib"), "Gir deg Føniks-effekten: stå opp igjen hvis du dør.", use=4.0, effect="Foniks")
+gadget("Defib", "Hjertestarter", "Legendary", "defib", dict(arch="defib"), "Gir deg Føniks-effekten: stå opp igjen hvis du dør.", use=4.0, effect="Foniks", loot=False)
 gadget("Trophy", "NTNU-pokal", "Mythic", "joke", dict(arch="trophy"), "Helt ubrukelig. Men du er den eneste som har den.", use=0.0)
 
 
@@ -426,19 +479,19 @@ gadget("PrintDrone", "3D-printet drone", "Epic", "drone", dict(arch="drone"), "H
 
 # --- more food
 food("Lefse", "Lefse med smør og sukker", "Common", 2.0, 25, 0, stamina=20, model=dict(arch="lefse"))
-food("Farikal", "Fårikål på boks", "Uncommon", 4.0, 65, 5, heal=10, effect="Mett",
+food("Farikal", "Fårikål på boks", "Uncommon", 4.0, 65, 5, effect="Mett",
      model=dict(arch="can", color=(0.85, 0.85, 0.8), band=(0.2, 0.45, 0.15), h=0.11, r=0.05), desc="Nasjonalretten (den andre).")
-food("Pinnekjott", "Pinnekjøtt", "Rare", 4.0, 70, -10, heal=20, effect="Mett", model=dict(arch="lunchbox"))
+food("Pinnekjott", "Pinnekjøtt", "Rare", 4.0, 70, -10, effect="Mett", model=dict(arch="lunchbox"))
 food("Julebrus", "Julebrus", "Uncommon", 1.5, 0, 35, stamina=25, effect="Julestemning",
      model=dict(arch="bottle", color=(0.8, 0.1, 0.1), cap=(0.9, 0.8, 0.2)))
-food("Risgrot", "Risengrynsgrøt", "Common", 3.0, 45, 0, heal=5, model=dict(arch="noodlecup"))
-food("Tran", "Tran", "Uncommon", 1.0, 0, 0, heal=10, effect="Tran", model=dict(arch="bottle", color=(0.9, 0.75, 0.2), cap=(0.1, 0.3, 0.7)),
+food("Risgrot", "Risengrynsgrøt", "Common", 3.0, 45, 0, model=dict(arch="noodlecup"))
+food("Tran", "Tran", "Uncommon", 1.0, 0, 0, effect="Tran", model=dict(arch="bottle", color=(0.9, 0.75, 0.2), cap=(0.1, 0.3, 0.7)),
      desc="Vond, men sunn.")
 food("Kvikklunsj", "Turkjeks", "Common", 1.5, 15, 0, stamina=45, effect="Sukkerrush", model=dict(arch="bar", color=(0.95, 0.85, 0.1)))
-food("Solbaer", "Solbærtoddy", "Common", 2.0, 0, 25, heal=5, model=dict(arch="cup"))
-food("Rakfisk", "Rakfisk", "Rare", 3.0, 50, 0, heal=15, effect="Matforgiftning", poison=0.5, model=dict(arch="salmon"),
+food("Solbaer", "Solbærtoddy", "Common", 2.0, 0, 25, model=dict(arch="cup"))
+food("Rakfisk", "Rakfisk", "Rare", 3.0, 50, 0, effect="Matforgiftning", poison=0.5, model=dict(arch="salmon"),
      desc="Halvparten blir syke. Den andre halvparten blir sterke.")
-food("Sodd", "Trøndersodd", "Rare", 4.0, 60, 20, heal=20, effect="Mett", model=dict(arch="noodlecup"),
+food("Sodd", "Trøndersodd", "Rare", 4.0, 60, 20, effect="Mett", model=dict(arch="noodlecup"),
      desc="Trondheims stolthet.")
 
 
