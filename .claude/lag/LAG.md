@@ -1,6 +1,6 @@
 # De tre lagene
 
-Tre lag jobber samtidig på spillet. Hvert lag har sin egen planlegger, bygger og kontrollør (ni agenter),
+Fem lag jobber samtidig på spillet. Hvert lag har sin egen planlegger, bygger og kontrollør (15 agenter),
 og følger de samme instruksene (`.claude/agents/`), de samme ønskene (`.claude/loop/andreas.md`) og den
 samme felles lærdommen (`.claude/loop/laerdom.md`). Dirigenten (`/forbedringsloop`) sier hvilket lag du er.
 
@@ -8,6 +8,8 @@ samme felles lærdommen (`.claude/loop/laerdom.md`). Dirigenten (`/forbedringslo
 |---|---|---|
 | **Kamp** | Våpen, skyting, skade, blod og gore, lyd, HUD i kamp, dødskamera | `.claude/loop/` |
 | **Grafikk og kart** | Campus og bygg, modeller, materialer, teksturer, lys, vær, himmel, vegetasjon | `.claude/lag/grafikk/` |
+| **Interaktiv verden** | Dører, glass som knuses, ødeleggelse, løse ting, plukke opp/bære, brytere, heiser | `.claude/lag/interaktiv/` |
+| **Bots** | Datastyrte spillere for «Spill mot bots»: navigasjon, taktikk, sikte | `.claude/lag/bots/` |
 | **Spillbarhet** | Kampregler, spawn, loot og balanse, crafting, PC-er, lobby, flyt, kontroller og innstillinger | `.claude/lag/spillbarhet/` |
 
 I lagmappen ligger lagets egne filer: `lag.md` (fokus), `retning.md`, `logg.md`, `funn.md`, `laerdom.md`
@@ -19,6 +21,8 @@ I lagmappen ligger lagets egne filer: `lag.md` (fokus), `retning.md`, `logg.md`,
 | `GSCharacter.*`, `GSHUD.*`, `GSPlayerController.*`, `GSProjectile.*`, `GSEffects.*`, `GSAudio.*`, nye `GSBallistics.*`, `Tools/Audio/`, `SourceArt/Sounds/` | Kamp |
 | `GSCampusBuilder.*`, `GSCampus.h` (kartdata: bygg, veier, spillområde, baser, spawnpunkter), `GSEnvironment.*`, `GSWorldSubsystem.*`, `Tools/Blender/`, `Tools/Textures/`, `Content/Python/`, `SourceArt/Models/`, `SourceArt/Textures/` | Grafikk og kart |
 | `GSGameMode.*`, `GSGameState.*`, `GSPlayerState.*`, `GSItems.*`, `GSPickup.*`, `GSTerminal.*`, `Tools/ItemCatalog/` (og den genererte `GSItemCatalog.gen.inl`), nye `GSHelp.*`, `GSMenu.*` og `GSFlag.*` | Spillbarhet |
+| `GSMapState.*`, `GSDoor.*`, `GSBreakable.*`, `GSPhysicsProp.*`, `GSInteract.*`, `Tools/Blender/interactive*.py` | Interaktiv verden |
+| `GSBotController.*`, `GSBotTeam.*`, `GSBots.*`, `GSNavSetup.*` | Bots |
 | `GSTypes.h`, `Gloshaugen.Build.cs`, `IMPROVEMENTS.md` | Felles: bare små tillegg, aldri omskriving. Legg til nederst i en struct/enum, ikke endre andres linjer. |
 
 ## Avgjørelser om delte ting

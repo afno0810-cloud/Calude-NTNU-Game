@@ -1,3 +1,9 @@
+## 2026-11-27 kl. 10.20: to nye lag
+Lag Interaktiv verden overtar dører, glass, ødeleggelse, løse ting og AGSMapState fra Grafikks plan (Grafikk lager
+selve bygget og holder knusbare deler utenfor modellen; Interaktiv gjør dem levende). Lag Bots overtar
+Spillbarhets plan-06/07 (nå bots/ko/plan-01/02). Spillbarhet beholder meny, regler, loot, PC-er og overlevelse.
+Bare én kompilerer om gangen (Build.bat -WaitMutex); flere lag gir lengre kø, ikke mer RAM-bruk.
+
 ## 2026-11-27 kl. 10.10: rekkefølge for Spillbarhet
 Hovedagentens avgjørelse: plan-05 (ny meny med bots/online/test kartet, uten selve botene) bygges nå. Rett etter
 at Grafikk har levert råbygget av Helgasetr kommer plan-08 (loot, PC-er, kameraer, dører i Helgasetr) – det følger

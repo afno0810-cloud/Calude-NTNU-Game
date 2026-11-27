@@ -33,6 +33,8 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-27: «Legg til 2 sett til med agenter» – to nye lag med samme oppsett under hovedagenten: Interaktiv
+  verden og Bots (15 agenter i alt).
 - 2026-11-27: Valgte **Epic Online Services** for å spille med venner over internett (vennelister, invitasjoner).
   Krever at Andreas lager en gratis utviklerkonto og et prosjekt hos Epic når vi kommer dit – hovedagenten
   forklarer stegene da.
