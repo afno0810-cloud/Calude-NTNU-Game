@@ -6,8 +6,10 @@ public class Gloshaugen : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 		PublicDependencyModuleNames.AddRange(new string[] {
-			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "NetCore"
+			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "NetCore",
+			"AIModule", "NavigationSystem", "GameplayTasks"
 		});
-		PrivateDependencyModuleNames.AddRange(new string[] { "Sockets", "ApplicationCore", "AnimationCore" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Sockets", "ApplicationCore", "AnimationCore",
+			"RenderCore", "RHI" });   // RenderCore/RHI: frame timings in Grafikk.Foto (GSFoto.cpp)
 	}
 }
