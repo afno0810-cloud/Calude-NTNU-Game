@@ -408,7 +408,7 @@ gadget("AmmoHP", "Hulspissammo", "Uncommon", "ammotype_hp", dict(arch="specialam
 gadget("AmmoFire", "Brannammo", "Epic", "ammotype_fire", dict(arch="specialammo", color=(1.0, 0.5, 0.05)),
        "Treff setter fyr på folk i 3 sekunder.", use=2.0)
 gadget("AmmoTracer", "Lysspor", "Common", "ammotype_tracer", dict(arch="specialammo", color=(0.95, 0.95, 0.2)),
-       "Ser hvor kulene går. Litt bedre treff, men alle ser deg.", use=2.0)
+       "Kulene lyser, så du ser hvor de går. Fienden ser også hvor du skyter fra.", use=2.0)
 gadget("AmmoShock", "Elektrosjokk-ammo", "Legendary", "ammotype_shock", dict(arch="specialammo", color=(0.4, 0.9, 1.0)),
        "Treff lammer i 3 sekunder.", use=2.0)
 

@@ -44,6 +44,12 @@ namespace GSMenu
 	GLOSHAUGEN_API FString KeyName(const APlayerController* PC, FName Action);
 	/** The key an action is on right now (same lookup as KeyName; also "GS_Team" and "GS_Fly"). Invalid when it has none. */
 	GLOSHAUGEN_API FKey KeyFor(const APlayerController* PC, FName Action);
+	/** Every key an action is on right now (crouch has both C and Ctrl), in mapping order. */
+	GLOSHAUGEN_API TArray<FKey> KeysFor(const APlayerController* PC, FName Action);
+	/** Any of the action's keys is held down right now. */
+	GLOSHAUGEN_API bool IsActionDown(const APlayerController* PC, FName Action);
+	/** All the action's keys, Norwegian names, joined with " / " ("C / V. Ctrl"). Empty when it has none. */
+	GLOSHAUGEN_API FString KeyNames(const APlayerController* PC, FName Action);
 	/** Every control with its current key, in the order of the controls page. */
 	GLOSHAUGEN_API TArray<FGSControlRow> Controls(const APlayerController* PC);
 	/** Called by UGSGameViewportClient::InputChar; true = the menu took the character. */

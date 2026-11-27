@@ -2,7 +2,12 @@
 #include "GSCharacter.h"
 #include "GSGameState.h"
 #include "GSMenu.h"
+#include "GSGameMode.h"
 #include "Components/CapsuleComponent.h"
+#include "Engine/LocalPlayer.h"
+#include "EnhancedInputSubsystems.h"
+#include "InputAction.h"
+#include "InputMappingContext.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -79,11 +84,53 @@ namespace GSExploreImpl
 		return false;
 	}
 
+	/** All the action's keys ("C / V. Ctrl"): in the air every one of them works. */
 	FString KeyText(const APlayerController* PC, const TCHAR* Action, const TCHAR* Default)
 	{
-		const FString K = GSMenu::KeyName(PC, FName(Action));
+		const FString K = GSMenu::KeyNames(PC, FName(Action));
 		return K.IsEmpty() ? FString(Default) : K;
 	}
+
+	/** Above the game's own context (priority 0 in AGSPlayerController). */
+	constexpr int32 FlyBlockPriority = 100;
+}
+
+void AGSExplore::UpdateKeyBlock(APlayerController* PC, bool bOn)
+{
+	ULocalPlayer* LP = PC ? PC->GetLocalPlayer() : nullptr;
+	UEnhancedInputLocalPlayerSubsystem* Sub = LP ? LP->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>() : nullptr;
+	if (!Sub) return;
+	if (!bOn)
+	{
+		if (FlyBlockContext && Sub->HasMappingContext(FlyBlockContext)) Sub->RemoveMappingContext(FlyBlockContext);
+		return;
+	}
+	if (!FlyBlockAction)
+	{
+		FlyBlockAction = NewObject<UInputAction>(this, TEXT("IA_GSFlyBlock"));
+		FlyBlockAction->ValueType = EInputActionValueType::Boolean;
+		FlyBlockAction->bConsumeInput = true;   // the point: lower contexts never see these keys
+	}
+	if (!FlyBlockContext) FlyBlockContext = NewObject<UInputMappingContext>(this, TEXT("IMC_GSFlyBlock"));
+
+	TArray<FKey> Keys = GSMenu::KeysFor(PC, TEXT("IA_Jump"));
+	for (const FKey& K : GSMenu::KeysFor(PC, TEXT("IA_Crouch"))) Keys.AddUnique(K);
+	const bool bAdded = Sub->HasMappingContext(FlyBlockContext);
+	if (Keys != BlockedKeys)
+	{
+		BlockedKeys = Keys;
+		FlyBlockContext->UnmapAll();
+		for (const FKey& K : Keys) FlyBlockContext->MapKey(FlyBlockAction, K);
+		if (bAdded) Sub->RequestRebuildControlMappings();
+	}
+	// Re-added if the game cleared all contexts (AGSPlayerController::SetupInputComponent does on a new body).
+	if (!bAdded) Sub->AddMappingContext(FlyBlockContext, GSExploreImpl::FlyBlockPriority);
+}
+
+void AGSExplore::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWorld* World = GetWorld()) UpdateKeyBlock(World->GetFirstPlayerController(), false);
+	Super::EndPlay(EndPlayReason);
 }
 
 AGSExplore::AGSExplore()
@@ -112,6 +159,8 @@ void AGSExplore::StartFlying(APlayerController* PC, AGSCharacter* C)
 	Move->BrakingDecelerationFlying = 3000.f;
 	Move->Velocity = FVector::ZeroVector;
 	NextModeFixAt = 0.f;
+	if (C->bIsCrouched) C->UnCrouch();   // the crouch key is taken by the flight from now on
+	UpdateKeyBlock(PC, true);
 	UE_LOG(LogTemp, Log, TEXT("GSExplore: fri flyging på"));
 	C->ClientToast(FString::Printf(TEXT("Fri flyging på – %s opp, %s ned, %s fort, %s av"),
 		*GSExploreImpl::KeyText(PC, TEXT("IA_Jump"), TEXT("Mellomrom")), *GSExploreImpl::KeyText(PC, TEXT("IA_Crouch"), TEXT("C")),
@@ -122,6 +171,7 @@ void AGSExplore::StopFlying(APlayerController* PC, AGSCharacter* C, bool bMoveTo
 {
 	if (!bFlying) return;
 	bFlying = false;
+	UpdateKeyBlock(PC, false);
 	if (!C) return;
 	UCharacterMovementComponent* Move = C->GetCharacterMovement();
 	UWorld* World = GetWorld();
@@ -138,6 +188,14 @@ void AGSExplore::StopFlying(APlayerController* PC, AGSCharacter* C, bool bMoveTo
 		{
 			C->SetActorLocation(LastSafe, false, nullptr, ETeleportType::TeleportPhysics);
 			Where = TEXT("på siste trygge sted (ingen ledig plass her)");
+		}
+		else if (const AGSGameMode* GM = World->GetAuthGameMode<AGSGameMode>())
+		{
+			// Never stood on the ground and nothing free here: the own base (a free spawn place there), never in a wall.
+			const FTransform Home = GM->PickSpawnTransform(PC);
+			C->SetActorLocation(Home.GetLocation(), false, nullptr, ETeleportType::TeleportPhysics);
+			if (PC) PC->SetControlRotation(Home.Rotator());
+			Where = TEXT("ved egen base (ingen ledig plass her og ikke stått på bakken før)");
 		}
 	}
 	C->SetActorEnableCollision(true);
@@ -194,12 +252,13 @@ void AGSExplore::Tick(float DeltaSeconds)
 		Move->SetMovementMode(MOVE_Flying);
 	}
 	if (C->GetActorEnableCollision()) C->SetActorEnableCollision(false);
+	UpdateKeyBlock(PC, true);   // cheap; follows rebinding and a cleared input setup
 
 	if (GSMenu::IsModal(PC)) return;   // a menu has the keys (the game is paused then anyway)
-	auto Down = [PC](const FKey& K) { return K.IsValid() && PC->IsInputKeyDown(K); };
-	const bool bUp = Down(GSMenu::KeyFor(PC, TEXT("IA_Jump")));
-	const bool bDown = Down(GSMenu::KeyFor(PC, TEXT("IA_Crouch"))) || Down(EKeys::LeftControl);
-	const bool bFast = Down(GSMenu::KeyFor(PC, TEXT("IA_Sprint")));
+	// Every key on the action counts (crouch is both C and Ctrl), not only the first one.
+	const bool bUp = GSMenu::IsActionDown(PC, TEXT("IA_Jump"));
+	const bool bDown = GSMenu::IsActionDown(PC, TEXT("IA_Crouch"));
+	const bool bFast = GSMenu::IsActionDown(PC, TEXT("IA_Sprint"));
 	Move->MaxFlySpeed = bFast ? GSExploreImpl::FlySprintSpeed : GSExploreImpl::FlySpeed;
 	if (bUp != bDown) C->AddMovementInput(FVector::UpVector, bUp ? 1.f : -1.f);
 	// Forward, back and sideways come from the normal walking keys (AGSCharacter::Move).

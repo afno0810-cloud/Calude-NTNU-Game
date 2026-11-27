@@ -1221,7 +1221,7 @@ static void GSBuildCatalog(TArray<FGSItemDef>& Items, TArray<FGSEffectDef>& Effe
 		D.Kind = FName(TEXT("ammotype_fire")); D.UseTime = 2.0f; D.Slots = 0; D.Charges = 1;
 		D.MaxStack = 3; }
 	{ FGSItemDef& D = Items.AddDefaulted_GetRef(); D.Id = FName(TEXT("AmmoTracer")); D.Name = TEXT("Lysspor");
-		D.Desc = TEXT("Ser hvor kulene g\u00E5r. Litt bedre treff, men alle ser deg."); D.Cat = EGSItemCat::Gadget; D.Rarity = EGSRarity::Common;
+		D.Desc = TEXT("Kulene lyser, s\u00E5 du ser hvor de g\u00E5r. Fienden ser ogs\u00E5 hvor du skyter fra."); D.Cat = EGSItemCat::Gadget; D.Rarity = EGSRarity::Common;
 		D.MeshPath = TEXT("/Game/Models/SM_AmmoTracer.SM_AmmoTracer"); D.MaxStack = 1;
 		D.Kind = FName(TEXT("ammotype_tracer")); D.UseTime = 2.0f; D.Slots = 0; D.Charges = 1;
 		D.MaxStack = 3; }

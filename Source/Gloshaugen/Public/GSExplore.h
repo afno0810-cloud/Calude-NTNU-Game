@@ -2,11 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Info.h"
+#include "InputCoreTypes.h"
 #include "GSTypes.h"
 #include "GSExplore.generated.h"
 
 class APlayerController;
 class AGSCharacter;
+class UInputAction;
+class UInputMappingContext;
 
 /**
  * "Test kartet": walk freely around the map with no match and no damage, fly through walls (N), jump to the bases,
@@ -21,6 +24,7 @@ class GLOSHAUGEN_API AGSExplore : public AInfo
 public:
 	AGSExplore();
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	bool bFlying = false;
 	/** Where the player last stood on the ground (flying ends here when nothing else is free). */
@@ -40,6 +44,18 @@ protected:
 	float NextSafeAt = 0.f;
 	float NextModeFixAt = 0.f;
 	bool bModeFixLogged = false;
+
+	/**
+	 * While flying, the jump and crouch keys go to this context instead (higher priority, consumes the keys), so the
+	 * game's own jump, climb, crouch and slide do not also run in the air. Flying up and down reads the raw key state.
+	 */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputMappingContext> FlyBlockContext;
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> FlyBlockAction;
+	TArray<FKey> BlockedKeys;
+	/** bOn: the context is there and holds the current jump/crouch keys (rebinding is followed); off: removed. */
+	void UpdateKeyBlock(APlayerController* PC, bool bOn);
 };
 
 namespace GSExplore

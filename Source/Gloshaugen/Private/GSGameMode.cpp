@@ -439,7 +439,8 @@ void AGSGameMode::SpawnFlags()
 		const FVector Base = BasePointM(Team) * 100.f;
 		FVector Loc(Base.X, Base.Y, Base.Z);
 		FHitResult Hit;
-		if (World->LineTraceSingleByObjectType(Hit, Base + FVector(0.f, 0.f, 300.f), Base - FVector(0.f, 0.f, 300.f), FCollisionObjectQueryParams(ECC_WorldStatic)))
+		// From 2 m above the flag point, so an indoor base never starts the trace inside the ceiling (see PickSpawnTransform).
+		if (World->LineTraceSingleByObjectType(Hit, Base + FVector(0.f, 0.f, 200.f), Base - FVector(0.f, 0.f, 300.f), FCollisionObjectQueryParams(ECC_WorldStatic)))
 		{
 			Loc = Hit.ImpactPoint;
 		}
@@ -615,11 +616,13 @@ FTransform AGSGameMode::PickSpawnTransform(const AController* For) const
 		if (!It->bDead) Living.Add(It->GetActorLocation());
 	}
 
-	// On the ground, room for a body, and nobody standing there.
+	// On the ground, room for a body, and nobody standing there. The trace starts only 2 m above the point: indoors
+	// (Helgasetr: floor 13.9 m, the deck above from 17.85 m) a higher start begins inside the ceiling and hits its
+	// underside. Object trace: only the world counts, not a body standing on the spot.
 	auto TryPlace = [&](FVector Loc, FVector& Out) -> bool
 	{
 		FHitResult Hit;
-		if (World->LineTraceSingleByChannel(Hit, Loc + FVector(0.f, 0.f, 400.f), Loc - FVector(0.f, 0.f, 300.f), ECC_WorldStatic))
+		if (World->LineTraceSingleByObjectType(Hit, Loc + FVector(0.f, 0.f, 200.f), Loc - FVector(0.f, 0.f, 300.f), FCollisionObjectQueryParams(ECC_WorldStatic)))
 		{
 			Loc.Z = Hit.ImpactPoint.Z + 100.f;
 		}

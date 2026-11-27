@@ -52,6 +52,8 @@ public:
 	void OnFlagCaptured(uint8 ScoringTeam);
 	/** Where team 1 (red) / 2 (blue) has its flag, in meters. The one place that knows where the bases are. */
 	static FVector BasePointM(uint8 Team);
+	/** A free place at the player's own base (red without a team), facing the enemy. Also the last resort of the test's flight. */
+	FTransform PickSpawnTransform(const AController* For) const;
 
 protected:
 	/** Seconds < 0: the usual AGSGameState::CountdownSeconds. */
@@ -78,7 +80,6 @@ protected:
 	int32 LobbyPlayersLast = 0;
 	/** The match was started by a single player (stopped when a friend joins). */
 	bool bSoloMatch = false;
-	FTransform PickSpawnTransform(const AController* For) const;
 	void SpawnPickups();
 	/** PCs, 3D printers and security cameras in the buildings and around campus. */
 	void SpawnTerminals();

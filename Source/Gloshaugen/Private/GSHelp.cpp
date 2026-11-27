@@ -550,8 +550,14 @@ namespace
 			bFly ? FLinearColor::White : TextColor);
 		if (bFly)
 		{
-			Lines.Emplace(FString::Printf(TEXT("%s opp · %s ned · %s fort"), *HelpKey(PC, TEXT("IA_Jump"), TEXT("Mellomrom")),
-				*HelpKey(PC, TEXT("IA_Crouch"), TEXT("C")), *HelpKey(PC, TEXT("IA_Sprint"), TEXT("Shift"))), TextColor);
+			// Every key on the action works in the air (crouch: C and Ctrl), so show them all.
+			auto AllKeys = [PC](const TCHAR* Action, const TCHAR* Default)
+			{
+				const FString K = GSMenu::KeyNames(PC, FName(Action));
+				return K.IsEmpty() ? FString(Default) : K;
+			};
+			Lines.Emplace(FString::Printf(TEXT("%s opp · %s ned · %s fort"), *AllKeys(TEXT("IA_Jump"), TEXT("Mellomrom")),
+				*AllKeys(TEXT("IA_Crouch"), TEXT("C")), *AllKeys(TEXT("IA_Sprint"), TEXT("Shift"))), TextColor);
 		}
 		Lines.Emplace(bEditor ? FString(TEXT("F10 eller P: meny (gå til, lys og vær)")) : FString(TEXT("Esc eller P: meny (gå til, lys og vær)")), TextColor);
 		Lines.Emplace(TEXT("H: taster og regler"), DimColor);

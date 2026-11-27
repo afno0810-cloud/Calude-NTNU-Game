@@ -1463,7 +1463,7 @@ namespace GSMenuImpl
 		const float TS = 0.85f;
 		Y = Para(U, TEXT("Gå fritt rundt i kartet. Ingen kamp, ingen skade og ingen sult."), IX, Y, MaxW, TextColor, TS) + 6.f;
 		Y = Para(U, FString::Printf(TEXT("%s slår fri flyging av og på: du flyr gjennom vegger, %s opp og %s ned. I menyen (%s) kan du flytte deg til basene og stille klokka og været."),
-			*KeyDisplay(FlyKey()), *GSMenu::KeyName(PC, TEXT("IA_Jump")), *GSMenu::KeyName(PC, TEXT("IA_Crouch")), MenuKeysText(World)),
+			*KeyDisplay(FlyKey()), *GSMenu::KeyNames(PC, TEXT("IA_Jump")), *GSMenu::KeyNames(PC, TEXT("IA_Crouch")), MenuKeysText(World)),
 			IX, Y, MaxW, DimColor, 0.8f) + 8.f;
 		if (bMatch) Y = Para(U, TEXT("Kampen du er i nå avsluttes."), IX, Y, MaxW, AccentColor, TS) + 4.f;
 		Button(U, TEXT("Explore.Go"), TEXT("Gå inn i kartet"), IX, Y + 4.f, FMath::Min(320.f, MaxW), 44.f, true, false, 0, true);
@@ -2609,6 +2609,49 @@ namespace GSMenu
 		if (Action == FName(TEXT("GS_Team"))) return GSMenuImpl::TeamKey();
 		if (Action == FName(TEXT("GS_Fly"))) return GSMenuImpl::FlyKey();
 		return GSMenuImpl::ActionKey(Cast<AGSPlayerController>(PC), Action);
+	}
+
+	TArray<FKey> KeysFor(const APlayerController* PC, FName Action)
+	{
+		TArray<FKey> Out;
+		if (Action == FName(TEXT("GS_Team")) || Action == FName(TEXT("GS_Fly")))
+		{
+			Out.Add(KeyFor(PC, Action));
+			return Out;
+		}
+		const AGSPlayerController* GPC = Cast<AGSPlayerController>(PC);
+		const UInputMappingContext* C = GPC ? GPC->MappingContext.Get() : nullptr;
+		if (!C) return Out;
+		for (const FEnhancedActionKeyMapping& M : C->GetMappings())
+		{
+			if (M.Action && M.Action->GetFName() == Action && M.Key.IsValid()) Out.AddUnique(M.Key);
+		}
+		return Out;
+	}
+
+	bool IsActionDown(const APlayerController* PC, FName Action)
+	{
+		if (!PC) return false;
+		for (const FKey& K : KeysFor(PC, Action))
+		{
+			if (K.IsValid() && PC->IsInputKeyDown(K)) return true;
+		}
+		return false;
+	}
+
+	FString KeyNames(const APlayerController* PC, FName Action)
+	{
+		TArray<FKey> Keys = KeysFor(PC, Action);
+		// Letters before modifier keys: "C / V. Ctrl" reads better than the mapping order on a laptop.
+		Keys.StableSort([](const FKey& A, const FKey& B) { return !A.IsModifierKey() && B.IsModifierKey(); });
+		FString Out;
+		for (const FKey& K : Keys)
+		{
+			if (!K.IsValid()) continue;
+			if (!Out.IsEmpty()) Out += TEXT(" / ");
+			Out += GSMenuImpl::KeyDisplay(K);
+		}
+		return Out;
 	}
 
 	FString KeyName(const APlayerController* PC, FName Action)
