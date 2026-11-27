@@ -219,13 +219,13 @@ om «minst to innganger» er oppfylt.
 | R4 Østfløyens rom | radiografi → vernepleier → treningsleiligheten → Trapp øst-lobbyen | 66 m | nærkamp, kjøkken og senger som dekning |
 | R5 Gjennom atriet | P4 → trappeløp 3 ned → P3 → løp 2 over atriet → mesaninen P2 → opp igjen | 75–85 m | vertikal, utsatt i trappene, mye å se |
 | R6 Kantina (lavruta) | ned Trapp sør / Trapp øst / løp 1 til P1, over kantina, opp på andre siden | 95–110 m | lang, men usett fra Plan 4; dekning: Ryddekroken, salatbaren, plantekasser, båsene |
-| R7 Klatreruter (runde 5) | se under | – | Andreas liker klatring |
+| R7 Klatreruter (runde 8) | se under | – | Andreas liker klatring |
 
 **Kjent skjevhet:** Trapp sør kommer opp rett ved rødt lags lobby (8 m fra sørflagget), mens Trapp øst kommer opp 15 m fra
 blått lags side. Til gjengjeld lander atriumtrappa (løp 3) nærmest Nordbasen. Sjekkskriptet regner rutelengdene fra hver
 spawn til motstanderens flagg og krever under 20 % forskjell; justeres med dørplassering, ikke med vegger som ikke finnes.
 
-**Klatreruter (planlagt, runde 5):** Kamps mantling tar kanter 0,55–2,2 m over føttene. Kandidater: (a) Ryddekroken –
+**Klatreruter (planlagt, runde 8):** Kamps mantling tar kanter 0,55–2,2 m over føttene. Kandidater: (a) Ryddekroken –
 kiosktaket (2,1 m) → tårnets hylle → sittegalleriet på P2; (b) klatrehallen – buldreveggene som trinn fra P1 opp til et
 utkikksgalleri mot atriet på P2/P3 (nord), med motstykke i studentarbeidsplassenes bokhyller i sør (P2 → P3-kanten);
 (c) knust glassrekkverk = hopp ned en etasje. Alt som skal klatres på får `ComponentTags` `Climb` (Kamps bestilling).
@@ -246,7 +246,7 @@ utkikksgalleri mot atriet på P2/P3 (nord), med motstykke i studentarbeidsplasse
 ### Hva Spillbarhet og Kamp trenger (bestilt i `bestillinger.md`)
 - **Data i `GSHelgasetr.h`** (Grafikk eier, generert fra `Tools/Blender/helgasetr_plan.py`): etasjer, sonene/stedsnavn,
   baser og spawn, `LootSpots()` (ca. 60 plasser på P1–P4 med nivå), `Terminals()` (PC-er, printere, kameraer med navn),
-  `SoundZones()` (romklang), `FloorRects(nivå)` (for minikart og sjekker), `DoorSlots()` og `Breakables()` (fra runde 2).
+  `SoundZones()` (romklang), `FloorRects(nivå)` (for minikart og sjekker), `DoorSlots()` og `Breakables()` (fra runde 5).
 - **`GSCampus.h` peker på Helgasetr** (`GSCampus::bHelgasetr = true`): `Bases()`, `SpawnPoints()`, `PlayArea()`,
   `Buildings()` (fem soner: nordfløyen, sørfløyen, vestfløyen, østfløyen, atriet, med etasjehøyde 4,3 m så «N. etasje» blir
   riktig for alle seks planene) og `Roads()` (korridorene på P4, for minikartet) virker uten at andre lag endrer noe. Loot,
@@ -256,25 +256,25 @@ utkikksgalleri mot atriet på P2/P3 (nord), med motstykke i studentarbeidsplasse
 
 Prinsipp: **alt som kan åpnes, knuses, sprenges eller flyttes er en egen bit med egen ID**, aldri en del av den store
 bygningsmodellen. Bygningsmodellen er bare det som aldri endrer seg. Derfor lages glassfelt, dører, lettvegger og
-møbler som moduler i Blender og settes ut av C++ fra lister i `GSHelgasetr.h` – allerede i råbygget, så runde 2 bare
+møbler som moduler i Blender og settes ut av C++ fra lister i `GSHelgasetr.h` – allerede i råbygget, så runde 5 bare
 bytter klossene mot ekte oppførsel.
 
 | Ting | Hvor | Grafikk (modell, plassering, fysikk, knusing) | Spillbarhet (bruk, loot, regler, nett for bruk) | Kamp (lyd, skudd/eksplosjon, spark) | Runde |
 |---|---|---|---|---|---|
-| **Dører** (tre, glass med kodelås, dobbeltdører, branndører i trapperom) | alle rom | dørblad, karm, kodelås-panel, ødelagt dør; `DoorSlots()` med type | `AGSDoor`: åpne/lukke, låst, dirke opp kodelås (tid, avbrytbar), replikert | spark opp, skyte opp låsen, smell- og knirkelyd | 2 |
-| **Knusbart glass** – grupperom, glassbokser, glassrekkverk, glassdører, skillevegger | P1–P4 | glassmoduler med ID, sprekker → hull → knust, skår på gulvet, `AGSMapState` (replikert tilstand) | tilbakestill ved kampstart | kall ved kuletreff og eksplosjon, knuselyd | 2 |
-| **Flyttbar dekning** – stoler, puffer, små bord, søppelkasser | kantina, mesaninen, grupperom | fysikkmøbler (lav vekt, replikert bevegelse, tak på antall) | bære/sette ned (barrikade foran dør) | slag/skudd dytter dem, lyd ved velt | 2 (dytte/velte), 4 (bære) |
-| **Sprengbare lettvegger** (gips) | utvalgte vegger mellom rom og korridor | panel med hel/ødelagt modell, støv, biter | – | kall fra eksplosjon | 2 |
-| **Lysbrytere** | hvert rom | lysgrupper per rom, brytermodell, tilstand i `AGSMapState` | bruk-handling (E) | klikk | 3 |
-| **Skjermer / TV-er** (info-skjermer, «Iskaffe», tavleskjermer) | kantina, rom | skjerm som lyser, knust skjerm ved treff | – | treffkall, lyd | 3 |
-| **Garderobeskap og oppbevaringsskap** | korridorene | skap med dør som åpner seg | loot inni, bruk | lyd | 3 |
-| **Kjøleskap og kiosk i Ryddekroken** | P1 | kjøleskapsdører, lys inni | mat/drikke-loot | lyd | 3 |
-| **Salatbaren** | P1 | boller, glasskjerm (knusbar) | mat-loot | – | 3 |
-| **Piano** | P1 loungen | modell, lokk | bruk = spiller | pianolyd (Tools/Audio) | 4 |
-| **Bordtennisbord** | P1/P2 | bord, ball (fysikk) | bruk = server ballen | pling-pong | 4 |
-| **Hengelamper** | atriet | svinger og flimrer når de treffes, kan knuses | – | treffkall, lyd | 4 |
-| **Heiser** (sør og øst) | P1–P4 | kabin og dører som går, tilstand i `AGSMapState` | knapper, bruk | pling, motor | 5 |
-| **Brannalarm** | trapperom, korridorer | knapp, blinkende lys | bruk = alarm (støy, alle hører) | alarmlyd | 5 |
+| **Dører** (tre, glass med kodelås, dobbeltdører, branndører i trapperom) | alle rom | dørblad, karm, kodelås-panel, ødelagt dør; `DoorSlots()` med type | `AGSDoor`: åpne/lukke, låst, dirke opp kodelås (tid, avbrytbar), replikert | spark opp, skyte opp låsen, smell- og knirkelyd | 5 |
+| **Knusbart glass** – grupperom, glassbokser, glassrekkverk, glassdører, skillevegger | P1–P4 | glassmoduler med ID, sprekker → hull → knust, skår på gulvet, `AGSMapState` (replikert tilstand) | tilbakestill ved kampstart | kall ved kuletreff og eksplosjon, knuselyd | 5 |
+| **Flyttbar dekning** – stoler, puffer, små bord, søppelkasser | kantina, mesaninen, grupperom | fysikkmøbler (lav vekt, replikert bevegelse, tak på antall) | bære/sette ned (barrikade foran dør) | slag/skudd dytter dem, lyd ved velt | 5 (dytte/velte), 7 (bære) |
+| **Sprengbare lettvegger** (gips) | utvalgte vegger mellom rom og korridor | panel med hel/ødelagt modell, støv, biter | – | kall fra eksplosjon | 5 |
+| **Lysbrytere** | hvert rom | lysgrupper per rom, brytermodell, tilstand i `AGSMapState` | bruk-handling (E) | klikk | 7 |
+| **Skjermer / TV-er** (info-skjermer, «Iskaffe», tavleskjermer) | kantina, rom | skjerm som lyser, knust skjerm ved treff | – | treffkall, lyd | 7 |
+| **Garderobeskap og oppbevaringsskap** | korridorene | skap med dør som åpner seg | loot inni, bruk | lyd | 7 |
+| **Kjøleskap og kiosk i Ryddekroken** | P1 | kjøleskapsdører, lys inni | mat/drikke-loot | lyd | 7 |
+| **Salatbaren** | P1 | boller, glasskjerm (knusbar) | mat-loot | – | 7 |
+| **Piano** | P1 loungen | modell, lokk | bruk = spiller | pianolyd (Tools/Audio) | 10 |
+| **Bordtennisbord** | P1/P2 | bord, ball (fysikk) | bruk = server ballen | pling-pong | 10 |
+| **Hengelamper** | atriet | svinger og flimrer når de treffes, kan knuses | – | treffkall, lyd | 10 |
+| **Heiser** (sør og øst) | P1–P4 | kabin og dører som går, tilstand i `AGSMapState` | knapper, bruk | pling, motor | 10 |
+| **Brannalarm** | trapperom, korridorer | knapp, blinkende lys | bruk = alarm (støy, alle hører) | alarmlyd | 10 |
 
 ### Ødeleggelse (granater og eksplosiver)
 - **Kan ødelegges:** glass i grupperom, glassbokser, glassdører og rekkverk; dører (alle); utvalgte lettvegger mellom
@@ -303,7 +303,7 @@ bytter klossene mot ekte oppførsel.
   ett rektangellys per stor lampe, uten skygge.
 - **Downlights:** runde innfelte lys i de hvite undertakene under hver etasjekant og glassboks (bilde 06, 07) – emissive, Lumen
   tar resten. Korridorene: runde downlights hver 3. m, ett punktlys uten skygge per ca. 10 m.
-- **Grupperom og undervisningsrom:** lysrør/paneler i himlingen; fra runde 3 egne lysgrupper per rom (lysbrytere).
+- **Grupperom og undervisningsrom:** lysrør/paneler i himlingen; fra runde 7 egne lysgrupper per rom (lysbrytere).
 - Kveld/natt: alt innelys står på (bygget er åpent til kl. 23); glasstaket blir mørkt.
 
 ## 8. Materialer og møbler, koblet til bildene
@@ -322,10 +322,10 @@ bytter klossene mot ekte oppførsel.
 | Hvitt stålfagverk og takbjelker | `PaintWhite_In` (ny) | 03, 10, 15, 26 |
 | Betongsøyler (lys, glatt) med svarte ringer | `ConcreteSmooth_In` + `MetalDark_In` | 22 |
 | Grønne og svarte oppbevaringsskap | `PaintGreen_In`, `Gunmetal_In` | 22 |
-| Mosesirkler på kaféøya (grønne) | ny tekstur senere (runde 3) | 04, 09, 14 |
+| Mosesirkler på kaféøya (grønne) | ny tekstur senere (runde 6) | 04, 09, 14 |
 | Fasade ute: Kebony-kledning (grå-brun tre), glass/alu nederst | `Wood`, `MetalDark` | (vinnerforslag) |
 
-**Møbler (runde 3–4, Blender `props.py`/ny `props_helgasetr.py`, instanser):** svarte kvadratiske kantinebord på søylefot,
+**Møbler (runde 6–7, Blender `props.py`/ny `props_helgasetr.py`, instanser):** svarte kvadratiske kantinebord på søylefot,
 runde svarte bord, trestoler (bøyd kryssfiner på svarte ben), lange hvite bord med svarte ben, plantekasser (svarte, med
 grønne planter), svarte stålbur-båser med grønne sofaer og treplater (bilde 08), turkise/grønne sofaer og puffer, oransje
 puffer, lilla puffer (P6), runde grønne bord rundt et tre (P6), røde sofabåser med svarte bord (fellessoner, bilde 01),
@@ -354,10 +354,10 @@ dagens pool. Måles med `stat unit` / `stat gpu` fra Plan 4 nord-korridor ser mo
 - **Romklang** (`SoundZones()`): atriet (stort og hardt: terrazzo, glass, ca. 2,5–3 s), mesaninen (2 s), ringkorridorene
   (parkett, 1–1,2 s), trapperommene (betong, 2 s, tydelig ekko), grupperom (0,4–0,6 s), undervisningsrom (akustikkhimling,
   0,7 s), klatrehallen (1,8 s). Hver sone er en boks per plan med navn og RT60.
-- **Gjennomslag:** glassrekkverk og glassvegger 10–12 mm herdet/laminert (kula går gjennom, glasset knuses fra runde 2);
+- **Gjennomslag:** glassrekkverk og glassvegger 10–12 mm herdet/laminert (kula går gjennom, glasset knuses fra runde 5);
   lettvegger av gips (ca. 100 mm: 2 × 12,5 mm gips på hver side av stålstendere) – gjennom; dører av tre (40 mm) – gjennom;
   skap av stål (1 mm) – gjennom; betongkjerner, søyler (Ø 0,5 m), dekker og yttervegger – stopper. Fysiske materialer per
-  materialinstans kommer i runde 2 (`PM_GS_Glass`, `PM_GS_Gips`, `PM_GS_Betong`, `PM_GS_Tre`, `PM_GS_Stal`, `PM_GS_Stein`
+  materialinstans kommer i runde 5 (`PM_GS_Glass`, `PM_GS_Gips`, `PM_GS_Betong`, `PM_GS_Tre`, `PM_GS_Stal`, `PM_GS_Stein`
   (terrazzo), `PM_GS_Stoff`).
 - **Fottrinn:** terrazzo (hardt), parkett (tre), linoleum, trinn i stål/gult belegg (metallisk klang), betong i trapperommene.
 

@@ -1,4 +1,4 @@
-# Plan 04 (Grafikk og kart): Helgasetr, runde 1 – spillbart råbygg i riktig skala
+# Plan 04 (Grafikk og kart): Helgasetr del 1 (lagets runde 4) – spillbart råbygg i riktig skala
 
 Les først `.claude/lag/grafikk/helgasetr.md` (fasiten: akser, etasjer, rom, baser, ruter, interaktivitet). Koordinater
 i meter: X = øst, Y = sør, Z = opp, origo = akse 5 × akse H på gulvet i Plan 1. Tabellene i helgasetr.md kap. 1 gir
@@ -18,7 +18,7 @@ trappene, glassboksene og de to basene på Plan 4 i hver sin ende – han kan g�
 ## Nytt
 - Helgasetr som nytt kart (Blender-struktur + C++-bygger + felles datakilde), baser, spawn, ruter, sjekkskript.
 - Alt som senere skal knuses eller åpnes (glassfelt, lettvegg-paneler, dører) legges allerede nå ut som egne instanser
-  med ID, så runde 2 (dører og ødeleggelse) bare bytter oppførsel.
+  med ID, så runde 5 (dører og ødeleggelse) bare bytter oppførsel.
 
 ## Hvorfor nå
 Andreas: «skrap det gamle mappet», «bruk god tid og lag det nye mappet veldig bra». Alt annet på kartet bygger på et
@@ -62,7 +62,7 @@ Lister (tupler eller små dataklasser – velg selv, men hold dem lesbare):
 - `STAIRS`: atriumtrappa løp 1–4 og trapperommene (tabell i steg 1c).
 - `BOXES[level]`: glassboksene fra helgasetr.md kap. 4 (x0, x1, y0, y1, type `rom`/`apen`, dør på korridorsiden).
 - `BASES`, `SPAWNS`, `ZONES`, `LOOT`, `TERMINALS`, `CAMERAS`, `SOUND_ZONES`, `COVER`, `LIGHTS` (steg 1d–1f).
-- `BREACH_WALLS`: lettvegg-paneler som skal kunne sprenges i runde 2 (steg 1g).
+- `BREACH_WALLS`: lettvegg-paneler som skal kunne sprenges i runde 5 (steg 1g).
 
 #### 1a. Plan 4 (Z 13,9) – rom og dører
 | Navn | X | Y | Type | Dører (x, y, bredde, art) |
@@ -165,11 +165,11 @@ Fra helgasetr.md kap. 5 – nøyaktig disse tallene:
 - `LIGHTS`: 8 store runde hengelamper over atriet (Ø 2,4, Z 7,5–12,0) og ett punktlys per ca. 10 m korridor på P1–P4 –
   til sammen ≤ 48, ingen skygge, `MaxDrawDistance` 4000 cm.
 
-#### 1g. Glassmoduler, dørplasser og lettvegger (forberedt for runde 2)
+#### 1g. Glassmoduler, dørplasser og lettvegger (forberedt for runde 5)
 - `GLASS_PANELS` (genereres av koden i `helgasetr_plan.py`, ikke skrives for hånd): glassrekkverk langs alle atriekanter og
   «åpent ned»-kanter delt i felt på maks 1,5 m (mellom søyler/stolper), boksenes glassvegger delt i felt på maks 1,5 m,
   grupperommenes glassvegger og glassdører. Hvert felt: (id, senter, lengde, høyde, yaw, type `rekkverk`/`vegg`/`dor`).
-- `DOOR_SLOTS`: alle dørene fra ROOMS, med id. Runde 1 = åpen døråpning med karm; runde 2 setter dørblad.
+- `DOOR_SLOTS`: alle dørene fra ROOMS, med id. Runde 4 = åpen døråpning med karm; runde 5 setter dørblad.
 - `BREACH_WALLS`: 4 per side, punktsymmetrisk: P4 vest – veggen mellom vestkorridoren og audiologi 4.056 (X −15,55,
   Y +5…+8) og 4.057 (Y −11…−9); P4 øst – motstykkene (X +15,55, Y −8…−5 og +9…+11, flytt så de treffer rom, ikke
   trapperommet); P3 nord og sør – mellom korridoren og undervisningsrommene (2 × 2). Hvert panel 2,4 × 2,8 m. Ikke i
@@ -234,12 +234,12 @@ speiler Y) og `helgasetr_plan.py`. Lager og eksporterer til `SourceArt/Models/` 
      `BuildBuilding` gjør for Hovedbygningen), kollisjon etter art: `Full` (BlockAll), `GlassFull` (BlockAll, `Mat_Glass`,
      ingen skygge), `None` (lamper, hengestenger).
   2. **Glassmoduler** (`GlassPanels`): én ISM per type (`rekkverk`, `vegg`, `dor`) med `SM_Mod_Helg_GlassPanel`/`GlassDoor`,
-     én instans per panel i id-rekkefølge (instansindeks = panel-id, så runde 2 kan finne dem). Kollisjon: blokker `Pawn`
-     og `PhysicsBody`, **ignorer `Visibility` og `Camera`** (kuler går gjennom til Kamp kobler knusing i runde 2), ingen
+     én instans per panel i id-rekkefølge (instansindeks = panel-id, så runde 5 kan finne dem). Kollisjon: blokker `Pawn`
+     og `PhysicsBody`, **ignorer `Visibility` og `Camera`** (kuler går gjennom til Kamp kobler knusing i runde 5), ingen
      skygge, `ComponentTags` `Mat_Glass`. Mangler modellen: tynn boks med `MI_GS_Glass`.
   3. **Lettvegg-paneler** (`BreachWalls`): ISM `SM_Mod_Helg_Lettvegg` (eller boks med `PlasterWhite_In`), BlockAll,
      instansindeks = id, tag `Mat_Plaster`. Strukturmodellen har hull der.
-  4. **Dørplasser**: ingenting å spawne i runde 1 (åpning + karm i strukturen). Logg antallet.
+  4. **Dørplasser**: ingenting å spawne i denne runden (åpning + karm i strukturen). Logg antallet.
   5. **Lys**: hengelampene (prop + `URectLightComponent` ned, ca. 3 000 lm, ingen skygge) og korridorlysene
      (`UPointLightComponent`, ingen skygge, attenuation 900 cm), alle `MaxDrawDistance` 4000. Lys bare når ikke dedikert server.
   6. **Lagfarger** ved basene: rød/blå stripe (boks 1,2 × 0,04 × 0,25 m) over hver dør inn til egen base og egen lobby, og

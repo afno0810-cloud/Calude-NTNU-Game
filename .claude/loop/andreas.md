@@ -33,6 +33,9 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-27: Valgte **Epic Online Services** for å spille med venner over internett (vennelister, invitasjoner).
+  Krever at Andreas lager en gratis utviklerkonto og et prosjekt hos Epic når vi kommer dit – hovedagenten
+  forklarer stegene da.
 - 2026-11-27: «Etter du er ferdig med det ønsker jeg at du skal optimalisere alt i spillet, gjøre det mer komplett
   og gjøre så man faktisk kan spille det med venner.» Etter kart + meny/bots: ytelse overalt, alt komplett og
   ferdig, og ekte flerspiller med venner over internett (ikke bare samme nett).
