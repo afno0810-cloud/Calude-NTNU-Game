@@ -41,4 +41,7 @@ Hver regel: én linje, med (runde N) bak, og et telletall når den bekreftes igj
 - Før en plan sletter en funksjon, søk etter alle som bruker den. (runde 12)
 - **Alt som fanger input (menyer, paneler) må testes i editorens Play (PIE) før det leveres, og må alltid kunne lukkes med Esc (og F10 i editoren – i PIE stopper Esc hele Play-økten før spillet ser tasten). Andreas' første test av hovedmenyen satt fast: klikk, styring, tastebytte og utgang virket ikke. Kompilering beviser ingenting om input.** (Spillbarhet runde 2)
 - Andreas spiller med Play i editorvinduet (Selected Viewport). Der binder editoren sin egen tastekrok, og Esc stopper Play. Alt input-arbeid må virke i den modusen. (hastesak 26. nov.)
+- Komponenter skjult for eieren kaster ikke skygge for eieren; «hel skygge» må gjelde alt som henger på kroppen (bCastHiddenShadow/WorldSpaceRepresentation). (runde 14a)
+- Tall planen krever i rapporten skal også logges med UE_LOG, så en hodeløs kjøring kan bevise dem. (runde 14a)
+- Alt som er «bare for spilleren bak skjermen» skal kreve IsPlayerControlled() i tillegg til IsLocallyControlled() – AI er lokalt styrt på serveren. (runde 14a)
 

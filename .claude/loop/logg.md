@@ -2,6 +2,8 @@
 
 Én linje per runde, nyeste øverst: dato · runde · mål · resultat · rettinger · commit.
 
+- 2026-11-27 · runde 14a · ekte førsteperson: C++-kroppsanimasjon, egen kropp med bein/føtter, hel skygge · godkjent (5 funn til 14b) · 0 · c616f84
+- 2026-11-27 · runde 13 · blødning, blodspor, sår, frakobling, Esc-meny · godkjent · 0 · b1eb305
 - 2026-11-26 · runde 5a · ballistikk: kulefart, fall, skadefall, serverens spredning · godkjent (4 små funn til 5b) · 0 · a28c23e
 - 2026-11-26 · runde 11 · CTF i HUD og på kroppen, lagfarger, flagg-radio, 60 fps-tak · godkjent · 0 · 86ecf6c
 - 2026-11-26 · runde 4 · kroppssoner, bein-/armskade, V1/V3/V5, styreflate-scroll · MÅ FIKSES (skuddkonto avviser ekte skudd) – rettes i neste bygg · 1 · 60a516c
