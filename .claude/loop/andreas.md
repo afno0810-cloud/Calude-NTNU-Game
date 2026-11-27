@@ -33,6 +33,7 @@ med dato, med hans egne ord så langt det går.
 
 ## Tilbakemeldinger
 (nyeste øverst)
+- 2026-11-27: «bedre spillmekanikk», «få spillet til å se tydeligere ut» (skarpere bilde: oppløsning/TSR/skarphet).
 - 2026-11-27: «bedre grafikk», «bedre animasjoner», «flere animasjoner», «mye bedre lydeffekter» (og lyseffekter).
 - 2026-11-27: «Fortsett og forbedre spillet, ønsker ikke å teste det ennå.» Ikke spør Andreas om testing; bruk
   hodeløse tester og kontrollører, og fortsett å bygge. Meld bare store milepæler.
