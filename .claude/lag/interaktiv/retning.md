@@ -38,7 +38,7 @@ Fire regler for alt laget lager:
    testrom med dører, konsoll (`Testrom`, `Smell`, `Knus`).
    **Runde 1b** (`ko/plan-01b.md`): knusbart glass (herdet/laminert), biter og skår, varige kulehull (400 i alt),
    Blender-modeller.
-2. **Runde 2 – sprenge og bære** (skisse i `ko/plan-02.md`): lettvegger (`BreachWalls`) som sprenges, dører som blåses
+2. **Runde 2 – sprenge og bære** (`ko/plan-02.md`, byggeklar: 02a lettvegger/dørblad/faste møbler, 02b `AGSPhysicsProp` med bære/kaste/knuse, brannslukker, barrikader): lettvegger (`BreachWalls`) som sprenges, dører som blåses
    ut av karmen, møbler med hel/ødelagt modell, `AGSPhysicsProp` (plukke opp, bære, kaste, velte, ødelegge), barrikader
    foran dører, Bots-varsel når gangbare ruter endres.
 3. **Runde 3 – brukbare ting** (skisse i `ko/plan-03.md`): lysbrytere per rom, heis sør/øst, kiosk og kjøleskap i
@@ -49,11 +49,14 @@ Fire regler for alt laget lager:
 7. Lys som slukkes når lamper skytes (henger sammen med lysbryterne i runde 3).
 8. Ekte sprekkemønster i laminert glass fra Blender (3 varianter) i stedet for stjernemerker.
 9. Plan 5 og 6 åpnes med kortleser-dørene (adgangskort åpner «Kun ansatte») – høy utkikk, egen runde med Grafikk.
-10. Brannslukker som kan skytes (hvit sky + dytt) og brukes til å blinde (passer Kamps røyk).
+10. Brannslukker som kan *sprøytes* (bæres og holdes) for å blinde – skutt brannslukker er med i 02b.
 11. Tråkkelyd på glasskår og gips (fottrinn på skår – bestilles hos Kamp).
 12. Måling: `stat unit` i atriet med 40 knuste felt og 150 biter i lufta; tak justeres etter målingen.
 
 ## Endringer i retningen
+- 2026-11-27: Runde 2 skrevet ut og delt i 02a (alt fast: bare lista, ingen nye nettaktører) og 02b (løse ting). Løse ting
+  sover som lokale instanser og blir replikerte aktører først når noen rører dem, så hundrevis av stoler koster null i nettet.
+  Svart Grafikk på `Props()` (løse typer, format, `FindProp`, atriehjørner ja). Bæring virker før Kamps K6 (bestilt).
 - 2026-11-27: Runde 1 delt i 1a (dører, tilstand, bruk-tasten – virker uten Kamp) og 1b (glass, kulehull, modeller) etter
   forhåndssjekken og hovedagentens avgjørelse; alle 7 feilene (bl.a. eierskap ved trykket, rømning innenfra, objektspor
   for fokus, ferskhet hos sen klient, K1/K3-presisering) er tatt inn.
